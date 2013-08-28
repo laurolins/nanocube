@@ -1,0 +1,7 @@
+.leaflet-container {
+    background: #000;
+}
+
+img.leaflet-tile {
+    -webkit-filter: hue-rotate(180deg) invert(100%) saturate(30%);
+}

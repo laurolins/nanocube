@@ -1,0 +1,81 @@
+<html>
+<head><title></title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <link rel="stylesheet" href="css/bootstrap.css"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/mchighlight-javascript.css"/>
+  <link rel="stylesheet" href="d3.parsets.css"/>
+  <link type="text/css" href="lib/ui-lightness/jquery-ui-1.8.21.custom.css" rel="stylesheet" />
+  <script src="lib/jquery-1.7.2.min.js"></script>
+  <script src="lib/jquery.mousewheel.js"></script>
+  <script src="lib/jquery-ui-1.8.21.custom.js"></script>
+  <script src="lib/d3.js"></script>
+  <script src="lux.js"></script>
+  <script src="histogram.js"></script>
+  <script src="tile_cache.js"></script>
+  <script src="tiled_pointset.js"></script>
+  <script src="nanocube.js"></script>
+  <script src="nanocube_heatmap.js"></script>
+  <script src="d3.parsets.js"></script>
+  <script src="view_schemata.js"></script>
+  <script>
+    var view_schema = view_schemata.twitter_small;
+  </script>
+  <script src="index.js"></script>
+  <script src="nanocube_view.js"></script>
+  <script src="binned_scatterplot.js"></script>
+  <script src="time_series.js"></script>
+<style>
+.ui-slider .ui-slider-handle { 
+    width: 18px; 
+    height: 18px;
+}
+
+.slider-div {
+   top: 7px;
+   width: 300px;
+   height: 10px;
+   float: left;
+   clear: left;
+   margin-right: 18px;
+}
+
+.selected-mode {
+   font-weight: 500;
+   color: white;
+}
+
+html {
+   overflow: hidden;
+}
+
+body {
+   color: white;
+}
+
+</style>
+</head>
+<body>
+<canvas style="position: absolute; top: 0px; left: 0px" id="webgl" width="640" height="480"></canvas>
+<div style="position: absolute; top: 1em; left: 1em;
+	    background-color: rgba(0,0,0,0.8);
+	    padding:0.5em"><h2 style="text-shadow: 2px 2px 2px #000;"
+	    id="header">Title goes here</h2></div
+>
+<!-- <div style="position: absolute; bottom:0em; left: 0em; -->
+<!-- 	      padding:2em; background-color: rgba(0,0,0,0.8)"> -->
+<!--     <div><div class="slider-div" id="pointsize"></div>Point Size</div> -->
+<!--     <div><div class="slider-div" id="date-range"></div>Date range</div> -->
+<!-- </div> -->
+<div style="position: absolute; bottom:0em; right: 0em" id="vis-panes"></div>
+<div style="position: absolute; top: 0em; right: 0em" id="pan-select">
+  <div class="vis-pane-bg">
+    <div>[<a href="#" id="option-pan">Pan</a>]
+         [<a href="#" id="option-select">Select</a>]
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+aclocal -I m4 --install       || exit 1
+libtoolize --install --copy   || exit 1
+autoheader                    || exit 1
+autoconf                      || exit 1
+automake --add-missing --copy || exit 1
+
+exit 0
+
+#./config.status -V
+# make distcheck    (

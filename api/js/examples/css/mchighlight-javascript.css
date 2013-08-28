@@ -1,0 +1,27 @@
+span.jskeyword {
+ font-weight: bold ;
+}
+
+span.jscomment {
+ font-weight: bold ;
+ color: #FF5040;
+}
+
+span.jspunctuation {
+    color: rgb(128, 116, 102);
+}
+
+span.jsidentifier {
+}
+
+span.jsnumber {
+ color: rgb(90, 200, 137);
+}
+
+span.jsstring {
+ color: #ff5040;
+}
+
+span.jsregexp {
+ color: #ff5040;
+}

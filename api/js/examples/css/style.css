@@ -1,0 +1,167 @@
+html {
+  overflow: hidden;
+}
+
+body {
+  overflow: hidden;
+  font: 14px "Helvetica Neue", sans-serif;
+  padding-top: 1em;
+  font-weight: 200;
+  font-size: 1em;
+/*   overflow-y: scroll; */
+  color: rgb(240,240,240);
+  background-color: rgb(40,40,40); /*rgb(77, 62, 50);*/
+/* brushed metal textures based on zooboing's brushed metal
+
+   http://www.flickr.com/photos/zooboing/3662888243/sizes/o/in/set-72157620464703577/
+
+ */
+}
+
+.inline-highlight {
+    font-size: 14px;
+    line-height: 18px;
+    font-family: "Monaco", "Consolas", "DejaVu Sans Mono", monospace;
+}
+
+.highlight, .html-highlight {
+    /* font-size: 14px; */
+    font-size: 10px;
+    width: auto;
+    overflow-x: auto;
+    padding: 10px;
+    line-height: 14px;
+    background-color: rgb(43, 29, 23); /*rgb(51, 41, 33);*/
+    background-image: url('brushed_metal_dark.jpg');
+    border-radius: 0.3em;
+    margin-left: 2em;
+    margin-right: 2em;
+    color: white;
+}
+
+h1, h2, h3 {
+    color: rgb(240, 240, 240);
+}
+
+a {
+  color: gray;
+  text-decoration: none;
+}
+
+a:hover {
+  color: white;
+  text-decoration: underline;
+}
+
+.body {
+  width: 960px;
+  margin: auto;
+}
+
+.content {
+  position: relative;
+  width: 720px;
+  margin-left: 0px;
+}
+
+.content img {
+  display: block;
+  margin: auto;
+}
+
+.sidebar {
+  position: absolute;
+  left:  730px;
+  width: 230px;
+  font-weight: 300;
+}
+
+h1 {
+  font-size: 36px;
+  font-weight: 300;
+}
+
+b {
+    font-weight: 700;
+    color: rgb(10, 10, 10);
+}
+.sidebar {
+  color: #666;
+}
+
+ul {
+  list-style-type: none;
+}
+p {
+    margin-left: 1em;
+}
+.nomargin {
+    margin: 0
+}
+.keyword {
+    font-size: 1.1em;
+    font-weight: 300;
+/*     color: rgb(255, 160, 100); */
+    font-family: monospace;
+    padding-right: .1em;
+    padding-left: .1em;
+}
+.negoffset1 {
+  margin-left: -80px;
+}
+.negoffset2 {
+  margin-left: -140px;
+}
+.negoffset3 {
+  margin-left: -200px;
+}
+.negoffset4 {
+  margin-left: -260px;
+}
+.negoffset5 {
+  margin-left: -320px;
+}
+.negoffset6 {
+  margin-left: -380px;
+}
+.negoffset7 {
+  margin-left: -440px;
+}
+.negoffset8 {
+  margin-left: -500px;
+}
+.negoffset9 {
+  margin-left: -560px;
+}
+.negoffset10 {
+  margin-left: -620px;
+}
+.negoffset11 {
+  margin-left: -680px;
+}
+.negoffset12 {
+  margin-left: -740px;
+}
+
+table th, table td {
+    padding: 1px;
+}
+
+.vis-pane-bg {
+    margin: 0.5em;
+    padding: 0.5em; 
+    background-color: rgba(0,0,0,0.8);
+}
+
+.tick {
+    fill: white;
+    font-size: 0.5em;
+}
+
+.domain {
+    display: none;
+}
+
+.tick line {
+    stroke: white;
+}
