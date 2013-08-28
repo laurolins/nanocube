@@ -1,0 +1,51 @@
+/build-cube-GCC_4_72_64_bits2-Debug/cube.app/Contents/Info.plist
+/build-cube-GCC_4_72_64_bits2-Debug/cube.app/Contents/MacOS/cube
+/build-cube-GCC_4_72_64_bits2-Debug/cube.app/Contents/PkgInfo
+/build-cube-GCC_4_72_64_bits2-Debug/cube.app/Contents/Resources/empty.lproj
+/build-nanocube-CLANG-Debug/nanocube.app/Contents/Info.plist
+/build-nanocube-CLANG-Debug/nanocube.app/Contents/MacOS/nanocube
+/build-nanocube-CLANG-Debug/nanocube.app/Contents/PkgInfo
+/build-nanocube-CLANG-Debug/nanocube.app/Contents/Resources/empty.lproj
+/build-nanocube-GCC_4_72_64_bits2-Debug/nanocube.app/Contents/Info.plist
+/build-nanocube-GCC_4_72_64_bits2-Debug/nanocube.app/Contents/MacOS/nanocube
+/build-nanocube-GCC_4_72_64_bits2-Debug/nanocube.app/Contents/PkgInfo
+/build-nanocube-GCC_4_72_64_bits2-Debug/nanocube.app/Contents/Resources/empty.lproj
+/build-nanocube-GCC_4_8_Kit-Debug/nanocube.app/Contents/Info.plist
+/build-nanocube-GCC_4_8_Kit-Debug/nanocube.app/Contents/MacOS/nanocube
+/build-nanocube-GCC_4_8_Kit-Debug/nanocube.app/Contents/PkgInfo
+/build-nanocube-GCC_4_8_Kit-Debug/nanocube.app/Contents/Resources/empty.lproj
+/build-ncdmp-GCC_4_8_Kit-Debug/ncdmp.app/Contents/Info.plist
+/build-ncdmp-GCC_4_8_Kit-Debug/ncdmp.app/Contents/MacOS/ncdmp
+/build-ncdmp-GCC_4_8_Kit-Debug/ncdmp.app/Contents/PkgInfo
+/build-ncdmp-GCC_4_8_Kit-Debug/ncdmp.app/Contents/Resources/empty.lproj
+/build-ncserve-GCC_4_8_Kit-Debug/ncserve.app/Contents/Info.plist
+/build-ncserve-GCC_4_8_Kit-Debug/ncserve.app/Contents/MacOS/ncserve
+/build-ncserve-GCC_4_8_Kit-Debug/ncserve.app/Contents/PkgInfo
+/build-ncserve-GCC_4_8_Kit-Debug/ncserve.app/Contents/Resources/empty.lproj
+/build-stree-GCC_4_72_64_bits2-Default build Release/stree.app/Contents/Info.plist
+/build-stree-GCC_4_72_64_bits2-Default build Release/stree.app/Contents/MacOS/stree
+/build-stree-GCC_4_72_64_bits2-Default build Release/stree.app/Contents/PkgInfo
+/build-stree-GCC_4_72_64_bits2-Default build Release/stree.app/Contents/Resources/empty.lproj
+Makefile
+Makefile.am
+configure
+m4
+m4/*
+*.o
+*~
+src/serve
+src/points2qt
+src/points2qtts
+Makefile.in
+config.*
+libtool
+.deps
+aclocal.m4
+autom4te.cache
+autom4te.cache/*
+stamp-h1
+aux-scripts
+build
+build/*
+#*#
+.#*

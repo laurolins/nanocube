@@ -1,0 +1,67 @@
+#!/usr/bin/env /usr/bin/python
+# usage ncbuild q20 c1 u2 u4
+
+import sys
+import os
+
+nanocube_root = os.environ.get('NANOCUBE_ROOT')  # develop
+nanocube_bin  = os.environ.get('NANOCUBE_BIN')
+
+ok = True
+if nanocube_root == None:
+   print "NANOCUBE_ROOT environment variable should point to the root of the dev folder of nanocube"
+   ok = False
+
+if nanocube_bin == None:
+   print "NANOCUBE_BIN environment variable should point to the install location of nanocube binaries"
+   ok = False
+
+if not ok:
+    sys.exit(0)
+
+tokens = sys.argv[1:]
+
+first_variable_index = 0
+
+for t in tokens:
+    if t[0] == 'u':
+        break
+    else:
+        first_variable_index += 1
+
+if first_variable_index == len(tokens):
+    print ""
+    print "invalid nanocube: tokens"
+    print "    a valid one is: ncbuild.py q20 c1 u2 u4"
+    print "    a valid one is: ncbuild.py q20 q20 c1 u2 u4"
+    print ""
+    sys.exit(1)
+
+dimension_names = ",".join(tokens[0:first_variable_index])
+variable_types  = ",".join(tokens[first_variable_index:])
+filename        =  ("nc_" + dimension_names + "_" + variable_types).replace(',','_')
+
+print "Building " + filename + " and copying it to folder " + nanocube_bin + "..."
+
+headers = "Common.hh ContentHolder.hh DumpFile.hh FlatTree.hh MemoryUtil.hh MercatorProjection.hh NanoCube.hh NanoCubeInsert.hh NanoCubeQuery.hh NanoCubeQueryException.hh NanoCubeQueryResult.hh NanoCubeReportBuilder.hh NanoCubeSchema.hh NanoCubeTimeQuery.hh QuadTree.hh QuadTreeNode.hh QuadTreeUtil.hh Query.hh QueryParser.hh QueryResult.hh Report.hh Server.hh Stopwatch.hh TaggedPointer.hh TimeBinFunction.hh TimeSeries.hh TimeSeriesEntryType.hh Tuple.hh Util.hh vector.hh small_vector.hh QuadTreeNode_autogen.hh mongoose.h FlatTreeN.hh NanoCubeSummary.hh"
+
+sources = "Common.cc DumpFile.cc MemoryUtil.cc MercatorProjection.cc NanoCubeQueryException.cc NanoCubeQueryResult.cc NanoCubeSchema.cc QuadTree.cc QuadTreeNode.cc Query.cc QueryParser.cc QueryResult.cc Report.cc Server.cc Stopwatch.cc TimeBinFunction.cc TimeSeries.cc Util.cc vector.cc mongoose.c nc.cc NanoCubeSummary.cc"
+
+cmds = [
+"cd %s/src" % nanocube_root,
+"mkdir -p /tmp/" + filename,
+"cp " + sources + " " + headers + " /tmp/" + filename,
+"cd /tmp/" + filename,
+'''g++ -std=c++11 -O3 \
+-I. \
+-D_GLIBCXX_USE_NANOSLEEP  \
+-DLIST_DIMENSION_NAMES=%s \
+-DLIST_VARIABLE_TYPES=%s  \
+-o %s \
+%s \
+-ldl -lpthread''' % (dimension_names, variable_types, filename, sources),
+"cp %s %s" % (filename,nanocube_bin)
+]
+os.system(";".join(cmds))
+
+print "Done"

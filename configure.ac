@@ -1,0 +1,52 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+AC_PREREQ([2.65])
+AC_INIT([nanocube], [0.0.1], [lauro.lins@gmail.com])
+
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_AUX_DIR([aux-scripts])
+
+AM_INIT_AUTOMAKE([foreign])
+
+AC_PROG_CC
+AC_PROG_CPP
+
+# Checks for programs.
+dnl host_os=`uname`
+dnl if test "$host_os" = "Darwin"; then
+dnl    AS_VAR_SET([cpp_compiler],[clang++])
+dnl    CXX="clang++ "
+dnl    CXXFLAGS+=" -stdlib=libc++ -mmacosx-version-min=10.7"
+dnl else
+dnl    AS_VAR_SET([cpp_compiler],[])
+dnl fi
+
+# echo "----------------> $CC"
+
+AC_PROG_CXX([AS_VAR_GET([cpp_compiler])])
+
+LT_INIT([dlopen])
+
+AC_LANG([C++])
+
+# turn on c++11
+AX_CXX_COMPILE_STDCXX_11(noext)
+
+
+
+# Checks for header files.
+AC_CHECK_HEADERS([stdint.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_HEADER_STDBOOL
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+
+# Checks for library functions.
+
+AC_CONFIG_FILES([Makefile
+                 src/Makefile])
+AC_OUTPUT
