@@ -343,24 +343,73 @@ auto FlatTree<N, Content>::prepareProperOutdatedPath(FlatTree*                pa
                                                      std::vector<void *>&     parallel_replaced_nodes,
                                                      FlatTree::NodeStackType& stack) -> NodeType*
 {
+    // same implementation as trailProperPath
+    // there is no gain on a flattree to share
+    // child nodes.
 
-    // all nodes in the flattree_n implementation
-    // are proper, so it is a simple matter of
-    // pushing the root and a (possibly new) child node.
+    // needs to be a complete path
+    assert(address.getPathSize() == 1);
 
-    assert(address.getPathSize()<=1);
-
-    // add root
+    // to get to this point at least the root needs
+    // to be updated, otherwise it would have been
+    // detected before
     stack.push_back(this);
+    // parallel_replaced_nodes.push_back(this);
 
-    if (address.getPathSize() == 1)
-    {
-        NodeType* child = this->getLink(address.raw_address, true);
-        stack.push_back(child); // add root
+
+    if (parallel_structure) {
+        auto parallel_child = parallel_structure->getLink(address[0]);
+
+        bool needs_to_update_child = true;
+
+        // get child. maybe doesn't need to be updated...
+        NodeType *child = this->getLink(address[0], false);
+        if (child == nullptr) {
+            child = this->getLink(address[0], true);
+            child->setSharedContent(parallel_child->getContent());
+            needs_to_update_child = false;
+        }
+        else if (parallel_child->getContent() == child->getContent()){
+            // nothing to be done: content already updated
+            needs_to_update_child = false;
+        }
+
+        stack.push_back(child);
+        if (needs_to_update_child) {
+            stack.push_back(nullptr);
+            return child;
+        }
+        else {
+            //
+            // std::cout << "Special case: saving resources!!" << std::endl;
+            return this;
+        }
+    }
+
+    else {
+        NodeType *child = this->getLink(address[0], true);
+        stack.push_back(child);
+        stack.push_back(nullptr);
         return child;
     }
 
-    return this;
+//    // all nodes in the flattree_n implementation
+//    // are proper, so it is a simple matter of
+//    // pushing the root and a (possibly new) child node.
+
+//    assert(address.getPathSize()<=1);
+
+//    // add root
+//    stack.push_back(this);
+
+//    if (address.getPathSize() == 1)
+//    {
+//        NodeType* child = this->getLink(address.raw_address, true);
+//        stack.push_back(child); // add root
+//        return child;
+//    }
+
+//    return this;
 }
 
 

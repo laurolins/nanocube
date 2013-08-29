@@ -118,6 +118,7 @@ public: // Public Methods
     void serveSchema    (Request &request);
     void serveTBin      (Request &request);
     void serveSummary   (Request &request);
+    void serveGraphViz  (Request &request);
 
 public: // Data Members
 
@@ -153,6 +154,8 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube):
 
     auto summary_handler       = std::bind(&NanoCubeServer::serveSummary, this, std::placeholders::_1);
 
+    auto graphviz_handler       = std::bind(&NanoCubeServer::serveGraphViz, this, std::placeholders::_1);
+
     // register service
     server.registerHandler("query",     json_query_handler);
     server.registerHandler("binquery",  binary_query_handler);
@@ -162,6 +165,7 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube):
     server.registerHandler("schema",    schema_handler);
     server.registerHandler("tbin",      tbin_handler);
     server.registerHandler("summary",   summary_handler);
+    server.registerHandler("graphviz",  graphviz_handler);
 
     int tentative=0;
     while (tentative < 100) {
@@ -417,6 +421,15 @@ void NanoCubeServer::serveStats(Request &request)
     request.respondJson(ss.str());
 }
 
+void NanoCubeServer::serveGraphViz(Request &request)
+{
+    report::Report report(nanocube.DIMENSION + 1);
+    nanocube.mountReport(report);
+    std::stringstream ss;
+    report_graphviz(ss, report);
+    request.respondJson(ss.str());
+}
+
 void NanoCubeServer::serveSchema(Request &request)
 {
     // report::Report report(nanocube.DIMENSION + 1);
@@ -444,6 +457,7 @@ void NanoCubeServer::serveSummary(Request &request)
     ss << summary;
     request.respondJson(ss.str());
 }
+
 
 //-----------------------------------------------------------------------------
 // Split routines
@@ -526,7 +540,7 @@ int main(int argc, char *argv[]) {
     std::cout << "read data now..." << std::endl;
     while (1) {
 
-        // std::cout << "count: " << count << std::endl;
+//        std::cout << "count: " << count << std::endl;
 
         if (options.max_points > 0 && count == options.max_points) {
             break;
@@ -537,6 +551,17 @@ int main(int argc, char *argv[]) {
             // std::cout << "not ok" << std::endl;
             break;
         }
+
+//        { // generate pdf
+//            report::Report report(nanocube.DIMENSION + 1);
+//            nanocube.mountReport(report);
+//            std::string filename     = "/tmp/bug"+std::to_string(count)+".dot";
+//            std::string pdf_filename = "/tmp/bug"+std::to_string(count)+".pdf";
+//            std::ofstream of(filename);
+//            report::report_graphviz(of, report);
+//            of.close();
+//            system(("dot -Tpdf " + filename + " > " + pdf_filename).c_str());
+//        }
 
         // std::cout << "ok" << std::endl;
         count++;

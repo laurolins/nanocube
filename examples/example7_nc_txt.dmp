@@ -1,0 +1,14 @@
+name: example7
+encoding: text
+field: a nc_dim_cat_1
+field: b nc_dim_cat_1
+field: c nc_dim_cat_1
+field: t nc_dim_time_1
+field: x nc_var_uint_1
+
+1 3 2 1 1
+2 1 3 2 1
+2 1 3 3 1
+3 2 1 4 1
+3 2 1 5 1
+3 2 1 6 1

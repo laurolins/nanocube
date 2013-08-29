@@ -528,19 +528,83 @@ FlatTree<Content>::prepareProperOutdatedPath(FlatTree*                  parallel
     // there is no gain on a flattree to share
     // child nodes.
 
-    assert(address.getPathSize()<=1);
+    // needs to be a complete path
+    assert(address.getPathSize() == 1);
 
-    // add root
+    // to get to this point at least the root needs
+    // to be updated, otherwise it would have been
+    // detected before
     stack.push_back(this);
+    // parallel_replaced_nodes.push_back(this);
 
-    if (address.getPathSize() == 1)
-    {
+
+    if (parallel_structure) {
+        auto parallel_child = parallel_structure->getLink(address[0]);
+
+        bool needs_to_update_child = true;
+
+        // get child. maybe doesn't need to be updated...
+        Node<Content> *child = this->getLink(address[0], false);
+        if (child == nullptr) {
+            child = this->getLink(address[0], true);
+            child->setSharedContent(parallel_child->getContent());
+            needs_to_update_child = false;
+        }
+        else if (parallel_child->getContent() == child->getContent()){
+            // nothing to be done: content already updated
+            needs_to_update_child = false;
+        }
+
+        stack.push_back(child);
+        if (needs_to_update_child) {
+            stack.push_back(nullptr);
+            return child;
+        }
+        else {
+            //
+            // std::cout << "Special case: saving resources!!" << std::endl;
+            return this;
+        }
+    }
+
+    else {
         Node<Content> *child = this->getLink(address[0], true);
-        stack.push_back(child); // add root
+        stack.push_back(child);
+        stack.push_back(nullptr);
         return child;
     }
 
-    return this;
+//    // std::cout << "Running..." << std::endl;
+
+//    //... if parallell structure's
+//    bool add_child = true;
+//    if (parallel_structure && child->contentIsShared()) {
+//        auto parallel_child = parallel_structure->getLink(address[0]);
+//        if (parallel_child && parallel_child->getContent() == child->getContent()) {
+//            std::cout << "Parallel Replaced Nodes" << std::endl;
+//            add_child = false;
+//        }
+//    }
+
+//    stack.push_back(child); // child always goes
+
+//    if (add_child) {
+//        // parallel_replaced_nodes.push_back(child);
+//        stack.push_back(nullptr); // indicates we need to update child content
+//                                  // required by the semantics of nanocube algorithm.
+//                                  // See QuadTree implementation for a proper case.
+
+//        return child; // node we need to update content
+
+//    }
+//    else {
+
+//        return this; // node we need to update content
+
+//    }
+
+
+    // return this;
 }
 
 //

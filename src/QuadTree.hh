@@ -627,7 +627,7 @@ QuadTree<N, Content>::add(AddressType address, Point &point, QuadTreeAddPolicy &
  *
  * This is a special service required by nanocubes. It assumes parallel_structure (if not null)
  * was just updated with a new data point, and we are preparing to add this data point to
- * this quadtree in a resource-smart fashion (use of shared resources). It turns out that
+ * this quadtree in a resource-smart way (use of shared resources). It turns out that
  * child structure is "contained" in this quadtree except, maybe for a (suffix) path
  * containing the new data point just added in child_strucutre.
  */
@@ -675,6 +675,10 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
 
     // pointer parallel to current_node in child_structure
     NodeType*    current_parallel_node  = (parallel_structure ? parallel_structure->root : nullptr);
+
+    //
+//    std::cout << "current_address.level: " << current_address.level << std::endl;
+//    std::cout << "address.level:         " << address.level         << std::endl;
 
     // traverse the path from root address to address
     // inserting and stacking new proper nodes until
@@ -745,11 +749,19 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
             // on the stack need to have its content updated with
             // the new point.
             if (parallel_structure) {
+
+                stack.push_back(next_node); // stack has always one node more
+
                 break;
+
             }
 
         }
         else if (pointer_to_next_node_is_shared) {
+
+            if (parallel_structure == nullptr) {
+                std::cout << "ooops" << std::endl;
+            }
 
             // if there is a shared parent-child link in
             // the current structure then the parallel structure
@@ -758,8 +770,12 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
 
 
             if (next_node == next_parallel_node) {
+
                 // not sure if this case can occur
+                stack.push_back(next_node); // stack has always one node more (can be nullptr)
+
                 break;
+
             }
             else if (std::count(parallel_replaced_nodes.begin(),
                                 parallel_replaced_nodes.end(),
@@ -779,6 +795,8 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
 
                 // create copy of currentNode with updated type and new child
                 current_node->setChild(next_parallel_node, next_node_name, SHARED_FLAG);
+
+                stack.push_back(next_parallel_node); // stack has always one node more (can be nullptr)
 
                 break;
             }
@@ -806,6 +824,13 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
 
         // update current_address
         current_address = next_address;
+
+        if (current_address.level == address.level) {
+
+            stack.push_back(nullptr); // base case
+
+        }
+
     }
 
 

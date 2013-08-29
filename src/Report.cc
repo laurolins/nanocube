@@ -160,7 +160,7 @@ Node* Report::insertNode(uint64_t node_key, int dimension, int level) {
     layer->num_nodes++;
 
     Node *node;
-    if (dimension == this->dimensions) {
+    if (dimension == this->dimensions - 1) {
         node = new LeafNode(layer, node_key);
     }
     else {
@@ -270,7 +270,7 @@ void Report::updateToHumanReadableKeys()
         map.insert(node);
     }
     map.consolidate();
-    std::cout << "Number of Nodes: " << map.node_set.size() << std::endl;
+    // std::cout << "Number of Nodes: " << map.node_set.size() << std::endl;
 
     // create nodes vector
     for (auto it: node_map) {
@@ -362,11 +362,24 @@ void report_graphviz(std::ostream &os, Report &report) {
         Node *node = it.second;
         InternalNode *internal_node = node->asInternalNode();
         if (internal_node) {
+
+            // std::cout << *internal_node->layer << std::endl;
+
+            // children
             for (Link &link: internal_node->children) {
+//                if (link.source_node == nullptr || link.target_node == nullptr )
+//                    throw std::runtime_error("link needs to have its endpoints right");
+
                 links.push_back(&link);
             }
-            {
+
+
+            { // content
                 Link &link = internal_node->content;
+
+                if (link.source_node == nullptr || link.target_node == nullptr )
+                    throw std::runtime_error("link needs to have its endpoints right");
+
                 links.push_back(&link);
             }
         }

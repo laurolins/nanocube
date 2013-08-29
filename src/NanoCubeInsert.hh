@@ -26,6 +26,8 @@
 
 namespace mpl = boost::mpl;
 
+#define xDEBUG_STREE
+
 #ifdef DEBUG_STREE
 static std::string bin(uint32_t x, int length) {
     std::stringstream ss;
@@ -196,8 +198,9 @@ Insert<nanocube, iterator>::Insert(address_type               &address,
     // on proper content for each node
     current_structure.prepareProperOutdatedPath(child_structure, dimension_address, replaced_nodes, stack);
 
-    //
-    typename dimension_type::NodeType *child = nullptr;
+    // the top of the stack is a node that is already updated or a nullptr
+    typename dimension_type::NodeType* child = stack.back();
+    stack.pop_back();
 
 #ifdef DEBUG_STREE
     std::clog << fl("",3*index)
