@@ -26,7 +26,7 @@ QMAKE_LFLAGS    += -std=c++11
 QT     -=  gui core
 LIBS   -= -lQtGui -lQtCore
 
-LIBS        += -L$${LOCAL}/lib -ldl -lpthread
+LIBS        += -L$${LOCAL}/lib -ldl -lpthread -lz
 INCLUDEPATH += .
 
 EXAMPLE1 = \

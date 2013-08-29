@@ -14,12 +14,8 @@ void test() {
 int main(int argc, char **argv) {
 
 #if 0
-    test();
-    return 0;
-#endif
-
-
     bool     version = false;
+#endif
 
     uint64_t max     = 0;
 
@@ -46,15 +42,14 @@ int main(int argc, char **argv) {
             time_function = FUNCTION_MONTH_OF_YEAR;
         }
 
-
         if (tokens.size() == 0) {
             continue;
         }
-
+#if 0
         else if (tokens[0].compare("--version") == 0) {
             version = true;
         }
-
+#endif
         else if (tokens[0].compare("--max") == 0) {
             max = std::stoull(tokens[1]);
         }

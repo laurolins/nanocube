@@ -33,7 +33,8 @@ AC_LANG([C++])
 # turn on c++11
 AX_CXX_COMPILE_STDCXX_11(noext)
 
-
+# check zlib
+AX_CHECK_ZLIB()
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h])

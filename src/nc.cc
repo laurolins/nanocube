@@ -16,7 +16,71 @@
 
 #include <NanoCubeSummary.hh>
 
+#include <zlib.h>
+
 using namespace nanocube;
+
+//------------------------------------------------------------------------------
+// zlib_compress
+//------------------------------------------------------------------------------
+
+std::vector<char> zlib_compress(const char* ptr, std::size_t size)
+{
+    std::vector<char> result;
+
+    uLongf uncompressed_size = size;             // initially this is an upper bound
+    uLongf compressed_size   = compressBound(size); // initially this is an upper bound
+
+    result.resize(compressed_size + 8); // reserve 8 bytes for the original size plus
+                                    // enough bytes to fit compressed data
+
+    // write uncompressed size in first 8 bytes of stream
+    *reinterpret_cast<uint64_t*>(&result[0]) = (uint64_t) uncompressed_size;
+
+    const Bytef* uncompressed_ptr = reinterpret_cast<const Bytef*>(ptr);
+    Bytef*       compressed_ptr   = reinterpret_cast<Bytef*>(&result[8]);
+
+    int status = compress(compressed_ptr, &compressed_size, uncompressed_ptr, uncompressed_size);
+
+    result.resize(compressed_size + 8); // pack
+
+    if (status != Z_OK) {
+        throw std::runtime_error("zlib error while compressing");
+    }
+
+    return result;
+}
+
+//------------------------------------------------------------------------------
+// zlib_compress
+//------------------------------------------------------------------------------
+
+std::vector<char> zlib_decompress(const char* ptr, std::size_t size)
+{
+    std::vector<char> result;
+
+    uint64_t aux_uncompressed_size = *reinterpret_cast<const uint64_t*>(ptr);
+    uLongf uncompressed_size = (uLongf) aux_uncompressed_size;
+    uLongf compressed_size   = size - 8; //
+
+    result.resize(uncompressed_size);  // reserve 8 bytes for the original size
+
+    const Bytef* compressed_ptr   = reinterpret_cast<const Bytef*>(ptr + 8);
+    Bytef*       uncompressed_ptr = reinterpret_cast<Bytef*>(&result[0]);
+
+    int status = uncompress(uncompressed_ptr, &uncompressed_size, compressed_ptr, compressed_size);
+
+    // result.resize(output_size + 8);
+
+    if (status != Z_OK) {
+        throw std::runtime_error("zlib error while compressing");
+    }
+
+    return result;
+}
+
+
+
 
 //------------------------------------------------------------------------------
 // NanoCube
@@ -227,8 +291,12 @@ void NanoCubeServer::serveQuery(Request &request, bool json)
         std::ostringstream os;
         ::query::result::serialize(result_vector,os);
         const std::string st = os.str();
-        request.respondOctetStream(st.c_str(), st.size());
 
+        // compress data
+        auto compressed_data = zlib_compress(st.c_str(), st.size());
+        request.respondOctetStream(&compressed_data[0], compressed_data.size());
+
+        // request.respondOctetStream(st.c_str(), st.size());
     }
 }
 
@@ -327,7 +395,12 @@ void NanoCubeServer::serveTimeQuery(Request &request, bool json)
         std::ostringstream os;
         ::query::result::serialize(result_vector,os);
         const std::string st = os.str();
-        request.respondOctetStream(st.c_str(), st.size());
+
+        // compress data
+        auto compressed_data = zlib_compress(st.c_str(), st.size());
+        request.respondOctetStream(&compressed_data[0], compressed_data.size());
+
+        // request.respondOctetStream(st.c_str(), st.size());
 
     }
 }
