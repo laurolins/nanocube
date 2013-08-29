@@ -377,8 +377,8 @@ void report_graphviz(std::ostream &os, Report &report) {
             { // content
                 Link &link = internal_node->content;
 
-                if (link.source_node == nullptr || link.target_node == nullptr )
-                    throw std::runtime_error("link needs to have its endpoints right");
+                // if (link.source_node == nullptr || link.target_node == nullptr )
+                //    throw std::runtime_error("link needs to have its endpoints right");
 
                 links.push_back(&link);
             }
