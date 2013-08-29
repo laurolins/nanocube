@@ -3,7 +3,7 @@
 aclocal -I m4 --install                    || exit 1
 case `uname` in 
     Darwin*) glibtoolize --install --copy  || exit 1;;
-    *) libtoolize -- install -- copy       || exit 1;;
+    *) libtoolize --install --copy         || exit 1;;
 esac
 autoheader                                 || exit 1
 autoconf                                   || exit 1
