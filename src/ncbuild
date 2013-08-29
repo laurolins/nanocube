@@ -59,7 +59,7 @@ cmds = [
 -DLIST_VARIABLE_TYPES=%s  \
 -o %s \
 %s \
--ldl -lpthread''' % (dimension_names, variable_types, filename, sources),
+-lz -ldl -lpthread''' % (dimension_names, variable_types, filename, sources),
 "cp %s %s" % (filename,nanocube_bin)
 ]
 os.system(";".join(cmds))
