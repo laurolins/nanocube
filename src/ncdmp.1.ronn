@@ -106,8 +106,9 @@ compatible dump file. First a test with only 10 entries in text mode:
             var-one=trips,6 \  
             > taxi_sample_for_nanocube.dmp  
 
-And now the real deal. All data in binary encoding and piping it to the
-a new nanocube instance:
+And here is how one would start a nanocube instance with all the data
+(note that ncdmp must encode in binary format when sending data to
+a nanocube):
 
     $ cat taxi.dmp | ncdmp \  
             --encoding=b \  
@@ -117,11 +118,11 @@ a new nanocube instance:
             dim-hour=hour,pickup_time \  
             dim-tbin=time,pickup_time,2010_1h,2 \  
             var-uint=distance,distance,8 \  
-            var-one=trips,6 | nanocube --port=29512
+            var-one=trips,6 | ncserve --port=29512
 
 ## DUMP FILES
 
-Here is an example of a dump file:  
+This is an example of a dump file:  
 
     name: taxi
     encoding: text
