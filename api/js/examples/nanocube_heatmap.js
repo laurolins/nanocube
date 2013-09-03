@@ -14,8 +14,6 @@ function nanocube_heatmap(opts) {
         point_weight: point_weight,
         point_color: opts.point_color,
         tile_pattern: opts.tile_pattern,
-        project: opts.project || function(v) { return v; },
-        unproject: opts.unproject || function(v) { return v; },
         construct_node: function(data, zoom, x, y) {
             var node = {
                 id: global_id++,
@@ -50,9 +48,6 @@ function nanocube_heatmap(opts) {
                         
                         var y = data.y[i];
 
-                        // WHAT THE HELL
-                        if (y > 0) y = y - 1;
-                        else y = 255;
                         y = y / 256;
                         y_list.push(y, y, y, y, y, y);
                     });

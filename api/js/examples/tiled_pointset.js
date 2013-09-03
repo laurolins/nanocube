@@ -11,9 +11,7 @@ function tiled_pointset(opts)
             var new_alpha = t.a().gt(10).ifelse(1, t.a().tanh());
             var new_color = Shade.vec(avg, new_alpha);
             return Shade.ifelse(t.a().eq(0), Shade.vec(0,0,0,0), new_color);
-        },
-        project: function(v) { return v; },
-        unproject: function(v) { return v; }
+        }
     });
 
     if (opts.interactor) {
@@ -36,10 +34,11 @@ function tiled_pointset(opts)
         }
     });
 
-    var inverter = Lux.Transform.get_inverse();
-    var unproject = Shade(function(p) {
-        return opts.unproject(inverter({ position: p }).position);
-    }).js_evaluate;
+    // var inverter = Lux.Transform.get_inverse();
+    // var unproject = Shade(function(p) {
+    //     return opts.unproject(inverter({ position: p }).position);
+    // }).js_evaluate;
+    var unproject;
 
     var cache_size = opts.cache_size;
 
@@ -75,35 +74,54 @@ function tiled_pointset(opts)
     // We need two batches: one to blank the area in which we'll draw the points,
     // and another for the points themselves. If we don't blank the whole square, 
     // we get bleeding across zoom levels
-    var blank_batch = Lux.bake(patch, {
-        position: opts.project(v),
-        color: Shade.vec(0,0,0,0),
-        mode: Lux.DrawingMode.pass // over_no_depth
-    });
+    var blank_actor = Lux.actor({
+        model: patch,
+        appearance: {
+            position: v,
+            color: Shade.vec(0,0,0,0),
+            mode: Lux.DrawingMode.pass }});
+    var blank_batch;
+    // var blank_batch = Lux.bake(patch, {
+    //     position: opts.project(v),
+    //     color: Shade.vec(0,0,0,0),
+    //     mode: Lux.DrawingMode.pass // over_no_depth
+    // });
 
     var pointset_model = Lux.model({
         type: "triangles",
-        vertex: opts.project(point_pos), 
+        vertex: point_pos, 
         color: Shade.color("#ffffff").mul(opts.point_weight),
-        elements: 1
-    });
+        elements: 1 });
+
+    var pointset_actor = Lux.actor({
+        model: pointset_model,
+        appearance: {
+            position: pointset_model.vertex,
+            color: pointset_model.color,
+            mode: Lux.DrawingMode.pass
+        }});
+    var pointset_batch;
 
     var fractional_zoom = Shade.parameter("float", 0);
 
-    var pointset_batch = Lux.bake(pointset_model, {
-        position: pointset_model.vertex,
-        color: pointset_model.color,
-        mode: Lux.DrawingMode.pass
-    });
+    // var pointset_batch = Lux.bake(pointset_model, {
+    //     position: pointset_model.vertex,
+    //     color: pointset_model.color,
+    //     mode: Lux.DrawingMode.pass
+    // });
 
     var width = ctx.viewportWidth;
     var height = ctx.viewportHeight;
     var point_view_lod = 1;
     var rb1 = Lux.render_buffer({ width: width * point_view_lod, height: height * point_view_lod, type: ctx.FLOAT });
 
-    var rb1_batch = rb1.make_screen_batch(function(texel_accessor) {
-        return opts.point_color(texel_accessor().a());
-    }, Lux.DrawingMode.over);
+    var rb1_actor = rb1.screen_actor({
+        texel_function: function(texel_accessor) {
+            return opts.point_color(texel_accessor().a());
+        },
+        mode: Lux.DrawingMode.over
+    });
+    var rb1_batch;
 
     var result = {
         _prev_center: opts.center.get(),
@@ -250,6 +268,20 @@ function tiled_pointset(opts)
             }
             rb1_batch.draw();
             this._dirty = false;
+        },
+        dress: function(scene) {
+            blank_batch = blank_actor.dress(scene);
+            pointset_batch = pointset_actor.dress(scene);
+            rb1_batch = rb1_actor.dress(scene);
+
+            var xform = scene.get_transform();
+            var half_screen_size = Shade.vec(ctx.parameters.width, ctx.parameters.height).div(2);
+            unproject = Shade(function(p) {
+                return xform.inverse({position: p.div(half_screen_size).sub(Shade.vec(1,1))}).position;
+            }).js_evaluate;
+            return this;
+        }, on: function() {
+            return true;
         }
     };
     result.init();
