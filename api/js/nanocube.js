@@ -36,11 +36,11 @@ Nanocube.create = function(opts)
 {
     var url = opts.url;
     var max_zoom;
+    var resolution = _.isUndefined(opts.resolution)?8:opts.resolution;
 
     function tile_subquery(opts) {
         opts = opts || {};
-        var x = opts.x || 0, y = opts.y || 0, z = opts.z || 0, 
-            resolution = _.isUndefined(opts.resolution)?8:opts.resolution;
+        var x = opts.x || 0, y = opts.y || 0, z = opts.z || 0;
         return z + 
             "/" + resolution + 
             "/" + x + 
@@ -102,6 +102,7 @@ Nanocube.create = function(opts)
     }
 
     var result = {
+        version: undefined,
         schema: undefined,
         to_tbin: function(time) {
             var delta = (time.getTime() - this.schema.time_schema.epoch.getTime());
@@ -112,28 +113,49 @@ Nanocube.create = function(opts)
             return new Date(newtime);
         },
         tile: function(opts, k) {
+            var that = this;
             var tile = tile_subquery(opts.tile);
             var time = time_range_subquery(opts.time);
             var fields = field_subquery(opts.fields);
             var this_url = url + "/tile/" + tile + time + "/" + fields;
             
             Lux.Net.binary(this_url, function(data) {
+                var version = that.version;
                 if (data === null) {
                     k({x:[], y:[], count:[]});
                     return;
                 }
-                console.log(data);
-                var view = new DataView(data);
-                // slow, meh
-                var x_array = new Uint8Array(data.byteLength / 6);
-                var y_array = new Uint8Array(data.byteLength / 6);
-                var count_array = new Uint32Array(data.byteLength / 6);
-                for (var i=0; i<data.byteLength/6; ++i) {
-                    x_array[i] = view.getUint8(6*i+1);
-                    y_array[i] = 256 - view.getUint8(6*i);
-                    count_array[i] = view.getUint32(6*i+2, true);
+                if (_.isUndefined(version)) {
+                    var record_size = 6;
+                    var view = new DataView(data);
+                    var n_records = data.byteLength / record_size;
+                    // slow, meh
+                    var x_array = new Uint8Array(n_records);
+                    var y_array = new Uint8Array(n_records);
+                    var count_array = new Uint32Array(n_records);
+                    for (var i=0; i<n_records; ++i) {
+                        x_array[i] = view.getUint8(record_size*i+1) << (8 - resolution);
+                        y_array[i] = 256 - ((1 + view.getUint8(record_size*i)) << (8 - resolution));
+                        count_array[i] = view.getInt32(record_size*i+2, true);
+                    }
+                    k({x: x_array, y: y_array, count: count_array});
+                } else if (version === "0.0.1") {
+                    var record_size = 10;
+                    var view = new DataView(data);
+                    var n_records = data.byteLength / record_size;
+                    // slow, meh
+                    var x_array = new Uint8Array(n_records);
+                    var y_array = new Uint8Array(n_records);
+                    var count_array = new Float64Array(n_records);
+                    for (var i=0; i<n_records; ++i) {
+                        x_array[i] = view.getUint8(record_size*i+1) << (8 - resolution);
+                        y_array[i] = 256 - ((1 + view.getUint8(record_size*i)) << (8 - resolution));
+                        count_array[i] = view.getFloat64(record_size*i+2, true);
+                    }
+                    k({x: x_array, y: y_array, count: count_array});
+                } else {
+                    throw new Error("Unsupported version '" + version + "'");
                 }
-                k({x: x_array, y: y_array, count: count_array});
             });
         },
         time_series: function(opts, k) {
@@ -216,27 +238,33 @@ Nanocube.create = function(opts)
             };
         }
     };
-    d3.json(url + "/schema_json", function(error, data) {
-        result.schema = data;
-        var tbin = data.tbin;
-        max_zoom = data.sbin;
-        var s = tbin.split('_');
-        var date = _.map(s[0].split('-'), Number);
-        date[1] -= 1;
-        var time = _.map(s[1].split(':'), Number);
-        var tick_units = {
-            "h": 3600 * 1000,
-            "d": 3600 * 1000 * 24,
-            "w": 3600 * 1000 * 24 * 7
-        }[s[2][s[2].length-1]];
-        if (_.isUndefined(tick_units))
-            throw "Unrecognized tick unit in " + s[2];
-        var ticks = Number(s[2].substr(0, s[2].length-1)) * tick_units;
-        result.schema.time_schema = {
-            epoch: new Date(date[0], date[1], date[2], time[0], time[1], time[2]),
-            tick: ticks
-        };
-        opts.ready && opts.ready.call(result);
+    d3.text(url + "/version", function(error, data) {
+        if (error === null && data !== 'no handler found for /version (request key: version)') {
+            result.version = data.slice(1, data.length-1);
+        }
+        
+        d3.json(url + "/schema_json", function(error, data) {
+            result.schema = data;
+            var tbin = data.tbin;
+            max_zoom = data.sbin;
+            var s = tbin.split('_');
+            var date = _.map(s[0].split('-'), Number);
+            date[1] -= 1;
+            var time = _.map(s[1].split(':'), Number);
+            var tick_units = {
+                "h": 3600 * 1000,
+                "d": 3600 * 1000 * 24,
+                "w": 3600 * 1000 * 24 * 7
+            }[s[2][s[2].length-1]];
+            if (_.isUndefined(tick_units))
+                throw "Unrecognized tick unit in " + s[2];
+            var ticks = Number(s[2].substr(0, s[2].length-1)) * tick_units;
+            result.schema.time_schema = {
+                epoch: new Date(date[0], date[1], date[2], time[0], time[1], time[2]),
+                tick: ticks
+            };
+            opts.ready && opts.ready.call(result);
+        });
     });
     return result;
 };

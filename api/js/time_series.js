@@ -212,16 +212,20 @@ function timeseries(parent, spec)
             return this.update_range(new_from, new_to);
         },
         new_data: function(d) {
-            y.domain([0, d3.max(d, function(entry) { return entry.count; })]);
-            group_x_axis.call(x_axis);
-            if (old_d.length === d.length) {
-                path.attr("d", line(d));
+            if (d.length === 0) {
+                path.attr("d", null);
             } else {
-                x.domain(this.range);
-                group_y_axis.call(y_axis);
-                path.attr("d", line(d));
+                y.domain([0, d3.max(d, function(entry) { return entry.count; })]);
+                group_x_axis.call(x_axis);
+                if (old_d.length === d.length) {
+                    path.attr("d", line(d));
+                } else {
+                    x.domain(this.range);
+                    group_y_axis.call(y_axis);
+                    path.attr("d", line(d));
+                }
+                old_d = d;
             }
-            old_d = d;
             return this;
         },
         on: function(event, handler) {
