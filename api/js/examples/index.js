@@ -185,5 +185,5 @@ $().ready(function () {
         }
     }));
 
-    if (view_schema.extra_lux_init) view_schema.extra_lux_init();
+    if (view_schema.on_load) view_schema.on_load();
 });
