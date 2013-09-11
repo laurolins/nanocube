@@ -184,4 +184,6 @@ $().ready(function () {
             }
         }
     }));
+
+    if (view_schema.on_load) view_schema.on_load();
 });
