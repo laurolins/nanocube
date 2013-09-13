@@ -189,7 +189,7 @@ void NanoCubeServer::parse(std::string              query_st,
     ::query::parser::QueryParser parser;
     parser.parse(query_st);
 
-    // std::cout << ::query::parser::Print(parser) << std::endl;
+    std::cout << ::query::parser::Print(parser) << std::endl;
 
 
     for (::query::parser::Dimension *dimension: parser.dimensions) {

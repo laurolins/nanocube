@@ -10,6 +10,7 @@ typedef uint64_t RawAddress;
 
 struct ListTarget;
 struct RangeTarget;
+struct SequenceTarget;
 struct FindAndDiveTarget;
 struct BaseWidthCountTarget;
 
@@ -20,7 +21,7 @@ struct BaseWidthCountTarget;
 struct Target {
 public: // subtypes
 
-    enum Type { ROOT, LIST, FIND_AND_DIVE, RANGE, BASE_WIDTH_COUNT };
+    enum Type { ROOT, LIST, FIND_AND_DIVE, RANGE, BASE_WIDTH_COUNT, SEQUENCE };
 
 public:
 
@@ -37,6 +38,7 @@ public: // data members
     virtual const ListTarget*     asListTarget();
 
     virtual RangeTarget*          asRangeTarget();
+    virtual SequenceTarget*       asSequenceTarget();
     virtual FindAndDiveTarget*    asFindAndDiveTarget();
     virtual BaseWidthCountTarget* asBaseWidthCountTarget();
 
@@ -135,6 +137,26 @@ public: // data memebers
 
 };
 
+//-----------------------------------------------------------------------------
+// SequenceTarget
+//-----------------------------------------------------------------------------
+
+struct SequenceTarget: public Target {
+
+public: // constructors
+
+    SequenceTarget(const std::vector<RawAddress>& addresses);
+
+public: // methods
+
+    SequenceTarget* asSequenceTarget();
+
+public: // data memebers
+
+    std::vector<RawAddress>addresses;
+
+};
+
 
 //-----------------------------------------------------------------------------
 // Query Description
@@ -183,6 +205,7 @@ public: // Methods
     void setAnchor(int dimension, bool flag);
     void setFindAndDiveTarget(int dimension, RawAddress base_address, int dive_depth);
     void setRangeTarget(int dimension, RawAddress min_address, RawAddress max_address);
+    void setSequenceTarget(int dimension, const std::vector<RawAddress> addresses);
 
     // this is used for the time dimension which is special
     void setBaseWidthCountTarget(int dimension, RawAddress base_address, int width, int count);

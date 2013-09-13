@@ -29,6 +29,11 @@ RangeTarget* Target::asRangeTarget()
     throw std::exception();
 }
 
+SequenceTarget* Target::asSequenceTarget()
+{
+    throw std::exception();
+}
+
 FindAndDiveTarget* Target::asFindAndDiveTarget()
 {
     throw std::exception();
@@ -89,6 +94,20 @@ RangeTarget* RangeTarget::asRangeTarget() {
 }
 
 //-----------------------------------------------------------------------------
+// SequenceTarget
+//-----------------------------------------------------------------------------
+
+SequenceTarget::SequenceTarget(const std::vector<RawAddress>& addresses):
+    Target(SEQUENCE),
+    addresses{addresses}
+{}
+
+SequenceTarget* SequenceTarget::asSequenceTarget() {
+    return this;
+}
+
+
+//-----------------------------------------------------------------------------
 // BaseWidthCountTarget
 //-----------------------------------------------------------------------------
 
@@ -128,6 +147,14 @@ void QueryDescription::setRangeTarget(int dimension, RawAddress min_address, Raw
         delete targets[dimension];
     }
     targets[dimension] = new RangeTarget(min_address, max_address);
+}
+
+void QueryDescription::setSequenceTarget(int dimension, const std::vector<RawAddress> addresses)
+{
+    if (targets[dimension]->type != Target::ROOT) {
+        delete targets[dimension];
+    }
+    targets[dimension] = new SequenceTarget(addresses);
 }
 
 void QueryDescription::setBaseWidthCountTarget(int dimension, RawAddress base_address, int width, int count)
