@@ -43,6 +43,22 @@ function init_ui()
     $("#make-finer").click(function() {
         leaflet_layer.makeFiner();
     });
+
+   $("#geolocate").submit(function() {
+       var address = encodeURIComponent($("#geo-address").val());
+       d3.json("http://nominatim.openstreetmap.org/search?q=" + address + "&format=json", function(result) {
+           if (result.length > 0) {
+               var bbox = _.map(result[0].boundingbox, Number);
+               var center = [(bbox[0] + bbox[1]) / 2, (bbox[2] + bbox[3]) / 2];
+               leaflet_map.fitBounds([[result[0].boundingbox[0],
+                                       result[0].boundingbox[2]],
+                                      [result[0].boundingbox[1],
+                                       result[0].boundingbox[3]]]);
+           } else
+               alert("Could not geolocate that address, sorry");
+       });
+       return false;
+   });
 }
 
 function init_nanocube()
