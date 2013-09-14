@@ -41,8 +41,9 @@ Nanocube.create = function(opts)
     function tile_subquery(opts) {
         opts = opts || {};
         var x = opts.x || 0, y = opts.y || 0, z = opts.z || 0;
+        var r = opts.resolution || resolution;
         return z + 
-            "/" + resolution + 
+            "/" + r + 
             "/" + x + 
             "/" + ((1 << z) - 1 - y);
     }
@@ -118,8 +119,9 @@ Nanocube.create = function(opts)
             var time = time_range_subquery(opts.time);
             var fields = field_subquery(opts.fields);
             var this_url = url + "/tile/" + tile + time + "/" + fields;
+            var resolution = opts.tile.resolution || resolution;
             
-            Lux.Net.binary(this_url, function(data) {
+            binary_xhr(this_url, function(data) {
                 var version = that.version;
                 if (data === null) {
                     k({x:[], y:[], count:[]});

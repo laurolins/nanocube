@@ -14,11 +14,15 @@ function create_nanocube_view(view_schema, nanocube_selection) {
             var from = nanocube.to_tbin(ts.range[0]);
             var to = nanocube.to_tbin(ts.range[1]);
             var step = Math.max(1, ~~((to - from) / ts.resolution));
-            ts.new_data(_.map(d[0].values, function(count, i) {
-                return { time: nanocube.from_tbin(i * step + from),
-                         count: count
-                       };
-            }));
+            if (d.length) {
+                ts.new_data(_.map(d[0].values, function(count, i) {
+                    return { time: nanocube.from_tbin(i * step + from),
+                             count: count
+                           };
+                }));
+            } else {
+                ts.new_data([]);
+            }
         }
 
         function refresh_time_series() {
