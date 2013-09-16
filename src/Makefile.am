@@ -88,7 +88,25 @@ vector.cc                 \
 vector.hh                 \
 mongoose.c                \
 nc.cc                     \
-small_vector.hh
+small_vector.hh           \
+qtfilter.hh               \
+qtfilter.cc               \
+geom2d/base.cc            \
+geom2d/base.hh		  \
+geom2d/boundingbox.cc	  \
+geom2d/boundingbox.hh	  \
+geom2d/geom2d.hh	  \
+geom2d/make_monotone.cc	  \
+geom2d/make_monotone.hh	  \
+geom2d/planegraph.cc      \
+geom2d/planegraph.hh	  \
+geom2d/point.cc		  \
+geom2d/point.hh		  \
+geom2d/polygon.cc         \
+geom2d/polygon.hh	  \
+geom2d/tile.cc		  \
+geom2d/tile.hh 
+
 
 
 nc_q20_q20_u2_u4_LDFLAGS  = -ldl -lpthread
