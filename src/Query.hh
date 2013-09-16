@@ -192,7 +192,7 @@ public: // subtypes
     //     2 - Multiple addresses (disjoint)
     //     3 - Children that are k-levels deeper than a base address
     //     4 - Range (min address, max address)
-    //     5 - Polygon (list of addresses)
+    //     5 - Sequence (list of addresses)
     //     6 - Base/Width/Count for time
     //
 

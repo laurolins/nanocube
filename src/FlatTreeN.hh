@@ -192,6 +192,9 @@ public: // methods
     template <typename Visitor>
     void visitRange(AddressType min_address, AddressType max_address, Visitor &visitor);
 
+    // polygon visit (cache first preprocessing)
+    template <typename Visitor>
+    void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor);
 
     std::vector<LinkType> links; // TODO: replace with something more space efficient (3 pointers in here)
 
@@ -437,7 +440,6 @@ void FlatTree<N, Content>::visitSubnodes(AddressType address, Level targetLevelO
     }
 }
 
-
 template <NumBytes N, typename Content>
 template <typename Visitor>
 void FlatTree<N, Content>::visitRange(AddressType min_address, AddressType max_address, Visitor &visitor)
@@ -451,6 +453,13 @@ void FlatTree<N, Content>::visitRange(AddressType min_address, AddressType max_a
         if (node)
             visitor.visit(node, addr);
     }
+}
+
+template <NumBytes N, typename Content>
+template <typename Visitor>
+void FlatTree<N, Content>::visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor)
+{
+    throw std::runtime_error("visitSequence not supported");
 }
 
 template<NumBytes N, typename Content>

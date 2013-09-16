@@ -189,8 +189,7 @@ void NanoCubeServer::parse(std::string              query_st,
     ::query::parser::QueryParser parser;
     parser.parse(query_st);
 
-    std::cout << ::query::parser::Print(parser) << std::endl;
-
+    // std::cout << ::query::parser::Print(parser) << std::endl;
 
     for (::query::parser::Dimension *dimension: parser.dimensions) {
         try {
@@ -244,6 +243,28 @@ void NanoCubeServer::serveQuery(Request &request, bool json)
         request.respondJson(e.what());
         return;
     }
+
+
+#if 0
+    // Preprocess query description. The only case now
+    // is to prepare a traversal mask for quadtree
+    // dimensions based on a sequence of polygonal data.
+    // A bit hacky for now.
+    int dimension = -1;
+    for (query::Target* target: query_description.targets) {
+        ++dimension;
+        if (target->asSequenceTarget() == nullptr)
+            continue;
+
+        dumpfile::Field* field = nanocube.schema.dump_file_description.getFieldByName(nanocube.schema.dimension_keys.at(dimension));
+        if (field->field_type.name.find("nc_dim_quadtree") >= 0) {
+
+            // ok we found a quadtree dimension. interpret sequence
+            // of addresses as a polygon.
+            // field->
+        }
+    }
+#endif
 
     // count number of anchored flags
     int num_anchored_dimensions = 0;

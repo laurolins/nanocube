@@ -228,6 +228,38 @@ Query<NanoCube, Index>::Query(dimension_type             &tree,
         tree.visitRange(min_address, max_address, query);
 
     }
+    else if (target->type == ::query::Target::SEQUENCE) {
+
+        //
+        // There is a difference here compared to the other
+        // cases. We need to pre-process the sequence into a
+        // "mask" to guide the traversal (visit with guide).
+        // This pre-processing should be done only once
+        // (think about the partitioning of a polygon into
+        // convex shapes)
+        //
+
+
+        ::query::SequenceTarget &sequence_target = *target->asSequenceTarget();
+
+
+//        std::cout << "min_address: " << min_address << std::endl;
+//        std::cout << "max_address: " << max_address << std::endl;
+
+        // use the visitSubnodes interface
+        tree.visitSequence(sequence_target.addresses, query);
+
+//        ::query::RangeTarget &range_target = *target->asRangeTarget();
+
+//        dimension_address_type min_address(range_target.min_address);
+//        dimension_address_type max_address(range_target.max_address);
+////        std::cout << "min_address: " << min_address << std::endl;
+////        std::cout << "max_address: " << max_address << std::endl;
+//        // use the visitSubnodes interface
+//        tree.visitRange(min_address, max_address, query);
+    }
+
+
     else {
         throw std::exception();
     }

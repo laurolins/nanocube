@@ -36,6 +36,8 @@ typedef unsigned char NumChildren;
 typedef int32_t       Level;
 typedef uint64_t      Count;
 
+typedef uint64_t      RawAddress;
+
 using contentholder::ContentHolder;
 
 //-----------------------------------------------------------------------------
@@ -201,6 +203,11 @@ public:
     // requested target level.
     template <typename Visitor>
     void visitRange(AddressType min_address, AddressType max_address, Visitor &visitor);
+
+    // polygon visit (cache first preprocessing)
+    template <typename Visitor>
+    void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor);
+
 
     FlatTree();
     ~FlatTree();
@@ -696,6 +703,15 @@ void FlatTree<Content>::visitRange(AddressType min_address, AddressType max_addr
             visitor.visit(node, addr);
     }
 }
+
+
+// polygon visit (cache first preprocessing)
+template <typename Content>
+template <typename Visitor>
+void FlatTree<Content>::visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor) {
+    throw std::runtime_error("visitSequence not supported");
+}
+
 
 //
 // Node Implementation
