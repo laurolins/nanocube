@@ -72,7 +72,7 @@ EXAMPLE10 = \
 # example 1
 QMAKE_CXXFLAGS  += -DLOCALRUN -DxFLATTREE_VECTOR -DxTIMESERIES_VECTOR -D_GLIBCXX_USE_NANOSLEEP \
    -DSUPER_FAST_COMPILE -DCOLLECT_MEMUSAGE \
-   $${EXAMPLE10}
+   $${EXAMPLE5}
 
 HEADERS =                 \
 MercatorProjection.hh     \
@@ -151,62 +151,24 @@ geom2d/point.cc              \
 geom2d/tile.cc               \
 geom2d/polygon.cc
 
-
-
-
-#stree_serve.cc
-
-#QuadTreeSerialization.cc     \
-
-
-#test_quadtree_add.cc
-
-
-
-
+# stree_serve.cc
+# QuadTreeSerialization.cc     \
+# test_quadtree_add.cc
 # test_quadtree_range_query.cc
-
-
-
 # dump_landlines.cc
-
-
 # dump_landlines.cc
-
-
-
-
-#
-
-
 # test_load_and_build_tile.cc
-
-#
-
-
-#test_search_stree.cc
-
-
-#
-
+# test_search_stree.cc
 # serve.cc
 # test_qt_serialization.cc
 # test_stree_serialization.cc
-
 # points2qtts3.cc
-
-
-#points2qt.cc
-
-#test_search_stree.cc
-
-#
-#serve.cc \
-#mongoose.c
-
-
-#STreeSerialization.hh \
-#FlatTreeSerialization.hh \
-#TimeSeriesSerialization.hh \
-#QuadTreeSerialization.hh \
+# points2qt.cc
+# test_search_stree.cc
+# serve.cc \
+# mongoose.c
+# STreeSerialization.hh \
+# FlatTreeSerialization.hh \
+# TimeSeriesSerialization.hh \
+# QuadTreeSerialization.hh \
 

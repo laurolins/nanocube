@@ -8,11 +8,16 @@
 #include <sstream>
 #include <stack>
 
+#include <unordered_map>
+
 #include <QuadTreeNode.hh>
 
 
 #include <qtfilter.hh> // used in visitSequence to create a quadtree
                        // filter based on a sequence of raw addresses
+
+#include <geom2d/point.hh>
+#include <geom2d/polygon.hh>
 
 
 namespace quadtree
@@ -1111,6 +1116,7 @@ void QuadTree<N,Content>::visitRange(AddressType min_address, AddressType max_ad
 }
 
 
+static std::unordered_map<void*, qtfilter::Node*> cache;
 
 template<BitSize N, typename Content>
 template <typename Visitor>
@@ -1129,10 +1135,14 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
 
     qtfilter::Node* mask_root_node = nullptr;
 
-    // assert that the raw addresses are at the same level
-    // make the max intersection level be
+    auto it = cache.find((void*) &seq);
 
-    { // prepare quadtree filter
+    if (it == cache.end()) {
+
+        // assert that the raw addresses are at the same level
+        // make the max intersection level be
+
+        // prepare quadtree filter
 
         int level = N;
         for (RawAddress a: seq) {
@@ -1143,23 +1153,36 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
         geom2d::Polygon polygon;
 
         for (RawAddress a: seq) {
-            AddressType addr(a);
-            geom2d::Tile tile(addr.getLevelXCoord(),
-                              addr.getLevelYCoord(),
-                              addr.level);
-
+            geom2d::Tile tile(a);
             geom2d::Point p = tile.center();
+
+            // std::cout << tile.x << ", " << tile.y << ", " <<  tile.z << std::endl;
+            // std::cout << p.x    << ", " << p.y    << std::endl;
+
             polygon.add(p);
         }
 
+        // std::cout << "Polgon sides: " << polygon.size() << std::endl;
+
+        //        {
+        //            using namespace geom2d::io;
+        //            std::cout << polygon << std::endl;
+        //        }
 
         // compute the filter quadtree
         mask_root_node = qtfilter::intersect(polygon, level, true);
 
-        if (mask_root_node == nullptr)
-            return;
+
+        cache[(void*) &seq] = mask_root_node;
 
     }
+    else {
+        mask_root_node = it->second;
+    }
+
+    if (mask_root_node == nullptr)
+        return;
+
 
     // node has the filter
 

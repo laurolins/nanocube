@@ -240,7 +240,12 @@ void NanoCubeServer::serveQuery(Request &request, bool json)
         this->parse(query_st, nanocube.schema, query_description);
     }
     catch (::query::parser::QueryParserException &e) {
-        request.respondJson(e.what());
+        if (json) {
+            request.respondJson(e.what());
+        }
+        else {
+            request.respondOctetStream(nullptr,0);
+        }
         return;
     }
 
@@ -296,7 +301,12 @@ void NanoCubeServer::serveQuery(Request &request, bool json)
         return;
     }
     catch (...) {
-        request.respondJson("Unexpected problem. Server might be unstable now.");
+        if (json) {
+            request.respondJson("Unexpected problem. Server might be unstable now.");
+        }
+        else {
+            request.respondOctetStream(nullptr,0);
+        }
         return;
     }
 

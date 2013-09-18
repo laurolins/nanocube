@@ -251,6 +251,12 @@ auto intersect(const geom2d::Polygon &original_polygon, int max_level, bool opti
     // copy polygon
     geom2d::Polygon poly = original_polygon;
 
+//    {
+//        using namespace geom2d::io;
+//        std::cout << poly << std::endl;
+//    }
+
+
     poly.makeCCW(); // make sure it is oriented in counter-clock wise
 
     std::vector<geom2d::Polygon> convex_decomposition;
@@ -263,7 +269,6 @@ auto intersect(const geom2d::Polygon &original_polygon, int max_level, bool opti
             convex_decomposition_bbox.merge(convex_poly.getBoundingBox());
         }
     }
-
 
     // post-processing of a quadtree node (maybe compress full nodes)
     auto post_processing = [optimize](Node *node) {

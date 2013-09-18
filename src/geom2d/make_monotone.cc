@@ -555,7 +555,9 @@ std::vector<geom2d::Polygon> geom2d::convexPartition(const geom2d::Polygon &poly
         for (size_t i=1;i<planegraph.faces.size();i++) {
             using namespace geom2d::planegraph;
             using namespace geom2d::planegraph::io;
+#ifdef DEBUG_MAKE_MONOTONE
             std::cout << planegraph.getFace(i) << std::endl;
+#endif
             Polygon poly_i;
             geom2d::planegraph::BigonIterator it(planegraph.getFace(i).entry_point,VERTEX,EDGE);
             while (it.next()) {
@@ -617,17 +619,23 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
         Vertex* vi = priority_queue.back();
         priority_queue.pop_back();
 
+#ifdef DEBUG_MAKE_MONOTONE
         std::cout << "procssing v" << (dlpoly.index(vi)+1) << std::endl;
+#endif
 
         VertexType ti = vi->getType();
 
         if (ti == START_VERTEX) {
+#ifdef DEBUG_MAKE_MONOTONE
             std::cout << "   START_VERTEX" << std::endl;
+#endif
             vi->helper = vi;
             visible_edges.insert(vi);
         }
         else if (ti == END_VERTEX) {
+#ifdef DEBUG_MAKE_MONOTONE
             std::cout << "   END_VERTEX" << std::endl;
+#endif
             if (vi->prev->helper->getType() == MERGE_VERTEX) {
                 add_diagonal(vi,vi->prev->helper);
             }
@@ -637,7 +645,9 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
 //            Delete ei%1 from T.
         }
         else if (ti == SPLIT_VERTEX) {
+#ifdef DEBUG_MAKE_MONOTONE
             std::cout << "   SPLIT_VERTEX" << std::endl;
+#endif
             Vertex *vj = visible_edges.findRightmostLeftEdge(vi);
 
             add_diagonal(vi,vj->helper);
@@ -652,7 +662,9 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
 //            4. Insert ei in T and set helper(ei) to vi.
         }
         else if (ti == REGULAR_VERTEX) {
+#ifdef DEBUG_MAKE_MONOTONE
             std::cout << "   REGULAR_VERTEX" << std::endl;
+#endif
 
             // TODO: figure out this test
             bool interior_on_the_right = vi->isAbove(*vi->next);
@@ -680,7 +692,9 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
 //            then Insert the diagonal connecting vi to helper(ej) in D. helper(e j ) " vi
         }
         else if (ti == MERGE_VERTEX) {
+#ifdef DEBUG_MAKE_MONOTONE
             std::cout << "   MERGE_VERTEX" << std::endl;
+#endif
             if (vi->prev->helper->getType() == MERGE_VERTEX) {
                 add_diagonal(vi,vi->prev->helper);
             }
@@ -708,7 +722,9 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
         int i = dlpoly.index(v1) + 1;
         int j = dlpoly.index(v2) + 1;
 
+#ifdef DEBUG_MAKE_MONOTONE
         std::cout << "diagonal from (" << i << "," << j << ")" << std::endl;
+#endif
     }
 
     // collect polygons
@@ -734,7 +750,9 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
         for (size_t i=1;i<planegraph.faces.size();i++) {
             using namespace geom2d::planegraph;
             using namespace geom2d::planegraph::io;
+#ifdef DEBUG_MAKE_MONOTONE
             std::cout << planegraph.getFace(i) << std::endl;
+#endif
             Polygon poly_i;
             geom2d::planegraph::BigonIterator it(planegraph.getFace(i).entry_point,VERTEX,EDGE);
             while (it.next()) {

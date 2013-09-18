@@ -24,6 +24,7 @@ enum Corner { BOTTOM_LEFT=0, BOTTOM_RIGHT=1, TOP_RIGHT=3, TOP_LEFT=2 };
 struct Tile {
     Tile() = default;
     Tile(int x, int y, int z);
+    Tile(uint64_t raw);
 
     auto index() const -> int;
 

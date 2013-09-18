@@ -11,6 +11,13 @@ geom2d::Tile::Tile(int x, int y, int z):
     x{x}, y{y}, z{z}
 {}
 
+geom2d::Tile::Tile(uint64_t raw)
+{
+    x = raw & 0x1fffffffL;           // [0, 28] represent x
+    y = (raw >> 29L) & 0x1fffffffL;  // [29,57] represent y
+    z = (raw >> 58L) & 0x3fL;        // [58,63] represent level
+}
+
 int geom2d::Tile::index() const
 {
     return (x % 2) + ((y % 2) << 1);
