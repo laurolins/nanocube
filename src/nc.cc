@@ -191,7 +191,6 @@ void NanoCubeServer::parse(std::string              query_st,
 
     // std::cout << ::query::parser::Print(parser) << std::endl;
 
-
     for (::query::parser::Dimension *dimension: parser.dimensions) {
         try {
             int index = schema.getDimensionIndex(dimension->name);
@@ -241,9 +240,36 @@ void NanoCubeServer::serveQuery(Request &request, bool json)
         this->parse(query_st, nanocube.schema, query_description);
     }
     catch (::query::parser::QueryParserException &e) {
-        request.respondJson(e.what());
+        if (json) {
+            request.respondJson(e.what());
+        }
+        else {
+            request.respondOctetStream(nullptr,0);
+        }
         return;
     }
+
+
+#if 0
+    // Preprocess query description. The only case now
+    // is to prepare a traversal mask for quadtree
+    // dimensions based on a sequence of polygonal data.
+    // A bit hacky for now.
+    int dimension = -1;
+    for (query::Target* target: query_description.targets) {
+        ++dimension;
+        if (target->asSequenceTarget() == nullptr)
+            continue;
+
+        dumpfile::Field* field = nanocube.schema.dump_file_description.getFieldByName(nanocube.schema.dimension_keys.at(dimension));
+        if (field->field_type.name.find("nc_dim_quadtree") >= 0) {
+
+            // ok we found a quadtree dimension. interpret sequence
+            // of addresses as a polygon.
+            // field->
+        }
+    }
+#endif
 
     // count number of anchored flags
     int num_anchored_dimensions = 0;
@@ -275,7 +301,12 @@ void NanoCubeServer::serveQuery(Request &request, bool json)
         return;
     }
     catch (...) {
-        request.respondJson("Unexpected problem. Server might be unstable now.");
+        if (json) {
+            request.respondJson("Unexpected problem. Server might be unstable now.");
+        }
+        else {
+            request.respondOctetStream(nullptr,0);
+        }
         return;
     }
 

@@ -30,6 +30,7 @@ struct AddressFunction;
 struct Dimension;
 struct SingleTarget;
 struct RangeTarget;
+struct SequenceTarget;
 struct DiveTarget;
 
 struct AddressExpression;
@@ -50,7 +51,7 @@ public:
 
 enum ExpressionType { ADDRESS, DIMENSION, ADDRESS_FUNCTION,
                       SINGLE_TARGET, RANGE_TARGET, DIVE_TARGET,
-                      BASE_WIDTH_COUNT_TARGET };
+                      SEQUENCE_TARGET, BASE_WIDTH_COUNT_TARGET };
 
 //------------------------------------------------------------------------------
 // Expression
@@ -73,6 +74,7 @@ public: // Constructor e Destructor
 
     virtual SingleTarget*      asSingleTarget();
     virtual RangeTarget*       asRangeTarget();
+    virtual SequenceTarget*    asSequenceTarget();
     virtual DiveTarget*        asDiveTarget();
 
     virtual AddressExpression* asAddressExpression();
@@ -207,6 +209,30 @@ public: // data members
 };
 
 //------------------------------------------------------------------------------
+// SequenceTarget
+//------------------------------------------------------------------------------
+
+struct SequenceTarget: public TargetExpression {
+
+public: // Constructor
+
+    SequenceTarget();
+
+public: // Methods
+
+    SequenceTarget *asSequenceTarget();
+
+    void addAddressExpression(AddressExpression *addr_exp);
+
+    void updateQueryDescription(int dimension_index, ::query::QueryDescription &q) const;
+
+public: // data members
+
+    std::vector<AddressExpression*> addresses;
+
+};
+
+//------------------------------------------------------------------------------
 // DiveTarget
 //------------------------------------------------------------------------------
 
@@ -315,6 +341,9 @@ private: // methods
     void pushDiveTarget(uint64_t dive_depth);
     void pushSingleTarget();
 
+    void pushSequenceTarget();
+    void pushSequenceStart();
+
     void pushNumber(uint64_t number);
 
     void pushBaseWidthCountTarget();
@@ -348,7 +377,9 @@ public: // data members
     qi::rule<iterator_type>  list_expression;
     qi::rule<iterator_type>  dive_or_single_expression;
     qi::rule<iterator_type>  range_expression;
+    qi::rule<iterator_type>  sequence_expression;
 
+    qi::rule<iterator_type>  sequence_start_expression;
     qi::rule<iterator_type>  anchor_expression;
     qi::rule<iterator_type>  dimension_expression;
 

@@ -1326,7 +1326,7 @@ static pid_t spawn_process(struct mg_connection *conn, const char *prog,
   pid_t pid;
   const char *interp;
 
-  envblk = NULL; // Unused
+  /* envblk = NULL; */ // not used
 
   if ((pid = fork()) == -1) {
     // Parent
@@ -3809,10 +3809,9 @@ static const char *ssl_error(void) {
   return err == 0 ? "" : ERR_error_string(err, NULL);
 }
 
-static void ssl_locking_callback(int mode, int mutex_num, const char *file,
-                                 int line) {
-  line = 0;    // Unused
-  file = NULL; // Unused
+static void ssl_locking_callback(int mode, int mutex_num, const char* file, int line) {
+  /* line = 0;    */ // not used
+  /* file = NULL; */ // not used
 
   if (mode & CRYPTO_LOCK) {
     (void) pthread_mutex_lock(&ssl_mutexes[mutex_num]);

@@ -8,7 +8,17 @@
 #include <sstream>
 #include <stack>
 
+#include <unordered_map>
+
 #include <QuadTreeNode.hh>
+
+
+#include <qtfilter.hh> // used in visitSequence to create a quadtree
+                       // filter based on a sequence of raw addresses
+
+#include <geom2d/point.hh>
+#include <geom2d/polygon.hh>
+
 
 namespace quadtree
 {
@@ -16,6 +26,8 @@ namespace quadtree
 //-----------------------------------------------------------------------------
 // typedefs
 //-----------------------------------------------------------------------------
+
+using RawAddress = uint64_t;
 
 typedef int32_t  Level; // this goes up 25 (17 zooms + 8 resolution)
 typedef uint32_t Coordinate;
@@ -71,10 +83,10 @@ struct MemUsage
 //-----------------------------------------------------------------------------
 
 template <BitSize N, typename Content, typename Structure>
-struct StackItem
+struct StackItemTemplate
 {
-    StackItem();
-    StackItem(Node<Content>* node, Address<N, Structure> address);
+    StackItemTemplate();
+    StackItemTemplate(Node<Content>* node, Address<N, Structure> address);
 
     Node<Content>             *node;
     Address<N, Structure>      address;
@@ -106,7 +118,7 @@ public:
 
 private:
 
-    typedef StackItem<N, Content, QuadTree>  _StackItemType;
+    typedef StackItemTemplate<N, Content, QuadTree>  _StackItemType;
     typedef std::stack<_StackItemType>       _StackType;
 
 public:
@@ -150,6 +162,10 @@ public:
     template <typename Visitor>
     void visitRange(AddressType min_address, AddressType max_address, Visitor &visitor);
 
+    // polygon visit (cache first preprocessing)
+    template <typename Visitor>
+    void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor);
+
     // visit all nodes following only proper parent-child relations
     template <typename Visitor>
     void scan(Visitor &visitor);
@@ -167,6 +183,7 @@ public:
     // MemUsage counters;
 
 };
+
 
 //-----------------------------------------------------------------------------
 // Iterator
@@ -1008,12 +1025,12 @@ QuadTree<N, Content>::visitSubnodes(AddressType address, Level targetLevelOffset
     if (!baseNode)
         return; // there is no node
 
-    std::stack<StackItem<N, Content, QuadTree<N, Content>>> stack;
-    stack.push(StackItem<N, Content, QuadTree<N, Content>>(baseNode, address));
+    std::stack<StackItemTemplate<N, Content, QuadTree<N, Content>>> stack;
+    stack.push(StackItemTemplate<N, Content, QuadTree<N, Content>>(baseNode, address));
 
     while (!stack.empty())
     {
-        StackItem<N, Content, QuadTree<N, Content>> &topItem = stack.top();
+        StackItemTemplate<N, Content, QuadTree<N, Content>> &topItem = stack.top();
         NodeType*   node = topItem.node;
         AddressType addr = topItem.address;
         stack.pop();
@@ -1033,7 +1050,7 @@ QuadTree<N, Content>::visitSubnodes(AddressType address, Level targetLevelOffset
                 NodeType*   childNode = ci.getNode();
                 // NodeType*   childNode = const_cast<NodeType*>(children[i]);
                 AddressType childAddr = addr.childAddress(actual_indices[i]);
-                stack.push(StackItem<N, Content, QuadTree<N, Content>>(childNode, childAddr));
+                stack.push(StackItemTemplate<N, Content, QuadTree<N, Content>>(childNode, childAddr));
             }
         }
     }
@@ -1052,12 +1069,12 @@ void QuadTree<N,Content>::visitRange(AddressType min_address, AddressType max_ad
             min_address.x     <= max_address.x     &&
             min_address.y     <= max_address.y);
 
-    std::stack<StackItem<N, Content, QuadTree<N, Content>>> stack;
-    stack.push(StackItem<N, Content, QuadTree<N, Content>>(root, AddressType()));
+    std::stack<StackItemTemplate<N, Content, QuadTree<N, Content>>> stack;
+    stack.push(StackItemTemplate<N, Content, QuadTree<N, Content>>(root, AddressType()));
 
     while (!stack.empty())
     {
-        StackItem<N, Content, QuadTree<N, Content>> &topItem = stack.top();
+        StackItemTemplate<N, Content, QuadTree<N, Content>> &topItem = stack.top();
         NodeType*   node = topItem.node;
         AddressType addr = topItem.address;
         stack.pop();
@@ -1087,7 +1104,7 @@ void QuadTree<N,Content>::visitRange(AddressType min_address, AddressType max_ad
                 const NodePointer<Content> &ci = children[i];
                 NodeType*   childNode = ci.getNode();
                 AddressType childAddr = addr.childAddress(actual_indices[i]);
-                stack.push(StackItem<N, Content, QuadTree<N, Content>>(childNode, childAddr));
+                stack.push(StackItemTemplate<N, Content, QuadTree<N, Content>>(childNode, childAddr));
             }
         }
         else {
@@ -1097,6 +1114,150 @@ void QuadTree<N,Content>::visitRange(AddressType min_address, AddressType max_ad
         // else nothing needs to be done.
     }
 }
+
+
+static std::unordered_map<void*, qtfilter::Node*> cache;
+
+template<BitSize N, typename Content>
+template <typename Visitor>
+void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
+                                        Visitor &visitor
+                                        /*, todo include a cache object */)
+{
+    // preprocess and cache sequence (assuming the vector won't change)
+    // be careful with multi-threading (receive a cache then)
+
+    //
+    // check if traversal mask is on cache
+    // if it is reuse the mask, otherwise compute
+    // a new mask and cache it
+    //
+
+    qtfilter::Node* mask_root_node = nullptr;
+
+    auto it = cache.find((void*) &seq);
+
+    if (it == cache.end()) {
+
+        // assert that the raw addresses are at the same level
+        // make the max intersection level be
+
+        // prepare quadtree filter
+
+        int level = N;
+        for (RawAddress a: seq) {
+            AddressType addr(a);
+            level = std::min(level,addr.level);
+        }
+
+        geom2d::Polygon polygon;
+
+        for (RawAddress a: seq) {
+            geom2d::Tile tile(a);
+            geom2d::Point p = tile.center();
+
+            // std::cout << tile.x << ", " << tile.y << ", " <<  tile.z << std::endl;
+            // std::cout << p.x    << ", " << p.y    << std::endl;
+
+            polygon.add(p);
+        }
+
+        // std::cout << "Polgon sides: " << polygon.size() << std::endl;
+
+        //        {
+        //            using namespace geom2d::io;
+        //            std::cout << polygon << std::endl;
+        //        }
+
+        // compute the filter quadtree
+        mask_root_node = qtfilter::intersect(polygon, level, true);
+
+
+        cache[(void*) &seq] = mask_root_node;
+
+    }
+    else {
+        mask_root_node = it->second;
+    }
+
+    if (mask_root_node == nullptr)
+        return;
+
+
+    // node has the filter
+
+    // Level targetLevel = address.level + targetLevelOffset;
+
+    // NodeType* baseNode = this->find(address);
+
+    // if (!baseNode)
+    //    return; // there is no node
+
+    using StackItem = StackItemTemplate<N, Content, QuadTree<N, Content>>;
+
+
+    std::stack< StackItem > stack;
+    stack.push( StackItem(this->root, AddressType()) );
+
+    // stack and mask go in sync
+    std::vector<qtfilter::Node*> mask_stack;
+    mask_stack.push_back(mask_root_node);
+
+    while (!stack.empty())
+    {
+        StackItemTemplate<N, Content, QuadTree<N, Content>> &topItem = stack.top();
+        NodeType*   node = topItem.node;
+        AddressType addr = topItem.address;
+        stack.pop();
+
+        //
+        qtfilter::Node* mask_node = mask_stack.back();
+        mask_stack.pop_back();
+
+        if (mask_node->isLeaf()) {
+            visitor.visit(node, addr);
+        }
+        else { // schedule next visit
+
+            NumChildren num_children = node->getNumChildren();
+            const ChildName *actual_indices = childEntryIndexToName[node->key()];
+            NodePointer<Content>*  children = node->getChildrenArray();
+
+            for (int i=0;i<num_children;i++)
+            {
+                const NodePointer<Content>& ci        = children[i];
+                NodeType*                   childNode = ci.getNode();
+                // NodeType*   childNode = const_cast<NodeType*>(children[i]);
+
+                auto actual_child_index = actual_indices[i];
+
+                qtfilter::Node* mask_child_node = mask_node->getChildren(actual_child_index);
+
+                if (mask_child_node != nullptr) {
+
+                    AddressType childAddr = addr.childAddress(actual_indices[i]);
+
+                    stack.push(StackItemTemplate<N, Content, QuadTree<N, Content>>(childNode, childAddr));
+                    mask_stack.push_back(mask_child_node);
+
+                }
+            }
+        }
+    }
+
+//    if (targetLevel < 0 || addr.level == targetLevel)
+//        visitor.visit(node, addr);
+
+//    if (targetLevel < 0 || addr.level < targetLevel)
+//    {
+
+
+}
+
+
+
+
+
 
 // visit all subnodes of a certain node in the
 // requested target level.
@@ -1503,11 +1664,11 @@ template <typename Content> void MemUsage::remove(Node<Content> *node) {}
 //-----------------------------------------------------------------------------
 
 template <BitSize N, typename Content, typename Structure>
-StackItem<N,Content,Structure>::StackItem()
+StackItemTemplate<N,Content,Structure>::StackItemTemplate()
 {}
 
 template <BitSize N, typename Content, typename Structure>
-StackItem<N,Content,Structure>::StackItem(Node<Content>* node, Address<N, Structure> address):
+StackItemTemplate<N,Content,Structure>::StackItemTemplate(Node<Content>* node, Address<N, Structure> address):
     node(node), address(address)
 {}
 

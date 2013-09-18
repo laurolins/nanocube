@@ -65,10 +65,14 @@ EXAMPLE9 = \
    -DLIST_DIMENSION_NAMES=q25,c2,c1 \
    -DLIST_VARIABLE_TYPES=u2,u4
 
+EXAMPLE10 = \
+   -DLIST_DIMENSION_NAMES=q2 \
+   -DLIST_VARIABLE_TYPES=u1,u1
+
 # example 1
 QMAKE_CXXFLAGS  += -DLOCALRUN -DxFLATTREE_VECTOR -DxTIMESERIES_VECTOR -D_GLIBCXX_USE_NANOSLEEP \
    -DSUPER_FAST_COMPILE -DCOLLECT_MEMUSAGE \
-   $${EXAMPLE7}
+   $${EXAMPLE5}
 
 HEADERS =                 \
 MercatorProjection.hh     \
@@ -104,8 +108,16 @@ Query.hh                  \
 QueryParser.hh            \
 QueryResult.hh            \
 vector.hh                 \
-Server.hh
-
+Server.hh                 \
+qtfilter.hh               \
+geom2d/base.hh            \
+geom2d/boundingbox.hh     \
+geom2d/make_monotone.hh   \
+geom2d/geom2d.hh          \
+geom2d/planegraph.hh      \
+geom2d/point.hh           \
+geom2d/tile.hh            \
+geom2d/polygon.hh
 
 SOURCES =                    \
 Stopwatch.cc                 \
@@ -127,63 +139,36 @@ Query.cc                     \
 QueryParser.cc               \
 QueryResult.cc               \
 Server.cc                    \
+qtfilter.cc                  \
 vector.cc                    \
 mongoose.c                   \
-nc.cc
+nc.cc                        \
+geom2d/base.cc               \
+geom2d/boundingbox.cc        \
+geom2d/make_monotone.cc      \
+geom2d/planegraph.cc         \
+geom2d/point.cc              \
+geom2d/tile.cc               \
+geom2d/polygon.cc
 
-#stree_serve.cc
-
-#QuadTreeSerialization.cc     \
-
-
-#test_quadtree_add.cc
-
-
-
-
+# stree_serve.cc
+# QuadTreeSerialization.cc     \
+# test_quadtree_add.cc
 # test_quadtree_range_query.cc
-
-
-
 # dump_landlines.cc
-
-
 # dump_landlines.cc
-
-
-
-
-#
-
-
 # test_load_and_build_tile.cc
-
-#
-
-
-#test_search_stree.cc
-
-
-#
-
+# test_search_stree.cc
 # serve.cc
 # test_qt_serialization.cc
 # test_stree_serialization.cc
-
 # points2qtts3.cc
-
-
-#points2qt.cc
-
-#test_search_stree.cc
-
-#
-#serve.cc \
-#mongoose.c
-
-
-#STreeSerialization.hh \
-#FlatTreeSerialization.hh \
-#TimeSeriesSerialization.hh \
-#QuadTreeSerialization.hh \
+# points2qt.cc
+# test_search_stree.cc
+# serve.cc \
+# mongoose.c
+# STreeSerialization.hh \
+# FlatTreeSerialization.hh \
+# TimeSeriesSerialization.hh \
+# QuadTreeSerialization.hh \
 

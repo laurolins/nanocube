@@ -24,7 +24,8 @@ const std::vector<std::string> TYPE_NAMES = {
     "ADDRESS_FUNCTION",
     "SINGLE_TARGET",
     "RANGE_TARGET",
-    "DIVE_TARGET"
+    "DIVE_TARGET",
+    "POLYGON_TARGET"
 };
 
 //------------------------------------------------------------------------------
@@ -57,6 +58,10 @@ SingleTarget *Expression::asSingleTarget()
 
 RangeTarget* Expression::asRangeTarget() {
     throw QueryParserException("Cannot convert Expression to RangeTarget (type was: " + TYPE_NAMES[type] +")");
+}
+
+SequenceTarget* Expression::asSequenceTarget() {
+    throw QueryParserException("Cannot convert Expression to SequenceTarget (type was: " + TYPE_NAMES[type] +")");
 }
 
 DiveTarget *Expression::asDiveTarget()
@@ -202,6 +207,30 @@ void RangeTarget::updateQueryDescription(int dimension_index, ::query::QueryDesc
 }
 
 //------------------------------------------------------------------------------
+// SequenceTarget
+//------------------------------------------------------------------------------
+
+SequenceTarget::SequenceTarget():
+    TargetExpression(SEQUENCE_TARGET)
+{}
+
+void SequenceTarget::addAddressExpression(AddressExpression* addr_exp) {
+    this->addresses.push_back(addr_exp);
+}
+
+SequenceTarget *SequenceTarget::asSequenceTarget() {
+    return this;
+}
+
+void SequenceTarget::updateQueryDescription(int dimension_index, ::query::QueryDescription &q) const {
+    std::vector<RawAddress> raw_addresses;
+    for (AddressExpression *addr_exp: addresses) {
+        raw_addresses.push_back(addr_exp->getRawAddress());
+    }
+    q.setSequenceTarget(dimension_index, raw_addresses);
+}
+
+//------------------------------------------------------------------------------
 // DiveTarget
 //------------------------------------------------------------------------------
 
@@ -271,18 +300,20 @@ QueryParser::QueryParser():
 {
 
     // auto push_name              = boost::bind(&QueryParser::pushName,          this, _1);
-    auto push_address           = boost::bind(&QueryParser::pushAddress,          this, _1);
-    auto push_number            = boost::bind(&QueryParser::pushNumber,           this, _1);
-    auto start_function         = boost::bind(&QueryParser::startFunction,        this, _1);
-    auto start_dimension        = boost::bind(&QueryParser::startDimension,       this, _1);
-    auto push_dive_target       = boost::bind(&QueryParser::pushDiveTarget,       this, _1);
-    auto add_function_parameter = boost::bind(&QueryParser::addFunctionParameter, this, _1);
-    auto push_single_target     = boost::bind(&QueryParser::pushSingleTarget,     this);
-    auto push_range_target      = boost::bind(&QueryParser::pushRangeTarget,      this);
-    auto set_anchor             = boost::bind(&QueryParser::setAnchor,            this);
-    auto set_target             = boost::bind(&QueryParser::setTarget,            this);
-    auto collect_dimensions     = boost::bind(&QueryParser::collectDimensions,    this);
-    auto push_bwc_target        = boost::bind(&QueryParser::pushBaseWidthCountTarget, this);
+    auto push_address             = boost::bind(&QueryParser::pushAddress,              this, _1);
+    auto push_number              = boost::bind(&QueryParser::pushNumber,               this, _1);
+    auto start_function           = boost::bind(&QueryParser::startFunction,            this, _1);
+    auto start_dimension          = boost::bind(&QueryParser::startDimension,           this, _1);
+    auto push_dive_target         = boost::bind(&QueryParser::pushDiveTarget,           this, _1);
+    auto add_function_parameter   = boost::bind(&QueryParser::addFunctionParameter,     this, _1);
+    auto push_single_target       = boost::bind(&QueryParser::pushSingleTarget,         this);
+    auto push_range_target        = boost::bind(&QueryParser::pushRangeTarget,          this);
+    auto push_sequence_target     = boost::bind(&QueryParser::pushSequenceTarget,       this);
+    auto push_sequence_start      = boost::bind(&QueryParser::pushSequenceStart,        this);
+    auto set_anchor               = boost::bind(&QueryParser::setAnchor,                this);
+    auto set_target               = boost::bind(&QueryParser::setTarget,                this);
+    auto collect_dimensions       = boost::bind(&QueryParser::collectDimensions,        this);
+    auto push_bwc_target          = boost::bind(&QueryParser::pushBaseWidthCountTarget, this);
 
     name    %= ( qi::char_("a-zA-Z_") >> *qi::char_("a-zA-Z_0-9") );
 
@@ -296,12 +327,18 @@ QueryParser::QueryParser():
 
     anchor_expression = "@" ;
 
+    sequence_start_expression = "<" ;
+
     raw_numeric_address = number [push_address];
 
     address_expression = ( raw_numeric_address ||
                            function_expression );
 
     range_expression = ( '[' >> address_expression >> ',' >> address_expression >> ']' )[push_range_target];
+
+    sequence_expression = ( sequence_start_expression [push_sequence_start] >>
+                            - ( address_expression >> * (',' >> address_expression )  ) >>
+                            '>' ) [push_sequence_target];
 
     dive_or_single_expression  = ( address_expression[push_single_target] >>
                                    - (
@@ -313,7 +350,7 @@ QueryParser::QueryParser():
 
     target_expression = (  dive_or_single_expression               // <--- ambiguous
                            || range_expression
-//                           || list_expression
+                           || sequence_expression
                            );
 
     dimension_expression = - ( anchor_expression [set_anchor] ) >>  name [ start_dimension ]
@@ -357,6 +394,25 @@ void QueryParser::pushRangeTarget() {
     stack.pop();
 
     stack.push(new RangeTarget(min,max));
+}
+
+void QueryParser::pushSequenceStart() {
+    // std::cout << "pop max and min then push RangeTarget" << std::endl;
+    stack.push(nullptr);
+}
+
+void QueryParser::pushSequenceTarget() {
+    // std::cout << "pop max and min then push RangeTarget" << std::endl;
+
+    SequenceTarget* seq_target = new SequenceTarget();
+
+    while (stack.top() != nullptr) {
+        seq_target->addAddressExpression(stack.top()->asAddressExpression());
+        stack.pop();
+    }
+    stack.pop(); // pop the nullptr marker
+
+    stack.push(seq_target);
 }
 
 void QueryParser::pushDiveTarget(uint64_t dive_depth) {
@@ -519,6 +575,15 @@ void Print::print(std::ostream &os) const {
             os << std::endl;
             stack.push(Item(range_target->max,level+1,"max: "));
             stack.push(Item(range_target->min,level+1,"min: "));
+        }
+        else if (e->type == SEQUENCE_TARGET) {
+            SequenceTarget *sequence_target = e->asSequenceTarget();
+            os << "SequenceTarget[]";
+            os << std::endl;
+            int i=0;
+            for (auto addr: sequence_target->addresses) {
+                stack.push(Item(addr,level+1,"["+std::to_string(i++)+"]"));
+            }
         }
         else if (e->type == DIVE_TARGET) {
             DiveTarget *dive_target = e->asDiveTarget();
