@@ -27,6 +27,8 @@
 namespace flattree
 {
 
+using Cache = std::unordered_map<void*, void*>;
+
 typedef unsigned char PathSize;
 typedef unsigned char PathIndex;
 typedef unsigned char PathElement;
@@ -206,7 +208,7 @@ public:
 
     // polygon visit (cache first preprocessing)
     template <typename Visitor>
-    void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor);
+    void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache);
 
 
     FlatTree();
@@ -708,7 +710,7 @@ void FlatTree<Content>::visitRange(AddressType min_address, AddressType max_addr
 // polygon visit (cache first preprocessing)
 template <typename Content>
 template <typename Visitor>
-void FlatTree<Content>::visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor) {
+void FlatTree<Content>::visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache) {
     throw std::runtime_error("visitSequence not supported");
 }
 
