@@ -568,7 +568,7 @@ int main(int argc, char *argv[]) {
     sw.start();
 
     uint64_t count = 0;
-    std::cout << "read data now..." << std::endl;
+    std::cout << "reading data..." << std::endl;
     while (1) {
 
 //        std::cout << "count: " << count << std::endl;

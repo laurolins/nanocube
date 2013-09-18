@@ -87,11 +87,10 @@ struct NanoCubeSchema {
 
 int main(int argc, char **argv)
 {
-
     // get process id
     // pid_t my_pid = getpid();
     // std::cout << argv[0] << " process id: " << my_pid << std::endl;
-
+    std::cout << "VERSION: " << VERSION << std::endl;
 
     // read input file description
     dumpfile::DumpFileDescription input_file_description;
