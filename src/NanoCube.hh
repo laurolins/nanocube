@@ -441,7 +441,8 @@ void NanoCubeTemplate<dim_names, var_types>::query(
         ::query::QueryDescription  &query_description,
         ::query::result::Result    &result)
 {
-    query::Query<nanocube_type> query(root, query_description, result);
+    Cache cache;
+    query::Query<nanocube_type> query(root, query_description, result, cache);
 }
 
 template <typename dim_names, typename var_types>

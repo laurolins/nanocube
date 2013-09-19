@@ -22,9 +22,11 @@
 #include <stack>
 #include <stdint.h>
 
-
+#include <unordered_map>
 
 namespace nanocube {
+
+using Cache = std::unordered_map<void*, void*>;
 
 namespace query {
 
@@ -65,7 +67,8 @@ public: // constructor
 
     Query(dimension_type            &tree,
           query_description_type    &query_description,
-          query_result_type         &result);
+          query_result_type         &result,
+          Cache                     &cache);
 
 public: // methods
 
@@ -76,6 +79,7 @@ public: // methods
     ::query::QueryDescription &query_description;
 
     query_result_type &result;
+    Cache             &cache;
 
     bool    anchored;
     bool    pushed;
@@ -101,9 +105,9 @@ struct Eval {
     typedef typename query_type::query_result_type         query_result_type;
     typedef typename query_type::dimension_content_type    dimension_content_type;
 
-    static void eval(dimension_content_type &content, query_description_type &qd, query_result_type &result) {
+    static void eval(dimension_content_type &content, query_description_type &qd, query_result_type &result, Cache &cache) {
 
-        Query<nanocube_type, query_type::DIMENSION_INDEX + 1> q(content, qd, result);
+        Query<nanocube_type, query_type::DIMENSION_INDEX + 1> q(content, qd, result, cache);
 
         // query::Query<QueryDescriptionType> query(root, query_description, result);
 
@@ -120,7 +124,8 @@ struct Eval<query_type, true> {
 
     static void eval(dimension_content_type &content,
                      query_description_type &qd,
-                     query_result_type      &result) {
+                     query_result_type      &result,
+                     Cache &cache) {
 
         // content will be a time series and there will be a variable
         // index in which we are interested.
@@ -181,9 +186,11 @@ struct Eval<query_type, true> {
 template <typename NanoCube, int Index>
 Query<NanoCube, Index>::Query(dimension_type             &tree,
                               query_description_type     &query_description,
-                              query_result_type          &result):
+                              query_result_type          &result,
+                              Cache                      &cache):
     query_description(query_description),
     result(result),
+    cache(cache),
     anchored(false),
     pushed(false)
 {
@@ -247,7 +254,7 @@ Query<NanoCube, Index>::Query(dimension_type             &tree,
 //        std::cout << "max_address: " << max_address << std::endl;
 
         // use the visitSubnodes interface
-        tree.visitSequence(sequence_target.addresses, query);
+        tree.visitSequence(sequence_target.addresses, query, cache);
 
 //        ::query::RangeTarget &range_target = *target->asRangeTarget();
 
@@ -284,7 +291,7 @@ void Query<NanoCube, Index>::visit(dimension_node_type *node, const dimension_ad
 
     dimension_content_type &content = *node->getContent();
 
-    aux::Eval<query_type, (DIMENSION_INDEX == DIMENSION-1)>::eval(content, query_description, result);
+    aux::Eval<query_type, (DIMENSION_INDEX == DIMENSION-1)>::eval(content, query_description, result, cache);
 
 }
 

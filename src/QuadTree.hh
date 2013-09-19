@@ -23,6 +23,8 @@
 namespace quadtree
 {
 
+using Cache = std::unordered_map<void*, void*>;
+
 //-----------------------------------------------------------------------------
 // typedefs
 //-----------------------------------------------------------------------------
@@ -164,7 +166,7 @@ public:
 
     // polygon visit (cache first preprocessing)
     template <typename Visitor>
-    void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor);
+    void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache);
 
     // visit all nodes following only proper parent-child relations
     template <typename Visitor>
@@ -1116,13 +1118,12 @@ void QuadTree<N,Content>::visitRange(AddressType min_address, AddressType max_ad
 }
 
 
-static std::unordered_map<void*, qtfilter::Node*> cache;
+// static std::unordered_map<void*, qtfilter::Node*> cache;
 
 template<BitSize N, typename Content>
 template <typename Visitor>
 void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
-                                        Visitor &visitor
-                                        /*, todo include a cache object */)
+                                        Visitor &visitor, Cache& cache)
 {
     // preprocess and cache sequence (assuming the vector won't change)
     // be careful with multi-threading (receive a cache then)
@@ -1173,11 +1174,11 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
         mask_root_node = qtfilter::intersect(polygon, level, true);
 
 
-        cache[(void*) &seq] = mask_root_node;
+        cache[(void*) &seq] = reinterpret_cast<void*>(mask_root_node);
 
     }
     else {
-        mask_root_node = it->second;
+        mask_root_node = reinterpret_cast<qtfilter::Node*>(it->second);
     }
 
     if (mask_root_node == nullptr)
