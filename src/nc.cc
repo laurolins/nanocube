@@ -166,8 +166,8 @@ private: // Private Methods
 
 public: // Public Methods
 
-    void serveQuery     (Request &request, bool json);
-    void serveTimeQuery (Request &request, bool json);
+    void serveQuery     (Request &request, bool json, bool compression);
+    void serveTimeQuery (Request &request, bool json, bool compression);
     void serveStats     (Request &request);
     void serveSchema    (Request &request);
     void serveTBin      (Request &request);
@@ -191,14 +191,22 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options):
     server.port = options.initial_port;
 
 
-    bool json = true;
-    bool binary  = false;
+    bool json        = true;
+    bool binary      = false;
+    bool compression = true;
+    bool plain       = false;
 
-    auto json_query_handler    = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, json);
-    auto binary_query_handler  = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, binary);
+    auto json_query_handler    = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, json,       plain);
+    auto binary_query_handler  = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, binary,     plain);
 
-    auto json_tquery_handler   = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, json);
-    auto binary_tquery_handler = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, binary);
+    auto json_tquery_handler   = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, json,   plain);
+    auto binary_tquery_handler = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, binary, plain);
+
+    // auto json_query_comp_handler    = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, json,       compression);
+    // auto json_tquery_comp_handler   = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, json,   compression);
+
+    auto binary_query_comp_handler  = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, binary,     compression);
+    auto binary_tquery_comp_handler = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, binary, compression);
 
     auto stats_handler         = std::bind(&NanoCubeServer::serveStats, this, std::placeholders::_1);
     auto schema_handler        = std::bind(&NanoCubeServer::serveSchema, this, std::placeholders::_1);
@@ -211,10 +219,14 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options):
     auto graphviz_handler       = std::bind(&NanoCubeServer::serveGraphViz, this, std::placeholders::_1);
 
     // register service
-    server.registerHandler("query",     json_query_handler);
-    server.registerHandler("binquery",  binary_query_handler);
-    server.registerHandler("tquery",    json_tquery_handler);
-    server.registerHandler("bintquery", binary_tquery_handler);
+    server.registerHandler("query",      json_query_handler);
+    server.registerHandler("binquery",   binary_query_handler);
+    server.registerHandler("binqueryz",  binary_query_comp_handler);
+
+    server.registerHandler("tquery",     json_tquery_handler);
+    server.registerHandler("bintquery",  binary_tquery_handler);
+    server.registerHandler("bintqueryz", binary_tquery_comp_handler);
+
     server.registerHandler("stats",     stats_handler);
     server.registerHandler("schema",    schema_handler);
     server.registerHandler("tbin",      tbin_handler);
@@ -264,7 +276,7 @@ void NanoCubeServer::parse(std::string              query_st,
     }
 }
 
-void NanoCubeServer::serveQuery(Request &request, bool json)
+void NanoCubeServer::serveQuery(Request &request, bool json, bool compression)
 {
 
     // first entry in params is the url (empty right now)
@@ -381,15 +393,18 @@ void NanoCubeServer::serveQuery(Request &request, bool json)
         const std::string st = os.str();
 
         // compress data
-        auto compressed_data = zlib_compress(st.c_str(), st.size());
-        request.respondOctetStream(&compressed_data[0], compressed_data.size());
-
-        // request.respondOctetStream(st.c_str(), st.size());
+        if (compression) {
+            auto compressed_data = zlib_compress(st.c_str(), st.size());
+            request.respondOctetStream(&compressed_data[0], compressed_data.size());
+        }
+        else {
+             request.respondOctetStream(st.c_str(), st.size());
+        }
     }
 }
 
 
-void NanoCubeServer::serveTimeQuery(Request &request, bool json)
+void NanoCubeServer::serveTimeQuery(Request &request, bool json, bool compression)
 {
 
     // first entry in params is the url (empty right now)
@@ -485,10 +500,13 @@ void NanoCubeServer::serveTimeQuery(Request &request, bool json)
         const std::string st = os.str();
 
         // compress data
-        auto compressed_data = zlib_compress(st.c_str(), st.size());
-        request.respondOctetStream(&compressed_data[0], compressed_data.size());
-
-        // request.respondOctetStream(st.c_str(), st.size());
+        if (compression) {
+            auto compressed_data = zlib_compress(st.c_str(), st.size());
+            request.respondOctetStream(&compressed_data[0], compressed_data.size());
+        }
+        else {
+            request.respondOctetStream(st.c_str(), st.size());
+        }
 
     }
 }
