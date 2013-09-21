@@ -94,9 +94,16 @@ vector::InternalNode::~InternalNode() { // dtor
 #ifdef DEBUG_VECTOR
     std::cout << "InternalNode: destructor" << std::endl;
 #endif
+
+#ifdef USE_VECTOR
     for (Edge &e: children) {
         delete e.node;
     }
+#else
+    for (auto it: children) {
+        delete it.second.node;
+    }
+#endif
 }
 
 vector::InternalNode::InternalNode(const InternalNode &other): // copy ctor
@@ -105,10 +112,17 @@ vector::InternalNode::InternalNode(const InternalNode &other): // copy ctor
 #ifdef DEBUG_VECTOR
     std::cout << "InternalNode: copy constructor" << std::endl;
 #endif
+
+#ifdef USE_VECTOR
     children.reserve(other.children.size());
     for (const Edge &e: other.children) {
         children.push_back(Edge(e.node->clone(), e.label));
     }
+#else
+    for (auto it: children) {
+        delete it.second.node;
+    }
+#endif
 }
 
 auto vector::InternalNode::operator=(const InternalNode &other) -> InternalNode& // copy assign
@@ -116,10 +130,18 @@ auto vector::InternalNode::operator=(const InternalNode &other) -> InternalNode&
 #ifdef DEBUG_VECTOR
     std::cout << "InternalNode: copy assignment" << std::endl;
 #endif
+
+#ifdef USE_VECTOR
     children.reserve(other.children.size());
     for (const Edge &e: other.children) {
         children.push_back(Edge(e.node->clone(), e.label));
     }
+#else
+    for (const auto it: other.children) {
+        const Edge &e = it.second;
+        children[e.label] = Edge(e.node->clone(), e.label);
+    }
+#endif
     return *this;
 }
 
@@ -129,6 +151,7 @@ vector::InternalNode::InternalNode(InternalNode &&other): // move ctor
 #ifdef DEBUG_VECTOR
     std::cout << "InternalNode: move constructor" << std::endl;
 #endif
+
     std::swap(this->children, other.children);
 }
 
@@ -137,11 +160,13 @@ auto vector::InternalNode::operator=(InternalNode &&other) -> InternalNode&  // 
 #ifdef DEBUG_VECTOR
     std::cout << "InternalNode: move assignment" << std::endl;
 #endif
+
     std::swap(this->children, other.children);
     return *this;
 }
 
 auto vector::InternalNode::getChild(Label label) const -> Node* {
+#ifdef USE_VECTOR
     auto it = std::lower_bound(children.begin(), children.end(), Edge(nullptr, label));
     if (it != children.end() && it->label == label) {
         return it->node;
@@ -149,10 +174,20 @@ auto vector::InternalNode::getChild(Label label) const -> Node* {
     else {
         return nullptr;
     }
+#else
+    auto it = children.find(label);
+    if (it == children.end()) {
+        return nullptr;
+    }
+    else {
+        return it->second.node;
+    }
+#endif
 }
 
 auto vector::InternalNode::getOrCreateChild(Label label, bool leaf_child, bool &created) -> Node*
 {
+#ifdef USE_VECTOR
     auto it = std::lower_bound(children.begin(), children.end(), Edge(nullptr, label));
     if (it != children.end() && it->label == label) {
         created = false;
@@ -169,10 +204,28 @@ auto vector::InternalNode::getOrCreateChild(Label label, bool leaf_child, bool &
         created = true;
         return child;
     }
+#else
+    auto it = children.find(label);
+    if (it == children.end()) {
+        Node* child;
+        if (leaf_child) {
+            child = new LeafNode();
+        } else {
+            child = new InternalNode();
+        }
+        children[label] = Edge(child,label);
+        created = true;
+        return child;
+    }
+    else {
+        return it->second.node;
+    }
+#endif
 }
 
 void vector::InternalNode::deleteChild(Label label)
 {
+#ifdef USE_VECTOR
     auto it = std::lower_bound(children.begin(), children.end(), Edge(nullptr, label));
     if (it != children.end() && it->label == label) {
         delete it->node;
@@ -181,6 +234,16 @@ void vector::InternalNode::deleteChild(Label label)
     else {
         throw VectorException("VectorBuilder::deleteChild() ... child doesn't exist");
     }
+#else
+    auto it = children.find(label);
+    if (it != children.end()) {
+        delete it->second.node;
+        children.erase(it);
+    }
+    else {
+        throw VectorException("VectorBuilder::deleteChild() ... child doesn't exist");
+    }
+#endif
 }
 
 auto vector::InternalNode::clone() const -> Node*
@@ -639,11 +702,20 @@ void vector::serialize(const Vector &vector, std::ostream &os)
         }
         else {
             InternalNode *inode = node->asInternalNode();
+
+#ifdef USE_VECTOR
             for (auto it = inode->children.rbegin();
                  it != inode->children.rend(); ++it) {
                 stack.push(Item(it->node, it->label, POP));
                 stack.push(Item(it->node, it->label, PUSH));
             }
+#else
+            for (auto it: inode->children) {
+                Edge &e = it.second;
+                stack.push(Item(e.node, e.label, POP));
+                stack.push(Item(e.node, e.label, PUSH));
+            }
+#endif
         }
     };
 
@@ -768,9 +840,16 @@ std::ostream& vector::operator<<(std::ostream &os, const Vector &v) {
                os << "addr: " << item.label << std::endl;
             }
             const InternalNode *internal_node = item.node->asInternalNode();
+#ifdef USE_VECTOR
             for (const Edge &e: internal_node->children) {
                 stack.push(Item(e.node, e.label, item.level+1));
             }
+#else
+            for (const auto it: internal_node->children) {
+                const Edge &e = it.second;
+                stack.push(Item(e.node, e.label, item.level+1));
+            }
+#endif
         }
     }
     return os;
@@ -862,9 +941,13 @@ bool vector::InstructionIterator::next() {
         }
         else {
             InternalNode *internal_node = node->asInternalNode();
+#ifdef USE_VECTOR
             for (auto it=internal_node->children.rbegin();it!=internal_node->children.rend();it++) {
                 Edge &e = *it;
-
+#else
+            for (auto it: internal_node->children) {
+                Edge &e = it.second;
+#endif
                 // std::cout << "   e.label " << e.label << std::endl;
 
                 static const bool push = true;

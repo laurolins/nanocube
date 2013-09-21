@@ -715,17 +715,15 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
     }
 
 
+#ifdef DEBUG_MAKE_MONOTONE
     for (Diagonal &diagonal: diagonals) {
         Vertex* v1 = std::get<0>(diagonal);
         Vertex* v2 = std::get<1>(diagonal);
-
         int i = dlpoly.index(v1) + 1;
         int j = dlpoly.index(v2) + 1;
-
-#ifdef DEBUG_MAKE_MONOTONE
         std::cout << "diagonal from (" << i << "," << j << ")" << std::endl;
-#endif
     }
+#endif
 
     // collect polygons
     {

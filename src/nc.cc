@@ -79,8 +79,62 @@ std::vector<char> zlib_decompress(const char* ptr, std::size_t size)
     return result;
 }
 
+//-----------------------------------------------------------------------------
+// Split routines
+//-----------------------------------------------------------------------------
 
+std::vector<std::string> &split(const std::string &s, char delim,
+                                std::vector<std::string> &elems)
+{
+    std::stringstream ss(s);
+    std::string item;
+    while(std::getline(ss, item, delim)) {
+         elems.push_back(item);
+    }
+    return elems;
+}
 
+//-----------------------------------------------------------------------------
+// Options
+//-----------------------------------------------------------------------------
+
+struct Options {
+    Options(const std::vector<std::string> &argv);
+
+    int      initial_port        {  29512 };
+    int      no_mongoose_threads {     10 };
+    uint64_t max_points          {      0 };
+    uint64_t report_frequency    { 100000 };
+};
+
+Options::Options(const std::vector<std::string> &argv)
+{
+    // read options
+    // find type of dump
+    try {
+        for (std::string param: argv) {
+            std::vector<std::string> tokens;
+            split(param,'=',tokens);
+            if (tokens.size() < 1) {
+                continue;
+            }
+            if (tokens[0].compare("--max") == 0) {
+                max_points = std::stoull(tokens[1]);
+            }
+            if (tokens[0].compare("--threads") == 0) {
+                no_mongoose_threads = std::stoull(tokens[1]);
+            }
+            if (tokens[0].compare("--port") == 0) {
+                initial_port = std::stoull(tokens[1]);
+            }
+            if (tokens[0].compare("--report-frequency") == 0 || tokens[0].compare("--rf") == 0) { // report frequency
+                report_frequency = std::stoull(tokens[1]);
+            }
+        }
+    }
+    catch (...)
+    {}
+}
 
 //------------------------------------------------------------------------------
 // NanoCube
@@ -102,7 +156,7 @@ struct NanoCubeServer {
 
 public: // Constructor
 
-    NanoCubeServer(NanoCube &nanocube);
+    NanoCubeServer(NanoCube &nanocube, Options &options);
 
 private: // Private Methods
 
@@ -131,10 +185,10 @@ public: // Data Members
 // NanoCubeServer Impl.
 //------------------------------------------------------------------------------
 
-NanoCubeServer::NanoCubeServer(NanoCube &nanocube):
+NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options):
     nanocube(nanocube)
 {
-    server.port = 29512;
+    server.port = options.initial_port;
 
 
     bool json = true;
@@ -172,14 +226,13 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube):
         tentative++;
         try {
             std::cout << "Starting NanoCubeServer on port " << server.port << std::endl;
-            server.start(10);
+            server.start(options.no_mongoose_threads);
         }
         catch (ServerException &e) {
             std::cout << e.what() << std::endl;
             server.port++;
         }
     }
-
 }
 
 void NanoCubeServer::parse(std::string              query_st,
@@ -490,56 +543,6 @@ void NanoCubeServer::serveSummary(Request &request)
 }
 
 
-//-----------------------------------------------------------------------------
-// Split routines
-//-----------------------------------------------------------------------------
-
-std::vector<std::string> &split(const std::string &s, char delim,
-                                std::vector<std::string> &elems)
-{
-    std::stringstream ss(s);
-    std::string item;
-    while(std::getline(ss, item, delim)) {
-         elems.push_back(item);
-    }
-    return elems;
-}
-
-//-----------------------------------------------------------------------------
-// Options
-//-----------------------------------------------------------------------------
-
-struct Options {
-    Options(const std::vector<std::string> &argv);
-
-    uint64_t max_points;
-    uint64_t report_frequency;
-};
-
-Options::Options(const std::vector<std::string> &argv):
-    max_points(0),
-    report_frequency(100000)
-{
-    // read options
-    // find type of dump
-    try {
-        for (std::string param: argv) {
-            std::vector<std::string> tokens;
-            split(param,'=',tokens);
-            if (tokens.size() < 1) {
-                continue;
-            }
-            if (tokens[0].compare("--max") == 0) {
-                max_points = std::stoull(tokens[1]);
-            }
-            if (tokens[0].compare("--report-frequency") == 0 || tokens[0].compare("--rf") == 0) { // report frequency
-                report_frequency = std::stoull(tokens[1]);
-            }
-        }
-    }
-    catch (...)
-    {}
-}
 
 //------------------------------------------------------------------------------
 // main
@@ -612,7 +615,7 @@ int main(int argc, char *argv[]) {
     std::cout << "Number of points inserted " << count << std::endl;
 
     // start nanocube http server
-    NanoCubeServer nanocube_server(nanocube);
+    NanoCubeServer nanocube_server(nanocube, options);
 
     return 0;
 
