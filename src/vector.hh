@@ -6,6 +6,10 @@
 #include <exception>
 #include <stdexcept>
 #include <memory>
+#include <unordered_map>
+#include <map>
+
+#define xUSE_VECTOR
 
 namespace vector {
 
@@ -111,7 +115,12 @@ public:
     virtual auto asInternalNode() -> InternalNode*;
 
 public: // Data Members
-    std::vector<Edge> children;  // Keep these in order 
+#ifdef USE_VECTOR
+    std::vector<Edge> children;  // Keep these in order
+#else
+    std::unordered_map<Label,Edge> children;  // Keep these in order
+    // std::map<Label,Edge> children;  // Keep these in order
+#endif
     // (do not keep pointer to edges please)
 };
 

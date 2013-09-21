@@ -223,10 +223,18 @@ void QueryResult::json(std::ostream &os) {
         else if (node->isInternalNode()) {
             Internal *internal = node->asInternalNode();
             writer.list("children");
+#ifdef USE_VECTOR
             for (Edge &e: internal->children) {
                 stack.push(Item(e.node, e.label, END));
                 stack.push(Item(e.node, e.label, BEGIN));
             }
+#else
+            for (auto it: internal->children) {
+                Edge &e = it.second;
+                stack.push(Item(e.node, e.label, END));
+                stack.push(Item(e.node, e.label, BEGIN));
+            }
+#endif
         }
     };
 
