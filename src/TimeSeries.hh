@@ -7,6 +7,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <algorithm>
+
 #include <Util.hh>
 
 #ifdef OPTIMIZE_FOR_SPEED
@@ -177,13 +179,11 @@ void TimeSeries<Entry>::operator delete(void *p) {
 // we can keep the key here if we like
 template<typename Entry>
 TimeSeries<Entry>::TimeSeries()
-{
-}
+{}
 
 template<typename Entry>
 TimeSeries<Entry>::~TimeSeries()
-{
-}
+{}
 
 template<typename Entry>
 inline Count // return increase on the actual used memory
@@ -194,6 +194,7 @@ TimeSeries<Entry>::add(Entry entry)
 #ifdef COLLECT_MEMUSAGE
     count_num_adds++; // not thread safe (use atomic later)
 #endif
+
     // assuming we are adding in order for now
     if (entries.size() == 0)
     {
@@ -210,20 +211,65 @@ TimeSeries<Entry>::add(Entry entry)
 
         // TODO sum the entries starting on the second entry...
         if (current_entry_time < entry_time) {
+
+#ifdef COLLECT_MEMUSAGE
+            count_used_bins++; // not thread safe (use atomic later)
+#endif
+
             entry.accum(entries.back());
             entries.push_back(entry);
             return sizeof(Entry);
-
         }
+
         else if (current_entry_time == entry_time) {
             entries.back().accum(entry);
             return 0;
         }
 
+        else { // out of order case: SLOW
+
+            auto comp = [](const Entry &e, uint64_t time) -> bool {
+                uint64_t e_time = e.template get<0>();
+                return e_time < time;
+            };
+
+            // binary search
+            auto it = std::lower_bound(entries.begin(), entries.end(), entry_time, comp);
+
+            if (it == entries.end()) {
+                throw std::runtime_error("Not expected");
+            }
+
+            uint64_t insertion_time = (*it).template get<0>();
+
+            Count used_size_inc = 0;
+
+            if (insertion_time != entry_time) {
+                // insert new entry on time series
+                it = entries.insert(it,entry);
+
+                used_size_inc += sizeof(Entry);
+
 #ifdef COLLECT_MEMUSAGE
-        count_used_bins++; // not thread safe (use atomic later)
+                count_used_bins++; // not thread safe (use atomic later)
 #endif
-        return 0;
+
+                if (it != entries.begin()) {
+                    (*it).accum(*(it-1)); // accumulate last
+                }
+            }
+            else {
+                (*it).accum(entry);
+            }
+
+            // accumulate on suffix of (cumulative) time series
+            for (auto it2=it+1;it2!=entries.end();++it2) {
+                (*it2).accum(entry);
+            }
+
+            return used_size_inc;
+
+        }
 
     }
 //    else

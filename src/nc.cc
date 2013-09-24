@@ -177,6 +177,7 @@ public: // Public Methods
 public: // Data Members
 
     NanoCube &nanocube;
+
     Server server;
 
 };
