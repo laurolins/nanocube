@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <iomanip>
+#include <stdexcept>
 
 #include <algorithm>
 

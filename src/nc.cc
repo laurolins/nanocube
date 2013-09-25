@@ -1,5 +1,7 @@
 #include <iostream>
 #include <iomanip>
+#include <thread>
+#include <functional>
 
 #include <DumpFile.hh>
 
@@ -227,7 +229,7 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     // auto f = std::bind(&NanoCubeServer::write, *this);
 
     RunWrite rw(*this);
-    std::thread writer_thread(&RunWrite::run, rw);
+    std::thread writer_thread(&RunWrite::run, &rw);
 
     //
     server.port = options.initial_port;
