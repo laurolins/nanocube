@@ -113,7 +113,7 @@ struct Options {
     uint64_t max_points          {      0 };
     uint64_t report_frequency    { 100000 };
     uint64_t batch_size          {   1000 };
-    uint64_t sleep_for_ns        {      1 };
+    uint64_t sleep_for_ns        {    100 };
 };
 
 Options::Options(const std::vector<std::string> &argv)
