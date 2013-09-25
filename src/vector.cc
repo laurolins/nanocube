@@ -119,8 +119,9 @@ vector::InternalNode::InternalNode(const InternalNode &other): // copy ctor
         children.push_back(Edge(e.node->clone(), e.label));
     }
 #else
-    for (auto it: children) {
-        delete it.second.node;
+    for (const auto it: other.children) {
+        const Edge &e = it.second;
+        children[e.label] = Edge(e.node->clone(), e.label);
     }
 #endif
 }

@@ -26,7 +26,7 @@ QMAKE_LFLAGS    += -std=c++11
 QT     -=  gui core
 LIBS   -= -lQtGui -lQtCore
 
-LIBS        += -L$${LOCAL}/lib -ldl -lpthread -lz
+LIBS        += -L$${LOCAL}/lib -ldl -lpthread -lz -lboost_thread-mt -lboost_system-mt
 INCLUDEPATH += .
 
 EXAMPLE1 = \
@@ -69,10 +69,14 @@ EXAMPLE10 = \
    -DLIST_DIMENSION_NAMES=q2 \
    -DLIST_VARIABLE_TYPES=u1,u1
 
+EXAMPLE11 = \
+   -DLIST_DIMENSION_NAMES=c1 \
+   -DLIST_VARIABLE_TYPES=u1,u1
+
 # example 1
 QMAKE_CXXFLAGS  += -DLOCALRUN -DxFLATTREE_VECTOR -DxTIMESERIES_VECTOR -D_GLIBCXX_USE_NANOSLEEP \
    -DSUPER_FAST_COMPILE -DCOLLECT_MEMUSAGE -DVERSION=2013.09.18T13:43 \
-   $${EXAMPLE5}
+   $${EXAMPLE11}
 
 HEADERS =                 \
 MercatorProjection.hh     \

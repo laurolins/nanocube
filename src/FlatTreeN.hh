@@ -363,14 +363,14 @@ auto FlatTree<N, Content>::prepareProperOutdatedPath(FlatTree*                pa
 
 
     if (parallel_structure) {
-        auto parallel_child = parallel_structure->getLink(address[0]);
+        auto parallel_child = parallel_structure->getLink(address.raw_address, false);
 
         bool needs_to_update_child = true;
 
         // get child. maybe doesn't need to be updated...
-        NodeType *child = this->getLink(address[0], false);
+        NodeType *child = this->getLink(address.raw_address, false);
         if (child == nullptr) {
-            child = this->getLink(address[0], true);
+            child = this->getLink(address.raw_address, true);
             child->setSharedContent(parallel_child->getContent());
             needs_to_update_child = false;
         }
@@ -392,7 +392,7 @@ auto FlatTree<N, Content>::prepareProperOutdatedPath(FlatTree*                pa
     }
 
     else {
-        NodeType *child = this->getLink(address[0], true);
+        NodeType *child = this->getLink(address.raw_address, true);
         stack.push_back(child);
         stack.push_back(nullptr);
         return child;

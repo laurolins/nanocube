@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <cassert>
+#include <stdexcept>
 
 namespace report {
 

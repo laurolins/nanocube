@@ -16,8 +16,7 @@ nc_q20_q20_u3_u4      \
 nc_q20_u2_u4
 
 # AM_CPPFLAGS = -I$(top_srcdir)/src
-AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP
-
+AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD
 
 ncdmp_SOURCES =       \
 ncdmp.cc              \
@@ -114,27 +113,32 @@ geom2d/tile.hh
 VERSION = $(shell cat $(top_srcdir)/VERSION)
 AM_CXXFLAGS += -DVERSION=\"$(VERSION)\"
 
-nc_q20_q20_u2_u4_LDFLAGS  = -ldl -lpthread
+NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
+
+nc_q20_q20_u2_u4_LDFLAGS  = $(NC_LIBS)
 nc_q20_q20_u2_u4_CXXFLAGS = \
     -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q20,q20 \
     -DLIST_VARIABLE_TYPES=u2,u4 \
     -DVERSION=\"$(VERSION)\"
 nc_q20_q20_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q20_q20_u3_u4_LDFLAGS  = -ldl -lpthread
+nc_q20_q20_u3_u4_LDFLAGS  = $(NC_LIBS)
 nc_q20_q20_u3_u4_CXXFLAGS = \
     -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q20,q20 \
     -DLIST_VARIABLE_TYPES=u3,u4 \
     -DVERSION=\"$(VERSION)\"
 nc_q20_q20_u3_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q20_u2_u4_LDFLAGS  = -ldl -lpthread
+nc_q20_u2_u4_LDFLAGS  = $(NC_LIBS)
 nc_q20_u2_u4_CXXFLAGS = \
     -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q20 \
     -DLIST_VARIABLE_TYPES=u2,u4 \
     -DVERSION=\"$(VERSION)\"

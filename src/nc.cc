@@ -1,5 +1,7 @@
 #include <iostream>
 #include <iomanip>
+#include <thread>
+#include <functional>
 
 #include <DumpFile.hh>
 
@@ -17,6 +19,8 @@
 #include <NanoCubeSummary.hh>
 
 #include <zlib.h>
+
+#include <boost/thread/shared_mutex.hpp>
 
 using namespace nanocube;
 
@@ -101,10 +105,15 @@ std::vector<std::string> &split(const std::string &s, char delim,
 struct Options {
     Options(const std::vector<std::string> &argv);
 
+    Options(const Options& other) = default;
+    Options& operator=(const Options& other) = default;
+
     int      initial_port        {  29512 };
     int      no_mongoose_threads {     10 };
     uint64_t max_points          {      0 };
     uint64_t report_frequency    { 100000 };
+    uint64_t batch_size          {   1000 };
+    uint64_t sleep_for_ns        {    100 };
 };
 
 Options::Options(const std::vector<std::string> &argv)
@@ -126,6 +135,12 @@ Options::Options(const std::vector<std::string> &argv)
             }
             if (tokens[0].compare("--port") == 0) {
                 initial_port = std::stoull(tokens[1]);
+            }
+            if (tokens[0].compare("--batch_size") == 0 || tokens[0].compare("--bs") == 0) {
+                batch_size = std::stoull(tokens[1]);
+            }
+            if (tokens[0].compare("--sleep_for") == 0 || tokens[0].compare("--sf") == 0) {
+                sleep_for_ns = std::stoull(tokens[1]);
             }
             if (tokens[0].compare("--report-frequency") == 0 || tokens[0].compare("--rf") == 0) { // report frequency
                 report_frequency = std::stoull(tokens[1]);
@@ -156,7 +171,7 @@ struct NanoCubeServer {
 
 public: // Constructor
 
-    NanoCubeServer(NanoCube &nanocube, Options &options);
+    NanoCubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream);
 
 private: // Private Methods
 
@@ -174,22 +189,50 @@ public: // Public Methods
     void serveSummary   (Request &request);
     void serveGraphViz  (Request &request);
 
+public:
+
+    void write();
+
 public: // Data Members
 
     NanoCube &nanocube;
+
+    Options       options;
+    std::istream &input_stream;
+
     Server server;
 
+    boost::shared_mutex       shared_mutex; // one writer multiple readers
+
+};
+
+struct RunWrite {
+    RunWrite(NanoCubeServer &server):
+        server(server)
+    {}
+    void run() {
+        server.write();
+    }
+    NanoCubeServer &server;
 };
 
 //------------------------------------------------------------------------------
 // NanoCubeServer Impl.
 //------------------------------------------------------------------------------
 
-NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options):
-    nanocube(nanocube)
+NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream):
+    nanocube(nanocube),
+    options(options),
+    input_stream(input_stream)
 {
-    server.port = options.initial_port;
+    // start a thread to write on nanocube
+    // auto f = std::bind(&NanoCubeServer::write, *this);
 
+    RunWrite rw(*this);
+    std::thread writer_thread(&RunWrite::run, &rw);
+
+    //
+    server.port = options.initial_port;
 
     bool json        = true;
     bool binary      = false;
@@ -245,6 +288,9 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options):
             server.port++;
         }
     }
+
+    writer_thread.join();
+
 }
 
 void NanoCubeServer::parse(std::string              query_st,
@@ -278,6 +324,7 @@ void NanoCubeServer::parse(std::string              query_st,
 
 void NanoCubeServer::serveQuery(Request &request, bool json, bool compression)
 {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
     // first entry in params is the url (empty right now)
     // second entry is the handler key, starting from
@@ -406,6 +453,7 @@ void NanoCubeServer::serveQuery(Request &request, bool json, bool compression)
 
 void NanoCubeServer::serveTimeQuery(Request &request, bool json, bool compression)
 {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
     // first entry in params is the url (empty right now)
     // second entry is the handler key, starting from
@@ -513,6 +561,8 @@ void NanoCubeServer::serveTimeQuery(Request &request, bool json, bool compressio
 
 void NanoCubeServer::serveStats(Request &request)
 {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
     report::Report report(nanocube.DIMENSION + 1);
     nanocube.mountReport(report);
     std::stringstream ss;
@@ -525,6 +575,8 @@ void NanoCubeServer::serveStats(Request &request)
 
 void NanoCubeServer::serveGraphViz(Request &request)
 {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
     report::Report report(nanocube.DIMENSION + 1);
     nanocube.mountReport(report);
     std::stringstream ss;
@@ -534,6 +586,8 @@ void NanoCubeServer::serveGraphViz(Request &request)
 
 void NanoCubeServer::serveSchema(Request &request)
 {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
     // report::Report report(nanocube.DIMENSION + 1);
     // nanocube.mountReport(report);
     std::stringstream ss;
@@ -544,6 +598,8 @@ void NanoCubeServer::serveSchema(Request &request)
 
 void NanoCubeServer::serveTBin(Request &request)
 {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
     auto &metadata = nanocube.schema.dump_file_description.metadata;
     auto it = metadata.find("tbin");
     if (it != metadata.end()) {
@@ -554,11 +610,98 @@ void NanoCubeServer::serveTBin(Request &request)
 
 void NanoCubeServer::serveSummary(Request &request)
 {
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
+
     nanocube::Summary summary = mountSummary(this->nanocube);
     std::stringstream ss;
     ss << summary;
     request.respondJson(ss.str());
 }
+
+
+
+void NanoCubeServer::write()
+{
+    uint64_t batch_size = options.batch_size; // add 10k points before
+
+    stopwatch::Stopwatch sw;
+    sw.start();
+
+    uint64_t count = 0;
+
+    std::cout << "reading data..." << std::endl;
+
+    bool done = false;
+
+    while (!done) {
+
+        // write a batch of points
+        {
+            boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
+            for (uint64_t i=0;i<batch_size && !done;++i)
+            {
+                bool ok = nanocube.add(input_stream);
+                if (!ok) {
+                    // std::cout << "not ok" << std::endl;
+                    done = true;
+                }
+                else {
+                    // std::cout << "ok" << std::endl;
+                    ++count;
+                    done = (options.max_points > 0 && count == options.max_points);
+                }
+            }
+        }
+
+        // shared_mutex.
+        if (options.sleep_for_ns == 0) {
+            std::this_thread::yield(); // if there is a query it should wake up
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::nanoseconds(options.sleep_for_ns));
+        }
+
+        // make sure report frequency is a multiple of batch size
+        if (count % options.report_frequency == 0) {
+            std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+        }
+
+        // std::this_thread::sleep_for(std::mill)
+
+//        bool ok = nanocube.add(std::cin);
+//        if (!ok) {
+//            // std::cout << "not ok" << std::endl;
+//            break;
+//        }
+
+//        { // generate pdf
+//            report::Report report(nanocube.DIMENSION + 1);
+//            nanocube.mountReport(report);
+//            std::string filename     = "/tmp/bug"+std::to_string(count)+".dot";
+//            std::string pdf_filename = "/tmp/bug"+std::to_string(count)+".pdf";
+//            std::ofstream of(filename);
+//            report::report_graphviz(of, report);
+//            of.close();
+//            system(("dot -Tpdf " + filename + " > " + pdf_filename).c_str());
+//        }
+
+
+
+    } // loop to insert objects into the nanocube
+
+    std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
+    // std::cout << "count: " << count << " mem. res: " << memory_util::MemInfo::get().res_MB() << "MB." << std::endl;
+
+    // test query using query language
+    std::cout << "Number of points inserted " << count << std::endl;
+
+}
+
+
+
+
+
 
 
 
@@ -585,56 +728,68 @@ int main(int argc, char *argv[]) {
     // create nanocube
     NanoCube nanocube(nanocube_schema);
 
-    stopwatch::Stopwatch sw;
-    sw.start();
-
-    uint64_t count = 0;
-    std::cout << "reading data..." << std::endl;
-    while (1) {
-
-//        std::cout << "count: " << count << std::endl;
-
-        if (options.max_points > 0 && count == options.max_points) {
-            break;
-        }
-
-        bool ok = nanocube.add(std::cin);
-        if (!ok) {
-            // std::cout << "not ok" << std::endl;
-            break;
-        }
-
-//        { // generate pdf
-//            report::Report report(nanocube.DIMENSION + 1);
-//            nanocube.mountReport(report);
-//            std::string filename     = "/tmp/bug"+std::to_string(count)+".dot";
-//            std::string pdf_filename = "/tmp/bug"+std::to_string(count)+".pdf";
-//            std::ofstream of(filename);
-//            report::report_graphviz(of, report);
-//            of.close();
-//            system(("dot -Tpdf " + filename + " > " + pdf_filename).c_str());
-//        }
-
-        // std::cout << "ok" << std::endl;
-        count++;
-
-
-        if (count % options.report_frequency == 0) {
-            std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
-        }
-
-
-    } // loop to insert objects into the nanocube
-
-    std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
-    // std::cout << "count: " << count << " mem. res: " << memory_util::MemInfo::get().res_MB() << "MB." << std::endl;
-
-    // test query using query language
-    std::cout << "Number of points inserted " << count << std::endl;
-
     // start nanocube http server
-    NanoCubeServer nanocube_server(nanocube, options);
+    NanoCubeServer nanocube_server(nanocube, options, std::cin);
 
+    // join write thread
     return 0;
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+//stopwatch::Stopwatch sw;
+//sw.start();
+
+//uint64_t count = 0;
+//std::cout << "reading data..." << std::endl;
+//while (1) {
+
+////        std::cout << "count: " << count << std::endl;
+
+//    if (options.max_points > 0 && count == options.max_points) {
+//        break;
+//    }
+
+//    bool ok = nanocube.add(std::cin);
+//    if (!ok) {
+//        // std::cout << "not ok" << std::endl;
+//        break;
+//    }
+
+////        { // generate pdf
+////            report::Report report(nanocube.DIMENSION + 1);
+////            nanocube.mountReport(report);
+////            std::string filename     = "/tmp/bug"+std::to_string(count)+".dot";
+////            std::string pdf_filename = "/tmp/bug"+std::to_string(count)+".pdf";
+////            std::ofstream of(filename);
+////            report::report_graphviz(of, report);
+////            of.close();
+////            system(("dot -Tpdf " + filename + " > " + pdf_filename).c_str());
+////        }
+
+//    // std::cout << "ok" << std::endl;
+//    count++;
+
+
+//    if (count % options.report_frequency == 0) {
+//        std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+//    }
+
+
+//} // loop to insert objects into the nanocube
+
+//std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
+//// std::cout << "count: " << count << " mem. res: " << memory_util::MemInfo::get().res_MB() << "MB." << std::endl;
+
+//// test query using query language
+//std::cout << "Number of points inserted " << count << std::endl;

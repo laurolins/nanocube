@@ -43,20 +43,54 @@ filename        =  ("nc_" + dimension_names + "_" + variable_types).replace(',',
 
 print "Building " + filename + " and copying it to folder " + nanocube_bin + "..."
 
-headers = "Common.hh ContentHolder.hh DumpFile.hh FlatTree.hh MemoryUtil.hh MercatorProjection.hh NanoCube.hh NanoCubeInsert.hh NanoCubeQuery.hh NanoCubeQueryException.hh NanoCubeQueryResult.hh NanoCubeReportBuilder.hh NanoCubeSchema.hh NanoCubeTimeQuery.hh QuadTree.hh QuadTreeNode.hh QuadTreeUtil.hh Query.hh QueryParser.hh QueryResult.hh Report.hh Server.hh Stopwatch.hh TaggedPointer.hh TimeBinFunction.hh TimeSeries.hh TimeSeriesEntryType.hh Tuple.hh Util.hh vector.hh small_vector.hh QuadTreeNode_autogen.hh mongoose.h FlatTreeN.hh NanoCubeSummary.hh"
+# headers = "Common.hh ContentHolder.hh DumpFile.hh FlatTree.hh MemoryUtil.hh MercatorProjection.hh NanoCube.hh NanoCubeInsert.hh NanoCubeQuery.hh NanoCubeQueryException.hh NanoCubeQueryResult.hh NanoCubeReportBuilder.hh NanoCubeSchema.hh NanoCubeTimeQuery.hh QuadTree.hh QuadTreeNode.hh QuadTreeUtil.hh Query.hh QueryParser.hh QueryResult.hh Report.hh Server.hh Stopwatch.hh TaggedPointer.hh TimeBinFunction.hh TimeSeries.hh TimeSeriesEntryType.hh Tuple.hh Util.hh vector.hh small_vector.hh QuadTreeNode_autogen.hh mongoose.h FlatTreeN.hh NanoCubeSummary.hh"
+# 
+# sources = "Common.cc DumpFile.cc MemoryUtil.cc MercatorProjection.cc NanoCubeQueryException.cc NanoCubeQueryResult.cc NanoCubeSchema.cc QuadTree.cc QuadTreeNode.cc Query.cc QueryParser.cc QueryResult.cc Report.cc Server.cc Stopwatch.cc TimeBinFunction.cc TimeSeries.cc Util.cc vector.cc mongoose.c nc.cc NanoCubeSummary.cc"
 
-sources = "Common.cc DumpFile.cc MemoryUtil.cc MercatorProjection.cc NanoCubeQueryException.cc NanoCubeQueryResult.cc NanoCubeSchema.cc QuadTree.cc QuadTreeNode.cc Query.cc QueryParser.cc QueryResult.cc Report.cc Server.cc Stopwatch.cc TimeBinFunction.cc TimeSeries.cc Util.cc vector.cc mongoose.c nc.cc NanoCubeSummary.cc"
+sources = '''\
+Common.cc                 \
+DumpFile.cc               \
+MemoryUtil.cc             \
+MercatorProjection.cc     \
+NanoCubeQueryException.cc \
+NanoCubeQueryResult.cc    \
+NanoCubeSummary.cc        \
+NanoCubeSchema.cc         \
+QuadTree.cc               \
+QuadTreeNode.cc           \
+Query.cc                  \
+QueryParser.cc            \
+QueryResult.cc            \
+Report.cc                 \
+Server.cc                 \
+Stopwatch.cc              \
+TimeBinFunction.cc        \
+TimeSeries.cc             \
+Util.cc                   \
+vector.cc                 \
+nc.cc                     \
+qtfilter.cc               \
+mongoose.c                \
+geom2d/base.cc            \
+geom2d/boundingbox.cc	  \
+geom2d/make_monotone.cc	  \
+geom2d/planegraph.cc      \
+geom2d/point.cc		  \
+geom2d/polygon.cc         \
+geom2d/tile.cc ''' 
+
 
 cmds = [
 "cd %s/src" % nanocube_root,
 "mkdir -p /tmp/" + filename,
-"cp " + sources + " " + headers + " /tmp/" + filename,
+"rsync -av %s/src/* /tmp/%s" % (nanocube_root, filename),
 "cd /tmp/" + filename,
 '''g++ -std=c++11 -O3 \
 -I. \
 -D_GLIBCXX_USE_NANOSLEEP  \
 -DLIST_DIMENSION_NAMES=%s \
 -DLIST_VARIABLE_TYPES=%s  \
+-DVERSION=ncbuild  \
 -o %s \
 %s \
 -lz -ldl -lpthread''' % (dimension_names, variable_types, filename, sources),

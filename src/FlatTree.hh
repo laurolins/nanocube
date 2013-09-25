@@ -516,7 +516,7 @@ FlatTree<Content>::trailProperPath(AddressType addr, FlatTree::NodeStackType &st
 
     if (addr.getPathSize() == 1)
     {
-        Node<Content> *child = this->getLink(addr[0], true);
+        Node<Content> *child = this->getLink(addr.singleton_path_element, true);
         stack.push_back(child); // add root
         return child;
     }
@@ -548,14 +548,14 @@ FlatTree<Content>::prepareProperOutdatedPath(FlatTree*                  parallel
 
 
     if (parallel_structure) {
-        auto parallel_child = parallel_structure->getLink(address[0]);
+        auto parallel_child = parallel_structure->getLink(address.singleton_path_element, false);
 
         bool needs_to_update_child = true;
 
         // get child. maybe doesn't need to be updated...
-        Node<Content> *child = this->getLink(address[0], false);
+        Node<Content> *child = this->getLink(address.singleton_path_element, false);
         if (child == nullptr) {
-            child = this->getLink(address[0], true);
+            child = this->getLink(address.singleton_path_element, true);
             child->setSharedContent(parallel_child->getContent());
             needs_to_update_child = false;
         }
@@ -577,7 +577,7 @@ FlatTree<Content>::prepareProperOutdatedPath(FlatTree*                  parallel
     }
 
     else {
-        Node<Content> *child = this->getLink(address[0], true);
+        Node<Content> *child = this->getLink(address.singleton_path_element, true);
         stack.push_back(child);
         stack.push_back(nullptr);
         return child;
@@ -635,7 +635,7 @@ FlatTree<Content>::find(AddressType &addr)
     }
     else // if (addr.getPathSize() == 1)
     {
-        Node<Content> *child = this->getLink(addr[0], false);
+        Node<Content> *child = this->getLink(addr.singleton_path_element, false);
         return child;
     }
 }
