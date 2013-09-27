@@ -69,6 +69,7 @@ TimeSeries.cc             \
 Util.cc                   \
 vector.cc                 \
 nc.cc                     \
+json.cc                   \
 qtfilter.cc               \
 mongoose.c                \
 geom2d/base.cc            \
@@ -93,7 +94,7 @@ cmds = [
 -DVERSION=ncbuild  \
 -o %s \
 %s \
--lz -ldl -lpthread''' % (dimension_names, variable_types, filename, sources),
+-lz -ldl -lpthread -lboost_thread-mt -lboost_system-mt''' % (dimension_names, variable_types, filename, sources),
 "cp %s %s" % (filename,nanocube_bin)
 ]
 os.system(";".join(cmds))

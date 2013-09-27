@@ -111,6 +111,7 @@ Tuple.hh                  \
 Query.hh                  \
 QueryParser.hh            \
 QueryResult.hh            \
+json.hh                   \
 vector.hh                 \
 Server.hh                 \
 qtfilter.hh               \
@@ -146,6 +147,7 @@ Server.cc                    \
 qtfilter.cc                  \
 vector.cc                    \
 mongoose.c                   \
+json.cc                      \
 nc.cc                        \
 geom2d/base.cc               \
 geom2d/boundingbox.cc        \

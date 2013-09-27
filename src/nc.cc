@@ -18,6 +18,8 @@
 
 #include <NanoCubeSummary.hh>
 
+#include <json.hh>
+
 #include <zlib.h>
 
 #include <boost/thread/shared_mutex.hpp>
@@ -588,10 +590,56 @@ void NanoCubeServer::serveSchema(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
+
+    auto &dump_file = nanocube.schema.dump_file_description;
+
+
+    std::stringstream ss;
+    json::JsonWriter writer(ss);
+
+    // everything is a big dictionary
+    {
+        json::ContextGuard g = writer.dict();
+        {
+            json::ContextGuard g2 = writer.list("fields");
+            for (auto f: dump_file.fields) {
+                json::ContextGuard g3 = writer.dict()
+                        .dict_entry("name", f->name)
+                        .dict_entry("type", f->field_type.name);
+                {
+                    json::ContextGuard g4 = writer.dict("valnames");
+                    for (auto it: f->map_value_to_valname) {
+                        writer.dict_entry(it.second, it.first);
+                    }
+                }
+            }
+        }
+        {
+            json::ContextGuard g2 = writer.list("metadata");
+            for (auto it: dump_file.metadata) {
+                auto key   = it.first;
+                auto value = it.second;
+                json::ContextGuard g3 = writer.dict()
+                        .dict_entry("key", key)
+                        .dict_entry("value", value);
+            }
+        }
+    }
+
+//    {
+//        json::ContextGuard metadata = writer.list("metadata");
+//        for (auto it: std::string level_name: result.level_names) {
+//            json::ContextGuard g3;
+//            writer.dict()
+//                  .dict_entry("name", f->name)
+//                  .dict_entry("type", f->field_type.name);
+//        }
+//    }
+//    dump_file.fields
     // report::Report report(nanocube.DIMENSION + 1);
     // nanocube.mountReport(report);
-    std::stringstream ss;
-    ss << nanocube.schema.dump_file_description;
+//    std::stringstream ss;
+//    ss << nanocube.schema.dump_file_description;
     request.respondJson(ss.str());
 }
 
