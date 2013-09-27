@@ -42,7 +42,8 @@ void Request::respondJson(std::string msg_content)
        << "Content-Length: %d"             << sep << sep
        << "%s";
 
-    response_size = 106 + (int) msg_content.size();
+    // response_size = 106 + (int) msg_content.size();
+    response_size = 106 + (int) msg_content.size(); // banchmark data transfer
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
 }

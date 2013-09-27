@@ -71,6 +71,8 @@ QueryResult.cc            \
 QueryResult.hh            \
 Report.cc                 \
 Report.hh                 \
+json.cc                   \
+json.hh                   \
 Server.cc                 \
 Server.hh		  \
 Stopwatch.cc              \
