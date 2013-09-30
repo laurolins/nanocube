@@ -72,8 +72,10 @@ public: // subtypes and constants
 
 public: // constructors
 
-    Address();
+    Address() = default;
+
     explicit Address(uint64_t raw_address);
+
     Address(PathElement p);
 
 public:  // methods
@@ -95,7 +97,7 @@ public:  // methods
 public:  // data members
 
     //! a path in this context of flattree contains at most one element
-    PathElement singleton_path_element;
+    PathElement singleton_path_element { EMPTY_PATH };
 
 };
 
@@ -348,10 +350,10 @@ std::ostream& operator<<(std::ostream &o, const Link<Content>& ts);
 // Impl. Address Template Members
 //-----------------------------------------------------------------------------
 
-template <typename Structure>
-Address<Structure>::Address():
-    singleton_path_element(EMPTY_PATH)
-{}
+//template <typename Structure>
+//Address<Structure>::Address():
+//    singleton_path_element(EMPTY_PATH)
+//{}
 
 template <typename Structure>
 Address<Structure>::Address(PathElement p):
