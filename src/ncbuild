@@ -80,13 +80,7 @@ geom2d/point.cc		  \
 geom2d/polygon.cc         \
 geom2d/tile.cc ''' 
 
-
-cmds = [
-"cd %s/src" % nanocube_root,
-"mkdir -p /tmp/" + filename,
-"rsync -av %s/src/* /tmp/%s" % (nanocube_root, filename),
-"cd /tmp/" + filename,
-'''g++ -std=c++11 -O3 \
+compile_cmd = '''g++ -std=c++11 -O3 \
 -I. \
 -D_GLIBCXX_USE_NANOSLEEP  \
 -DLIST_DIMENSION_NAMES=%s \
@@ -94,7 +88,20 @@ cmds = [
 -DVERSION=ncbuild  \
 -o %s \
 %s \
--lz -ldl -lpthread -lboost_thread-mt -lboost_system-mt''' % (dimension_names, variable_types, filename, sources),
+-lpthread -Wl,--no-as-needed -ltcmalloc_minimal -Wl,--as-needed \
+-lz -ldl -lboost_thread-mt -lboost_system-mt''' % (dimension_names, variable_types, filename, sources)
+
+# -L/usr/local/lib \
+# -ltcmalloc \
+# -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free \
+
+cmds = [
+"cd %s/src" % nanocube_root,
+"mkdir -p /tmp/" + filename,
+"rsync -av %s/src/* /tmp/%s" % (nanocube_root, filename),
+"cd /tmp/" + filename,
+'echo "%s"' % compile_cmd,
+compile_cmd,
 "cp %s %s" % (filename,nanocube_bin)
 ]
 os.system(";".join(cmds))
