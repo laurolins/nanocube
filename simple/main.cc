@@ -151,17 +151,30 @@ void auxreport() {
 
 
 
-
+inline constexpr int operator"" _c ( char c )
+{
+    return ((int)c) - ((int)'A') + 1;
+}
 
 //-----------------------------------------------------------------------------
 // main
 //-----------------------------------------------------------------------------
 
 int main() {
-    Nanocube nc({2, 2, 2});
+
+#if 1
+    Nanocube nc({2, 1});
+    nc.insert({{'C'_c,2},{1}}, 1);
+    nc.insert({{'C'_c,2},{2}}, 2);
+    nc.insert({{'B'_c,3},{2}}, 3);
+    nc.insert({{'D'_c,1},{1}}, 4);
+    nc.insert({{'B'_c,4},{2}}, 5);
+#else
+    Nanocube nc({2, 1});
     nc.insert({{1,2},{4,5},{5,5}}, 1);
     nc.insert({{1,3},{3,5},{4,5}}, 2);
     nc.insert({{1,3},{4,6},{2,5}}, 3);
+#endif
 
 //    Nanocube nc({2});
 //    nc.insert({{1,2}}, 1);
