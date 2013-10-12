@@ -105,7 +105,10 @@ void QueryResult::json(std::ostream &os) {
                 else {
                     writer.dict();
                 }
-                writer << std::string("\"addr\":" + std::to_string(label));
+
+                std::stringstream ss;
+                ss << "\"addr\":\"" << std::hex << label << "\"";
+                writer << ss.str();
                 process(node);
             }
             else if (op == END) {
