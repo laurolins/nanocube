@@ -91,6 +91,12 @@ compile_cmd = '''g++ -std=c++11 -O3 \
 -lpthread -Wl,--no-as-needed -ltcmalloc_minimal -Wl,--as-needed \
 -lz -ldl -lboost_thread-mt -lboost_system-mt''' % (dimension_names, variable_types, filename, sources)
 
+# save compile command
+build_filename = "build"
+# file = open(build_filename, "w")
+# file.write(compile_cmd)
+# file.close()
+# 
 # -L/usr/local/lib \
 # -ltcmalloc \
 # -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free \
@@ -101,6 +107,7 @@ cmds = [
 "rsync -av %s/src/* /tmp/%s" % (nanocube_root, filename),
 "cd /tmp/" + filename,
 'echo "%s"' % compile_cmd,
+'echo "%s" > "%s"' % (compile_cmd, build_filename),
 compile_cmd,
 "cp %s %s" % (filename,nanocube_bin)
 ]
