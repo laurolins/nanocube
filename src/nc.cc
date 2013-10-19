@@ -190,6 +190,7 @@ public: // Public Methods
     void serveTBin      (Request &request);
     void serveSummary   (Request &request);
     void serveGraphViz  (Request &request);
+    void serveTiming    (Request &request);
 
 public:
 
@@ -263,6 +264,8 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
 
     auto graphviz_handler       = std::bind(&NanoCubeServer::serveGraphViz, this, std::placeholders::_1);
 
+    auto timing_handler       = std::bind(&NanoCubeServer::serveTiming, this, std::placeholders::_1);
+
     // register service
     server.registerHandler("query",      json_query_handler);
     server.registerHandler("binquery",   binary_query_handler);
@@ -277,6 +280,10 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     server.registerHandler("tbin",      tbin_handler);
     server.registerHandler("summary",   summary_handler);
     server.registerHandler("graphviz",  graphviz_handler);
+
+    server.registerHandler("timing",  timing_handler);
+
+    server.registerHandler("start",  graphviz_handler);
 
     int tentative=0;
     while (tentative < 100) {
@@ -586,6 +593,14 @@ void NanoCubeServer::serveGraphViz(Request &request)
     request.respondJson(ss.str());
 }
 
+void NanoCubeServer::serveTiming(Request &request)
+{
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
+    server.toggleTiming(!server.isTiming());
+    request.respondJson(server.isTiming() ? "Timing is On" : "Timing is Off");
+}
+
 void NanoCubeServer::serveSchema(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
@@ -689,6 +704,7 @@ void NanoCubeServer::write()
             boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
             for (uint64_t i=0;i<batch_size && !done;++i)
             {
+                // std::cout << i << std::endl;
                 bool ok = nanocube.add(input_stream);
                 if (!ok) {
                     // std::cout << "not ok" << std::endl;

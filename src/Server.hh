@@ -70,6 +70,7 @@ struct Server {
     void start(int mongoose_threads);
     void stop();
     bool toggleTiming(bool b);
+    bool isTiming() const;
     const std::string currentDateTime();
 
     void *mg_callback(mg_event event, mg_connection *conn);

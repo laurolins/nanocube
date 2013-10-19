@@ -100,7 +100,10 @@ void* Server::mg_callback(mg_event event, mg_connection *conn)
 
     if (event == MG_NEW_REQUEST) {
 
-        auto t0 = std::chrono::high_resolution_clock::now();
+        std::chrono::time_point<std::chrono::high_resolution_clock> t0;
+        if (is_timing) {
+            t0 = std::chrono::high_resolution_clock::now();
+        }
 
         const struct mg_request_info *request_info = mg_get_request_info(conn);
 
@@ -227,6 +230,11 @@ bool Server::toggleTiming(bool b)
         }
     }
     return true;
+}
+
+bool Server::isTiming() const
+{
+    return is_timing;
 }
 
 
