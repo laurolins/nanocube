@@ -122,6 +122,10 @@ struct q22 { static const int Kind = QUADTREE; static const int Levels = 22; };
 struct q23 { static const int Kind = QUADTREE; static const int Levels = 23; };
 struct q24 { static const int Kind = QUADTREE; static const int Levels = 24; };
 struct q25 { static const int Kind = QUADTREE; static const int Levels = 25; };
+struct q26 { static const int Kind = QUADTREE; static const int Levels = 26; };
+struct q27 { static const int Kind = QUADTREE; static const int Levels = 27; };
+struct q28 { static const int Kind = QUADTREE; static const int Levels = 28; };
+struct q29 { static const int Kind = QUADTREE; static const int Levels = 29; };
 
 //------------------------------------------------------------------------------
 // Variable Types: unsigned ints
