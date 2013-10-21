@@ -177,10 +177,10 @@ public: // methods
 
     auto find(const AddressType &addr) -> NodeType*;
 
-    auto prepareProperOutdatedPath(FlatTree*             parallel_structure,
+    void prepareProperOutdatedPath(FlatTree*             parallel_structure,
                                    AddressType           address,
                                    std::vector<void*>&   parallel_replaced_nodes,
-                                   NodeStackType&        stack) -> NodeType*;
+                                   NodeStackType&        stack);
 
 
     //
@@ -343,10 +343,10 @@ auto FlatTree<N, Content>::find(const FlatTree::AddressType &addr) -> NodeType*
 }
 
 template<NumBytes N, typename Content>
-auto FlatTree<N, Content>::prepareProperOutdatedPath(FlatTree*                parallel_structure,
+void FlatTree<N, Content>::prepareProperOutdatedPath(FlatTree*                parallel_structure,
                                                      FlatTree::AddressType    address,
                                                      std::vector<void *>&     parallel_replaced_nodes,
-                                                     FlatTree::NodeStackType& stack) -> NodeType*
+                                                     FlatTree::NodeStackType& stack)
 {
     // same implementation as trailProperPath
     // there is no gain on a flattree to share
@@ -382,20 +382,19 @@ auto FlatTree<N, Content>::prepareProperOutdatedPath(FlatTree*                pa
         stack.push_back(child);
         if (needs_to_update_child) {
             stack.push_back(nullptr);
-            return child;
+//            return child;
         }
-        else {
-            //
-            // std::cout << "Special case: saving resources!!" << std::endl;
-            return this;
-        }
+//        else {
+//            std::cout << "Special case: saving resources!!" << std::endl;
+//            return this;
+//        }
     }
 
     else {
         NodeType *child = this->getLink(address.raw_address, true);
         stack.push_back(child);
         stack.push_back(nullptr);
-        return child;
+//        return child;
     }
 
 //    // all nodes in the flattree_n implementation
@@ -582,8 +581,11 @@ bool Iterator<Structure>::next() {
     }
     else {
         // tree.links[current_index].
-        current_label = std::to_string(current_index);
-        current_node = &tree.links[current_index];
+//        current_label = std::to_string(current_index);
+//        current_node = &tree.links[current_index];
+        auto &link = tree.links[current_index];
+        current_label = std::to_string(link.label);
+        current_node = &link;
         return true;
     }
 }

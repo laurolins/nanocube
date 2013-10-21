@@ -26,7 +26,7 @@
 
 namespace mpl = boost::mpl;
 
-#define xDEBUG_STREE
+#define DEBUG_STREE
 
 #ifdef DEBUG_STREE
 static std::string bin(uint32_t x, int length) {

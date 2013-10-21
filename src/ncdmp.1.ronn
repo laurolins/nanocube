@@ -30,6 +30,9 @@ written:
     Convert and dump only the first <num> records from the input file to the
     output file.
 
+  * `--cat`:
+    Copy all input fields as output fields.
+
   * `-v`, `--version`:
     Show ncdmp version and exit.
 

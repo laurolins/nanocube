@@ -141,10 +141,10 @@ public:
     // Make a lazy copy of this path up to the point where
     // there is a proof we can reuse part of the childs path.
     //
-    NodeType* prepareProperOutdatedPath(QuadTree*             parallel_structure,
-                                        AddressType           address,
-                                        std::vector<void*>&   parallel_replaced_nodes,
-                                        NodeStackType&        stack);
+    void prepareProperOutdatedPath(QuadTree*             parallel_structure,
+                                   AddressType           address,
+                                   std::vector<void*>&   parallel_replaced_nodes,
+                                   NodeStackType&        stack);
 
     NodeType* find(AddressType address) const;
 
@@ -651,7 +651,7 @@ QuadTree<N, Content>::add(AddressType address, Point &point, QuadTreeAddPolicy &
  * containing the new data point just added in child_strucutre.
  */
 template<BitSize N, typename Content>
-Node<Content>*
+void
 QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_structure,
                                                 AddressType           address,
                                                 std::vector<void*>   &parallel_replaced_nodes,
@@ -696,8 +696,6 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
     NodeType*    current_parallel_node  = (parallel_structure ? parallel_structure->root : nullptr);
 
     //
-//    std::cout << "current_address.level: " << current_address.level << std::endl;
-//    std::cout << "address.level:         " << address.level         << std::endl;
 
     // traverse the path from root address to address
     // inserting and stacking new proper nodes until
@@ -705,6 +703,10 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
     // or we traverse all the path
     while (current_address.level < address.level)
     {
+
+//        std::cout << "current_address.level: " << current_address << std::endl;
+//        std::cout << "address.level:         " << address         << std::endl;
+
         // assuming address is contained in the current address
         AddressType next_address = current_address.nextAddressTowards(address);
 
@@ -781,12 +783,10 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
             if (parallel_structure == nullptr) {
                 std::cout << "ooops" << std::endl;
             }
-
             // if there is a shared parent-child link in
             // the current structure then the parallel structure
             // needs to exist
             assert(parallel_structure);
-
 
             if (next_node == next_parallel_node) {
 
@@ -874,7 +874,7 @@ QuadTree<N, Content>::prepareProperOutdatedPath(QuadTree<N, Content> *parallel_s
 
     // Shouldn't get here. Should exit
     // when currentAddr == address
-    return current_node; // when add root
+    // return current_node; // when add root
 
 }
 

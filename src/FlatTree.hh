@@ -189,7 +189,7 @@ public:
 
     NodeType* trailProperPath(AddressType addr, NodeStackType &stack);
 
-    NodeType* prepareProperOutdatedPath(FlatTree*             parallel_structure,
+    void      prepareProperOutdatedPath(FlatTree*             parallel_structure,
                                         AddressType           address,
                                         std::vector<void*>&   parallel_replaced_nodes,
                                         NodeStackType&        stack);
@@ -330,8 +330,9 @@ bool Iterator<Content>::next() {
     }
     else {
         // tree.links[current_index].
-        current_label = std::to_string(current_index);
-        current_node = &tree.links[current_index];
+        auto &link = tree.links[current_index];
+        current_label = std::to_string(link.label);
+        current_node = &link;
         return true;
     }
 }
@@ -529,7 +530,7 @@ FlatTree<Content>::trailProperPath(AddressType addr, FlatTree::NodeStackType &st
 
 
 template <typename Content>
-Node<Content>*
+void
 FlatTree<Content>::prepareProperOutdatedPath(FlatTree*                  parallel_structure,
                                              FlatTree::AddressType      address,
                                              std::vector<void*>&        parallel_replaced_nodes,
@@ -566,56 +567,34 @@ FlatTree<Content>::prepareProperOutdatedPath(FlatTree*                  parallel
             needs_to_update_child = false;
         }
 
+        // a third case might occur here:
+        // parallel_child exists, but it is not the same as current child
+        // in this case there is a need to update structure
+        //
+        // check when inserting third point on
+        // a b c-- t count
+        // 2 1 0 1 0 1
+        // 0 0 0 1 1 1
+        // 1 1 0 1 2 1
+        //
+
         stack.push_back(child);
         if (needs_to_update_child) {
             stack.push_back(nullptr);
-            return child;
+            // return child;
         }
-        else {
-            //
-            // std::cout << "Special case: saving resources!!" << std::endl;
-            return this;
-        }
+//        else {
+//             std::cout << "Special case: saving resources!!" << std::endl;
+//             return this;
+//        }
     }
 
     else {
         Node<Content> *child = this->getLink(address.singleton_path_element, true);
         stack.push_back(child);
         stack.push_back(nullptr);
-        return child;
+        // return child;
     }
-
-//    // std::cout << "Running..." << std::endl;
-
-//    //... if parallell structure's
-//    bool add_child = true;
-//    if (parallel_structure && child->contentIsShared()) {
-//        auto parallel_child = parallel_structure->getLink(address[0]);
-//        if (parallel_child && parallel_child->getContent() == child->getContent()) {
-//            std::cout << "Parallel Replaced Nodes" << std::endl;
-//            add_child = false;
-//        }
-//    }
-
-//    stack.push_back(child); // child always goes
-
-//    if (add_child) {
-//        // parallel_replaced_nodes.push_back(child);
-//        stack.push_back(nullptr); // indicates we need to update child content
-//                                  // required by the semantics of nanocube algorithm.
-//                                  // See QuadTree implementation for a proper case.
-
-//        return child; // node we need to update content
-
-//    }
-//    else {
-
-//        return this; // node we need to update content
-
-//    }
-
-
-    // return this;
 }
 
 //
@@ -769,25 +748,15 @@ FlatTree<Content>::makeLazyCopy() const
 {
     FlatTree<Content> *copy = new FlatTree<Content>();
 
-#if 1
-    count_entries += links.size();
+    copy->setSharedContent(this->getContent()); // TODO: check the semantics of the lazy copy
+                                                // in regards to the content
 
+    count_entries += links.size();
     copy->links.resize(links.size());
     std::copy(links.begin(), links.end(), copy->links.begin());
     for (auto &link: copy->links)
         link.setSharedContent(link.getContent()); // mark as shared instead of proper
-#else
-    for (auto &link: links)
-    {
-        copy->links.push_back(link);
-        (*copy->links.rbegin()).setSharedContent(link.getContent());
-//        copy->back().set
-//        link.setSharedContent(link.getContent()); // mark as shared instead of proper
-    }
-#endif
 
-    copy->setSharedContent(this->getContent()); // TODO: check the semantics of the lazy copy
-                             // in regards to the content
     return copy;
 }
 

@@ -25,6 +25,8 @@ int main(int argc, char **argv) {
 
     std::string       type_st("");
 
+    bool    copy_all = false;
+
     for (int i=1;i<argc;i++) {
 
         // split into key value
@@ -50,6 +52,9 @@ int main(int argc, char **argv) {
             version = true;
         }
 #endif
+        else if (tokens[0].compare("--cat") == 0) {
+            copy_all = true;
+        }
         else if (tokens[0].compare("--max") == 0) {
             max = std::stoull(tokens[1]);
         }
@@ -203,6 +208,13 @@ int main(int argc, char **argv) {
     // read input description
     dumpfile::DumpFileDescription input_description;
     std::cin >> input_description;
+
+    if (copy_all) {
+        mapping_scheme = MappingScheme();
+        for (auto field: input_description.fields) {
+            mapping_scheme.addFieldMap(new FD_FieldCopy(field->name, field->name));
+        }
+    }
 
     //
     if (input_description.encoding == dumpfile::DumpFileDescription::unknown) {
