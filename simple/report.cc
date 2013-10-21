@@ -414,10 +414,14 @@ void report_graphviz(std::ostream &os, Report &report) {
         for (Node *node: layer->nodes) {
             os << "   " << node->key << " ";
             if (node->type == Node::INTERNAL_NODE) {
-                os << "[label=\""
-                   << node->layer->layer_id.dimension
-                   << "-"
-                   << node->layer->layer_id.level << "\", "
+//                os << "[label=\""
+//                   << node->layer->layer_id.dimension
+//                   << "-"
+//                   << node->layer->layer_id.level << "\", "
+
+                os << "[label=\"\","
+                   << "width=.5,"
+                   << "height=.5,"
                    << "style=filled, "
                    << "color=" << ((node->layer->layer_id.dimension % 2 == 0) ? "lightgoldenrod3" : "lightpink1")
                    << "];";
@@ -436,9 +440,12 @@ void report_graphviz(std::ostream &os, Report &report) {
         os << "   "
            << link->source_node->key << " -> "
            << link->target_node->key << " ";
-        os << "[ color=" << (link->isContentLink() ? (link->isShared() ? "lightblue3" : "blue") :
-                                                     (link->isShared() ? "gray" : "black")) << ", "
-           << "style=" << (link->isProper() ? "solid" : "dashed") << ","
+//        os << "[ color=" << (link->isContentLink() ? (link->isShared() ? "lightblue3" : "blue") :
+//                                                     (link->isShared() ? "gray" : "black")) << ", "
+        os << "[ color=" << (link->isContentLink() ? (link->isShared() ? "blue" : "blue") :
+                                                     (link->isShared() ? "black" : "black")) << ", "
+           << "style=" << (link->isProper() ? "bold" : "dashed") << ","
+           << "width=2,"
            << "arrowhead=" << (link->isContentLink() ? "normal" : "none") << ","
            << "label=\"" << link->label << "\"]";
         os << std::endl;

@@ -85,6 +85,9 @@ void Nanocube::insert(const Address &addr, const Object &object)
     // assert length of each DimAddress in Address matches
     // with the max levels of each dimension
 
+    std::vector<Node*> parallel_contents(dimension);
+    std::fill(parallel_contents.begin(), parallel_contents.end(),nullptr);
+
     std::vector<std::vector<Node*>> paths(dimension);
 
     if (root == nullptr) {
@@ -95,7 +98,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
     int dimension = this->dimension;
 
-    insert_recursively = [&insert_recursively, &paths, &addr, &object, &dimension]
+    insert_recursively = [&insert_recursively, &paths, &addr, &object, &dimension, &parallel_contents]
             (Node* current_root, int current_dim, Node* child_updated_root) -> void {
 
         std::cout << "insert_recursively, dim:" << current_dim << std::endl;
@@ -118,19 +121,20 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
             if (parent->children.size() == 1) {
                 parent->setContent(child->getContent(), SHARED); // sharing content with children
+
+                if (current_dim < dimension-1) {
+                    parallel_contents[current_dim] = parent->getContentAsNode();
+                }
             }
             else {
-                if (parent->content_link.link_type == SHARED && child &&
-                        parent->getContent() == child->getContent()) {
-                    std::cout << "Entering strange case" << std::endl;
-                    // don't know which case is this one.
-                }
                 if (current_dim == dimension-1) {
                     // last dimension: insert object into summary
                     if (parent->hasContent() == false) {
                         parent->setContent(new Summary(), PROPER); // create proper content
                     }
                     else if (parent->getContentType() == SHARED) {
+                        // since number of children is not one, we need to clone
+                        // content and insert new object
                         parent->setContent(new Summary(*parent->getContentAsSummary()), PROPER); // create proper content
                     }
                     parent->getContentAsSummary()->insert(object);
@@ -141,9 +145,23 @@ void Nanocube::insert(const Address &addr, const Object &object)
                         parent->setContent(new Node(), PROPER); // create proper content
                     }
                     else if (parent->getContentType() == SHARED) {
+                        // need to copy
                         parent->setContent(parent->getContentAsNode()->shallowCopy(), PROPER); // create proper content
                     }
-                    insert_recursively(parent->getContentAsNode(), current_dim+1, child ? child->getContentAsNode() : nullptr);
+
+                    Node* parallel_content = parallel_contents[current_dim]; //nullptr;
+                    if (!parallel_content && child) {
+                        parallel_content = child->getContentAsNode();
+                    }
+//                    else {
+//                        parallel_content = parallel_contents[current_dim];
+//                    }
+
+                    insert_recursively(parent->getContentAsNode(), current_dim+1, parallel_content);
+
+//                     update parallel content (for coarser contents on that dimension)
+                    parallel_contents[current_dim] = parent->getContentAsNode();
+                    //}
                 }
             }
             child = parent;
@@ -323,6 +341,10 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
         }
         else if (next_node_link_type == SHARED) {
             // assert(next_parallel_node);
+#if 1
+            bool created = false;
+            current_node->setParentChildLink(label, next_parallel_node, SHARED, created);
+#else
             if (next_node == next_parallel_node) {
                 result_path.push_back(next_node); // append end-marker
                 break;
@@ -335,6 +357,7 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
                 bool created = false;
                 current_node->setParentChildLink(label, next_node, PROPER, created);
             }
+#endif
         }
 
         // update current_parallel_node

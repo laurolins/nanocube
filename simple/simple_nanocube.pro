@@ -30,11 +30,13 @@ LIBS        += -L$${LOCAL}/lib -ldl -lpthread -lz -lboost_thread-mt -lboost_syst
 INCLUDEPATH += .
 
 HEADERS = \
+log.hh \
 simple_nanocube.hh \
 simple_nanocube_iterator.hh \
 report.hh
 
 SOURCES =  \
+log.cc \
 simple_nanocube.cc \
 simple_nanocube_iterator.cc \
 report.cc \

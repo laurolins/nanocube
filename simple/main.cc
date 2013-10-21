@@ -162,7 +162,7 @@ inline constexpr int operator"" _c ( char c )
 
 int main() {
 
-#if 1
+#if 0
     Nanocube nc({2, 1});
     nc.insert({{'C'_c,2},{1}}, 1);
     nc.insert({{'C'_c,2},{2}}, 2);
@@ -170,10 +170,13 @@ int main() {
     nc.insert({{'D'_c,1},{1}}, 4);
     nc.insert({{'B'_c,4},{2}}, 5);
 #else
-    Nanocube nc({2, 1});
-    nc.insert({{1,2},{4,5},{5,5}}, 1);
-    nc.insert({{1,3},{3,5},{4,5}}, 2);
-    nc.insert({{1,3},{4,6},{2,5}}, 3);
+    Nanocube nc({1, 1, 1, 1});
+//    nc.insert({{2},{1},{1},{1}}, 1);
+//    nc.insert({{0},{0},{1},{2}}, 2);
+    nc.insert({{0},{1},{0},{0}}, 1);
+//    nc.insert({{1},{1},{2},{1}}, 4);
+    nc.insert({{2},{0},{2},{0}}, 2);
+    nc.insert({{0},{2},{0},{0}}, 3);
 #endif
 
 //    Nanocube nc({2});
