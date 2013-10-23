@@ -13,7 +13,7 @@ struct Point {
     Point() = default;
     constexpr Point(double x, double y);
     inline constexpr double sqrlen() const;
-    inline constexpr double len() const;
+    inline double len() const;
     double x { 0 };
     double y { 0 };
 };
@@ -26,7 +26,7 @@ inline constexpr double Point::sqrlen() const {
     return x*x + y*y;
 }
 
-inline constexpr double Point::len() const {
+inline double Point::len() const {
     return sqrt(sqrlen());
 }
 
