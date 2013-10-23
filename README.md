@@ -9,6 +9,18 @@ elements at interactive rates in a web browser, and in some cases nanocubes
 uses sufficiently little memory that you can run a nanocube in a
 modern-day laptop.
 
+## News
+
+<table>
+<tr>
+<td>
+2013-10-22  
+</td>
+<td>
+<a href="https://github.com/laurolins/nanocube/wiki">Overview on how to use nanocubes</a>
+</td>
+</tr>
+</table>
 
 ## Prerequisites
 

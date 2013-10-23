@@ -1,8 +1,3 @@
-// #include <stdio.h>
-// #include <stdlib.h>
-
-#include <ext/stdio_filebuf.h>
-
 #include <unistd.h>    /* for fork */
 #include <sys/types.h> /* for pid_t */
 #include <sys/wait.h>  /* for wait */
@@ -166,27 +161,14 @@ int main(int argc, char **argv)
     }
     else {
 
-        /* Close unused pipe */
-        // close(pipe_read_file_descriptor);
+        std::stringstream ss;
+        ss << input_file_description;
+        ss << std::endl;
+        std::string contents = ss.str();
 
-        /* Attach pipe write file to stdout */
-        // dup2(pipe_write_file_descriptor, STDOUT_FILENO);
-        // std::ostream &os = std::cout;
-
-        // int posix_handle = ::_fileno(::fopen("test.txt", "r"));
-        // output stream
-        __gnu_cxx::stdio_filebuf<char> filebuf(pipe_write_file_descriptor, std::ios::out);
-        std::ostream os(&filebuf); // 1
-
-        // std::ofdstream pipe_output_stream(pipe_write_file_descriptor);
-
-        // restream the schema
-        os << input_file_description;
-        // pipe_output_stream << input_file_description;
-
-        // signal that data is going to come
-        os << std::endl;
-        // pipe_output_stream << std::endl;
+        FILE *f = fdopen(pipe_write_file_descriptor, "w");
+        
+        fwrite((void*) contents.c_str(),1 , contents.size(), f);
 
         // write everything coming from stdin to child process
         const int BUFFER_SIZE = 4095;
@@ -196,28 +178,23 @@ int main(int argc, char **argv)
             if (!std::cin) {
                 int gcount = std::cin.gcount();
                 if (gcount > 0) {
-                    // std::string st(&buffer[0], &buffer[gcount]);
-                    // std::replace( st.begin(), st.end(), '\n', 'L');
-                    // std::out << "server writes > " << st << std::endl;
-                    os.write(buffer, gcount);
+                    fwrite((void*) buffer, 1, gcount, f);
                 }
                 break;
             }
             else {
-                os.write(buffer, BUFFER_SIZE);
-                // std::string st(&buffer[0], &buffer[BUFFER_SIZE]);
-                // std::replace( st.begin(), st.end(), '\n', 'L');
-                // std::cerr << "server writes > " << st << std::endl;
+                fwrite((void*) buffer, 1, BUFFER_SIZE, f);
             }
         }
 
         // clear
-        os.flush();
+        fflush(f);
 
         //
         // std::cerr << "Waiting for child process to finish" << std::endl;
 
         // done writing on the pipe
+        fclose(f);
         close(pipe_write_file_descriptor);
 
         //
