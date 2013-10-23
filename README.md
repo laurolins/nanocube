@@ -1,5 +1,4 @@
-**NEW: [overview on how to use nanocubes](https://github.com/laurolins/nanocube/wiki "Overview"**
-
+**[NEW: Overview on how to use nanocubes](https://github.com/laurolins/nanocube/wiki "Overview")**
 # Nanocubes: an in-memory data structure for spatiotemporal data cubes
 
 Nanocubes are a fast datastructure for in-memory data cubes developed
