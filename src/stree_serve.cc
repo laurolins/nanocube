@@ -73,8 +73,9 @@ Server *g_server;
 static std::string gs_hname;
 static int         gs_hport;
 static std::string gs_schema_name;
-static std::string gs_nanodb = "dt-jklosow.client.research.att.com:29999";
+static std::string gs_nanodb = "localhost:29999";
 
+#define USE_NOTIFICATION_SERVER 0
 #define xDEBUG_STREE_SERVER
 
 // #include <boost/mpl/next_prior.hpp>
@@ -2546,6 +2547,7 @@ void Index<NumFlatTrees, QuadTreeLevels, EntryType>::serveRegister(Request &requ
     std::stringstream ss;
     ss << "Registering nanocube with database on " << gs_nanodb << std::endl;
 
+#if USE_NOTIFICATION_SERVER
     std::stringstream nano_up;
     nano_up << "curl http://" << gs_nanodb << "/online/"
             << gs_hname
@@ -2554,6 +2556,7 @@ void Index<NumFlatTrees, QuadTreeLevels, EntryType>::serveRegister(Request &requ
             << "/" << "0.0.1";
     std::string system_call = nano_up.str();
     system(system_call.c_str());
+#endif
 
     request.respondJson(ss.str());
 }
@@ -3789,6 +3792,11 @@ int main(int argc, char** argv)
         // update port
         server.port = port;
 
+#if USE_NOTIFICATION_SERVER
+        // This is a completely rudimentary registering mechanism
+        // for monitoring many nanocube processes.
+        // Useless for a public release, I suppose.
+
         std::stringstream nano_up;
         nano_up << "curl http://" << gs_nanodb << "/online/"
                 << gs_hname
@@ -3797,6 +3805,7 @@ int main(int argc, char** argv)
                 << "/" << "0.0.1";
         std::string system_call = nano_up.str();
         system(system_call.c_str());
+#endif
 
         // create authentication code
         std::string auth_code = random_string();
