@@ -3407,6 +3407,7 @@ void exitFunction(void)
 {
     std::cerr << "Shuting down..." << std::endl;
 
+#if USE_NOTIFICATION_SERVER
     std::stringstream nano_down;
     nano_down << "curl http://" << gs_nanodb << "/offline/"
               << gs_hname
@@ -3414,6 +3415,7 @@ void exitFunction(void)
               << "/" << exit_status;
     std::string system_call = nano_down.str();
     system(system_call.c_str());
+#endif
 }
 
 void signalHandler(int signum)
