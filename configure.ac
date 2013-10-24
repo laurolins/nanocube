@@ -8,7 +8,7 @@ if test "$arch" != "x86_64"; then
     AC_MSG_ERROR([*** Nanocubes requires x86_64 architecure ***])
 fi
 
-AC_CONFIG_SRCDIR([src/dump_mts.cc])
+AC_CONFIG_SRCDIR([src/main.cc])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([aux-scripts])
