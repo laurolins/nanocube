@@ -49,7 +49,7 @@ var view_schemata = {
     },
 
     "brightkite": {
-        url: "http://rcloud-lba-02.research.att.com/nanocube/14",
+        url: "http://127.0.0.1:29512",
         title: "Brightkite Checkins",
         center: { lat: 0, lon: 0, zoom: 1 },
         time_range: [ new Date(2008,0,1), new Date(2010, 11, 1) ],
@@ -60,19 +60,19 @@ var view_schemata = {
               height: 100,
               border: 0,
               field: { 
-                  name: "dayofweek",
+                  name: "day_of_week",
                   title: "Day of Week",
-                  values: ["Mon", "Tue", "Wed", "Thr", "Fri", "Sat", "Sun"]
+                  values: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
               }
             },
             { type: "histogram", 
               height: 320,
               border: 0,
               field: {
-                  name: "hour",
+                  name: "hour_of_day",
                   title: "Hour",
-                  values: ["0", "1", "2", "3", "4", "5",
-                           "6", "7", "8", "9", "10", "11", 
+                  values: ["00", "01", "02", "03", "04", "05",
+                           "06", "07", "08", "09", "10", "11", 
                            "12", "13", "14", "15", "16", "17",
                            "18", "19", "20", "21", "22", "23"]
               }
@@ -81,17 +81,17 @@ var view_schemata = {
               border: 0,
               height: 100,
               field_x: {
-                  name: "hour",
+                  name: "hour_of_day",
                   title: "Hour",
-                  values: ["0", "1", "2", "3", "4", "5",
-                           "6", "7", "8", "9", "10", "11", 
+                  values: ["00", "01", "02", "03", "04", "05",
+                           "06", "07", "08", "09", "10", "11", 
                            "12", "13", "14", "15", "16", "17",
                            "18", "19", "20", "21", "22", "23"]
               },
               field_y: { 
-                  name: "dayofweek",
+                  name: "day_of_week",
                   title: "Day of Week",
-                  values: ["Sun", "Sat", "Fri", "Thr", "Wed", "Tue", "Mon"]
+                  values: ["Sun", "Sat", "Fri", "Thu", "Wed", "Tue", "Mon"]
               }
             },
             { type: "time-series",
