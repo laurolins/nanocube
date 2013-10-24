@@ -161,13 +161,13 @@ template<typename Entry>
 uint64_t TimeSeries<Entry>::count_num_adds = 0;
 
 template<typename Entry>
-static void* TimeSeries<Entry>::operator new(size_t size) {
+void* TimeSeries<Entry>::operator new(size_t size) {
     count_new++;
     return ::operator new(size);
 }
 
 template<typename Entry>
-static void TimeSeries<Entry>::operator delete(void *p) {
+void TimeSeries<Entry>::operator delete(void *p) {
     count_delete++;
     ::operator delete(p);
 }
