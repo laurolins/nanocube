@@ -269,6 +269,10 @@ Nanocube.create = function(opts)
         }
     };
     d3.text(url + "/version", function(error, data) {
+        if (error !== null) {
+            alert("Error! It seems that there's no nanocube server on " + url);
+            return;
+        }
         if (error === null && data !== 'no handler found for /version (request key: version)') {
             result.version = data.slice(1, data.length-1);
         }
