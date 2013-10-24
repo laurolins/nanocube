@@ -100,7 +100,7 @@ public:
 
 struct Node {
 public: // nanocube API
-    void prepareOutdatedProperPath(const Node* child_updated_path, const DimAddress &addr, std::vector<Node*> &result_path);
+    void prepareOutdatedProperPath(const Node* child_updated_path, const DimAddress &addr, std::vector<Node*> &result_path, int current_dim);
     Node* shallowCopy() const;
 public:
     void* getContent() const;

@@ -6,6 +6,8 @@
 #include <fstream>
 #include <string>
 
+#include <log.hh>
+
 //-----------------------------------------------------------------------------
 // getLabel<T>(T *obj)
 //-----------------------------------------------------------------------------
@@ -169,7 +171,7 @@ int main() {
     nc.insert({{'B'_c,3},{2}}, 3);
     nc.insert({{'D'_c,1},{1}}, 4);
     nc.insert({{'B'_c,4},{2}}, 5);
-#else
+#elif 0
     Nanocube nc({1, 1, 1, 1});
 //    nc.insert({{2},{1},{1},{1}}, 1);
 //    nc.insert({{0},{0},{1},{2}}, 2);
@@ -177,6 +179,15 @@ int main() {
 //    nc.insert({{1},{1},{2},{1}}, 4);
     nc.insert({{2},{0},{2},{0}}, 2);
     nc.insert({{0},{2},{0},{0}}, 3);
+#else
+    Nanocube nc({1, 1, 1});
+//    nc.insert({{2},{1},{1},{1}}, 1);
+//    nc.insert({{0},{0},{1},{2}}, 2);
+    nc.insert({{0},{1},{0}}, 1);
+//    nc.insert({{1},{1},{2},{1}}, 4);
+    nc.insert({{2},{0},{2}}, 2);
+    nc.insert({{0},{2},{0}}, 3);
+
 #endif
 
 //    Nanocube nc({2});
@@ -197,6 +208,12 @@ int main() {
     system(("open " + pdf_filename).c_str());
 
     // report::report_graphviz(std::cout, rep);
+
+
+    std::ofstream json_file("/tmp/actions.json");
+    logging::getLog().dump_json_actions(json_file);
+    json_file.close();
+
 
 }
 

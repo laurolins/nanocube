@@ -1,0 +1,120 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/tr/xhtml1/DTD/xhtml1-transitional.dtd"> 
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"> 
+<head> 
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta type="author" content="Jason Chavannes" />
+	<title>jQuery Timer Demo</title>
+	
+	<style type='text/css'>
+	body {
+		font-family: Arial;
+		font-size: 12px;
+	}
+	label {
+	 	display: inline-block;
+	 	*display:inline;
+	 	zoom:1;
+		width: 30px;
+	}
+	input[type=button] {
+		padding: 4px 10px;
+		margin: 5px 0px 0px;
+		font-size: 14px;
+		width: 200px;
+		color: #3a3a3a;
+	}
+	input[type=button]:hover {
+		cursor: pointer;
+		color: #000;
+	}
+	input[type=button].break {
+		margin-top: 15px;
+	}
+	a {
+		color: #444;
+		text-decoration: underline;
+	}
+	a:hover {
+		color: #000;
+		cursor: pointer;
+	}
+	p {
+		margin: 0px;
+	}
+	pre {
+		background-color: #eee;
+		border: 1px solid #ccc;
+		width: 490px;
+		padding: 5px;
+	}
+	div {
+	 	display: inline-block;
+	 	*display:inline;
+	 	zoom:1;
+		width: 300px; 
+	} 
+	.count {
+		font-weight: bold;
+		font-size: 20px;
+		padding: 0px 2px;
+	}
+	</style>
+	
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="jquery.timer.js"></script>
+</head> 
+<body>
+
+	<h1>jQuery Timer Demo</h1>
+	<p>by <a href='mailto:jason.chavannes@gmail.com'>Jason Chavannes</a></p>
+	<p><a href='http://jchavannes.com/jquery-timer'>http://jchavannes.com/jquery-timer</a></p>
+
+	<hr/><br/>
+	
+		<p>timer has been played <span class='count'>0</span> times.</p>
+
+	<div>
+		
+		<input type='button' value='timer.play()' onclick='timer.play();' /><br/>
+		<input type='button' value='timer.play(true)' onclick='timer.play(true);' /><br/>
+		<input type='button' value='timer.pause()' onclick='timer.pause();' /><br/>
+		<input type='button' value='timer.toggle()' onclick='timer.toggle();' /><br/>
+		<input type='button' value='timer.toggle(true)' onclick='timer.toggle(true);' />
+	</div>
+	
+	<div>
+		<input type='button' value='timer.reset()' onclick='timer.reset();' /><br/>
+		<input type='button' value='timer.once()' onclick='timer.once();' /><br/>
+		<input type='button' value='timer.once(5000)' onclick='timer.once(5000);' /><br/>
+		<input type='button' value='timer.set({time:1000})' onclick='timer.set({time:1000});' /><br/>
+		<input type='button' value='timer.set({time:5000})' onclick='timer.set({time:5000});' />	
+	</div>
+
+	<br/><br/>
+
+		<pre>
+var count = 0;
+var timer = 
+	$.timer(
+		function() {
+			count++;
+			$('.count').html(count);
+		},
+		1000,
+		true
+	);		</pre>
+	
+	<script type="text/javascript">	
+		var count = 0;
+		var timer = $.timer(
+			function() {
+				count++;
+				$('.count').html(count);
+			},
+			1000,
+			true
+		);	
+	</script>
+	
+</body>
+</html>
