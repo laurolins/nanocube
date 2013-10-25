@@ -101,9 +101,9 @@ public:
 struct Node {
 public: // nanocube API
     // void prepareOutdatedProperPath(const Node* child_updated_path, const DimAddress &addr, std::vector<Node*> &result_path, int current_dim);
-    void prepareOutdatedProperPath(const Node *parallel_root,
-                                   const DimAddress &addr,
-                                   std::vector<Node *> &result_path,
+    void prepareOutdatedProperPath(const Node*               parallel_root,
+                                   const DimAddress          &addr,
+                                   std::vector<Node *>       &result_path,
                                    std::vector<const Node *> &parallel_path,
                                    int current_dim);
     Node* shallowCopy() const;
@@ -124,7 +124,12 @@ public:
     Node* getChild(Label label) const;
     Node* getChild(Label label, LinkType &link_type) const;
 
+    void setProperParent(Node* parent, Label lbl);
+
 public:
+    Node* proper_parent { nullptr }; // defined once, never changes
+    Label label {-1};
+
     std::vector<ParentChildLink> children;
     ContentLink content_link;
 };

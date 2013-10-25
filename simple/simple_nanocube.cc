@@ -154,6 +154,15 @@ static void log_highlight_node(const Node* node, logging::Color color) {
     logging::getLog().highlightNode((logging::NodeID)node, color);
 }
 
+static void log_highlight_child_link(const Node* node, Label label, logging::Color color) {
+    logging::getLog().highlightChildLink((logging::NodeID)node,label,color);
+}
+
+static void log_highlight_content_link(const Node* node, logging::Color color) {
+    logging::getLog().highlightContentLink((logging::NodeID)node,color);
+}
+
+
 void Nanocube::insert(const Address &addr, const Object &object)
 {
 
@@ -193,6 +202,9 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
     insert_recursively = [&insert_recursively, &paths, &addr, &object, &dimension, &parallel_paths]
             (Node* current_root, int current_dim, const Node* child_updated_root) -> void {
+
+
+
 
 
 #ifdef LOG
@@ -341,7 +353,27 @@ void Nanocube::insert(const Address &addr, const Object &object)
 //                        parallel_content = parallel_contents[current_dim];
 //                    }
 
+
+#ifdef LOG
+                    {
+                        log_highlight_content_link(parent, highlight::MAIN);
+                        if (parallel_parent) {
+                            log_highlight_content_link(parallel_parent, highlight::PARALLEL);
+                        }
+                    }
+#endif
+
                     insert_recursively(parent->getContentAsNode(), current_dim+1, parallel_content);
+
+#ifdef LOG
+                    {
+                        log_highlight_content_link(parent, highlight::CLEAR);
+                        if (parallel_parent) {
+                            log_highlight_content_link(parallel_parent, highlight::CLEAR);
+                        }
+                    }
+#endif
+
 
 //                     update parallel content (for coarser contents on that dimension)
                     // parallel_contents[current_dim] = parent->getContentAsNode();
@@ -354,8 +386,19 @@ void Nanocube::insert(const Address &addr, const Object &object)
                 std::string st_msg = parallel_parent? "...moving up parent and parallel_parent" : "...moving up parent only";
                 LogMsg msg(st_msg);
                 log_highlight_node(parent, highlight::CLEAR);
+                if (parent->proper_parent != nullptr) {
+                    log_highlight_child_link(parent->proper_parent,
+                                             parent->label,
+                                             highlight::CLEAR);
+                }
+
                 if (parallel_parent) {
                     log_highlight_node(parallel_parent, highlight::CLEAR);
+                    if (parallel_parent->proper_parent != nullptr) {
+                        log_highlight_child_link(parallel_parent->proper_parent,
+                                                 parallel_parent->label,
+                                                 highlight::CLEAR);
+                    }
                 }
             }
 #endif
@@ -427,6 +470,11 @@ void Node::setParentChildLink(Label label, Node *node, LinkType link_type, bool 
         children.insert(it, ParentChildLink(label, node, link_type));
         created = true;
     }
+
+    if (link_type == PROPER) {
+        node->setProperParent(this, label);
+    }
+
 }
 
 Node* Node::getChild(Label label) const
@@ -458,6 +506,12 @@ Node* Node::getChild(Label label, LinkType &link_type) const
     else {
         return nullptr;
     }
+}
+
+void Node::setProperParent(Node *parent, Label lbl)
+{
+    this->proper_parent = parent;
+    this->label         = lbl;
 }
 
 LinkType Node::getContentType() const
@@ -593,6 +647,7 @@ void Node::prepareOutdatedProperPath(const Node*          parallel_root,
                     Node *aux = current_node;
                     for (size_t ii=index;ii<addr.size();ii++) {
                         aux = current_node->getChild(addr[ii]);
+                        log_highlight_child_link(current_node, addr[ii], highlight::MAIN);
                         log_highlight_node(aux, highlight::MAIN);
                     }
                 }
@@ -640,16 +695,17 @@ void Node::prepareOutdatedProperPath(const Node*          parallel_root,
 
 #ifdef LOG
                 {
+
                     LogMsg msg("...main path sharing branch not in parallel path: shallow copy, continue");
                     log_shallow_copy(next_node,current_dim,index+1);
 
-//                logging::getLog().newNode((logging::NodeID) next_node, current_dim, index+1);
-//                for (auto &child_link: next_node->children) {
-//                    logging::getLog().setChildLink((logging::NodeID) next_node, (logging::NodeID) child_link.child, child_link.label, logging::SHARED);
-//                }
-//                if (next_node->getContent() != nullptr) {
-//                    logging::getLog().setContentLink((logging::NodeID) next_node, (logging::NodeID) next_node->getContent(), logging::SHARED);
-//                }
+                    //                logging::getLog().newNode((logging::NodeID) next_node, current_dim, index+1);
+                    //                for (auto &child_link: next_node->children) {
+                    //                    logging::getLog().setChildLink((logging::NodeID) next_node, (logging::NodeID) child_link.child, child_link.label, logging::SHARED);
+                    //                }
+                    //                if (next_node->getContent() != nullptr) {
+                    //                    logging::getLog().setContentLink((logging::NodeID) next_node, (logging::NodeID) next_node->getContent(), logging::SHARED);
+                    //                }
 
 
                     log_set_child_link(current_node,addr[index]);
@@ -667,22 +723,30 @@ void Node::prepareOutdatedProperPath(const Node*          parallel_root,
             }
         }
 
-        // update current_node, previous_node and stack
-        current_node    = next_node;
-
-        // update current_parallel_node
-        current_parallel_node = next_parallel_node;
-
-        // push paths
-        result_path.push_back(current_node);
-        if (current_parallel_node != nullptr) {
-            parallel_path.push_back(current_parallel_node);
-        }
 
 #ifdef LOG
         {
-            std::string st_msg = current_parallel_node ? "...advancing main and parallel frontier" : "...advancing main frontier only";
+            std::string st_msg = next_parallel_node ? "...advancing main and parallel frontier" : "...advancing main frontier only";
             LogMsg msg(st_msg);
+
+            log_highlight_child_link(current_node, addr[index], highlight::MAIN);
+            if (next_parallel_node) {
+                log_highlight_child_link(current_parallel_node, addr[index], highlight::PARALLEL);
+            }
+#endif
+            // update current_node, previous_node and stack
+            current_node    = next_node;
+
+            // update current_parallel_node
+            current_parallel_node = next_parallel_node;
+
+            // push paths
+            result_path.push_back(current_node);
+            if (current_parallel_node != nullptr) {
+                parallel_path.push_back(current_parallel_node);
+            }
+
+#ifdef LOG
             log_highlight_node(current_node, highlight::MAIN);
             if (current_parallel_node) {
                 // parallel_highlight_stack.push_back(current_parallel_node);

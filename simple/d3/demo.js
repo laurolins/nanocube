@@ -1,3 +1,8 @@
+var global_variables = {
+    main_color:     "#FF0000",
+    parallel_color: "#00FF00"
+};
+
 function Timer(callback, delay) {
     var timerId, start, remaining = delay;
 
@@ -221,10 +226,10 @@ Node.prototype.updateUI = function(state) {
 
     var stroke = "#777777";
     if (this.color == 1) {
-        stroke = "#FF0000";
+        stroke = global_variables.main_color;
     }
     else if (this.color == 2) {
-        stroke = "#00FF00";
+        stroke = global_variables.parallel_color;
     }
 
     var circle = this.dom.selectAll("circle");
@@ -245,16 +250,29 @@ function ChildLink(parent, child, label, shared) {
     this.child  = child
     this.label  = label
     this.shared = shared
+
+    this.color  = 0
+    
     this.dom       = null
     this.dom_link  = null
+    this.dom_link_highlight = null
     this.dom_label = null
 }
 
-ChildLink.prototype.setDOM = function(dom, dom_link, dom_label) {
+ChildLink.prototype.setDOM = function(dom, dom_link, dom_label, dom_link_highlight) {
     this.dom = dom;
     this.dom_link  = dom_link;
     this.dom_label = dom_label;
+    this.dom_link_highlight = dom_link_highlight;
     return this;
+}
+
+ChildLink.prototype.setColor = function(color) {
+    this.color = color;
+}
+
+ChildLink.prototype.getColor = function() {
+    return this.color;
 }
 
 ChildLink.prototype.setVisible = function(flag) {
@@ -276,7 +294,19 @@ ChildLink.prototype.updateUI = function(state) {
         .interpolate("linear");
 
     this.dom_link.attr("d", lineFunction(data));
+    this.dom_link_highlight.attr("d", lineFunction(data));
 
+    if (this.color == 0) {
+        this.dom_link_highlight.attr("visibility","hidden");
+    }
+    else if (this.color == 1) {
+        this.dom_link_highlight.attr("visibility","visible");
+        this.dom_link_highlight.style("stroke",global_variables.main_color);
+    }
+    else if (this.color == 2) {
+        this.dom_link_highlight.attr("visibility","visible");
+        this.dom_link_highlight.style("stroke",global_variables.parallel_color);
+    }
     
     var u = new Vec2(this.parent.pos.x, this.parent.pos.y);
     var v = new Vec2(this.child.pos.x, this.child.pos.y);
@@ -296,10 +326,23 @@ ChildLink.prototype.updateUI = function(state) {
 //------------------------------------------------------------------------------
 
 function ContentLink(node, content, shared) {
-    this.node     = node
-    this.content  = content
-    this.shared   = shared
-    this.dom      = null
+    this.node     = node;
+    this.content  = content;
+    this.shared   = shared;
+
+    this.color    = 0;
+
+    this.dom                        = null;
+    this.dom_content_link           = null;
+    this.dom_content_link_highlight = null;
+}
+
+ContentLink.prototype.setColor = function(color) {
+    this.color = color;
+}
+
+ContentLink.prototype.getColor = function() {
+    return this.color;
 }
 
 ContentLink.prototype.setVisible = function(flag) {
@@ -309,10 +352,13 @@ ContentLink.prototype.setVisible = function(flag) {
     else {
         this.dom.attr("visibility","hidden");
     }
+    return this;
 }
 
-ContentLink.prototype.setDOM = function(dom) {
+ContentLink.prototype.setDOM = function(dom, dom_content_link, dom_content_link_highlight) {
     this.dom = dom;
+    this.dom_content_link = dom_content_link
+    this.dom_content_link_highlight = dom_content_link_highlight
     return this;
 }
 
@@ -358,8 +404,20 @@ ContentLink.prototype.updateUI = function(state) {
         .y(function(d) { return d.y; })
         .interpolate("basis");
 
-    this.dom
-        .attr("d", lineFunction(data));
+    this.dom_content_link.attr("d", lineFunction(data));
+    this.dom_content_link_highlight.attr("d", lineFunction(data));
+
+    if (this.color == 0) {
+        this.dom_content_link_highlight.attr("visibility","hidden");
+    }
+    else if (this.color == 1) {
+        this.dom_content_link_highlight.attr("visibility","visible");
+        this.dom_content_link_highlight.style("stroke",global_variables.main_color);
+    }
+    else if (this.color == 2) {
+        this.dom_content_link_highlight.attr("visibility","visible");
+        this.dom_content_link_highlight.style("stroke",global_variables.parallel_color);
+    }
 
     return this;
 }
@@ -446,7 +504,7 @@ ActionStore.prototype.unexecute = function() {
 }
 
 //------------------------------------------------------------------------------
-// ActionStore
+// ActionHighlightNode
 //------------------------------------------------------------------------------
 
 function ActionHighlightNode(node, color) {
@@ -473,6 +531,61 @@ ActionHighlightNode.prototype.unexecute = function() {
     return this;
 }
 
+//------------------------------------------------------------------------------
+// ActionHighlightChildLink
+//------------------------------------------------------------------------------
+
+function ActionHighlightChildLink(child_link, color) {
+    this.child_link = child_link;
+    this.color      = color;
+    this.old_color  = child_link.getColor();
+}
+
+ActionHighlightChildLink.prototype.execute = function() {
+    this.child_link.setColor(this.color);
+    this.child_link.updateUI();
+
+    console.log("Execute ActionHighlightChildLink");
+
+    return this;
+}
+
+ActionHighlightChildLink.prototype.unexecute = function() {
+    this.child_link.setColor(this.old_color);
+    this.child_link.updateUI();
+
+    console.log("Undo ActionHighlightChildLink");
+
+    return this;
+}
+
+//------------------------------------------------------------------------------
+// ActionHighlightContent
+//------------------------------------------------------------------------------
+
+function ActionHighlightContentLink(content_link, color) {
+    this.content_link = content_link;
+    this.color        = color;
+    this.old_color    = content_link.getColor();
+}
+
+ActionHighlightContentLink.prototype.execute = function() {
+    this.content_link.setColor(this.color);
+    this.content_link.updateUI();
+
+    console.log("Execute ActionHighlightContentLink");
+
+    return this;
+}
+
+ActionHighlightContentLink.prototype.unexecute = function() {
+    this.content_link.setColor(this.old_color);
+    this.content_link.updateUI();
+
+    console.log("Undo ActionHighlightContentLink");
+
+    return this;
+}
 
 //------------------------------------------------------------------------------
 // ActionNewNode
@@ -681,7 +794,23 @@ function Model(state) {
             .y(function(d) { return d.y; })
             .interpolate("linear");
 
-        var dom = state.content_links_layer.selectAll("content_links")
+        var group = state.content_links_layer.selectAll("nodes")
+            .data([node])
+            .enter()
+            .append("g")
+            .attr("class", "node");
+
+        var dom_content_link_highlight = group.selectAll("content_link_highlight")
+            .data([0])
+            .enter()
+            .append("path")
+            // .attr("visibility","hidden")
+            .attr("d", lineFunction(data))
+            .attr("stroke", "red")
+            .attr("stroke-width", 10)
+            .attr("fill", "none");
+
+        var dom_content_link = group.selectAll("content_link")
             .data([0])
             .enter()
             .append("path")
@@ -692,7 +821,7 @@ function Model(state) {
             .attr("stroke-width", 1)
             .attr("fill", "none");
 
-        content_link.setDOM(dom);
+        content_link.setDOM(group, dom_content_link, dom_content_link_highlight);
 
     }
 
@@ -710,6 +839,17 @@ function Model(state) {
             .enter()
             .append("g")
             .attr("class", "node");
+
+        var dom_link_highlight = master_group.selectAll("link_highlight")
+            .data([0])
+            .enter()
+            .append("path")
+            // .attr("visibility","hidden")
+            .attr("d", lineFunction(data))
+            .attr("stroke-dasharray", (child_link.shared ? "5,5" : "5,0"))
+            .attr("stroke", "red")
+            .attr("stroke-width", 10)
+            .attr("fill", "none");
 
         var dom_link = master_group.selectAll("child_link")
             .data([0])
@@ -750,7 +890,7 @@ function Model(state) {
             .attr("dy", ".35em")
             .text( function (d) { return d.label; })
 
-        child_link.setDOM(master_group, dom_link, dom_label);
+        child_link.setDOM(master_group, dom_link, dom_label, dom_link_highlight);
 
 
     }
@@ -824,6 +964,14 @@ function Model(state) {
         }
         else if (a.action == "highlight_node") {
             this.execute(new ActionHighlightNode(this.node_map[a.node], a.color));
+        }
+        else if (a.action == "highlight_child_link") {
+            var child_link = this.node_map[a.node].children[a.label];
+            this.execute(new ActionHighlightChildLink(child_link, a.color));
+        }
+        else if (a.action == "highlight_content_link") {
+            var content_link = this.node_map[a.node].content;
+            this.execute(new ActionHighlightContentLink(content_link, a.color));
         }
     }
 
@@ -949,7 +1097,7 @@ $(document).ready(function() {
                     model.rewind(); 
                 }
             }
-        }, 125, true);
+        }, 60, true);
 
 
         function log_svg()

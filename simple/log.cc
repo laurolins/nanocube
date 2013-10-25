@@ -142,7 +142,7 @@ void ActionHighlightNode::json(std::ostream &os) const
 //-----------------------------------------------------------------------------
 
 ActionHighlightContentLink::ActionHighlightContentLink(NodeName node_name, Color color):
-    Action(ACTION_HIGHLIGHT_NODE),
+    Action(ACTION_HIGHLIGHT_CONTENT_LINK),
     node_name(node_name),
     color(color)
 {}
@@ -160,7 +160,7 @@ void ActionHighlightContentLink::json(std::ostream &os) const
 //-----------------------------------------------------------------------------
 
 ActionHighlightChildLink::ActionHighlightChildLink(NodeName node_name, Label label, Color color):
-    Action(ACTION_HIGHLIGHT_NODE),
+    Action(ACTION_HIGHLIGHT_CHILD_LINK),
     node_name(node_name),
     label(label),
     color(color)
