@@ -895,11 +895,11 @@ $(document).ready(function() {
         console.log(JSON.stringify(error));
         console.log(JSON.stringify(json));
 
-        var canvas_width  = 500;
-        var canvas_height = 700;
+        var canvas_width  = 640;
+        var canvas_height = 720;
 
-        var message_panel_width  = 500;
-        var message_panel_height = 700;
+        var message_panel_width  = 640;
+        var message_panel_height = 720;
 
         var canvas = d3.select("body")
             .append("svg")
@@ -949,7 +949,7 @@ $(document).ready(function() {
                     model.rewind(); 
                 }
             }
-        }, 60, true);
+        }, 125, true);
 
 
         function log_svg()
@@ -1019,41 +1019,4 @@ $(document).ready(function() {
     });
 
 
-    // var btn_prev = canvas
-    //     .selectAll("buttons")
-    //     .append("text")
-    //     .attr("x", 100)
-    //     .attr("y", 15)
-    //     .text("Prev")
-    //     .on("click", function (d) { d.action(); })
-
-    // canvas.selectAll("circle")
-    //     .data(data)
-    //     .enter()
-    //     .append("text")
-    //     .attr("x",function(d) { return d.x } )
-    //     .attr("y",function(d) { return d.x } )
-    //     .attr("fill", "#888888" )
-    //     .text(function(d) { return d.name } );
-
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// actions = [{ action: "new_node", node:0, dim:0, layer:0 }, { action: "new_node", node:1, dim:1, layer:0 }, { action: "set_child_link", parent:0, child:1, label:0, shared:0 }, { action: "new_node", node:2, dim:0, layer:1 }, { action: "set_content_link", node:1, content:2, shared:0 }, { action: "new_node", node:3, dim:1, layer:1 }, { action: "set_child_link", parent:2, child:3, label:1, shared:0 }, { action: "new_node", node:4, dim:0, layer:2 }, { action: "set_content_link", node:3, content:4, shared:0 }, { action: "new_node", node:5, dim:1, layer:2 }, { action: "set_child_link", parent:4, child:5, label:0, shared:0 }, { action: "new_node", node:6, dim:0, layer:3 }, { action: "set_content_link", node:5, content:6, shared:0 }, { action: "new_node", node:7, dim:1, layer:3 }, { action: "set_child_link", parent:6, child:7, label:0, shared:0 }, { action: "new_node", node:8, dim:0, layer:4 }, { action: "set_content_link", node:7, content:8, shared:0 }, { action: "set_content_link", node:6, content:8, shared:1 }, { action: "set_content_link", node:4, content:6, shared:1 }, { action: "set_content_link", node:2, content:4, shared:1 }, { action: "set_content_link", node:0, content:2, shared:1 }, { action: "new_node", node:9, dim:1, layer:0 }, { action: "set_child_link", parent:0, child:9, label:2, shared:0 }, { action: "new_node", node:10, dim:0, layer:1 }, { action: "set_content_link", node:9, content:10, shared:0 }, { action: "new_node", node:11, dim:1, layer:1 }, { action: "set_child_link", parent:10, child:11, label:0, shared:0 }, { action: "new_node", node:12, dim:0, layer:2 }, { action: "set_content_link", node:11, content:12, shared:0 }, { action: "new_node", node:13, dim:1, layer:2 }, { action: "set_child_link", parent:12, child:13, label:2, shared:0 }, { action: "new_node", node:14, dim:0, layer:3 }, { action: "set_content_link", node:13, content:14, shared:0 }, { action: "new_node", node:15, dim:1, layer:3 }, { action: "set_child_link", parent:14, child:15, label:0, shared:0 }, { action: "new_node", node:16, dim:0, layer:4 }, { action: "set_content_link", node:15, content:16, shared:0 }, { action: "set_content_link", node:14, content:16, shared:1 }, { action: "set_content_link", node:12, content:14, shared:1 }, { action: "set_content_link", node:10, content:12, shared:1 }, { action: "new_node", node:17, dim:0, layer:1 }, { action: "set_content_link", node:0, content:17, shared:0 }, { action: "set_child_link", parent:17, child:11, label:0, shared:1 }, { action: "new_node", node:18, dim:0, layer:2 }, { action: "set_content_link", node:17, content:18, shared:0 }, { action: "set_child_link", parent:18, child:13, label:2, shared:1 }, { action: "new_node", node:19, dim:0, layer:3 }, { action: "set_content_link", node:18, content:19, shared:0 }, { action: "new_node", node:20, dim:1, layer:3 }, { action: "set_child_link", parent:19, child:20, label:0, shared:0 }, { action: "new_node", node:21, dim:0, layer:4 }, { action: "set_content_link", node:20, content:21, shared:0 }, { action: "set_content_link", node:19, content:21, shared:1 }, { action: "new_node", node:22, dim:1, layer:1 }, { action: "set_child_link", parent:2, child:22, label:2, shared:0 }, { action: "new_node", node:23, dim:0, layer:2 }, { action: "set_content_link", node:22, content:23, shared:0 }, { action: "new_node", node:24, dim:1, layer:2 }, { action: "set_child_link", parent:23, child:24, label:0, shared:0 }, { action: "new_node", node:25, dim:0, layer:3 }, { action: "set_content_link", node:24, content:25, shared:0 }, { action: "new_node", node:26, dim:1, layer:3 }, { action: "set_child_link", parent:25, child:26, label:0, shared:0 }, { action: "new_node", node:27, dim:0, layer:4 }, { action: "set_content_link", node:26, content:27, shared:0 }, { action: "set_content_link", node:25, content:27, shared:1 }, { action: "set_content_link", node:23, content:25, shared:1 }, { action: "new_node", node:28, dim:0, layer:2 }, { action: "set_content_link", node:2, content:28, shared:0 }, { action: "new_node", node:29, dim:1, layer:2 }, { action: "set_child_link", parent:28, child:29, label:0, shared:0 }, { action: "new_node", node:30, dim:0, layer:3 }, { action: "set_content_link", node:29, content:30, shared:0 }, { action: "new_node", node:31, dim:1, layer:3 }, { action: "set_child_link", parent:30, child:31, label:0, shared:0 }, { action: "new_node", node:32, dim:0, layer:4 }, { action: "set_content_link", node:31, content:32, shared:0 }, { action: "set_content_link", node:30, content:32, shared:1 }, { action: "set_content_link", node:28, content:30, shared:1 }, { action: "set_child_link", parent:17, child:22, label:2, shared:1 }, { action: "new_node", node:33, dim:1, layer:2 }, { action: "set_child_link", parent:18, child:33, label:0, shared:0 }, { action: "new_node", node:34, dim:0, layer:3 }, { action: "set_content_link", node:33, content:34, shared:0 }, { action: "new_node", node:35, dim:1, layer:3 }, { action: "set_child_link", parent:34, child:35, label:0, shared:0 }, { action: "new_node", node:36, dim:0, layer:4 }, { action: "set_content_link", node:35, content:36, shared:0 }, { action: "set_content_link", node:34, content:36, shared:1 }, { action: "set_content_link", node:19, content:21, shared:1 }]

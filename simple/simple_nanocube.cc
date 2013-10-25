@@ -176,6 +176,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
 //    std::fill(parallel_contents.begin(), parallel_contents.end(),nullptr);
 
     std::vector<std::vector<Node*>> paths(dimension);
+    std::vector<std::vector<const Node*>> parallel_paths(dimension);
 
     if (root == nullptr) {
         root = new Node();
@@ -186,12 +187,12 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
     }
 
-    std::function<void(Node*,int,Node*)> insert_recursively;
+    std::function<void(Node*,int,const Node*)> insert_recursively;
 
     int dimension = this->dimension;
 
-    insert_recursively = [&insert_recursively, &paths, &addr, &object, &dimension /*, &parallel_contents*/]
-            (Node* current_root, int current_dim, Node* child_updated_root) -> void {
+    insert_recursively = [&insert_recursively, &paths, &addr, &object, &dimension, &parallel_paths]
+            (Node* current_root, int current_dim, const Node* child_updated_root) -> void {
 
 
 #ifdef LOG
@@ -212,33 +213,42 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
 
         auto &dim_path = paths[current_dim];
+        auto &dim_parallel_path = parallel_paths[current_dim];
         auto &dim_addr = addr[current_dim];
 
         dim_path.clear();
+        dim_parallel_path.clear();
 
         // fill in dim_stacks with an outdated path plus (a null pointer or shared child)
-        current_root->prepareOutdatedProperPath(child_updated_root, dim_addr, dim_path, current_dim);
+        current_root->prepareOutdatedProperPath(child_updated_root, dim_addr, dim_path, dim_parallel_path, current_dim);
 
         Node *child = dim_path.back(); // by convention the top of the stack
                                        // is a node that is already updated or
                                        // a nullptr
 
+        auto index = dim_path.size()-2;
         for (auto it=dim_path.rbegin()+1;it!=dim_path.rend();++it) {
 
             Node* parent = *it;
+            const Node* parallel_parent = (index < dim_parallel_path.size() ? dim_parallel_path[index] : nullptr);
+
+            {
+                LogMsg msg("...parallel_path index: " + std::to_string(index) + "  size: " + std::to_string(dim_parallel_path.size()));
+            }
+
+            --index;
+
 
             if (parent->children.size() == 1) {
                 parent->setContent(child->getContent(), SHARED); // sharing content with children
 
 #ifdef LOG
-                log_set_content_link(parent);
-#endif
-
-#if 0
-                if (current_dim < dimension-1) {
-                    parallel_contents[current_dim] = parent->getContentAsNode();
+                {
+                    LogMsg msg_single_child("...detected single child, sharing its contents");
+                    log_set_content_link(parent);
                 }
 #endif
+
             }
             else {
                 if (current_dim == dimension-1) {
@@ -247,9 +257,12 @@ void Nanocube::insert(const Address &addr, const Object &object)
                         parent->setContent(new Summary(), PROPER); // create proper content
 
 #ifdef LOG
-                        log_new_node(parent->getContent(), current_dim+1, 0);
-                        // logging::getLog().newNode((logging::NodeID) parent->getContent(), current_dim+1, 0);
-                        log_update_content_link(parent);
+                        {
+                            LogMsg msg_single_child("...new summary");
+                            log_new_node(parent->getContent(), current_dim+1, 0);
+                            // logging::getLog().newNode((logging::NodeID) parent->getContent(), current_dim+1, 0);
+                            log_update_content_link(parent);
+                        }
 #endif
 
                     }
@@ -261,7 +274,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
 #ifdef LOG
                         {
-                            LogMsg msg("Shallow copy of summary: " + std::to_string(logging::getLog().getNodeName((logging::NodeID)old_content)));
+                            LogMsg msg("...shallow copy of summary: " + std::to_string(logging::getLog().getNodeName((logging::NodeID)old_content)));
                             log_shallow_copy(parent->getContentAsSummary(), current_dim+1, 0);
                             log_update_content_link(parent);
                         }
@@ -271,7 +284,10 @@ void Nanocube::insert(const Address &addr, const Object &object)
                     }
 
 #ifdef LOG
-                    logging::getLog().store((logging::NodeID)parent->getContent(), object);
+                    {
+                        LogMsg msg_single_child("...inserting " + std::to_string(object) + " into summary node");
+                        logging::getLog().store((logging::NodeID)parent->getContent(), object);
+                    }
 #endif
 
                     parent->getContentAsSummary()->insert(object);
@@ -282,9 +298,12 @@ void Nanocube::insert(const Address &addr, const Object &object)
                         parent->setContent(new Node(), PROPER); // create proper content
 
 #ifdef LOG
-                        log_new_node(parent->getContent(), current_dim+1, 0);
-                        // logging::getLog().newNode((logging::NodeID)parent->getContent(), current_dim+1, 0);
-                        log_update_content_link(parent);
+                        {
+                            LogMsg msg_single_child("...new content on dimension " + std::to_string(current_dim+1));
+                            log_new_node(parent->getContent(), current_dim+1, 0);
+                            // logging::getLog().newNode((logging::NodeID)parent->getContent(), current_dim+1, 0);
+                            log_update_content_link(parent);
+                        }
 #endif
 
 
@@ -297,7 +316,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
 #ifdef LOG
                         {
-                            LogMsg msg("Shallow copy of node: " + std::to_string(logging::getLog().getNodeName((logging::NodeID)old_content)));
+                            LogMsg msg("...shared branch needs to be copied. Shallow copy of node: " + std::to_string(logging::getLog().getNodeName((logging::NodeID)old_content)));
                             log_shallow_copy(parent->getContentAsNode(), current_dim+1, 0);
                             log_update_content_link(parent);
                         }
@@ -309,11 +328,14 @@ void Nanocube::insert(const Address &addr, const Object &object)
 //                        parallel_content = child->getContentAsNode();
 //                    }
 
-                    Node* parallel_content = nullptr;
-                    if (child) {
+                    // here is the catch
+                    const Node* parallel_content = nullptr;
+                    if (parallel_parent) {
+                        parallel_content = parallel_parent->getContentAsNode();
+                    }
+                    else if (child) {
                         parallel_content = child->getContentAsNode();
                     }
-
 
 //                    else {
 //                        parallel_content = parallel_contents[current_dim];
@@ -328,7 +350,14 @@ void Nanocube::insert(const Address &addr, const Object &object)
             }
 
 #ifdef LOG
-            log_highlight_node(parent, highlight::CLEAR);
+            {
+                std::string st_msg = parallel_parent? "...moving up parent and parallel_parent" : "...moving up parent only";
+                LogMsg msg(st_msg);
+                log_highlight_node(parent, highlight::CLEAR);
+                if (parallel_parent) {
+                    log_highlight_node(parallel_parent, highlight::CLEAR);
+                }
+            }
 #endif
 
             child = parent;
@@ -371,12 +400,12 @@ bool Node::hasContent() const
     return content_link.content != nullptr;
 }
 
-Summary *Node::getContentAsSummary()
+Summary *Node::getContentAsSummary() const
 {
     return reinterpret_cast<Summary*>(content_link.content);
 }
 
-Node *Node::getContentAsNode()
+Node *Node::getContentAsNode() const
 {
     return reinterpret_cast<Node*>(content_link.content);
 }
@@ -436,9 +465,10 @@ LinkType Node::getContentType() const
     return content_link.link_type;
 }
 
-void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
+void Node::prepareOutdatedProperPath(const Node*          parallel_root,
                                      const DimAddress&    addr,
                                      std::vector<Node *>& result_path,
+                                     std::vector<const Node *>& parallel_path,
                                      int   current_dim)
 {
 #ifdef LOG
@@ -497,18 +527,23 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
     result_path.push_back(current_node);
 
     // pointer parallel to current_node in child_structure
-    const Node* current_parallel_node  = child_updated_path;
-
+    const Node* current_parallel_node  = parallel_root;
+    if (current_parallel_node != nullptr) {
+        parallel_path.push_back(current_parallel_node);
+    }
 
 //    std::cout << "current_address.level: " << current_address.level << std::endl;
 //    std::cout << "address.level:         " << address.level         << std::endl;
 
 #ifdef LOG
+    {
+        std::string st_msg = current_parallel_node ? "...start main and parallel frontier" : "...start main frontier only";
+        LogMsg msg(st_msg);
         log_highlight_node(current_node, highlight::MAIN);
         if (current_parallel_node) {
-            parallel_highlight_stack.push_back(current_parallel_node);
             log_highlight_node(current_parallel_node, highlight::PARALLEL);
         }
+    }
 #endif
 
 
@@ -538,20 +573,18 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
                 result_path.push_back(next_parallel_node); // append marker to the path
 
 #ifdef LOG
-                LogMsg("Sharing existing path on parallel branch");
+                {
+                    LogMsg msg("...sharing existing path on parallel branch");
+                    log_set_child_link(current_node, label);
+                }
 #endif
-
-#ifdef LOG
-                log_set_child_link(current_node, label);
-#endif
-
                 break;
             }
             else {
 
 #ifdef LOG
                 {
-                    LogMsg msg("Creating new branch!");
+                    LogMsg msg("...creating new branch and advancing main frontier!");
 #endif
 
                     attachNewProperChain(current_node);
@@ -572,9 +605,33 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
             // assert(next_parallel_node);
             if (next_node == next_parallel_node) {
                 result_path.push_back(next_node); // append end-marker
+
+#ifdef LOG
+                {
+                    LogMsg msg("...main path already sharing with parallel path: done advancind frontier");
+                }
+#endif
+
                 break;
             }
             else {
+
+
+#if 0
+                next_node = next_parallel_node;
+                result_path.push_back(next_node); // append end-marker
+                bool created = false;
+                current_node->setParentChildLink(label, next_parallel_node, SHARED, created);
+#ifdef LOG
+                {
+                    LogMsg msg("...switching shared child (we need to prove this!)");
+                    log_set_child_link(current_node,label);
+                }
+#endif
+                break;
+
+#else
+
                 // make lazy copy of next_node: its content is going to
                 // change and cannot interfere on the original version
                 next_node = next_node->shallowCopy();
@@ -582,7 +639,9 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
                 current_node->setParentChildLink(label, next_node, PROPER, created);
 
 #ifdef LOG
-                log_shallow_copy(next_node,current_dim,index+1);
+                {
+                    LogMsg msg("...main path sharing branch not in parallel path: shallow copy, continue");
+                    log_shallow_copy(next_node,current_dim,index+1);
 
 //                logging::getLog().newNode((logging::NodeID) next_node, current_dim, index+1);
 //                for (auto &child_link: next_node->children) {
@@ -593,31 +652,42 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
 //                }
 
 
-                log_set_child_link(current_node,addr[index]);
+                    log_set_child_link(current_node,addr[index]);
 
 //                logging::getLog().setChildLink((logging::NodeID) current_node,
 //                                               (logging::NodeID) next_node,
 //                                               addr[index],
 //                                               logging::PROPER);
+                }
+
+#endif
 
 #endif
 
             }
         }
 
+        // update current_node, previous_node and stack
+        current_node    = next_node;
+
         // update current_parallel_node
         current_parallel_node = next_parallel_node;
 
-        // update current_node, previous_node and stack
-        current_node    = next_node;
+        // push paths
         result_path.push_back(current_node);
-
+        if (current_parallel_node != nullptr) {
+            parallel_path.push_back(current_parallel_node);
+        }
 
 #ifdef LOG
-        log_highlight_node(current_node, highlight::MAIN);
-        if (current_parallel_node) {
-            parallel_highlight_stack.push_back(current_parallel_node);
-            log_highlight_node(current_parallel_node, highlight::PARALLEL);
+        {
+            std::string st_msg = current_parallel_node ? "...advancing main and parallel frontier" : "...advancing main frontier only";
+            LogMsg msg(st_msg);
+            log_highlight_node(current_node, highlight::MAIN);
+            if (current_parallel_node) {
+                // parallel_highlight_stack.push_back(current_parallel_node);
+                log_highlight_node(current_parallel_node, highlight::PARALLEL);
+            }
         }
 #endif
 
@@ -630,15 +700,15 @@ void Node::prepareOutdatedProperPath(const Node*          child_updated_path,
     }
 
 #ifdef LOG
-    {
-        if (parallel_highlight_stack.size() > 0) {
-            LogMsg msg("Cleaning parallel path");
-            while (!parallel_highlight_stack.empty()) {
-                log_highlight_node(parallel_highlight_stack.back(), highlight::CLEAR);
-                parallel_highlight_stack.pop_back();
-            }
-        }
-    }
+//    {
+//        if (parallel_highlight_stack.size() > 0) {
+//            LogMsg msg("Cleaning parallel path");
+//            while (!parallel_highlight_stack.empty()) {
+//                log_highlight_node(parallel_highlight_stack.back(), highlight::CLEAR);
+//                parallel_highlight_stack.pop_back();
+//            }
+//        }
+//    }
 #endif
 
 
