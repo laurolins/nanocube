@@ -1,6 +1,7 @@
 var global_variables = {
     main_color:     "#FF0000",
-    parallel_color: "#00FF00"
+    parallel_color: "#00FF00",
+    upstream_color: "#FFA500"
 };
 
 function Timer(callback, delay) {
@@ -231,6 +232,9 @@ Node.prototype.updateUI = function(state) {
     else if (this.color == 2) {
         stroke = global_variables.parallel_color;
     }
+    else if (this.color == 3) {
+        stroke = global_variables.upstream_color;
+    }
 
     var circle = this.dom.selectAll("circle");
 
@@ -306,6 +310,10 @@ ChildLink.prototype.updateUI = function(state) {
     else if (this.color == 2) {
         this.dom_link_highlight.attr("visibility","visible");
         this.dom_link_highlight.style("stroke",global_variables.parallel_color);
+    }
+    else if (this.color == 3) {
+        this.dom_link_highlight.attr("visibility","visible");
+        this.dom_link_highlight.style("stroke",global_variables.upstream_color);
     }
     
     var u = new Vec2(this.parent.pos.x, this.parent.pos.y);
@@ -417,6 +425,10 @@ ContentLink.prototype.updateUI = function(state) {
     else if (this.color == 2) {
         this.dom_content_link_highlight.attr("visibility","visible");
         this.dom_content_link_highlight.style("stroke",global_variables.parallel_color);
+    }
+    else if (this.color == 3) {
+        this.dom_content_link_highlight.attr("visibility","visible");
+        this.dom_content_link_highlight.style("stroke",global_variables.upstream_color);
     }
 
     return this;

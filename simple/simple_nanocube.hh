@@ -19,12 +19,23 @@ using  Address    = std::vector<DimAddress>;
 
 
 //-----------------------------------------------------------------------------
+// Content
+//-----------------------------------------------------------------------------
+
+struct Content {
+public:
+    void setOwner(Node* owner);
+
+    Node* owner { nullptr };
+};
+
+//-----------------------------------------------------------------------------
 // Object and Summary
 //-----------------------------------------------------------------------------
 
 using  Object = int;
 
-struct Summary {
+struct Summary: public Content {
     Summary() = default;
 
     Summary(const Summary& other) = default;
@@ -51,13 +62,13 @@ enum LinkType { SHARED, PROPER };
 struct ContentLink {
 
     ContentLink() = default;
-    ContentLink(void* content, LinkType link_type);
+    ContentLink(Content* content, LinkType link_type);
 
     ContentLink(const ContentLink& other) = default;
     ContentLink& operator=(const ContentLink& other) = default;
 
 
-    void*     content   { nullptr }; // might be a node or a summary
+    Content*  content   { nullptr }; // might be a node or a summary
     LinkType  link_type { PROPER };
 };
 
@@ -87,9 +98,7 @@ public:
     void insert(const Address &addr, const Object &object);
     Summary* query(const Address &addr);
 public:
-
     Node *root { nullptr };
-
     std::vector<int> levels;
     int              dimension;
 };
@@ -98,18 +107,14 @@ public:
 // Node
 //-----------------------------------------------------------------------------
 
-struct Node {
-public: // nanocube API
-    // void prepareOutdatedProperPath(const Node* child_updated_path, const DimAddress &addr, std::vector<Node*> &result_path, int current_dim);
-    void prepareOutdatedProperPath(const Node*               parallel_root,
-                                   const DimAddress          &addr,
-                                   std::vector<Node *>       &result_path,
-                                   std::vector<const Node *> &parallel_path,
-                                   int current_dim);
-    Node* shallowCopy() const;
+struct Node: public Content {
 public:
-    void* getContent() const;
-    void  setContent(void *content, LinkType type);
+    enum Flag { NONE, IN_PARALLEL_PATH };
+
+public:
+    Node* shallowCopy() const;
+    Content* getContent() const;
+    void  setContent(Content *content, LinkType type);
 
     LinkType getContentType() const;
     bool     hasContent() const;
@@ -126,10 +131,13 @@ public:
 
     void setProperParent(Node* parent, Label lbl);
 
+    void setFlag(Flag flag) const;
+
 public:
-    Node* proper_content { nullptr };
     Node* proper_parent  { nullptr }; // defined once, never changes
     Label label {-1};
+
+    mutable Flag  flag { NONE };
 
     std::vector<ParentChildLink> children;
     ContentLink content_link;
