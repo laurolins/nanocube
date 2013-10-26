@@ -127,7 +127,8 @@ public:
     void setProperParent(Node* parent, Label lbl);
 
 public:
-    Node* proper_parent { nullptr }; // defined once, never changes
+    Node* proper_content { nullptr };
+    Node* proper_parent  { nullptr }; // defined once, never changes
     Label label {-1};
 
     std::vector<ParentChildLink> children;

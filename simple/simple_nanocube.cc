@@ -671,7 +671,6 @@ void Node::prepareOutdatedProperPath(const Node*          parallel_root,
             }
             else {
 
-
 #if 0
                 next_node = next_parallel_node;
                 result_path.push_back(next_node); // append end-marker
