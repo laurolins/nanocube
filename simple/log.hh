@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <cstdint>
+#include <fstream>
 
 namespace logging {
 
@@ -37,6 +38,7 @@ std::string getActionName(ActionType type);
 
 struct Log {
 
+    Log();
     virtual ~Log();
 
     NodeName getNodeName(NodeID node);
@@ -51,6 +53,10 @@ struct Log {
     void highlightChildLink(NodeID node, Label label, Color color=0);
     void highlightContentLink(NodeID node, Color color=0);
 
+    void dump_json_actions(std::ostream &os) const;
+
+    void dump_last_action();
+
 
 //    void callInsert(void *node, int data, void *parallel_content);
 //    void callTraceProperPath(void *node, int data, void *parallel_content);
@@ -63,8 +69,7 @@ struct Log {
     std::unordered_map<NodeID, NodeName> map;
     std::vector<Action*> actions;
 
-
-    void dump_json_actions(std::ostream &os) const;
+    std::ofstream ostream;
 
 };
 
@@ -208,5 +213,7 @@ struct ActionHighlightChildLink: public Action {
 
 
 Log &getLog();
+
+std::string name(NodeID node_id);
 
 }

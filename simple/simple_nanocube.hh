@@ -109,7 +109,7 @@ public:
 
 struct Node: public Content {
 public:
-    enum Flag { NONE, IN_PARALLEL_PATH };
+    enum Flag { NONE, IN_MAIN_PATH, IN_PARALLEL_PATH };
 
 public:
     Node* shallowCopy() const;
@@ -122,8 +122,11 @@ public:
     Summary* getContentAsSummary() const;
     Node*    getContentAsNode() const;
 
+    int      getNumChildren() const;
+
     // ParentChildLink* getParentChildLink(Label label) const;
     // ParentChildLink* getOrCreateParentChildLink(Label label, bool &created);
+    void setParentChildLink(Label label, Node *node, LinkType link_type);
     void setParentChildLink(Label label, Node* node, LinkType link_type, bool &created);
 
     Node* getChild(Label label) const;

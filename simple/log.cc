@@ -190,6 +190,12 @@ NodeName Log::getNodeName(NodeID node)
     else return it->second;
 }
 
+Log::Log():
+    ostream("/tmp/actions.json")
+{
+    ostream << "[";
+}
+
 Log::~Log() {
     clear();
 }
@@ -202,14 +208,22 @@ void Log::clear()
     actions.resize(0);
 }
 
+void Log::dump_last_action() {
+    actions.back()->json(ostream);
+    ostream << ", ";
+    ostream.flush();
+}
+
 void Log::pushMessage(std::string msg)
 {
     actions.push_back(new ActionPush(msg));
+    dump_last_action();
 }
 
 void Log::popMessage()
 {
     actions.push_back(new ActionPop());
+    dump_last_action();
 }
 
 void Log::dump_json_actions(std::ostream &os) const
@@ -229,39 +243,44 @@ void Log::dump_json_actions(std::ostream &os) const
 void Log::newNode(NodeID node, int dimension, int layer)
 {
     actions.push_back(new ActionNewNode(getNodeName(node), dimension, layer));
+    dump_last_action();
 }
 
 void Log::setChildLink(NodeID parent, NodeID child, Label label, bool shared)
 {
     actions.push_back(new ActionSetChildLink(getNodeName(parent), getNodeName(child), label, shared));
+    dump_last_action();
 }
 
 void Log::setContentLink(NodeID node, NodeID content, bool shared)
 {
     actions.push_back(new ActionSetContentLink(getNodeName(node), getNodeName(content), shared));
+    dump_last_action();
 }
 
 void Log::store(NodeID node, Object obj)
 {
     actions.push_back(new ActionStore(getNodeName(node), obj));
+    dump_last_action();
 }
 
 void Log::highlightNode(NodeID node, Color color)
 {
     actions.push_back(new ActionHighlightNode(getNodeName(node), color));
+    dump_last_action();
 }
 
 void Log::highlightContentLink(NodeID node, Color color)
 {
     actions.push_back(new ActionHighlightContentLink(getNodeName(node), color));
+    dump_last_action();
 }
 
 void Log::highlightChildLink(NodeID node, Label label, Color color)
 {
     actions.push_back(new ActionHighlightChildLink(getNodeName(node), label, color));
+    dump_last_action();
 }
-
-
 
 //-----------------------------------------------------------------------------
 // Free functions
@@ -271,6 +290,10 @@ Log &getLog()
 {
     static Log log;
     return log;
+}
+
+std::string name(NodeID node_id) {
+    return std::to_string(getLog().getNodeName(node_id));
 }
 
 std::string getActionName(ActionType type) {

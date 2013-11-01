@@ -164,7 +164,7 @@ inline constexpr int operator"" _c ( char c )
 
 int main() {
 
-#if 0
+#if 1
     Nanocube nc({2, 1});
     nc.insert({{'C'_c,2},{1}}, 1);
     nc.insert({{'C'_c,2},{2}}, 2);
@@ -179,7 +179,7 @@ int main() {
 //    nc.insert({{1},{1},{2},{1}}, 4);
     nc.insert({{2},{0},{2},{0}}, 2);
     nc.insert({{0},{2},{0},{0}}, 3);
-#else
+#elif 0
     Nanocube nc({1, 1, 1});
 //    nc.insert({{2},{1},{1},{1}}, 1);
 //    nc.insert({{0},{0},{1},{2}}, 2);
@@ -187,7 +187,18 @@ int main() {
     nc.insert({{0},{1},{0}}, 2);
 //    nc.insert({{1},{1},{2},{1}}, 4);
     nc.insert({{0},{2},{0}}, 3);
-
+#elif 0
+    Nanocube nc({1, 1, 1});
+    nc.insert({{2},{0},{2}}, 1);
+    nc.insert({{0},{1},{0}}, 2);
+    nc.insert({{0},{2},{0}}, 3);
+    nc.insert({{0},{0},{2}}, 4);
+#else
+    Nanocube nc({1, 1, 1});
+    nc.insert({{0},{2},{0}}, 3);
+    nc.insert({{0},{0},{2}}, 4);
+    nc.insert({{2},{0},{2}}, 1);
+    nc.insert({{0},{1},{0}}, 2);
 #endif
 
 //    Nanocube nc({2});

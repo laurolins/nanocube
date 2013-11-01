@@ -1,7 +1,7 @@
 var global_variables = {
     main_color:     "#FF0000",
     parallel_color: "#00FF00",
-    upstream_color: "#FFA500"
+    upstream_color: "#FFA500",
 };
 
 function Timer(callback, delay) {
@@ -1055,10 +1055,10 @@ $(document).ready(function() {
         console.log(JSON.stringify(error));
         console.log(JSON.stringify(json));
 
-        var canvas_width  = 640;
+        var canvas_width  = 800;
         var canvas_height = 720;
 
-        var message_panel_width  = 640;
+        var message_panel_width  = 480;
         var message_panel_height = 720;
 
         var canvas = d3.select("body")
