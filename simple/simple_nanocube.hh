@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <cstdint>
+#include <iostream>
 
 #include <unordered_set>
 
@@ -15,8 +16,35 @@ struct ContentLink;
 
 using  Label      = int;
 using  DimAddress = std::vector<Label>;
-using  Address    = std::vector<DimAddress>;
+using  RawAddress    = std::vector<DimAddress>;
 
+//-----------------------------------------------------------------------------
+// Address
+//-----------------------------------------------------------------------------
+
+struct Address {
+    Address() = default;
+    Address(RawAddress data);
+
+    Address(const Address& other) = default;
+    Address& operator=(const Address& other) = default;
+    Address(Address&& other) = default;
+    Address& operator=(Address&& other) = default;
+
+    Address& appendDimension();
+    Address& appendLabel(Label label);
+
+    size_t size() const;
+    size_t size(int index) const;
+
+    DimAddress& operator[](size_t index);
+    const DimAddress& operator[](size_t index) const;
+
+public:
+    RawAddress data;
+};
+
+std::ostream& operator<<(std::ostream& os, const Address& addr);
 
 //-----------------------------------------------------------------------------
 // Content
@@ -97,6 +125,7 @@ public:
     Nanocube(const std::vector<int> &levels);
     void insert(const Address &addr, const Object &object);
     Summary* query(const Address &addr);
+    Node *getNode(const Address &addr);
 public:
     Node *root { nullptr };
     std::vector<int> levels;

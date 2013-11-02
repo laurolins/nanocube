@@ -40,6 +40,68 @@ std::string Summary::info() const {
     return ss.str();
 }
 
+//-----------------------------------------------------------------------------
+// Address
+//-----------------------------------------------------------------------------
+
+Address::Address(RawAddress data):
+    data(data)
+{}
+
+Address& Address::appendDimension()
+{
+    data.push_back(DimAddress());
+    return *this;
+}
+
+Address& Address::appendLabel(Label label)
+{
+    data.back().push_back(label);
+    return *this;
+}
+
+size_t Address::size() const
+{
+    return data.size();
+}
+
+size_t Address::size(int index) const
+{
+    return data[index].size();
+}
+
+DimAddress &Address::operator[](size_t index)
+{
+    return data[index];
+}
+
+const DimAddress &Address::operator[](size_t index) const
+{
+    return data[index];
+}
+
+//-----------------------------------------------------------------------------
+// Address IO
+//-----------------------------------------------------------------------------
+
+std::ostream& operator<<(std::ostream& os, const Address& addr) {
+    os << "Addr[";
+    for (size_t i=0;i<addr.size();++i) {
+        if (i > 0) {
+            os << ",";
+        }
+        os << "{";
+        std::ostream_iterator<int> out_it (os,",");
+        std::copy ( addr[i].begin(), addr[i].end()-1, out_it );
+        if (addr[i].begin() != addr[i].end()) {
+            os << addr[i].back();
+        }
+        os << "}";
+    }
+    os << "]";
+    return os;
+}
+
 
 //-----------------------------------------------------------------------------
 // ContentLink
@@ -91,6 +153,27 @@ Summary *Nanocube::query(const Address &addr)
     else {
         return nullptr;
     }
+}
+
+Node *Nanocube::getNode(const Address &addr)
+{
+    if (root == nullptr) {
+        return nullptr;
+    }
+
+    //
+    Node *node = root;
+    for (size_t i=0;i<addr.size();i++) {
+        for (size_t j=0;j<addr[i].size();j++) {
+            node = node->getChild(addr[i][j]);
+            if (node == nullptr)
+                return nullptr;
+        }
+        if (i < addr.size()-1) {
+            node = node->getContentAsNode();
+        }
+    }
+    return node;
 }
 
 namespace highlight {
@@ -199,6 +282,8 @@ public:
     void  rewind();
     void  pop();
     Node* top();
+
+    Address getAddress() const;
 public:
     std::vector<Node*> stack;
 };
@@ -272,6 +357,35 @@ void UpstreamThread::rewind() {
     stack.pop_back();
 }
 
+Address UpstreamThread::getAddress() const
+{
+    Address result;
+
+    std::vector<Label> labels; // assuming -1 is not a label (used as a separator)
+    for (Node* node: stack) {
+        if (node->proper_parent != nullptr) {
+            labels.push_back(node->label);
+        }
+        else if (node->owner != nullptr) {
+            labels.push_back(-1);
+        }
+    }
+
+    if (labels.size() > 0) {
+        result.appendDimension();
+        for (auto it = labels.rbegin();it!= labels.rend();++it) {
+            if (*it == -1) {
+                result.appendDimension();
+            }
+            else {
+                result.appendLabel(*it);
+            }
+        }
+    }
+
+    return result;
+}
+
 //-----------------------------------------------------------------------------
 // Thread
 //-----------------------------------------------------------------------------
@@ -294,6 +408,8 @@ private:
 public:
     Thread() = default;
     Thread(ThreadType thread_type);
+
+    Address getAddress() const;
 
     void  start(Node *node, int dim, int layer);
     void  advanceContent();
@@ -414,6 +530,22 @@ void Thread::rewind() {
 #endif
 }
 
+Address Thread::getAddress() const {
+    Address result;
+    for (const Item& it: stack) {
+        if (it.item_type == ROOT) {
+            result.appendDimension();
+        }
+        else if (it.item_type == CHILD) {
+            result.appendLabel(it.node->label);
+        }
+        else if (it.item_type == CONTENT) {
+            result.appendDimension();
+        }
+    }
+    return result;
+}
+
 //-----------------------------------------------------------------------------
 // ThreadStack
 //-----------------------------------------------------------------------------
@@ -508,6 +640,43 @@ void ThreadStack::advanceContent()
     }
 }
 
+
+
+
+
+//-----------------------------------------------------------------------------
+// special function
+//-----------------------------------------------------------------------------
+
+bool can_switch(const Address& main_address,
+              const Address &shared_address,
+              const Address& object_address,
+              Address& switch_address) {
+
+    // be hypothesis here, main_address is a coarser version of
+    // both shared and object address. We want to know if we can
+    // add one constraint (one more label in one dimension)
+
+    int n = main_address.size();
+
+    assert(main_address.size() == shared_address.size());
+
+    // check which dimension we can add a constraint
+    bool result = false;
+    for (int i=0;i<n-1;i++) {
+        int j = main_address.size(i);
+        if (main_address.size(i) < shared_address.size(i) && object_address[i][j] == shared_address[i][j]) {
+            result = true;
+            switch_address = main_address;
+            switch_address[i].push_back(object_address[i][j]);
+        }
+    }
+    return result;
+}
+
+
+
+
 //-----------------------------------------------------------------------------
 // Nanocube Insert
 //-----------------------------------------------------------------------------
@@ -517,17 +686,9 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
 #ifdef LOG
     std::stringstream ss;
-    ss << "Insert obj: " << object << " addr: ";
-    for (size_t i=0;i<addr.size();++i) {
-        ss << "{";
-        std::ostream_iterator<int> out_it (ss,",");
-        std::copy ( addr[i].begin(), addr[i].end(), out_it );
-        ss << "} ";
-    }
-    LogMsg log_msg(ss.str());
+    ss << "Insert obj: " << object << " addr: " << addr;
+    logging::getLog().pushMessage(ss.str());
 #endif
-
-
 
     Thread       main_thread(Thread::MAIN);
     ThreadStack  parallel_threads(Thread::PARALLEL);
@@ -544,8 +705,9 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
     int dimension = this->dimension;
 
+    Nanocube &nanocube = *this;
 
-    insert_recursively = [&insert_recursively, &addr, &object, &dimension]
+    insert_recursively = [&nanocube, &insert_recursively, &addr, &object, &dimension]
             (Thread& main_thread, ThreadStack& parallel_threads) -> void {
 
 #ifdef LOG
@@ -585,8 +747,48 @@ void Nanocube::insert(const Address &addr, const Object &object)
                     // check if we can end Part 1 by preserving
                     // or reswitching child node.
 
-                    bool can_switch = false;
+                    Node* switch_node = nullptr;
                     {
+                        //
+                        {
+                            UpstreamThread upstream_thread(child);
+                            while (upstream_thread.getNext()) {
+                                upstream_thread.advance();
+                            }
+                            std::stringstream ss;
+
+                            Address main_addr   = main_thread.getAddress().appendLabel(label);
+                            Address shared_addr = upstream_thread.getAddress();
+
+                            ss << "COMPLEX CASE... main addr: " << main_addr << "   shared addr: " << shared_addr;
+                            LogMsg msg(ss.str());
+
+                            Address switch_address;
+
+                            if ( can_switch(main_addr, shared_addr, addr, switch_address) ) {
+                                // find node
+
+                                ss << "... switch_address: " << switch_address << "   parallel: " << shared_addr;
+                                LogMsg msg(ss.str());
+
+                                switch_node = nanocube.getNode(switch_address);
+                                if (switch_node == nullptr) {
+                                    throw std::runtime_error("OOopps");
+                                }
+
+#ifdef LOG
+                                {
+                                    std::stringstream ss;
+                                    ss << "Switch node on address " << switch_address << " is node " << log_name(switch_node);
+                                    LogMsg msg(ss.str());
+                                }
+#endif
+
+                            }
+                        }
+
+#if 0
+                        // main thread has the other address
                         UpstreamThread upstream_thread(child);
                         while (true) {
                             Node *aux = upstream_thread.getNext();
@@ -599,13 +801,14 @@ void Nanocube::insert(const Address &addr, const Object &object)
                             }
                             upstream_thread.advance();
                         }
+#endif
                         // TODO: on the destructor of upstream thread pop everything
                         // and generate actions accordingly
                     }
 
                     //
-                    if (can_switch) {
-                        Node* new_child = parallel_threads.getFirstProperChild(label);
+                    if (switch_node) {
+                        Node* new_child = switch_node; // parallel_threads.getFirstProperChild(label);
                         if (!new_child) {
                             throw std::runtime_error("oops");
                         }
@@ -668,7 +871,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
         for (;index >= 0;--index) {
 
             std::stringstream ss;
-            ss << "index" << index
+            ss << "index: " << index
                << "  dim: " << main_thread.getCurrentDimension()
                << "  layer: " << main_thread.getCurrentLayer()
                << "  last_node_dim: " << last_node_dim;
@@ -842,597 +1045,6 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
 }
 
-#if 0
-
-
-
-
-
-
-
-
-Node* current_root, int current_dim, const Node* child_updated_root
-
-
-
-std::cout << "insert_recursively, dim:" << current_dim << std::endl;
-
-
-auto &dim_path = paths[current_dim];
-auto &dim_parallel_path = parallel_paths[current_dim];
-auto &dim_addr = addr[current_dim];
-
-dim_path.clear();
-dim_parallel_path.clear();
-
-// fill in dim_stacks with an outdated path plus (a null pointer or shared child)
-prepareOutdatedProperPath(current_root, child_updated_root, dim_addr, dim_path, dim_parallel_path, current_dim);
-
-Node *child = dim_path.back(); // by convention the top of the stack
-                               // is a node that is already updated or
-                               // a nullptr
-
-auto index = dim_path.size()-2;
-for (auto it=dim_path.rbegin()+1;it!=dim_path.rend();++it) {
-
-    Node* parent = *it;
-    const Node* parallel_parent = (index < dim_parallel_path.size() ? dim_parallel_path[index] : nullptr);
-
-    {
-        LogMsg msg("...parallel_path index: " + std::to_string(index) + "  size: " + std::to_string(dim_parallel_path.size()));
-    }
-
-    --index;
-
-
-    if (parent->children.size() == 1) {
-        parent->setContent(child->getContent(), SHARED); // sharing content with children
-
-#ifdef LOG
-        {
-            LogMsg msg_single_child("...detected single child, sharing its contents");
-            log_update_content_link(parent);
-        }
-#endif
-
-    }
-    else {
-        if (current_dim == dimension-1) {
-            // last dimension: insert object into summary
-            if (parent->hasContent() == false) {
-                parent->setContent(new Summary(), PROPER); // create proper content
-
-#ifdef LOG
-                {
-                    LogMsg msg_single_child("...new summary");
-                    log_new_node(parent->getContent(), current_dim+1, 0);
-                    // logging::getLog().newNode((logging::NodeID) parent->getContent(), current_dim+1, 0);
-                    log_update_content_link(parent);
-                }
-#endif
-
-            }
-            else if (parent->getContentType() == SHARED) {
-                // since number of children is not one, we need to clone
-                // content and insert new object
-                Summary* old_content = parent->getContentAsSummary();
-                parent->setContent(new Summary(*parent->getContentAsSummary()), PROPER); // create proper content
-
-#ifdef LOG
-                {
-                    LogMsg msg("...shallow copy of summary: " + std::to_string(logging::getLog().getNodeName((logging::NodeID)old_content)));
-                    log_shallow_copy(parent->getContentAsSummary(), current_dim+1, 0);
-                    log_update_content_link(parent);
-                }
-#endif
-
-
-            }
-
-#ifdef LOG
-            {
-                LogMsg msg_single_child("...inserting " + std::to_string(object) + " into summary node");
-                logging::getLog().store((logging::NodeID)parent->getContent(), object);
-            }
-#endif
-
-            parent->getContentAsSummary()->insert(object);
-        }
-        else {
-            // not last dimension
-            if (parent->hasContent() == false) {
-                parent->setContent(new Node(), PROPER); // create proper content
-
-#ifdef LOG
-                {
-                    LogMsg msg_single_child("...new content on dimension " + std::to_string(current_dim+1));
-                    log_new_node(parent->getContent(), current_dim+1, 0);
-                    // logging::getLog().newNode((logging::NodeID)parent->getContent(), current_dim+1, 0);
-                    log_update_content_link(parent);
-                }
-#endif
-
-
-
-            }
-            else if (parent->getContentType() == SHARED) {
-                // need to copy
-                Node* old_content = parent->getContentAsNode();
-                parent->setContent(parent->getContentAsNode()->shallowCopy(), PROPER); // create proper content
-
-#ifdef LOG
-                {
-                    LogMsg msg("...shared branch needs to be copied. Shallow copy of node: " + std::to_string(logging::getLog().getNodeName((logging::NodeID)old_content)));
-                    log_shallow_copy(parent->getContentAsNode(), current_dim+1, 0);
-                    log_update_content_link(parent);
-                }
-#endif
-            }
-
-//                    Node* parallel_content = parallel_contents[current_dim]; //nullptr;
-//                    if (!parallel_content && child) {
-//                        parallel_content = child->getContentAsNode();
-//                    }
-
-            // here is the catch
-            const Node* parallel_content = nullptr;
-            if (parallel_parent) {
-                parallel_content = parallel_parent->getContentAsNode();
-            }
-            else if (child) {
-                parallel_content = child->getContentAsNode();
-            }
-
-//                    else {
-//                        parallel_content = parallel_contents[current_dim];
-//                    }
-
-
-#ifdef LOG
-            {
-                log_highlight_content_link(parent, highlight::MAIN);
-                if (parallel_parent) {
-                    log_highlight_content_link(parallel_parent, highlight::PARALLEL);
-                }
-            }
-#endif
-
-            insert_recursively(parent->getContentAsNode(), current_dim+1, parallel_content);
-
-#ifdef LOG
-            {
-                log_highlight_content_link(parent, highlight::CLEAR);
-                if (parallel_parent) {
-                    log_highlight_content_link(parallel_parent, highlight::CLEAR);
-                }
-            }
-#endif
-
-
-//                     update parallel content (for coarser contents on that dimension)
-            // parallel_contents[current_dim] = parent->getContentAsNode();
-            //}
-        }
-    }
-
-#ifdef LOG
-    {
-        std::string st_msg = parallel_parent? "...moving up parent and parallel_parent" : "...moving up parent only";
-        LogMsg msg(st_msg);
-        log_highlight_node(parent, highlight::CLEAR);
-        if (parent->proper_parent != nullptr) {
-            log_highlight_child_link(parent->proper_parent,
-                                     parent->label,
-                                     highlight::CLEAR);
-        }
-#endif
-        // clear flags on parent and parallel_parent
-        parent->setFlag(Node::NONE);
-        if (parallel_parent) {
-            parallel_parent->setFlag(Node::NONE);
-        }
-
-#ifdef LOG
-        parent->setFlag(Node::NONE);
-        if (parallel_parent) {
-            parallel_parent->setFlag(Node::NONE);
-            log_highlight_node(parallel_parent, highlight::CLEAR);
-            if (parallel_parent->proper_parent != nullptr) {
-                log_highlight_child_link(parallel_parent->proper_parent,
-                                         parallel_parent->label,
-                                         highlight::CLEAR);
-            }
-        }
-    }
-#endif
-
-    child = parent;
-}
-
-};
-
-
-
-
-
-
-//-----------------------------------------------------------------------------
-// prepareOutdatedProperPath
-//-----------------------------------------------------------------------------
-
-// void prepareOutdatedProperPath(const Node* child_updated_path, const DimAddress &addr, std::vector<Node*> &result_path, int current_dim);
-void prepareOutdatedProperPath(Node*                     root,
-                               const Node*               parallel_root,
-                               const DimAddress          &addr,
-                               std::vector<Node *>       &result_path,
-                               std::vector<const Node *> &parallel_path,
-                               int current_dim)
-{
-#ifdef LOG
-    std::vector<const Node*> parallel_highlight_stack;
-#endif
-
-
-    size_t index = 0;
-
-    auto attachNewProperChain = [&index, &addr, &result_path, &current_dim](Node* node) {
-        Node* next = new Node(); // last node
-
-#ifdef LOG
-        log_new_node(next, current_dim, result_path.size());
-#endif
-
-        for (size_t i=addr.size()-1; i>index; --i) {
-            Node* current = new Node();
-            bool created = false;
-            current->setParentChildLink(addr[i], next, PROPER, created);
-
-
-#ifdef LOG
-            log_new_node(current, current_dim, i);
-            log_update_child_link(current, addr[i]);
-#endif
-
-            next = current;
-        }
-
-        { // join the given node with new chain
-            bool created = false;
-            node->setParentChildLink(addr[index], next, PROPER, created);
-
-#ifdef LOG
-            log_update_child_link(node, addr[index]);
-#endif
-        }
-
-        { // update path
-            Node *current = node;
-            for (size_t i=index;i<addr.size();i++) {
-                Node *child = current->getChild(addr[i]);
-                result_path.push_back(child);
-                current = child;
-            }
-            result_path.push_back(nullptr); // end marker
-        }
-    };
-
-
-
-
-    // start with root node and previous node is nullptr
-    Node*    current_node  = root;
-    result_path.push_back(current_node);
-    current_node->setFlag(Node::IN_MAIN_PATH);
-
-    // pointer parallel to current_node in child_structure
-    const Node* current_parallel_node  = parallel_root;
-    if (current_parallel_node != nullptr) {
-        parallel_path.push_back(current_parallel_node);
-        current_parallel_node->setFlag(Node::IN_PARALLEL_PATH);
-    }
-
-//    std::cout << "current_address.level: " << current_address.level << std::endl;
-//    std::cout << "address.level:         " << address.level         << std::endl;
-
-#ifdef LOG
-    {
-        std::string st_msg = current_parallel_node ? "...start main and parallel frontier" : "...start main frontier only";
-        LogMsg msg(st_msg);
-        log_highlight_node(current_node, highlight::MAIN);
-        if (current_parallel_node) {
-            log_highlight_node(current_parallel_node, highlight::PARALLEL);
-        }
-    }
-#endif
-
-
-    // traverse the path from root address to address
-    // inserting and stacking new proper nodes until
-    // either we find a path-suffix that can be reused
-    // or we traverse all the path
-    while (index < addr.size())
-    {
-
-        // assuming address is contained in the current address
-        Label label = addr[index];
-
-        LinkType next_node_link_type;
-        Node* next_node           = current_node->getChild(label, next_node_link_type);
-        Node* next_parallel_node  = current_parallel_node ? current_parallel_node->getChild(label) : nullptr;
-
-        // nextAddress index on current node
-        // there is no next node
-        if (!next_node)
-        {
-            // there is a parallel structure: update current node to
-            // share the right child on the parallel structure
-            if (next_parallel_node) {
-                bool created   = true;
-                current_node->setParentChildLink(label, next_parallel_node, SHARED, created);
-                result_path.push_back(next_parallel_node); // append marker to the path
-
-#ifdef LOG
-                {
-                    LogMsg msg("...sharing existing path on parallel branch");
-                    log_update_child_link(current_node, label);
-                }
-#endif
-                break;
-            }
-            else {
-
-#ifdef LOG
-                {
-                    LogMsg msg("...creating new branch and advancing main frontier!");
-#endif
-
-                    attachNewProperChain(current_node);
-
-#ifdef LOG
-                    Node *aux = current_node;
-                    for (size_t ii=index;ii<addr.size();ii++) {
-                        aux = current_node->getChild(addr[ii]);
-                        log_highlight_child_link(current_node, addr[ii], highlight::MAIN);
-                        log_highlight_node(aux, highlight::MAIN);
-                    }
-                }
-#endif
-
-                break;
-            }
-        }
-        else if (next_node_link_type == SHARED) {
-            // assert(next_parallel_node);
-            if (next_node == next_parallel_node) {
-                result_path.push_back(next_node); // append end-marker
-
-#ifdef LOG
-                {
-                    LogMsg msg("...main path already sharing with parallel path: done advancind frontier");
-                }
-#endif
-
-                break;
-            }
-            else {
-
-#if 1
-                //
-                // Here is where we need to check if there needs to be a copy
-                // of the shared content or if we can switch the sharing to the
-                // parallel branch (one for now).
-                //
-                bool share_from_parallel = false;
-
-#ifdef LOG
-                {
-                    LogMsg msg("...checking possibility of switching current shared branch to parallel branch " + std::to_string(logging::getLog().getNodeName((uint64_t)next_node)));
-                    std::vector<Node*> stack_upstream_path;
-#endif
-
-                    Node *aux = next_node;
-                    while (true) {
-                        if (aux->flag == Node::IN_PARALLEL_PATH) {
-                            share_from_parallel = true; // found a proof that the parallel
-                                                        // path contains the old shared branch:
-                                                        // switch it!
-
-                            {
-                                LogMsg msg("...switching proof = node " + std::to_string(logging::getLog().getNodeName((uint64_t)aux)));
-                            }
-
-                            break;
-                        }
-                        else if (aux->flag == Node::IN_MAIN_PATH) {
-                            {
-                                LogMsg msg("...no switching. a copy is needed: proof = back to main path");
-                            }
-                            break;
-                        }
-
-                        if (aux->proper_parent != nullptr) {
-#ifdef LOG
-                            log_highlight_node(aux, highlight::UPSTREAM_CHECK);
-                            log_highlight_child_link(aux->proper_parent,aux->label,highlight::UPSTREAM_CHECK);
-                            stack_upstream_path.push_back(aux);
-#endif
-                            aux = aux->proper_parent;
-                        }
-                        else if (aux->owner != nullptr) {
-#ifdef LOG
-                            log_highlight_node(aux, highlight::UPSTREAM_CHECK);
-                            log_highlight_content_link(aux->owner,highlight::UPSTREAM_CHECK);
-                            stack_upstream_path.push_back(aux);
-#endif
-                            aux = aux->owner;
-                        }
-                        else {
-                            break;
-                        }
-                    }
-
-
-#ifdef LOG
-                    // clear upstream path
-                    while (!stack_upstream_path.empty()) {
-                        Node* aux = stack_upstream_path.back();
-                        stack_upstream_path.pop_back();
-
-                        log_highlight_node(aux, highlight::CLEAR);
-                        if (aux->proper_parent != nullptr) {
-                            log_highlight_child_link(aux->proper_parent,aux->label,highlight::CLEAR);
-                        }
-                        else if (aux->owner != nullptr) {
-                            log_highlight_content_link(aux->owner,highlight::CLEAR);
-                        }
-                    }
-#endif
-
-
-#ifdef LOG
-                }
-#endif
-
-
-                if (share_from_parallel) {
-                    next_node = next_parallel_node;
-                    result_path.push_back(next_node); // append end-marker
-                    bool created = false;
-                    current_node->setParentChildLink(label, next_parallel_node, SHARED, created);
-#ifdef LOG
-                    {
-                        LogMsg msg("...switching shared branches");
-                        log_update_child_link(current_node,label);
-                    }
-#endif
-                    break;
-                }
-                else {
-                    // make lazy copy of next_node: its content is going to
-                    // change and cannot interfere on the original version
-                    next_node = next_node->shallowCopy();
-                    bool created = false;
-                    current_node->setParentChildLink(label, next_node, PROPER, created);
-#ifdef LOG
-                    {
-                        LogMsg msg("...main path sharing branch not in parallel path: shallow copy, continue");
-                        log_shallow_copy(next_node,current_dim,index+1);
-                        log_update_child_link(current_node,addr[index]);
-                    }
-#endif
-                }
-
-
-#elif 0
-                //
-                // Wasteful strategy of always copying the shared branch
-                // and inserting new content there.
-                //
-
-                // make lazy copy of next_node: its content is going to
-                // change and cannot interfere on the original version
-                next_node = next_node->shallowCopy();
-                bool created = false;
-                current_node->setParentChildLink(label, next_node, PROPER, created);
-
-#ifdef LOG
-                {
-
-                    LogMsg msg("...main path sharing branch not in parallel path: shallow copy, continue");
-                    log_shallow_copy(next_node,current_dim,index+1);
-                    log_update_child_link(current_node,addr[index]);
-                }
-
-#endif
-
-#elif 0
-                // dumb and wrong strategy of switching always
-                next_node = next_parallel_node;
-                result_path.push_back(next_node); // append end-marker
-                bool created = false;
-                current_node->setParentChildLink(label, next_parallel_node, SHARED, created);
-#ifdef LOG
-                {
-                    LogMsg msg("...switching shared child (we need to prove this!)");
-                    log_update_child_link(current_node,label);
-                }
-#endif
-                break;
-
-#endif
-
-
-            }
-        }
-
-
-#ifdef LOG
-        {
-            std::string st_msg = next_parallel_node ? "...advancing main and parallel frontier" : "...advancing main frontier only";
-            LogMsg msg(st_msg);
-
-            log_highlight_child_link(current_node, addr[index], highlight::MAIN);
-            if (next_parallel_node) {
-                log_highlight_child_link(current_parallel_node, addr[index], highlight::PARALLEL);
-            }
-#endif
-            // update current_node, previous_node and stack
-            current_node    = next_node;
-
-            // update current_parallel_node
-            current_parallel_node = next_parallel_node;
-
-            // push paths
-            result_path.push_back(current_node);
-            current_node->setFlag(Node::IN_MAIN_PATH);
-            if (current_parallel_node != nullptr) {
-                parallel_path.push_back(current_parallel_node);
-                current_parallel_node->setFlag(Node::IN_PARALLEL_PATH);
-            }
-
-#ifdef LOG
-            log_highlight_node(current_node, highlight::MAIN);
-            if (current_parallel_node) {
-                // parallel_highlight_stack.push_back(current_parallel_node);
-                log_highlight_node(current_parallel_node, highlight::PARALLEL);
-            }
-        }
-#endif
-
-        ++index;
-
-        if (index == addr.size()) {
-            result_path.push_back(nullptr); // base case
-        }
-
-    }
-
-#ifdef LOG
-//    {
-//        if (parallel_highlight_stack.size() > 0) {
-//            LogMsg msg("Cleaning parallel path");
-//            while (!parallel_highlight_stack.empty()) {
-//                log_highlight_node(parallel_highlight_stack.back(), highlight::CLEAR);
-//                parallel_highlight_stack.pop_back();
-//            }
-//        }
-//    }
-#endif
-}
-
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
 //-----------------------------------------------------------------------------
 // Node Impl.
 //-----------------------------------------------------------------------------
@@ -1554,6 +1166,8 @@ LinkType Node::getContentType() const
 {
     return content_link.link_type;
 }
+
+
 
 
 
