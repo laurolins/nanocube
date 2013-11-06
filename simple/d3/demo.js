@@ -2,6 +2,7 @@ var global_variables = {
     main_color:     "#FF0000",
     parallel_color: "#00FF00",
     upstream_color: "#FFA500",
+    summary_level:  3
 };
 
 function Timer(callback, delay) {
@@ -135,7 +136,7 @@ function Node(id, dim, layer) {
     this.layer   = layer;
     this.dom     = null;
 
-    this.color   = 0; // used for highlights
+    this.color   = []; // used for highlights
 
     this.objects = [];
 
@@ -155,12 +156,17 @@ Node.prototype.setVisible = function(flag) {
     }
 }
 
-Node.prototype.setColor = function(color) {
-    this.color = color;
+Node.prototype.pushColor = function(color) {
+    this.color.push(color);
+}
+
+Node.prototype.popColor = function() {
+    this.color.pop();
 }
 
 Node.prototype.getColor = function() {
-    return this.color;
+    var n = this.color.length;
+    return this.color[n-1];
 }
 
 Node.prototype.getChildLink = function(label) {
@@ -226,13 +232,13 @@ Node.prototype.updateUI = function(state) {
         // .style("fill","#FFFFFF");
 
     var stroke = "#777777";
-    if (this.color == 1) {
+    if (this.getColor() == 1) {
         stroke = global_variables.main_color;
     }
-    else if (this.color == 2) {
+    else if (this.getColor() == 2) {
         stroke = global_variables.parallel_color;
     }
-    else if (this.color == 3) {
+    else if (this.getColor() == 3) {
         stroke = global_variables.upstream_color;
     }
 
@@ -255,7 +261,7 @@ function ChildLink(parent, child, label, shared) {
     this.label  = label
     this.shared = shared
 
-    this.color  = 0
+    this.color  = []
     
     this.dom       = null
     this.dom_link  = null
@@ -271,12 +277,17 @@ ChildLink.prototype.setDOM = function(dom, dom_link, dom_label, dom_link_highlig
     return this;
 }
 
-ChildLink.prototype.setColor = function(color) {
-    this.color = color;
+ChildLink.prototype.pushColor = function(color) {
+    this.color.push(color);
+}
+
+ChildLink.prototype.popColor = function() {
+    this.color.pop();
 }
 
 ChildLink.prototype.getColor = function() {
-    return this.color;
+    var n = this.color.length;
+    return this.color[n-1];
 }
 
 ChildLink.prototype.setVisible = function(flag) {
@@ -300,18 +311,18 @@ ChildLink.prototype.updateUI = function(state) {
     this.dom_link.attr("d", lineFunction(data));
     this.dom_link_highlight.attr("d", lineFunction(data));
 
-    if (this.color == 0) {
+    if (this.getColor() == undefined) {
         this.dom_link_highlight.attr("visibility","hidden");
     }
-    else if (this.color == 1) {
+    else if (this.getColor() == 1) {
         this.dom_link_highlight.attr("visibility","visible");
         this.dom_link_highlight.style("stroke",global_variables.main_color);
     }
-    else if (this.color == 2) {
+    else if (this.getColor() == 2) {
         this.dom_link_highlight.attr("visibility","visible");
         this.dom_link_highlight.style("stroke",global_variables.parallel_color);
     }
-    else if (this.color == 3) {
+    else if (this.getColor() == 3) {
         this.dom_link_highlight.attr("visibility","visible");
         this.dom_link_highlight.style("stroke",global_variables.upstream_color);
     }
@@ -338,7 +349,7 @@ function ContentLink(node, content, shared) {
     this.content  = content;
     this.shared   = shared;
 
-    this.color    = 0;
+    this.color    = [];
 
     this.dom                        = null;
     this.dom_content_link           = null;
@@ -346,11 +357,25 @@ function ContentLink(node, content, shared) {
 }
 
 ContentLink.prototype.setColor = function(color) {
-    this.color = color;
+    if (color == 0) {
+        this.color.pop();
+    }
+    else {
+        this.color.push(color);
+    }
+}
+
+ContentLink.prototype.pushColor = function(color) {
+    this.color.push(color);
+}
+
+ContentLink.prototype.popColor = function() {
+    this.color.pop();
 }
 
 ContentLink.prototype.getColor = function() {
-    return this.color;
+    var n = this.color.length;
+    return this.color[n-1];
 }
 
 ContentLink.prototype.setVisible = function(flag) {
@@ -415,18 +440,18 @@ ContentLink.prototype.updateUI = function(state) {
     this.dom_content_link.attr("d", lineFunction(data));
     this.dom_content_link_highlight.attr("d", lineFunction(data));
 
-    if (this.color == 0) {
+    if (this.getColor() == undefined) {
         this.dom_content_link_highlight.attr("visibility","hidden");
     }
-    else if (this.color == 1) {
+    else if (this.getColor() == 1) {
         this.dom_content_link_highlight.attr("visibility","visible");
         this.dom_content_link_highlight.style("stroke",global_variables.main_color);
     }
-    else if (this.color == 2) {
+    else if (this.getColor() == 2) {
         this.dom_content_link_highlight.attr("visibility","visible");
         this.dom_content_link_highlight.style("stroke",global_variables.parallel_color);
     }
-    else if (this.color == 3) {
+    else if (this.getColor() == 3) {
         this.dom_content_link_highlight.attr("visibility","visible");
         this.dom_content_link_highlight.style("stroke",global_variables.upstream_color);
     }
@@ -526,7 +551,12 @@ function ActionHighlightNode(node, color) {
 }
 
 ActionHighlightNode.prototype.execute = function() {
-    this.node.setColor(this.color);
+    if (this.color == 0) {
+        this.node.popColor();
+    }
+    else {
+        this.node.pushColor(this.color);
+    }
     this.node.updateUI();
 
     console.log("Execute ActionHighlightNode");
@@ -535,7 +565,12 @@ ActionHighlightNode.prototype.execute = function() {
 }
 
 ActionHighlightNode.prototype.unexecute = function() {
-    this.node.setColor(this.old_color);
+    if (this.color == 0) {
+        this.node.pushColor(this.old_color);
+    }
+    else {
+        this.node.popColor();
+    }
     this.node.updateUI();
 
     console.log("Undo ActionHighlightNode");
@@ -554,7 +589,12 @@ function ActionHighlightChildLink(child_link, color) {
 }
 
 ActionHighlightChildLink.prototype.execute = function() {
-    this.child_link.setColor(this.color);
+    if (this.color == 0) {
+        this.child_link.popColor();
+    }
+    else {
+        this.child_link.pushColor(this.color);
+    }
     this.child_link.updateUI();
 
     console.log("Execute ActionHighlightChildLink");
@@ -563,7 +603,12 @@ ActionHighlightChildLink.prototype.execute = function() {
 }
 
 ActionHighlightChildLink.prototype.unexecute = function() {
-    this.child_link.setColor(this.old_color);
+    if (this.color == 0) {
+        this.child_link.pushColor(this.old_color);
+    }
+    else {
+        this.child_link.popColor();
+    }
     this.child_link.updateUI();
 
     console.log("Undo ActionHighlightChildLink");
@@ -582,7 +627,12 @@ function ActionHighlightContentLink(content_link, color) {
 }
 
 ActionHighlightContentLink.prototype.execute = function() {
-    this.content_link.setColor(this.color);
+    if (this.color == 0) {
+        this.content_link.popColor();
+    }
+    else {
+        this.content_link.pushColor(this.color);
+    }
     this.content_link.updateUI();
 
     console.log("Execute ActionHighlightContentLink");
@@ -591,7 +641,12 @@ ActionHighlightContentLink.prototype.execute = function() {
 }
 
 ActionHighlightContentLink.prototype.unexecute = function() {
-    this.content_link.setColor(this.old_color);
+    if (this.color == 0) {
+        this.content_link.pushColor(this.old_color);
+    }
+    else {
+        this.content_link.popColor();
+    }
     this.content_link.updateUI();
 
     console.log("Undo ActionHighlightContentLink");
@@ -760,7 +815,7 @@ function Model(state) {
             // .attr("visibility","hidden")
             .attr("transform", function(d) { return "translate(" + d.pos.x + "," + d.pos.y + ")"; });
 
-        if (node.dim == 3) {
+        if (node.dim == global_variables.summary_level) {
             group.selectAll("rect")
                 .data([node])
                 .enter()
@@ -1012,7 +1067,7 @@ function Model(state) {
 
         var node_width   = 30
 
-        var xmargin      = 50
+        var xmargin      = 40
 
         function position(i,j,n) {
             var x = layer_width/2.0 - (n * node_width + (n-1) * xmargin)/2.0 + (j + 0.5) * node_width + j * xmargin;
@@ -1055,10 +1110,10 @@ $(document).ready(function() {
         console.log(JSON.stringify(error));
         console.log(JSON.stringify(json));
 
-        var canvas_width  = 800;
+        var canvas_width  = 1800;
         var canvas_height = 720;
 
-        var message_panel_width  = 480;
+        var message_panel_width  = 500;
         var message_panel_height = 720;
 
         var canvas = d3.select("body")
@@ -1109,7 +1164,7 @@ $(document).ready(function() {
                     model.rewind(); 
                 }
             }
-        }, 60, true);
+        }, 10, true);
 
 
         function log_svg()

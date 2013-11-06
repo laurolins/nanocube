@@ -743,68 +743,55 @@ void Nanocube::insert(const Address &addr, const Object &object)
             Node* child = parent->getChild(label, link_type);
 
             if (child) {
+
                 if (link_type == SHARED) {
-                    // check if we can end Part 1 by preserving
-                    // or reswitching child node.
+
+                    // check if we can end Part 1 by preserving or reswitching child node.
 
                     Node* switch_node = nullptr;
+
+                    //
+#if 1
                     {
-                        //
-                        {
-                            UpstreamThread upstream_thread(child);
-                            while (upstream_thread.getNext()) {
-                                upstream_thread.advance();
-                            }
-                            std::stringstream ss;
-
-                            Address main_addr   = main_thread.getAddress().appendLabel(label);
-                            Address shared_addr = upstream_thread.getAddress();
-
-                            ss << "COMPLEX CASE... main addr: " << main_addr << "   shared addr: " << shared_addr;
-                            LogMsg msg(ss.str());
-
-                            Address switch_address;
-
-                            if ( can_switch(main_addr, shared_addr, addr, switch_address) ) {
-                                // find node
-
-                                ss << "... switch_address: " << switch_address << "   parallel: " << shared_addr;
-                                LogMsg msg(ss.str());
-
-                                switch_node = nanocube.getNode(switch_address);
-                                if (switch_node == nullptr) {
-                                    throw std::runtime_error("OOopps");
-                                }
-
-#ifdef LOG
-                                {
-                                    std::stringstream ss;
-                                    ss << "Switch node on address " << switch_address << " is node " << log_name(switch_node);
-                                    LogMsg msg(ss.str());
-                                }
-#endif
-
-                            }
-                        }
-
-#if 0
-                        // main thread has the other address
                         UpstreamThread upstream_thread(child);
-                        while (true) {
-                            Node *aux = upstream_thread.getNext();
-                            if (aux->flag == Node::IN_PARALLEL_PATH) {
-                                can_switch = true;
-                                break;
-                            }
-                            else if (aux->flag == Node::IN_MAIN_PATH) {
-                                break;
-                            }
+                        while (upstream_thread.getNext()) {
                             upstream_thread.advance();
                         }
+                        std::stringstream ss;
+
+                        Address main_addr   = main_thread.getAddress().appendLabel(label);
+                        Address shared_addr = upstream_thread.getAddress();
+
+                        ss << "COMPLEX CASE... main addr: " << main_addr << "   shared addr: " << shared_addr;
+                        LogMsg msg(ss.str());
+
+                        Address switch_address;
+
+                        if ( can_switch(main_addr, shared_addr, addr, switch_address) ) {
+                            // find node
+
+                            ss << "... switch_address: " << switch_address << "   parallel: " << shared_addr;
+                            LogMsg msg(ss.str());
+
+                            switch_node = nanocube.getNode(switch_address);
+                            if (switch_node == nullptr) {
+                                throw std::runtime_error("OOopps");
+                            }
+
+#ifdef LOG
+                            {
+                                std::stringstream ss;
+                                ss << "Switch node on address " << switch_address << " is node " << log_name(switch_node);
+                                LogMsg msg(ss.str());
+                            }
 #endif
+
+                        }
+
                         // TODO: on the destructor of upstream thread pop everything
                         // and generate actions accordingly
                     }
+#endif
 
                     //
                     if (switch_node) {
@@ -814,11 +801,11 @@ void Nanocube::insert(const Address &addr, const Object &object)
                         }
                         if (new_child != child) {
                             parent->setParentChildLink(label, new_child, SHARED);
-                            break;
 #ifdef LOG
                             log_update_child_link(parent,label);
 #endif
                         }
+                        break;
                     }
                     else {
                         Node *new_child = child->shallowCopy();
@@ -837,9 +824,20 @@ void Nanocube::insert(const Address &addr, const Object &object)
 #endif
                     }
                 }
+
+                // if it is a proper child, just continue
+
             } // is there a child?
             else {
-                // find a parallel proper child share and end Part 1
+                // there is no child
+
+                // find parallel proper child, share it and end Part 1
+
+                //
+                // Proof: this branch doesn't exist, but it need to exist in all
+                // parallel paths. And it is the exact branch we want.
+                //
+
                 Node* new_child = parallel_threads.getFirstProperChild(label);
                 if (new_child) {
                     parent->setParentChildLink(label, new_child, SHARED);
@@ -849,6 +847,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
                     break;
                 }
                 else {
+                    // no parallel branch, so we need a new node
                     parent->setParentChildLink(label, new Node(), PROPER);
 #ifdef LOG
                     log_new_node(parent->getChild(label),main_thread.getCurrentDimension(),main_thread.getCurrentLayer()+1);
@@ -907,6 +906,13 @@ void Nanocube::insert(const Address &addr, const Object &object)
 #endif
                 }
                 else if (parent->getContentType() == SHARED) {
+
+                    //
+                    // DOUBT: Is switching possible here? There needs to be a parallel
+                    // content and it should be contained in one of the minimally finer
+                    // trees.
+                    //
+
                     // why not parallel contents?
                     Node* old_content = parent->getContentAsNode();
                     parent->setContent(old_content->shallowCopy(), PROPER); // create proper content
@@ -965,6 +971,10 @@ void Nanocube::insert(const Address &addr, const Object &object)
                         // check if we can switch or we have to shallow copy
                         // and insert into a new proper content
                         bool can_switch = false;
+
+                        //
+                        // This is strange. It should follow the same logic as the other case.
+                        //
 
                         // test first case
                         Node* aux = parent->getContent()->owner;
