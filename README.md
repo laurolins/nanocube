@@ -2,7 +2,7 @@
 
 Nanocubes are a fast datastructure for in-memory data cubes developed
 at the
-[Information Visualization department](http://www.research.att.com/~infovis)
+[Information Visualization department](http://www.research.att.com/infovis)
 at [AT&T Labs – Research](http://www.research.att.com). Visualizations
 powered by nanocubes can be used to explore datasets with billions of
 elements at interactive rates in a web browser, and in some cases nanocubes
