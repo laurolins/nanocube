@@ -91,10 +91,12 @@ std::ostream& operator<<(std::ostream& os, const Address& addr) {
             os << ",";
         }
         os << "{";
-        std::ostream_iterator<int> out_it (os,",");
-        std::copy ( addr[i].begin(), addr[i].end()-1, out_it );
-        if (addr[i].begin() != addr[i].end()) {
-            os << addr[i].back();
+        if (addr.size(i) > 0) {
+            std::ostream_iterator<int> out_it (os,",");
+            std::copy ( addr[i].begin(), addr[i].end()-1, out_it );
+            if (addr[i].begin() != addr[i].end()) {
+                os << addr[i].back();
+            }
         }
         os << "}";
     }
@@ -671,14 +673,14 @@ bool can_switch(const Address& main_address,
     // both shared and object address. We want to know if we can
     // add one constraint (one more label in one dimension)
 
-    int n = main_address.size();
+    int n = (int) main_address.size();
 
     assert(main_address.size() == shared_address.size());
 
     // check which dimension we can add a constraint
     bool result = false;
     for (int i=0;i<n-1;i++) {
-        int j = main_address.size(i);
+        int j = (int) main_address.size(i);
         if (main_address.size(i) < shared_address.size(i) && object_address[i][j] == shared_address[i][j]) {
             result = true;
             switch_address = main_address;
