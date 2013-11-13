@@ -12,6 +12,7 @@ bin_PROGRAMS =        \
 ncdmp                 \
 ncserve               \
 nc_q20_q20_u2_u4      \
+nc_q25_u2_u4          \
 nc_q25_c1_u2_u4       \
 nc_q25_c1_c1_u2_u4    \
 nc_q25_c1_c1_c1_u2_u4
@@ -114,7 +115,7 @@ geom2d/tile.hh
 VERSION = $(shell cat $(top_srcdir)/VERSION)
 AM_CXXFLAGS += -DVERSION=\"$(VERSION)\"
 
-NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
+NC_LIBS = -ldl -lpthread -lboost_thread -lboost_system
 
 nc_q20_q20_u2_u4_LDFLAGS  = $(NC_LIBS)
 nc_q20_q20_u2_u4_CXXFLAGS = \
@@ -124,6 +125,16 @@ nc_q20_q20_u2_u4_CXXFLAGS = \
     -DLIST_VARIABLE_TYPES=u2,u4 \
     -DVERSION=\"$(VERSION)\"
 nc_q20_q20_u2_u4_SOURCES =\
+    $(nc_SOURCES)
+
+nc_q25_u2_u4_LDFLAGS  = $(NC_LIBS)
+nc_q25_u2_u4_CXXFLAGS = \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25 \
+    -DLIST_VARIABLE_TYPES=u2,u4 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
 nc_q25_c1_u2_u4_LDFLAGS  = $(NC_LIBS)

@@ -704,7 +704,7 @@ void NanoCubeServer::write()
             boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
             for (uint64_t i=0;i<batch_size && !done;++i)
             {
-                std::cout << i << std::endl;
+                // std::cout << i << std::endl;
                 bool ok = nanocube.add(input_stream);
                 if (!ok) {
                     // std::cout << "not ok" << std::endl;
