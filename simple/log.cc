@@ -202,6 +202,11 @@ Log::~Log() {
 
 void Log::clear()
 {
+    static int count = 0;
+
+    ostream << "]";
+    ostream.close();
+    ostream.open("/tmp/actions_" + std::to_string(++count) + ".json");
     for (Action *a: actions) {
         delete a;
     }
@@ -209,8 +214,13 @@ void Log::clear()
 }
 
 void Log::dump_last_action() {
+
+    if (!ostream_empty)
+        ostream << ", ";
+    ostream_empty = false;
+
+
     actions.back()->json(ostream);
-    ostream << ", ";
     ostream.flush();
 }
 

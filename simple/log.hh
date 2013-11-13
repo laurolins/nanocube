@@ -69,6 +69,7 @@ struct Log {
     std::unordered_map<NodeID, NodeName> map;
     std::vector<Action*> actions;
 
+    bool          ostream_empty { true };
     std::ofstream ostream;
 
 };

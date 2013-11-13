@@ -122,14 +122,24 @@ struct ParentChildLink {
 
 struct Nanocube {
 public:
+    Nanocube() = default;
     Nanocube(const std::vector<int> &levels);
-    void insert(const Address &addr, const Object &object);
+
+    Nanocube(const Nanocube &nc) = delete;
+    Nanocube& operator=(const Nanocube &nc) = delete;
+
+    Nanocube(Nanocube &&nc);
+    Nanocube& operator=(Nanocube &&nc);
+
     Summary* query(const Address &addr);
-    Node *getNode(const Address &addr);
+    Node*    getNode(const Address &addr);
+
+    void insert(const Address &addr, const Object &object);
+
 public:
     Node *root { nullptr };
     std::vector<int> levels;
-    int              dimension;
+    int              dimension { 0 };
 };
 
 //-----------------------------------------------------------------------------

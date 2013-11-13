@@ -128,6 +128,20 @@ Nanocube::Nanocube(const std::vector<int> &levels):
     dimension { (int) levels.size() }
 {}
 
+Nanocube::Nanocube(Nanocube &&nc)
+{
+    std::swap(nc.root,this->root);
+    std::swap(nc.levels, this->levels);
+    std::swap(nc.dimension, this->dimension);
+}
+
+Nanocube& Nanocube::operator=(Nanocube &&nc) {
+    std::swap(nc.root,this->root);
+    std::swap(nc.levels, this->levels);
+    std::swap(nc.dimension, this->dimension);
+    return *this;
+}
+
 Summary *Nanocube::query(const Address &addr)
 {
     if (root == nullptr) {
@@ -690,8 +704,8 @@ void Nanocube::insert(const Address &addr, const Object &object)
     logging::getLog().pushMessage(ss.str());
 #endif
 
-    Thread       main_thread(Thread::MAIN);
-    ThreadStack  parallel_threads(Thread::PARALLEL);
+    Thread       main_path(Thread::MAIN);
+    ThreadStack  mf_paths(Thread::PARALLEL); // minimally finer paths
 
 
     if (root == nullptr) {
@@ -707,13 +721,61 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
     Nanocube &nanocube = *this;
 
-    insert_recursively = [&nanocube, &insert_recursively, &addr, &object, &dimension]
-            (Thread& main_thread, ThreadStack& parallel_threads) -> void {
+    //
+    // Retrieve address of a node and check if it is contained in
+    // a path in the minimally finer set of paths (mf_paths) for
+    // the current address
+    //
+    auto find_switch_node = [&addr, &nanocube](Node* shared_child, const Address &child_addr) -> Node* {
+
+        UpstreamThread upstream_thread(shared_child);
+        while (upstream_thread.getNext()) {
+            upstream_thread.advance();
+        }
+        Address child_proper_addr = upstream_thread.getAddress();
+
+        std::stringstream ss;
+        ss << "COMPLEX CASE... shared child addr: " << child_addr << "   child proper addr: " << child_proper_addr;
+        LogMsg msg(ss.str());
+
+        Node* switch_node = nullptr;
+
+        Address switch_address;
+
+        if ( can_switch(child_addr, child_proper_addr, addr, switch_address) ) {
+            // find node
+
+            ss << "... switch_address: " << switch_address << "   parallel: " << child_addr;
+            LogMsg msg(ss.str());
+
+            switch_node = nanocube.getNode(switch_address);
+            if (switch_node == nullptr) {
+                throw std::runtime_error("OOopps");
+            }
+
+#ifdef LOG
+            {
+                std::stringstream ss;
+                ss << "Switch node on address " << switch_address << " is node " << log_name(switch_node);
+                LogMsg msg(ss.str());
+            }
+#endif
+        }
+
+        return switch_node;
+    };
+
+    //
+    // Recursive Insertion Function
+    //
+
+    insert_recursively = [&nanocube, &insert_recursively, &addr, &object, &dimension, &find_switch_node]
+            (Thread& main_path, ThreadStack& mf_paths) -> void {
 
 #ifdef LOG
         std::stringstream ss;
         auto &log = logging::getLog();
-        ss << "insert_recursively on node " << log.getNodeName((logging::NodeID) main_thread.top()) << " dim " << main_thread.getCurrentDimension();
+        ss << "insert_recursively on node " << log.getNodeName((logging::NodeID) main_path.top()) << " dim " << main_path.getCurrentDimension();
         LogMsg log_insert_recursively(ss.str());
 #endif
 
@@ -730,14 +792,14 @@ void Nanocube::insert(const Address &addr, const Object &object)
         //     it doesn't exist, create a new child on the main branch
         //
 
-        auto &dim_addr = addr[main_thread.getCurrentDimension()];
+        auto &dim_addr = addr[main_path.getCurrentDimension()];
 
         int index = 0;
         while (index < (int) dim_addr.size()) {
 
             Label label  = dim_addr[index];
 
-            Node* parent = main_thread.top();
+            Node* parent = main_path.top();
 
             LinkType link_type;
             Node* child = parent->getChild(label, link_type);
@@ -748,52 +810,10 @@ void Nanocube::insert(const Address &addr, const Object &object)
 
                     // check if we can end Part 1 by preserving or reswitching child node.
 
-                    Node* switch_node = nullptr;
+                    Address child_addr = main_path.getAddress().appendLabel(label);
 
-                    //
-#if 1
-                    {
-                        UpstreamThread upstream_thread(child);
-                        while (upstream_thread.getNext()) {
-                            upstream_thread.advance();
-                        }
-                        std::stringstream ss;
+                    Node* switch_node = find_switch_node(child, child_addr);
 
-                        Address main_addr   = main_thread.getAddress().appendLabel(label);
-                        Address shared_addr = upstream_thread.getAddress();
-
-                        ss << "COMPLEX CASE... main addr: " << main_addr << "   shared addr: " << shared_addr;
-                        LogMsg msg(ss.str());
-
-                        Address switch_address;
-
-                        if ( can_switch(main_addr, shared_addr, addr, switch_address) ) {
-                            // find node
-
-                            ss << "... switch_address: " << switch_address << "   parallel: " << shared_addr;
-                            LogMsg msg(ss.str());
-
-                            switch_node = nanocube.getNode(switch_address);
-                            if (switch_node == nullptr) {
-                                throw std::runtime_error("OOopps");
-                            }
-
-#ifdef LOG
-                            {
-                                std::stringstream ss;
-                                ss << "Switch node on address " << switch_address << " is node " << log_name(switch_node);
-                                LogMsg msg(ss.str());
-                            }
-#endif
-
-                        }
-
-                        // TODO: on the destructor of upstream thread pop everything
-                        // and generate actions accordingly
-                    }
-#endif
-
-                    //
                     if (switch_node) {
                         Node* new_child = switch_node; // parallel_threads.getFirstProperChild(label);
                         if (!new_child) {
@@ -812,7 +832,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
 #ifdef LOG
                         {
                             LogMsg msg("...cannot switch; shallow copy of " + log_name(child) +" into " + log_name(new_child));
-                            log_shallow_copy(new_child,main_thread.getCurrentDimension(),main_thread.getCurrentLayer()+1);
+                            log_shallow_copy(new_child,main_path.getCurrentDimension(),main_path.getCurrentLayer()+1);
                         }
 #endif
                         parent->setParentChildLink(label, new_child, PROPER);
@@ -838,7 +858,7 @@ void Nanocube::insert(const Address &addr, const Object &object)
                 // parallel paths. And it is the exact branch we want.
                 //
 
-                Node* new_child = parallel_threads.getFirstProperChild(label);
+                Node* new_child = mf_paths.getFirstProperChild(label);
                 if (new_child) {
                     parent->setParentChildLink(label, new_child, SHARED);
 #ifdef LOG
@@ -850,36 +870,36 @@ void Nanocube::insert(const Address &addr, const Object &object)
                     // no parallel branch, so we need a new node
                     parent->setParentChildLink(label, new Node(), PROPER);
 #ifdef LOG
-                    log_new_node(parent->getChild(label),main_thread.getCurrentDimension(),main_thread.getCurrentLayer()+1);
+                    log_new_node(parent->getChild(label),main_path.getCurrentDimension(),main_path.getCurrentLayer()+1);
                     log_update_child_link(parent,label);
 #endif
                 }
             }
 
-            main_thread.advanceChild(label);
-            parallel_threads.advanceChild(label);
+            main_path.advanceChild(label);
+            mf_paths.advanceChild(label);
 
             ++index;
         }
 
 
         // Last node dimension
-        bool last_node_dim = (dimension-1 == main_thread.getCurrentDimension());
+        bool last_node_dim = (dimension-1 == main_path.getCurrentDimension());
 
         // Part 2: check the content of the main thread
         for (;index >= 0;--index) {
 
             std::stringstream ss;
             ss << "index: " << index
-               << "  dim: " << main_thread.getCurrentDimension()
-               << "  layer: " << main_thread.getCurrentLayer()
+               << "  dim: " << main_path.getCurrentDimension()
+               << "  layer: " << main_path.getCurrentLayer()
                << "  last_node_dim: " << last_node_dim;
 
             std::cout << ss.str() << std::endl;
 
             LogMsg msg(ss.str());
 
-            Node* parent = main_thread.top();
+            Node* parent = main_path.top();
 
             // general case
             if (parent->getNumChildren() == 1) {
@@ -893,165 +913,129 @@ void Nanocube::insert(const Address &addr, const Object &object)
                 // done updating
             }
 
-            else if (!last_node_dim) {
-                // Intermediate dimension
-
-                if (parent->hasContent() == false) {
-                    // why not parallel contents?
-                    parent->setContent(new Node(), PROPER); // create proper content
-
+            else if (parent->hasContent() == false) {
+                Content* shared_content = mf_paths.getAnyContent();
+                if (shared_content) {
+                    parent->setContent(shared_content, SHARED); // create proper content
 #ifdef LOG
-                    log_new_node(parent->getContentAsNode(),main_thread.getCurrentDimension()+1,0);
                     log_update_content_link(parent);
 #endif
-                }
-                else if (parent->getContentType() == SHARED) {
-
-                    //
-                    // DOUBT: Is switching possible here? There needs to be a parallel
-                    // content and it should be contained in one of the minimally finer
-                    // trees.
-                    //
-
-                    // why not parallel contents?
-                    Node* old_content = parent->getContentAsNode();
-                    parent->setContent(old_content->shallowCopy(), PROPER); // create proper content
-
-#ifdef LOG
-                    log_shallow_copy(parent->getContentAsNode(),main_thread.getCurrentDimension()+1,0);
-                    log_update_content_link(parent);
-#endif
-                }
-
-                // there is a parallel content
-                if (parent->getNumChildren() > 0) {
-                    Label label = dim_addr[index];
-                    Node* child = parent->getChild(label);
-                    parallel_threads.push(child, main_thread.getCurrentDimension(), main_thread.getCurrentLayer()+1);
-                }
-
-                // go to next dimension
-                main_thread.advanceContent();
-                parallel_threads.advanceContent();
-
-                insert_recursively(main_thread, parallel_threads);
-
-                //parallel_threads.rewind();
-                //main_thread.rewind();
-
-                if (parent->getNumChildren() > 0) {
-                    parallel_threads.top().rewind();
-                    parallel_threads.pop();
-                }
-
-            }
-            else {
-                // Last node dimension. Next dimension contain summaries.
-                if (parent->hasContent() == false)
-                {
-                    Summary* parallel_summary = parallel_threads.getFirstSummary();
-                    if (parallel_summary) {
-                        parent->setContent(parallel_summary, SHARED); // create proper content
-#ifdef LOG
-                        log_update_content_link(parent);
-#endif
-                    }
-                    else {
-                        parent->setContent(new Summary(), PROPER); // create proper content
-                        parent->getContentAsSummary()->insert(object);
-#ifdef LOG
-                        log_new_node(parent->getContent(),main_thread.getCurrentDimension()+1,0);
-                        log_update_content_link(parent);
-                        logging::getLog().store((logging::NodeID)parent->getContent(), object);
-#endif
-                    }
                 }
                 else {
-                    if (parent->getContentType() == SHARED) {
-                        // check if we can switch or we have to shallow copy
-                        // and insert into a new proper content
-                        bool can_switch = false;
+                    Content *new_content = (last_node_dim ? (Content*) new Summary() : (Content*) new Node());
+                    parent->setContent(new_content, PROPER); // create proper content
 
-                        //
-                        // This is strange. It should follow the same logic as the other case.
-                        //
+#ifdef LOG
+                    log_new_node(parent->getContentAsNode(),main_path.getCurrentDimension()+1,0);
+                    log_update_content_link(parent);
+#endif
+                }
+            }
+            else if (parent->getContentType() == SHARED) {
 
-                        // test first case
-                        Node* aux = parent->getContent()->owner;
-                        if (aux->flag == Node::IN_PARALLEL_PATH) {
-                            can_switch = true;
-                        }
-                        else if (aux->flag == Node::IN_MAIN_PATH) {
-                            can_switch = false;
-                        }
-                        else {
-                            UpstreamThread upstream_thread(aux);
-                            while (true) {
-                                aux = upstream_thread.getNext();
-                                if (aux->flag == Node::IN_PARALLEL_PATH) {
-                                    can_switch = true;
-                                    break;
-                                }
-                                else if (aux->flag == Node::IN_MAIN_PATH) {
-                                    break;
-                                }
-                                upstream_thread.advance();
-                            }
-                        }
-                        if (can_switch) {
-                            Summary* parallel_summary = parallel_threads.getFirstSummary();
-                            parent->setContent(parallel_summary, PROPER); // create proper content
+                // check if we can switch content for one on mf_paths
+                Node* switch_node = nullptr;
+                if (!last_node_dim) {
+                    Node*   shared_content = parent->getContentAsNode();
+                    Address shared_content_address = main_path.getAddress().appendDimension();
+                    switch_node = find_switch_node(shared_content, shared_content_address);
+                    if (switch_node) {
+                        parent->setContent(switch_node, SHARED); // create proper content
 #ifdef LOG
-                            log_update_content_link(parent);
+                        log_update_content_link(parent);
 #endif
-                        }
-                        else {
-                            // shallow copy old summary
-                            Summary* old_summary = parent->getContentAsSummary();
-                            parent->setContent(new Summary(*old_summary), PROPER); // create proper content
-#ifdef LOG
-                            {
-                                LogMsg msg("...shallow copy of " +  log_name(old_summary)
-                                           + " into " + log_name(parent->getContentAsSummary()));
-                                log_shallow_copy(parent->getContentAsSummary(),main_thread.getCurrentDimension()+1,0);
-                            }
-                            {
-                                LogMsg msg("...setting content link of node " +  log_name(parent));
-                                log_update_content_link(parent);
-                            }
-#endif
-                            parent->getContentAsSummary()->insert(object);
-#ifdef LOG
-                            {
-                                LogMsg msg("...storing object into " +  log_name(parent->getContent()));
-                                logging::getLog().store((logging::NodeID)parent->getContent(), object);
-                            }
-#endif
-                        }
                     }
                     else {
-                        parent->getContentAsSummary()->insert(object);
+                        Node* old_content = parent->getContentAsNode();
+                        parent->setContent(old_content->shallowCopy(), PROPER); // create proper content
 #ifdef LOG
-                        logging::getLog().store((logging::NodeID)parent->getContent(), object);
+                        log_shallow_copy(parent->getContentAsNode(),main_path.getCurrentDimension()+1,0);
+                        log_update_content_link(parent);
+#endif
+                    }
+                }
+
+                else { // last dimension
+
+                    Node*   shared_content_parent = parent->getContent()->owner;
+                    Address shared_content_parent_address = main_path.getAddress();
+                    switch_node = find_switch_node(shared_content_parent, shared_content_parent_address);
+                    if (switch_node) {
+                        Summary* shared_summary = switch_node->getContentAsSummary();
+                        parent->setContent(shared_summary, SHARED); // create proper content
+#ifdef LOG
+                        log_update_content_link(parent);
+#endif
+                    }
+                    else {
+                        // shallow copy old summary
+                        Summary* old_summary = parent->getContentAsSummary();
+                        parent->setContent(new Summary(*old_summary), PROPER); // create proper content
+#ifdef LOG
+                        {
+                            LogMsg msg("...shallow copy of " +  log_name(old_summary)
+                                       + " into " + log_name(parent->getContentAsSummary()));
+                            log_shallow_copy(parent->getContentAsSummary(),main_path.getCurrentDimension()+1,0);
+                        }
+                        {
+                            LogMsg msg("...setting content link of node " +  log_name(parent));
+                            log_update_content_link(parent);
+                        }
 #endif
                     }
                 }
             }
 
-            parallel_threads.rewind();
-            main_thread.rewind();
-        }
 
-//        main_thread.rewind();
-//        parallel_threads.rewind();
+
+            // recurse or solve it if in the last dimension
+            if (parent->getContentType() == PROPER) {
+                if (last_node_dim) {
+                    parent->getContentAsSummary()->insert(object);
+
+#ifdef LOG
+                    {
+                        LogMsg msg("...storing object into " +  log_name(parent->getContent()));
+                        logging::getLog().store((logging::NodeID)parent->getContent(), object);
+                    }
+#endif
+                }
+                else {
+                    // recurse
+                    if (parent->getNumChildren() > 0) {
+                        Label label = dim_addr[index];
+                        Node* child = parent->getChild(label);
+                        mf_paths.push(child, main_path.getCurrentDimension(), main_path.getCurrentLayer()+1);
+                    }
+
+                    // go to next dimension
+                    main_path.advanceContent();
+                    mf_paths.advanceContent();
+
+                    insert_recursively(main_path, mf_paths);
+
+                    //parallel_threads.rewind();
+                    //main_thread.rewind();
+
+                    if (parent->getNumChildren() > 0) {
+                        mf_paths.top().rewind();
+                        mf_paths.pop();
+                    }
+                }
+            }
+
+            mf_paths.rewind();
+            main_path.rewind();
+
+        }
 
     }; // end lambda function insert_recursively
 
     // start main thread
-    main_thread.start(root,0,0);
+    main_path.start(root,0,0);
 
     // insert
-    insert_recursively(main_thread, parallel_threads);
+    insert_recursively(main_path, mf_paths);
 
 }
 

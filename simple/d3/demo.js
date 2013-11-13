@@ -2,7 +2,7 @@ var global_variables = {
     main_color:     "#FF0000",
     parallel_color: "#00FF00",
     upstream_color: "#FFA500",
-    summary_level:  3
+    summary_level:  4
 };
 
 function Timer(callback, delay) {
@@ -1111,10 +1111,10 @@ $(document).ready(function() {
         console.log(JSON.stringify(json));
 
         var canvas_width  = 1800;
-        var canvas_height = 720;
+        var canvas_height = 1024;
 
         var message_panel_width  = 500;
-        var message_panel_height = 720;
+        var message_panel_height = 1024;
 
         var canvas = d3.select("body")
             .append("svg")

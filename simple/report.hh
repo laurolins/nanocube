@@ -181,16 +181,18 @@ public:
         layer->nodes.push_back(this);
     }
 
-    virtual void insertChildLink(Node *child, bool shared, std::string label)
+    virtual void insertChildLink(Node* /*child*/,
+                                 bool /*shared*/,
+                                 std::string /*label*/)
     {}
 
-    virtual void setContent(Node *content, bool shared)
+    virtual void setContent(Node* /*content*/, bool /*shared*/)
     {}
 
     virtual std::string getInfo() const
     { return ""; }
 
-    virtual void setInfo(std::string info)
+    virtual void setInfo(std::string /*info*/)
     {}
 
     virtual InternalNode* asInternalNode() {
