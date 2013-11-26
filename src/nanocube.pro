@@ -1,11 +1,13 @@
 LOCAL=$$system(echo $HOME)/local
 
-
 QMAKE_CFLAGS_X86_64   -= -mmacosx-version-min=10.5
 QMAKE_CXXFLAGS_X86_64 -= -mmacosx-version-min=10.5
 QMAKE_LFLAGS_X86_64   -= -mmacosx-version-min=10.5
 QMAKE_LFLAGS          -= -mmacosx-version-min=10.5
 
+
+#QMAKE_CC=gcc-4.8
+#QMAKE_CXX=g++-4.8
 # $$system(echo /Users/lauro)
 
 macx {
@@ -14,7 +16,7 @@ macx {
 # -stdlib=libc++
 #QMAKE_CXXFLAGS  += -stdlib=libc++
 #QMAKE_LFLAGS    += -stdlib=libc++
-QMAKE_CXXFLAGS  += -std=c++11 -mmacosx-version-min=10.7 -Wno-unused-parameter -I$${LOCAL}/include
+QMAKE_CXXFLAGS  += -std=c++11 -mmacosx-version-min=10.7 -Wno-unused-parameter -I$${LOCAL}/include -ftemplate-depth-512
 QMAKE_LFLAGS    += -std=c++11 -mmacosx-version-min=10.7 -Wno-unused-parameter
 }
 unix:!macx{
@@ -26,8 +28,8 @@ QMAKE_LFLAGS    += -std=c++11
 QT     -=  gui core
 LIBS   -= -lQtGui -lQtCore
 
-LIBS        += -L$${LOCAL}/lib -ldl -lpthread -lz -lboost_thread-mt -lboost_system-mt
-INCLUDEPATH += .
+LIBS        += -L$${LOCAL}/lib -L/usr/local/lib -ldl -lpthread -lz -lboost_thread-mt -lboost_system-mt
+INCLUDEPATH += . /usr/local/include
 
 EXAMPLE1 = \
    -DLIST_DIMENSION_NAMES=c1,c1,c1,c1 \

@@ -6,7 +6,7 @@ install-exec-hook:
 	cp $(top_srcdir)/src/ncbuild $(prefix)/bin
 	chmod +x $(prefix)/bin/ncbuild
 
-
+AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS =        \
 ncdmp                 \

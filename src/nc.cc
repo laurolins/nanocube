@@ -24,6 +24,15 @@
 
 #include <boost/thread/shared_mutex.hpp>
 
+//
+// geometry.hh and maps.hh
+// are used just for the serveTile routine
+// that deals with a hardcoded x:29bits, y:29bits, level: 6bits
+// scheme of quadtree addresses on 64-bit unsigned integer
+//
+#include <geometry.hh>
+#include <maps.hh>
+
 using namespace nanocube;
 
 //------------------------------------------------------------------------------
@@ -185,6 +194,7 @@ public: // Public Methods
 
     void serveQuery     (Request &request, bool json, bool compression);
     void serveTimeQuery (Request &request, bool json, bool compression);
+    void serveTile      (Request &request);
     void serveStats     (Request &request);
     void serveSchema    (Request &request);
     void serveTBin      (Request &request);
@@ -266,10 +276,15 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
 
     auto timing_handler       = std::bind(&NanoCubeServer::serveTiming, this, std::placeholders::_1);
 
+    auto tile_handler         = std::bind(&NanoCubeServer::serveTile, this, std::placeholders::_1);
+
     // register service
+
     server.registerHandler("query",      json_query_handler);
     server.registerHandler("binquery",   binary_query_handler);
     server.registerHandler("binqueryz",  binary_query_comp_handler);
+
+    server.registerHandler("tile",       tile_handler);
 
     server.registerHandler("tquery",     json_tquery_handler);
     server.registerHandler("bintquery",  binary_tquery_handler);
@@ -459,6 +474,132 @@ void NanoCubeServer::serveQuery(Request &request, bool json, bool compression)
     }
 }
 
+void NanoCubeServer::serveTile(Request &request)
+{
+    //
+    // assuming the query result is a list of quadtree addresses
+    //
+
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
+    // first entry in params is the url (empty right now)
+    // second entry is the handler key, starting from
+    // index 2 are the parameters;
+    std::stringstream ss;
+    bool first = true;
+    for (auto it=request.params.begin()+2; it!=request.params.end(); it++) {
+        if (!first) {
+            ss << "/";
+        }
+        ss << *it;
+        first = false;
+    }
+
+    // query string
+    // std::string query_st = "src=[qaddr(0,0,2),qaddr(0,0,2)]/@dst=qaddr(1,0,1)+1";
+    std::string query_st = ss.str();
+
+    // log
+    // std::cout << query_st << std::endl;
+
+    ::query::QueryDescription query_description;
+
+    try {
+        this->parse(query_st, nanocube.schema, query_description);
+    }
+    catch (::query::parser::QueryParserException &e) {
+        request.respondJson(e.what());
+        return;
+    }
+
+    // count number of anchored flags
+    int num_anchored_dimensions = 0;
+    for (auto flag: query_description.anchors) {
+        if (flag)
+            num_anchored_dimensions++;
+    }
+
+    ::query::result::Vector result_vector(num_anchored_dimensions);
+
+    // set dimension names
+    int level=0;
+    int i=0;
+    for (auto flag: query_description.anchors) {
+        if (flag) {
+            result_vector.setLevelName(level++, nanocube.schema.getDimensionName(i));
+        }
+        i++;
+    }
+
+    ::query::result::Result result(result_vector);
+
+    // ::query::result::Result result;
+    try {
+        nanocube.query(query_description, result);
+    }
+    catch (::nanocube::query::QueryException &e) {
+        request.respondJson(e.what());
+        return;
+    }
+    catch (...) {
+        request.respondJson("Unexpected problem. Server might be unstable now.");
+        return;
+    }
+
+    if (result_vector.getNumLevels() != 1) {
+        request.respondJson("tile query result should have a single level.");
+    }
+    else {
+
+        using Edge  = ::vector::Edge;
+        using Value = ::vector::Value;
+        using INode = ::vector::InternalNode;
+
+        // tile
+        ::maps::Tile tile;
+        auto *target = query_description.getFirstAnchoredTarget();
+        if (target) {
+            auto *find_and_dive_target = target->asFindAndDiveTarget();
+            if (find_and_dive_target) {
+                ::query::RawAddress raw_address = find_and_dive_target->base;
+                tile = maps::Tile(raw_address);
+            }
+            else {
+                request.respondJson("problem");
+                return;
+            }
+        }
+        else {
+            request.respondJson("problem");
+            return;
+        }
+
+        uint32_t written_bytes = 0;
+        std::ostringstream os;
+        if (result_vector.root) {
+            INode *inode = result_vector.root->asInternalNode();
+            for (auto it: inode->children) {
+                Edge &e = it.second;
+
+                maps::Tile subtile(e.label);
+                maps::Tile relative_tile = tile.relativeTile(subtile);
+
+                Value value = e.node->asLeafNode()->value;
+                uint8_t ii = relative_tile.getY();
+                uint8_t jj = relative_tile.getX();
+
+                // i, j, value
+                os.write((char*) &ii, sizeof(uint8_t));
+                os.write((char*) &jj, sizeof(uint8_t));
+                os.write((char*) &value, sizeof(Value));
+
+                written_bytes += sizeof(uint8_t) + sizeof(uint8_t) + sizeof(Value);
+
+            } // transfering data to main matrix
+        }
+        request.respondOctetStream(os.str().c_str(), written_bytes);
+    }
+}
 
 void NanoCubeServer::serveTimeQuery(Request &request, bool json, bool compression)
 {
