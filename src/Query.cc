@@ -165,4 +165,21 @@ void QueryDescription::setBaseWidthCountTarget(int dimension, RawAddress base_ad
     targets[dimension] = new BaseWidthCountTarget(base_address,width,count);
 }
 
+Target *QueryDescription::getFirstAnchoredTarget()
+{
+    size_t i = 0;
+    for (auto b: this->anchors) {
+        if (b) {
+            break;
+        }
+        else {
+            ++i;
+        }
+    }
+    if (i < this->targets.size()) {
+        return this->targets[i];
+    }
+    else return nullptr;
+}
+
 } // query namespace

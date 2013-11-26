@@ -75,6 +75,10 @@ Report.cc                 \
 Report.hh                 \
 json.cc                   \
 json.hh                   \
+maps.cc                   \
+maps.hh                   \
+geometry.cc               \
+geometry.hh               \
 Server.cc                 \
 Server.hh		  \
 Stopwatch.cc              \
@@ -115,7 +119,8 @@ geom2d/tile.hh
 VERSION = $(shell cat $(top_srcdir)/VERSION)
 AM_CXXFLAGS += -DVERSION=\"$(VERSION)\"
 
-NC_LIBS = -ldl -lpthread -lboost_thread -lboost_system
+# NC_LIBS = -ldl -lpthread -lboost_thread -lboost_system
+NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
 
 nc_q20_q20_u2_u4_LDFLAGS  = $(NC_LIBS)
 nc_q20_q20_u2_u4_CXXFLAGS = \

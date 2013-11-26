@@ -210,6 +210,8 @@ public: // Methods
     // this is used for the time dimension which is special
     void setBaseWidthCountTarget(int dimension, RawAddress base_address, int width, int count);
 
+    Target* getFirstAnchoredTarget();
+
 public: // Data Members
     // time range description first/size/count
     std::vector<bool>    anchors;

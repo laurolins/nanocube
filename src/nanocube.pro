@@ -111,6 +111,8 @@ NanoCubeReportBuilder.hh  \
 NanoCubeSummary.hh        \
 NanoCubeSchema.hh         \
 NanoCube.hh               \
+maps.hh                   \
+geometry.hh               \
 TimeSeriesEntryType.hh    \
 DumpFile.hh               \
 Tuple.hh                  \
@@ -154,6 +156,8 @@ qtfilter.cc                  \
 vector.cc                    \
 mongoose.c                   \
 json.cc                      \
+maps.cc                      \
+geometry.cc                  \
 nc.cc                        \
 geom2d/base.cc               \
 geom2d/boundingbox.cc        \
