@@ -1,4 +1,5 @@
 #include<Query.hh>
+#include<cstddef>
 
 namespace query {
 
@@ -167,7 +168,7 @@ void QueryDescription::setBaseWidthCountTarget(int dimension, RawAddress base_ad
 
 Target *QueryDescription::getFirstAnchoredTarget()
 {
-    size_t i = 0;
+    std::size_t i = 0;
     for (auto b: this->anchors) {
         if (b) {
             break;
