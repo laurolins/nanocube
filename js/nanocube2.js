@@ -136,6 +136,15 @@ Query.prototype.range = function(addr0, addr1) {
     return this;
 }
 
+Query.prototype.sequence = function(addr_sequence) {
+    var constraint = 
+        (this.drilldown_flag ? "@" : "") 
+        + this.dimension.name + "="
+        + "<" + addr_sequence.join(",") + ">";
+    this.query_elements[this.dimension.name] = constraint;
+    return this;
+}
+
 Query.prototype.tseries = function(base, bucket, count) {
     var constraint = 
         (this.drilldown_flag ? "@" : "") 
@@ -213,6 +222,45 @@ $(document).ready(
                         }
                         // k({x: x_array, y: y_array, count: count_array});
                     });
+
+
+
+                    var query2 = nanocube
+                        .query()
+                        // .dim("src")
+                        // .rollup()
+                        // .findAndDive((new Tile(0,0,0)).raw(),8);
+                        .dim("src")
+                        .rollup()
+                        .sequence([(new Tile(0,0,10)).raw(),
+                                   (new Tile(0,1023,10)).raw(),
+                                   (new Tile(1023,0,10)).raw()]);
+
+                    query2.run_query(function (result) {
+
+
+                        console.log(result);
+                        console.log(JSON.stringify(result));
+                        // var record_size = 10;
+                        // var view = new DataView(result);
+                        // var n_records = result.byteLength / record_size;
+
+                        // var x_array = new Uint8Array(n_records);
+                        // var y_array = new Uint8Array(n_records);
+                        // var count_array = new Float64Array(n_records);
+                        // for (var i=0; i<n_records; ++i) {
+                        //     x_array[i]     = view.getUint8( record_size*i+1 );
+                        //     y_array[i]     = view.getUint8( record_size*i   );
+                        //     count_array[i] = view.getFloat64( record_size*i+2, true );
+                        //     console.log(
+                        //         JSON.stringify({x: x_array[i], y: y_array[i], value: count_array[i]})
+                        //     );
+                        // }
+                        // k({x: x_array, y: y_array, count: count_array});
+                    });
+
+
+
                 }
             }
         );
