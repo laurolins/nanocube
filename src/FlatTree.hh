@@ -692,7 +692,9 @@ void FlatTree<Content>::visitRange(AddressType min_address, AddressType max_addr
 template <typename Content>
 template <typename Visitor>
 void FlatTree<Content>::visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache) {
-    throw std::runtime_error("visitSequence not supported");
+    for (auto raw_address: seq) {
+        this->visitSubnodes(AddressType(raw_address),0,visitor);
+    }
 }
 
 

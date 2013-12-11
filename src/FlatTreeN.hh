@@ -460,7 +460,10 @@ template <NumBytes N, typename Content>
 template <typename Visitor>
 void FlatTree<N, Content>::visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache)
 {
-    throw std::runtime_error("visitSequence not supported");
+    for (auto raw_address: seq) {
+        this->visitSubnodes(AddressType(raw_address),0,visitor);
+    }
+    // throw std::runtime_error("visitSequence not supported");
 }
 
 template<NumBytes N, typename Content>
