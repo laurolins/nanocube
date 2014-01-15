@@ -11,47 +11,34 @@ modern-day laptop.
 
 ## News
 
-<table>
-<tr>
-<td>
-2013-10-22  
-</td>
-<td>
-<a href="https://github.com/laurolins/nanocube/wiki">Overview on how to use nanocubes</a>
-</td>
-</tr>
-</table>
+2013-10-22: [Overview: how to use nanocubes](https://github.com/laurolins/nanocube/wiki)
 
 ## Prerequisites
 
-The nanocubes server is written in C++ 11. You'll need
-[boost](http://www.boost.org) and the
-[GNU build system](http://www.gnu.org/software/autoconf/). Nanocubes
-use [mongoose](https://github.com/valenok/mongoose) internally as its
-web server, but we include a copy of the mongoose source in the tree.
-
+The nanocubes server is written in C++ 11. You'll need a recent
+version of [boost](http://www.boost.org) (we use 1.51) and the
+[GNU build system](http://www.gnu.org/software/autoconf/). 
 
 ## Building
 
     $ git clone https://github.com/laurolins/nanocube.git
     $ ./bootstrap
-	$ CXX='g++-4.7' ./configure
-	$ make
-
+    $ CXX='g++-4.7' ./configure
+    $ make
 
 ## Running
 
 The way nanocube servers currently work is they read a dataset from
 `stdin` and then start an HTTP server which answers queries. There's
 no authentication mechanism! You should solve this at a different
-level of your stack.
+level of your stack (we internally use nginx running as an HTTP proxy).
 
 You'll also need a client application that can issue nanocube queries
 and build visualizations with it. We offer an example Javascript
 client API
 [here](https://github.com/laurolins/nanocube/tree/1.0/api/js), and are
-currently working on a complete, self-contained example. We'll
-be releasing the C++ client as open source in the near future as well.
+currently working on a complete, self-contained example. We'll be
+releasing the C++ client as open source in the near future as well.
 
 You'll quickly learn that the nanocube HTTP server is not as, ahem,
 battle-hardened as you and we would like it to be. We welcome feedback
