@@ -220,7 +220,7 @@ float Record::getFloat(dumpfile::Field *field) {
 
 uint64_t Record::getUInt(dumpfile::Field *field) {
     if (input_file_description.isBinary()) {
-        uint64_t result;
+        uint64_t result = 0;
         int index =  field->offset_inside_record;
         int num_bytes = field->field_type.num_bytes;
         std::copy(&buffer[index], &buffer[index] + num_bytes, (char*) &result );
