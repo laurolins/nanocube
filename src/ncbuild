@@ -68,6 +68,8 @@ TimeBinFunction.cc        \
 TimeSeries.cc             \
 Util.cc                   \
 vector.cc                 \
+maps.cc                   \
+geometry.cc               \
 nc.cc                     \
 json.cc                   \
 qtfilter.cc               \
