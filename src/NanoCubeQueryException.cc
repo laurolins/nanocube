@@ -1,4 +1,4 @@
-#include <NanoCubeQueryException.hh>
+#include "NanoCubeQueryException.hh"
 
 //------------------------------------------------------------------------------
 // QueryException Impl.

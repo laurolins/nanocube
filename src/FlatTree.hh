@@ -8,10 +8,10 @@
 #include <cstdint>
 
 #ifndef FLATTREE_VECTOR
-#include <small_vector.hh>
+#include "small_vector.hh"
 #endif
 
-#include <ContentHolder.hh>
+#include "ContentHolder.hh"
 
 
 //

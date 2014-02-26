@@ -7,6 +7,15 @@ import os
 nanocube_root = os.environ.get('NANOCUBE_ROOT')  # develop
 nanocube_bin  = os.environ.get('NANOCUBE_BIN')
 
+CXX       = os.environ.get('CXX')
+CXXFLAGS  = os.environ.get('CXXFLAGS')
+
+if not CXX:
+   CXX = 'g++'
+
+if not CXXFLAGS:
+   CXXFLAGS=''
+
 ok = True
 if nanocube_root == None:
    print "NANOCUBE_ROOT environment variable should point to the root of the dev folder of nanocube"
@@ -82,8 +91,9 @@ geom2d/point.cc		  \
 geom2d/polygon.cc         \
 geom2d/tile.cc ''' 
 
-compile_cmd = '''g++ -std=c++11 -O3 \
+compile_cmd = '''%s -std=c++11 -O3 \
 -I. \
+%s  \
 -D_GLIBCXX_USE_NANOSLEEP  \
 -DLIST_DIMENSION_NAMES=%s \
 -DLIST_VARIABLE_TYPES=%s  \
@@ -91,7 +101,7 @@ compile_cmd = '''g++ -std=c++11 -O3 \
 -o %s \
 %s \
 -lpthread \
--lz -ldl -lboost_thread-mt -lboost_system-mt''' % (dimension_names, variable_types, filename, sources)
+-lz -ldl -lboost_thread-mt -lboost_system-mt''' % (CXX,CXXFLAGS,dimension_names, variable_types, filename, sources)
 
 # save compile command
 build_filename = "build"

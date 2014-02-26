@@ -1,5 +1,6 @@
-#include<Query.hh>
 #include<cstddef>
+
+#include"Query.hh"
 
 namespace query {
 

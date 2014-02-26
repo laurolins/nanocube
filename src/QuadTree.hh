@@ -10,14 +10,14 @@
 
 #include <unordered_map>
 
-#include <QuadTreeNode.hh>
+#include "QuadTreeNode.hh"
 
 
-#include <qtfilter.hh> // used in visitSequence to create a quadtree
+#include "qtfilter.hh" // used in visitSequence to create a quadtree
                        // filter based on a sequence of raw addresses
 
-#include <geom2d/point.hh>
-#include <geom2d/polygon.hh>
+#include "geom2d/point.hh"
+#include "geom2d/polygon.hh"
 
 
 namespace quadtree
@@ -1162,6 +1162,8 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
 
             polygon.add(p);
         }
+        
+        // polygon.save("/tmp/query.poly");
 
         // std::cout << "Polgon sides: " << polygon.size() << std::endl;
 

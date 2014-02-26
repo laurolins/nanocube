@@ -9,7 +9,7 @@
 
 #include <iterator>
 
-#include <TaggedPointer.hh>
+#include "TaggedPointer.hh"
 
 namespace small_vector {
 

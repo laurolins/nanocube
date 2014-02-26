@@ -6,8 +6,8 @@
 
 #include <stdexcept>
 
-#include <geom2d/point.hh>
-#include <geom2d/boundingbox.hh>
+#include "point.hh"
+#include "boundingbox.hh"
 
 namespace geom2d {
 

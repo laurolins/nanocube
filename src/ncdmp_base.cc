@@ -1,4 +1,4 @@
-#include <ncdmp_base.hh>
+#include "ncdmp_base.hh"
 
 #include <iostream>
 #include <sstream>
@@ -14,8 +14,8 @@
 #include <ctime>
 #include <chrono>
 
-#include <MercatorProjection.hh>
-#include <TimeBinFunction.hh>
+#include "MercatorProjection.hh"
+#include "TimeBinFunction.hh"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
@@ -51,7 +51,7 @@ std::time_t parse_datetime_ISO8601_extended(std::string st) {
     // date
     //
 
-    int date_st_length = date_time_split_pt - st.begin();
+    auto date_st_length = date_time_split_pt - st.begin();
 
     auto year_pt  = st.begin();
     auto month_pt = (date_st_length >= 7  ? st.begin() + 5 : st.end());
@@ -92,7 +92,7 @@ std::time_t parse_datetime_ISO8601_extended(std::string st) {
 
         if (time_timezone_split_pt != st.end()) {
 
-            int timezone_st_length = st.end() - time_timezone_split_pt;
+            auto timezone_st_length = st.end() - time_timezone_split_pt;
             assert (timezone_st_length == 3 || timezone_st_length == 6);
 
             // now it can be hh or hh:mm
@@ -110,7 +110,7 @@ std::time_t parse_datetime_ISO8601_extended(std::string st) {
     // time
     //
 
-    int time_st_length = time_timezone_split_pt - date_time_split_pt;
+    auto time_st_length = time_timezone_split_pt - date_time_split_pt;
 
     auto hour_pt  = date_time_split_pt + 1;
     auto min_pt   = (time_st_length >= 6  ? hour_pt + 3 : st.end());

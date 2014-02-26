@@ -1,9 +1,8 @@
-#include <NanoCubeQueryResult.hh>
-
 #include <tuple>
 
-#include <QuadTree.hh>
-#include <json.hh>
+#include "NanoCubeQueryResult.hh"
+#include "QuadTree.hh"
+#include "json.hh"
 
 
 typedef ::quadtree::Address<29,int> QAddr;

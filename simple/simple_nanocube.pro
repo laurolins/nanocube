@@ -39,10 +39,12 @@ report.hh
 
 SOURCES =  \
 log.cc \
+main.cc \
 simple_nanocube.cc \
 simple_nanocube_iterator.cc \
-report.cc \
-test_simple_nanocube.cc
+report.cc
+
+#// test_simple_nanocube.cc
 
 # main.cc
 

@@ -1,5 +1,5 @@
-#include <QueryResult.hh>
-#include <NanoCubeSchema.hh>
+#include "QueryResult.hh"
+#include "NanoCubeSchema.hh"
 
 #include <iostream>
 

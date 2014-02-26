@@ -5,9 +5,9 @@
 #include <stack>
 #include <stdint.h>
 
-#include <Query.hh>
+#include "Query.hh"
 
-#include <vector.hh>
+#include "vector.hh"
 
 namespace query {
 

@@ -1,9 +1,9 @@
-#include <QueryResult.hh>
+#include "QueryResult.hh"
 
 #include <cassert>
 #include <algorithm>
 
-#include <QuadTree.hh>
+#include "QuadTree.hh"
 
 
 namespace query {

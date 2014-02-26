@@ -1,4 +1,4 @@
-#include <DumpFile.hh>
+#include "DumpFile.hh"
 
 #include <iostream>
 #include <sstream>
@@ -14,8 +14,8 @@
 #include <ctime>
 #include <chrono>
 
-#include <MercatorProjection.hh>
-#include <TimeBinFunction.hh>
+#include "MercatorProjection.hh"
+#include "TimeBinFunction.hh"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 

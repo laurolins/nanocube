@@ -1,8 +1,7 @@
-#include <geom2d/planegraph.hh>
-
 #include <algorithm>
 
-#include <geom2d/base.hh>
+#include "base.hh"
+#include "planegraph.hh"
 
 //-----------------------------------------------------------------------------
 // Entity

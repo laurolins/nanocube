@@ -6,8 +6,8 @@
 
 #include <stdexcept>
 
-#include <geom2d/point.hh>
-#include <geom2d/boundingbox.hh>
+#include "point.hh"
+#include "boundingbox.hh"
 
 namespace geom2d {
 
@@ -18,6 +18,12 @@ namespace geom2d {
 struct Polygon {
     Polygon() = default;
     Polygon(const std::vector<Point> &points);
+    Polygon(std::string filename);
+    
+    void clearTinyEdges(double EPSILON=1e-4);
+    void removeColinearVertices();
+
+    void save(std::string filename) const;
 
     void add(Point p);
     size_t size() const;
@@ -29,6 +35,7 @@ struct Polygon {
     auto getBoundingBox() const -> const BoundingBox&;
 
     auto data() const -> const std::vector<Point>&;
+    auto data()       -> std::vector<Point>&;
     auto operator[](size_t index) -> Point&;
     auto operator[](size_t index) const -> const Point&;
 

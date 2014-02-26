@@ -1,5 +1,5 @@
 #include <map>
-#include <TimeSeries.hh>
+#include "TimeSeries.hh"
 #include <iomanip>
 
 namespace timeseries {
@@ -70,7 +70,7 @@ namespace {
 
 std::string fl(std::string st, int n=14)
 {
-    int l = st.size();
+    int l = (int) st.size();
     if (l > n)
         return st;
     return st + std::string(n-l,' ');
@@ -78,7 +78,7 @@ std::string fl(std::string st, int n=14)
 
 std::string fr(std::string st, int n=14)
 {
-    int l = st.size();
+    int l = (int) st.size();
     if (l > n)
         return st;
     return std::string(n-l,' ') + st;

@@ -5,7 +5,7 @@
 #include <stack>
 #include <tuple>
 
-#include <vector.hh>
+#include "vector.hh"
 
 //------------------------------------------------------------------------------
 // VectorException

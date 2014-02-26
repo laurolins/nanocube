@@ -8,7 +8,7 @@
 #include <chrono>
 #include <thread>
 
-#include <Stopwatch.hh>
+#include "Stopwatch.hh"
 
 namespace memory_util
 {

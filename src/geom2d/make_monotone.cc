@@ -1,6 +1,6 @@
-#include <geom2d/make_monotone.hh>
+#include "make_monotone.hh"
 
-#include <geom2d/base.hh>
+#include "base.hh"
 
 #include <cassert>
 #include <algorithm>
@@ -8,9 +8,7 @@
 #include <iostream>
 #include <iomanip>
 
-#include <geom2d/planegraph.hh>
-
-#define xDEBUG_MAKE_MONOTONE
+#include "planegraph.hh"
 
 namespace aux {
 
@@ -26,7 +24,7 @@ enum VertexType { START_VERTEX, END_VERTEX, SPLIT_VERTEX, MERGE_VERTEX, REGULAR_
 
 struct Vertex {
 
-    Vertex(geom2d::Point p);
+    Vertex(geom2d::Point p, std::size_t index);
 
     auto getType() const -> VertexType;
 
@@ -39,7 +37,7 @@ struct Vertex {
     Vertex* prev{ nullptr };
 
     // auxiliar stuff
-    int                  index     { 0 };
+    std::size_t          index     { 0 };
     Vertex*              helper    { nullptr };
 
     void*                user_data { nullptr };
@@ -53,15 +51,16 @@ struct DoublyLinkedPolygon
 {
     DoublyLinkedPolygon(const geom2d::Polygon &poly);
 
-    auto operator[](int index) const -> Vertex*;
+    auto operator[](std::size_t index) const -> Vertex*;
 
     size_t size() const;
 
-    int  index(Vertex *v) const;
+    std::size_t  index(Vertex *v) const;
 
     std::vector<std::unique_ptr<Vertex>> vertices;
 };
 
+std::ostream& operator<<(std::ostream &os, const Vertex& vertex);
 std::ostream& operator<<(std::ostream &os, const VertexType& vertex_type);
 
 }
@@ -83,12 +82,19 @@ std::ostream& operator<<(std::ostream &os, const VertexType& vertex_type) {
     return os;
 }
 
+    std::ostream& operator<<(std::ostream &os, const Vertex& vertex) {
+        os << "(" << std::setprecision(18) << vertex.coords.x << "," << std::setprecision(18) << vertex.coords.y << ")";
+        return os;
+    }
+
+    
 //------------------------------------------------------------------------------
 // Vertex Impl.
 //------------------------------------------------------------------------------
 
-Vertex::Vertex(geom2d::Point p):
-    coords { p }
+Vertex::Vertex(geom2d::Point p, std::size_t index):
+    coords(p),
+    index(index)
 {}
 
 bool Vertex::isAbove(const Vertex &v) const {
@@ -102,6 +108,13 @@ bool Vertex::isBelow(const Vertex &v) const {
 auto Vertex::getType() const -> VertexType {
     assert (next != nullptr && prev != nullptr);
 
+//    {
+//        // using namespace geom2d::io;
+//        geom2d::io::operator<<(std::cout, prev->coords) << " <--- prev" << std::endl;
+//        geom2d::io::operator<<(std::cout, coords) << " <--- curr" << std::endl;
+//        geom2d::io::operator<<(std::cout, next->coords) << " <--- next" << std::endl;
+//    }
+    
     // interior angle is less than pi
     bool convex = geom2d::left(prev->coords, coords, next->coords);
 
@@ -140,27 +153,41 @@ auto Vertex::getType() const -> VertexType {
 DoublyLinkedPolygon::DoublyLinkedPolygon(const geom2d::Polygon &poly) {
     size_t n = poly.size();
     vertices.resize(n);
-
-    Vertex* last = new Vertex(poly.data().back());
-    last->index = n-1;
-
-    vertices[n-1] = std::unique_ptr<Vertex>(last);
-
-    Vertex* prev = last;
-    for (size_t i=0;i<n;i++) {
-        Vertex* curr = last;
-        if (i < n-1) {
-            curr = new Vertex(poly[i]);
-            curr->index = i;
-            vertices[i] = std::unique_ptr<Vertex>(curr);
+    std::size_t index = 0;
+    auto &vertices = this->vertices;
+    std::for_each(poly.data().begin(), poly.data().end(), [&vertices,&index](geom2d::Point p) {
+        vertices[index] = std::unique_ptr<Vertex>(new Vertex(p,index));
+        if (index > 0) {
+            vertices[index].get()->prev = vertices[index-1].get();
+            vertices[index-1].get()->next = vertices[index].get();
         }
-        curr->prev = prev;
-        prev->next = curr;
-        prev = curr;
-    }
+        ++index;
+    });
+    vertices[n-1].get()->next = vertices[0].get();
+    vertices[0].get()->prev = vertices[n-1].get();
+
+//
+//    Vertex* last = new Vertex(poly.data().back());
+//    last->index = n-1;
+//
+//    vertices[n-1] = std::unique_ptr<Vertex>(last);
+//
+//    Vertex* prev = last;
+//    for (size_t i=0;i<n;i++) {
+//        Vertex* curr = last;
+//        if (i < n-1) {
+//            curr = new Vertex(poly[i]);
+//            curr->index = i;
+//            vertices[i] = std::unique_ptr<Vertex>(curr);
+//        }
+//        curr->prev = prev;
+//        prev->next = curr;
+//        prev = curr;
+//    }
+
 }
 
-auto DoublyLinkedPolygon::operator[](int index) const -> Vertex* {
+auto DoublyLinkedPolygon::operator[](size_t index) const -> Vertex* {
     if (vertices[index].get() == nullptr)
         return nullptr;
     return vertices[index].get();
@@ -170,7 +197,7 @@ size_t DoublyLinkedPolygon::size() const {
     return vertices.size();
 }
 
-int DoublyLinkedPolygon::index(Vertex *v) const
+std::size_t DoublyLinkedPolygon::index(Vertex *v) const
 {
     return v->index;
 //    auto f = [v] (const std::unique_ptr<Vertex>& v_ptr) -> bool {
@@ -246,7 +273,7 @@ std::vector<geom2d::Polygon> geom2d::triangulateMonotonePolygon(const geom2d::Po
     // higher priority
     auto comp = [](const Vertex *v1, const Vertex *v2) {
         // less priority than
-        return (v1->coords.y < v2->coords.y) || (v1->coords.y == v2->coords.y && v1->coords.x >= v2->coords.x);
+        return (v1->coords.y < v2->coords.y) || (v1->coords.y == v2->coords.y && v1->coords.x > v2->coords.x);
     };
     std::vector<Vertex*> priority_queue(dlpoly.size());
     for (size_t i=0;i<dlpoly.size();i++) {
@@ -255,8 +282,8 @@ std::vector<geom2d::Polygon> geom2d::triangulateMonotonePolygon(const geom2d::Po
     std::sort(priority_queue.begin(),priority_queue.end(),comp);
 
     // bottom and top indices
-    int top_index    = priority_queue.front()->index;
-    int bottom_index = priority_queue.back()->index;
+    std::size_t top_index    = priority_queue.front()->index;
+    std::size_t bottom_index = priority_queue.back()->index;
 
     enum Chain { TOP, BOTTOM, LEFT, RIGHT };
 
@@ -312,7 +339,7 @@ std::vector<geom2d::Polygon> geom2d::triangulateMonotonePolygon(const geom2d::Po
             stack.push_back(uj);
         }
         else {
-            int k = stack.size() - 1;
+            std::size_t k = stack.size() - 1;
             while (k > 0) {
                 if (chain_uj == BOTTOM && chain(stack[k-1]) != TOP) {
                     k--;
@@ -348,14 +375,14 @@ std::vector<geom2d::Polygon> geom2d::triangulateMonotonePolygon(const geom2d::Po
         size_t n = poly.size();
         geom2d::planegraph::PlaneGraph planegraph(poly);
 
-#ifdef DEBUG_MAKE_MONOTONE
+#ifdef DEBUG_GEOM_2D
         {
             using namespace geom2d::planegraph;
             using namespace geom2d::planegraph::io;
             std::cout << "triangulation of polygon " << planegraph.getFace(1) << std::endl;
         }
 #endif
-
+        
         for (size_t i=0; i<n; i++) {
             Vertex* v = dlpoly[i];
             geom2d::planegraph::Vertex *vv = &planegraph.getVertex(i);
@@ -369,16 +396,22 @@ std::vector<geom2d::Polygon> geom2d::triangulateMonotonePolygon(const geom2d::Po
             geom2d::planegraph::Vertex& vv1 = *reinterpret_cast<geom2d::planegraph::Vertex*>(v1->user_data);
             geom2d::planegraph::Vertex& vv2 = *reinterpret_cast<geom2d::planegraph::Vertex*>(v2->user_data);
 
+#ifdef DEBUG_GEOM_2D
             std::cout << "add diagonal (" << vv1.label << "," << vv2.label << ")" << std::endl;
-
+#endif
+            
             planegraph.subdivideInteriorFace(vv1,vv2);
         }
 
         // report
         for (size_t i=1;i<planegraph.faces.size();i++) {
             using namespace geom2d::planegraph;
+
+#ifdef DEBUG_GEOM_2D
             using namespace geom2d::planegraph::io;
             std::cout << planegraph.getFace(i) << std::endl;
+#endif
+
             Polygon poly_i;
             geom2d::planegraph::BigonIterator it(planegraph.getFace(i).entry_point,VERTEX,EDGE);
             while (it.next()) {
@@ -413,7 +446,7 @@ std::vector<geom2d::Polygon> geom2d::convexPartition(const geom2d::Polygon &poly
     // higher priority
     auto comp = [](const Vertex *v1, const Vertex *v2) {
         // less priority than
-        return (v1->coords.y < v2->coords.y) || (v1->coords.y == v2->coords.y && v1->coords.x >= v2->coords.x);
+        return (v1->coords.y < v2->coords.y) || (v1->coords.y == v2->coords.y && v1->coords.x > v2->coords.x);
     };
     std::vector<Vertex*> priority_queue(dlpoly.size());
     for (size_t i=0;i<dlpoly.size();i++) {
@@ -422,8 +455,8 @@ std::vector<geom2d::Polygon> geom2d::convexPartition(const geom2d::Polygon &poly
     std::sort(priority_queue.begin(),priority_queue.end(),comp);
 
     // bottom and top indices
-    int top_index    = priority_queue.front()->index;
-    int bottom_index = priority_queue.back()->index;
+    std::size_t top_index    = priority_queue.front()->index;
+    std::size_t bottom_index = priority_queue.back()->index;
 
     enum Chain { TOP, BOTTOM, LEFT, RIGHT };
 
@@ -479,7 +512,7 @@ std::vector<geom2d::Polygon> geom2d::convexPartition(const geom2d::Polygon &poly
             stack.push_back(uj);
         }
         else {
-            int k = stack.size() - 1;
+            std::size_t k = stack.size() - 1;
             while (k > 0) {
                 if (chain_uj == BOTTOM && chain(stack[k-1]) != TOP) {
                     k--;
@@ -515,7 +548,7 @@ std::vector<geom2d::Polygon> geom2d::convexPartition(const geom2d::Polygon &poly
         size_t n = poly.size();
         geom2d::planegraph::PlaneGraph planegraph(poly);
 
-#ifdef DEBUG_MAKE_MONOTONE
+#ifdef DEBUG_GEOM_2D
         {
             using namespace geom2d::planegraph;
             using namespace geom2d::planegraph::io;
@@ -542,22 +575,22 @@ std::vector<geom2d::Polygon> geom2d::convexPartition(const geom2d::Polygon &poly
             if (planegraph.isConvex(vv1, face) && planegraph.isConvex(vv2, face))
                 continue;
 
-#ifdef DEBUG_MAKE_MONOTONE
+#ifdef DEBUG_GEOM_2D
             std::cout << "add diagonal (" << vv1.label << "," << vv2.label << ")" << std::endl;
 #endif
-
+            
             planegraph.subdivideInteriorFace(vv1,vv2);
         }
-
-
 
         // report
         for (size_t i=1;i<planegraph.faces.size();i++) {
             using namespace geom2d::planegraph;
             using namespace geom2d::planegraph::io;
-#ifdef DEBUG_MAKE_MONOTONE
+
+#ifdef DEBUG_GEOM_2D
             std::cout << planegraph.getFace(i) << std::endl;
 #endif
+
             Polygon poly_i;
             geom2d::planegraph::BigonIterator it(planegraph.getFace(i).entry_point,VERTEX,EDGE);
             while (it.next()) {
@@ -578,11 +611,37 @@ std::vector<geom2d::Polygon> geom2d::convexPartition(const geom2d::Polygon &poly
 // makeMonotone
 //------------------------------------------------------------------------------
 
+template <typename T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T*> &v) {
+    bool first = true;
+    std::for_each(v.cbegin(),
+                  v.cend(),
+                  [&os, &first] (const T* obj){
+//                      if (!first)
+//                          os << ", ";
+                      os << *obj << std::endl;
+                      first=false;
+                  });
+    return os;
+}
+
+
 std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
 {
+
+#ifdef DEBUG_GEOM_2D
+    std::cout << "makeMonotone(...)" << std::endl;
+#endif
+    
     using namespace aux;
 
     std::vector<Polygon> result;
+
+//    // print priority queue
+//    {
+//        using namespace geom2d::io;
+//        std::cout << poly << std::endl;
+//    }
 
 
     //
@@ -593,11 +652,17 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
     // higher priority
     auto comp = [](const Vertex *v1, const Vertex *v2) {
         // less priority than
-        return (v1->coords.y < v2->coords.y) || (v1->coords.y == v2->coords.y && v1->coords.x >= v2->coords.x);
+        
+        bool flag = (v1->coords.y < v2->coords.y) || (v1->coords.y == v2->coords.y && v1->coords.x > v2->coords.x);
+        
+        // std::cout << "v1:" << *v1 << " < " << " v2:" << *v2 << " ? " << flag << "            " << ((v1 == v2) ? "SAME_VERTEX" : "") << std::endl;
+        
+        return flag;
     };
-    std::vector<Vertex*> priority_queue(dlpoly.size());
-    for (size_t i=0;i<dlpoly.size();i++) {
-        priority_queue[i] = dlpoly[i];
+    
+    std::vector<Vertex*> priority_queue;
+    for (auto &ptr: dlpoly.vertices) {
+        priority_queue.push_back(ptr.get());
     }
     std::sort(priority_queue.begin(),priority_queue.end(),comp);
 
@@ -610,6 +675,14 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
     auto add_diagonal = [&diagonals](Vertex* v1, Vertex* v2) {
         diagonals.push_back(Diagonal{v1,v2});
     };
+    
+    
+    // print priority queue
+#ifdef DEBUG_GEOM_2D
+    std::cout << priority_queue << std::endl;
+#endif
+
+    
 
     // create an empty binary search tree
     while (priority_queue.empty() == false) {
@@ -619,23 +692,27 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
         Vertex* vi = priority_queue.back();
         priority_queue.pop_back();
 
-#ifdef DEBUG_MAKE_MONOTONE
+#ifdef DEBUG_GEOM_2D
         std::cout << "procssing v" << (dlpoly.index(vi)+1) << std::endl;
 #endif
-
+        
         VertexType ti = vi->getType();
 
         if (ti == START_VERTEX) {
-#ifdef DEBUG_MAKE_MONOTONE
+
+#ifdef DEBUG_GEOM_2D
             std::cout << "   START_VERTEX" << std::endl;
 #endif
+
             vi->helper = vi;
             visible_edges.insert(vi);
         }
         else if (ti == END_VERTEX) {
-#ifdef DEBUG_MAKE_MONOTONE
+
+#ifdef DEBUG_GEOM_2D
             std::cout << "   END_VERTEX" << std::endl;
 #endif
+
             if (vi->prev->helper->getType() == MERGE_VERTEX) {
                 add_diagonal(vi,vi->prev->helper);
             }
@@ -645,7 +722,8 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
 //            Delete ei%1 from T.
         }
         else if (ti == SPLIT_VERTEX) {
-#ifdef DEBUG_MAKE_MONOTONE
+
+#ifdef DEBUG_GEOM_2D
             std::cout << "   SPLIT_VERTEX" << std::endl;
 #endif
             Vertex *vj = visible_edges.findRightmostLeftEdge(vi);
@@ -662,10 +740,10 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
 //            4. Insert ei in T and set helper(ei) to vi.
         }
         else if (ti == REGULAR_VERTEX) {
-#ifdef DEBUG_MAKE_MONOTONE
+
+#ifdef DEBUG_GEOM_2D
             std::cout << "   REGULAR_VERTEX" << std::endl;
 #endif
-
             // TODO: figure out this test
             bool interior_on_the_right = vi->isAbove(*vi->next);
 
@@ -692,9 +770,11 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
 //            then Insert the diagonal connecting vi to helper(ej) in D. helper(e j ) " vi
         }
         else if (ti == MERGE_VERTEX) {
-#ifdef DEBUG_MAKE_MONOTONE
+
+#ifdef DEBUG_GEOM_2D
             std::cout << "   MERGE_VERTEX" << std::endl;
 #endif
+
             if (vi->prev->helper->getType() == MERGE_VERTEX) {
                 add_diagonal(vi,vi->prev->helper);
             }
@@ -715,12 +795,13 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
     }
 
 
-#ifdef DEBUG_MAKE_MONOTONE
+#ifdef DEBUG_GEOM_2D
     for (Diagonal &diagonal: diagonals) {
         Vertex* v1 = std::get<0>(diagonal);
         Vertex* v2 = std::get<1>(diagonal);
-        int i = dlpoly.index(v1) + 1;
-        int j = dlpoly.index(v2) + 1;
+
+        std::size_t i = dlpoly.index(v1) + 1;
+        std::size_t j = dlpoly.index(v2) + 1;
         std::cout << "diagonal from (" << i << "," << j << ")" << std::endl;
     }
 #endif
@@ -747,10 +828,12 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
         // report
         for (size_t i=1;i<planegraph.faces.size();i++) {
             using namespace geom2d::planegraph;
+            
+#ifdef DEBUG_GEOM_2D
             using namespace geom2d::planegraph::io;
-#ifdef DEBUG_MAKE_MONOTONE
             std::cout << planegraph.getFace(i) << std::endl;
 #endif
+            
             Polygon poly_i;
             geom2d::planegraph::BigonIterator it(planegraph.getFace(i).entry_point,VERTEX,EDGE);
             while (it.next()) {

@@ -375,7 +375,7 @@ constexpr inline auto geometry::operator "" _px(long double v) -> Length<units::
 }
 
 constexpr inline auto geometry::operator "" _px(unsigned long long v) -> IntegralLength<units::screen> {
-    return IntegralLength<units::screen>(v);
+    return IntegralLength<units::screen>((int)v);
 }
 
 constexpr inline auto geometry::operator "" _lat(long double x) -> Point<units::degrees> {

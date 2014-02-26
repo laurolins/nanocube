@@ -3,7 +3,7 @@
 #include <iostream>
 #include <cmath>
 
-#include <geom2d/point.hh>
+#include "point.hh"
 
 namespace geom2d {
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QuadTree.hh>
+#include "QuadTree.hh"
 
 #include <cassert>
 

@@ -1,4 +1,4 @@
-#include <QuadTreeNode.hh>
+#include "QuadTreeNode.hh"
 
 namespace quadtree
 {

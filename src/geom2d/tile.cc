@@ -1,4 +1,4 @@
-#include <geom2d/tile.hh>
+#include "tile.hh"
 
 #include <cassert>
 #include <algorithm>
@@ -7,16 +7,16 @@
 // Tile Impl.
 //------------------------------------------------------------------------------
 
-geom2d::Tile::Tile(int x, int y, int z):
-    x{x}, y{y}, z{z}
-{}
-
 geom2d::Tile::Tile(uint64_t raw)
 {
     x = raw & 0x1fffffffL;           // [0, 28] represent x
     y = (raw >> 29L) & 0x1fffffffL;  // [29,57] represent y
     z = (raw >> 58L) & 0x3fL;        // [58,63] represent level
 }
+
+geom2d::Tile::Tile(int x, int y, int z):
+    x{x}, y{y}, z{z}
+{}
 
 int geom2d::Tile::index() const
 {

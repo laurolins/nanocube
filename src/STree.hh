@@ -41,11 +41,11 @@
 
 #include <boost/mpl/assert.hpp>
 
-#include <Util.hh>
+#include "Util.hh"
 
-#include <Tuple.hh>
+#include "Tuple.hh"
 
-#include <Common.hh>
+#include "Common.hh"
 
 #define xDEBUG_STREE
 

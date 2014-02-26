@@ -13,10 +13,10 @@
 #include <boost/mpl/back.hpp>
 #include <boost/mpl/front.hpp>
 
-#include <Query.hh>
-#include <QueryResult.hh>
+#include "Query.hh"
+#include "QueryResult.hh"
 
-#include <NanoCubeQueryException.hh>
+#include "NanoCubeQueryException.hh"
 
 #include <vector>
 #include <stack>

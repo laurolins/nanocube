@@ -2,7 +2,11 @@ var global_variables = {
     main_color:     "#FF0000",
     parallel_color: "#00FF00",
     upstream_color: "#FFA500",
-    summary_level:  4
+    summary_level:  2,
+    node_radius:    10, 
+    node_border_width: 2,
+    summary_node_width:  60,
+    summary_node_height: 30
 };
 
 function Timer(callback, delay) {
@@ -135,6 +139,8 @@ function Node(id, dim, layer) {
     this.dim     = dim;
     this.layer   = layer;
     this.dom     = null;
+
+    console.log("Node: dim = " + this.dim + " layer: " + this.layer);
 
     this.color   = []; // used for highlights
 
@@ -820,10 +826,10 @@ function Model(state) {
                 .data([node])
                 .enter()
                 .append("rect")
-                .attr("width",60)
-                .attr("height",30)
-                .attr("x",-30)
-                .attr("y",-15)
+                .attr("width",global_variables.summary_node_width)
+                .attr("height",global_variables.summary_node_height)
+                .attr("x",-global_variables.summary_node_width/2.0)
+                .attr("y",-global_variables.summary_node_height/2.0)
                 .style("stroke","#777777")
                 .style("stroke-width",4)
                 .style("fill","#FFFFFF");
@@ -833,9 +839,9 @@ function Model(state) {
                 .data([node])
                 .enter()
                 .append("circle")
-                .attr("r",15)
+                .attr("r",global_variables.node_radius)
                 .style("stroke","#777777")
-                .style("stroke-width",4)
+                .style("stroke-width",global_variables.node_border_width)
                 .style("fill","#FFFFFF");
         }
         
@@ -893,6 +899,11 @@ function Model(state) {
     }
 
     function createChildLinkDOM(child_link) {
+
+        if (!child_link.child.pos) {
+            debugger;
+        }
+            
 
         data = [ child_link.parent.pos, child_link.child.pos ]
 
@@ -1009,6 +1020,7 @@ function Model(state) {
 
         }
         else if (a.action == "set_child_link") {
+            console.log(a);
             var child_link = 
                 new ChildLink(
                     this.node_map[a.parent],
@@ -1042,11 +1054,17 @@ function Model(state) {
         }
     }
 
+    function pad(n, width, z) {
+        z = z || '0';
+        n = n + '';
+        return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+    }
+
     // create layers
     var layers = {}
     for (var i=0;i<this.nodes.length;i++) {
         var node = this.nodes[i]
-        key = node.dim + "," + node.layer;
+        var key = pad(node.dim,8,0) + "," + pad(node.layer,8,0);
         if (key in layers) {
             layers[key].push(node)
         }
@@ -1055,19 +1073,24 @@ function Model(state) {
         }
     }
 
+    // debugger;
+
     // reposition the nodes and paths appropriately
     {
-        layer_keys = Object.keys(layers);
-        layer_keys.sort()
+        var layer_keys = Object.keys(layers);
 
-        n = layer_keys.length
+        debugger;
+
+        layer_keys.sort();
+
+        var n = layer_keys.length
 
         var layer_height = state.canvas_height / n;
         var layer_width  = state.canvas_width;
 
-        var node_width   = 30
+        var node_width   = 10
 
-        var xmargin      = 40
+        var xmargin      = 60
 
         function position(i,j,n) {
             var x = layer_width/2.0 - (n * node_width + (n-1) * xmargin)/2.0 + (j + 0.5) * node_width + j * xmargin;
@@ -1076,8 +1099,14 @@ function Model(state) {
         }
 
         for (var i=0;i<layer_keys.length;i++) {
-            key = layer_keys[i];
-            nodes = layers[key];
+            var key = layer_keys[i];
+            var nodes = layers[key];
+
+            console.log(key);
+            console.log(nodes);
+
+            debugger;
+
             for (var j=0;j<nodes.length;j++) {
                 var node = nodes[j];
                 var pos = position(i,j,nodes.length);
@@ -1103,18 +1132,21 @@ function Model(state) {
 $(document).ready(function() {
 
     // read actions json object
+//    d3.json("actions.json", function(error, json) {
     d3.json("actions.json", function(error, json) {
 
         var raw_action_list = json;
 
         console.log(JSON.stringify(error));
-        console.log(JSON.stringify(json));
+        // console.log(JSON.stringify(json));
+
+        debugger;
 
         var canvas_width  = 1800;
-        var canvas_height = 1024;
+        var canvas_height = 1400;
 
         var message_panel_width  = 500;
-        var message_panel_height = 1024;
+        var message_panel_height = 1400;
 
         var canvas = d3.select("body")
             .append("svg")

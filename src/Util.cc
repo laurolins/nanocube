@@ -1,4 +1,4 @@
-#include <Util.hh>
+#include "Util.hh"
 
 namespace datatiles {
 
@@ -6,7 +6,7 @@ namespace datatiles {
 
         std::string fl(std::string st, int n)
         {
-            int l = st.size();
+            int l = (int) st.size();
             if (l > n)
                 return st;
             return st + std::string(n-l,' ');
@@ -14,7 +14,7 @@ namespace datatiles {
 
         std::string fr(std::string st, int n)
         {
-            int l = st.size();
+            int l = (int) st.size();
             if (l > n)
                 return st;
             return std::string(n-l,' ') + st;

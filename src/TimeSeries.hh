@@ -10,14 +10,14 @@
 
 #include <algorithm>
 
-#include <Util.hh>
+#include "Util.hh"
 
 #ifdef OPTIMIZE_FOR_SPEED
 #define TIMESERIES_VECTOR
 #endif
 
 #ifndef TIMESERIES_VECTOR
-#include <small_vector.hh>
+#include "small_vector.hh"
 #endif
 
 namespace timeseries {

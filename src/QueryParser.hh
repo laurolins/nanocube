@@ -12,7 +12,7 @@
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/bind.hpp>
 
-#include <Query.hh>
+#include "Query.hh"
 
 namespace qi      = boost::spirit::qi;
 

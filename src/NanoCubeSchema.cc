@@ -1,4 +1,4 @@
-#include <NanoCubeSchema.hh>
+#include "NanoCubeSchema.hh"
 
 namespace nanocube {
 

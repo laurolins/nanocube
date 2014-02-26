@@ -1,4 +1,4 @@
-#include <geom2d/base.hh>
+#include "base.hh"
 
 #include <cassert>
 #include <algorithm>

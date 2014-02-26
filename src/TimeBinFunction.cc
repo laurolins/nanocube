@@ -1,4 +1,4 @@
-#include <TimeBinFunction.hh>
+#include "TimeBinFunction.hh"
 
 #include <string>
 #include <cstring>

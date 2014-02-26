@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Query.hh>
+#include "Query.hh"
 
-#include <DumpFile.hh>
+#include "DumpFile.hh"
 
 using ::query::RawAddress;
 

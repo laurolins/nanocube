@@ -179,7 +179,7 @@ int main() {
 //    nc.insert({{1},{1},{2},{1}}, 4);
     nc.insert({{{2},{0},{2},{0}}}, 2);
     nc.insert({{{0},{2},{0},{0}}}, 3);
-#elif 1
+#elif 0
     Nanocube nc({1, 1, 1});
     nc.insert({{{2},{0},{2}}}, 1);
     nc.insert({{{0},{1},{0}}}, 2);
@@ -202,16 +202,20 @@ int main() {
     nc.insert({{{1},{2},{1}}}, 8);
     nc.insert({{{0},{0},{0}}}, 9);
     nc.insert({{{2},{2},{2}}}, 10);
+#elif 1
+    Nanocube nc({2});
+    nc.insert({{{0,1}}}, 1);
+    nc.insert({{{0,2}}}, 2);
 #else
-    Nanocube nc({1, 1, 1});
-    nc.insert({{{0},{0},{1}}}, 1);
-    nc.insert({{{0},{0},{1}}}, 2);
-    nc.insert({{{1},{0},{1}}}, 3);
-    nc.insert({{{0},{1},{1}}}, 4);
-    nc.insert({{{0},{1},{0}}}, 5);
-    nc.insert({{{1},{0},{1}}}, 6);
-    nc.insert({{{1},{0},{1}}}, 7);
-    nc.insert({{{0},{0},{1}}}, 8);
+    Nanocube nc({2, 1, 1});
+    nc.insert({{{0,2},{0},{1}}}, 1);
+    nc.insert({{{0,3},{0},{1}}}, 2);
+    nc.insert({{{1,1},{0},{1}}}, 3);
+    nc.insert({{{0,5},{1},{1}}}, 4);
+    nc.insert({{{0,1},{1},{0}}}, 5);
+    nc.insert({{{1,3},{0},{1}}}, 6);
+    nc.insert({{{1,1},{0},{1}}}, 7);
+    nc.insert({{{0,5},{0},{1}}}, 8);
 #endif
 
 //    Nanocube nc({2});
@@ -219,7 +223,7 @@ int main() {
 //    nc.insert({{1,3}}, 2);
 
     
-#if 0
+#if 1
     report::Report rep = buildReport(nc);
 
     //
@@ -230,7 +234,11 @@ int main() {
     report::report_graphviz(of, rep);
     of.close();
 
-    system(("dot -Tpdf " + dot_filename + " > " + pdf_filename).c_str());
+    std::string command = "dot -Tpdf " + dot_filename + " > " + pdf_filename;
+
+    std::cout << command << std::endl;
+
+    system(command.c_str());
     system(("open " + pdf_filename).c_str());
 
     // report::report_graphviz(std::cout, rep);

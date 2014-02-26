@@ -1,5 +1,6 @@
-#include <geom2d/boundingbox.hh>
-#include <geom2d/base.hh>
+#include "boundingbox.hh"
+
+#include "base.hh"
 
 #include <cassert>
 #include <algorithm>

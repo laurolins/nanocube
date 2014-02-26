@@ -4,7 +4,8 @@
 #include <cmath>
 #include <sstream>
 #include <iomanip>
-#include <QuadTree.hh>
+
+#include "QuadTree.hh"
 
 using namespace quadtree;
 

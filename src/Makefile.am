@@ -101,6 +101,8 @@ nc.cc                     \
 small_vector.hh           \
 qtfilter.hh               \
 qtfilter.cc               \
+util/tokenizer.cc         \
+util/tokenizer.hh         \
 geom2d/base.cc            \
 geom2d/base.hh		  \
 geom2d/boundingbox.cc	  \

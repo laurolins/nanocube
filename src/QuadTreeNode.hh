@@ -6,10 +6,10 @@
 
 #include <cstdlib>
 
-#include <Common.hh>
+#include "Common.hh"
 
-#include <ContentHolder.hh>
-#include <TaggedPointer.hh>
+#include "ContentHolder.hh"
+#include "TaggedPointer.hh"
 
 namespace quadtree
 {

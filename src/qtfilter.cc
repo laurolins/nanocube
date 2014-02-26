@@ -1,6 +1,6 @@
-#include <qtfilter.hh>
+#include "qtfilter.hh"
 
-#include <geom2d/make_monotone.hh>
+#include "geom2d/make_monotone.hh"
 
 namespace qtfilter {
 
@@ -258,6 +258,8 @@ auto intersect(const geom2d::Polygon &original_polygon, int max_level, bool opti
 
 
     poly.makeCCW(); // make sure it is oriented in counter-clock wise
+    
+    poly.save("/tmp/ncserve-poly.poly");
 
     std::vector<geom2d::Polygon> convex_decomposition;
     geom2d::BoundingBox  convex_decomposition_bbox;

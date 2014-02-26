@@ -7,7 +7,7 @@
 #include <sstream>
 #include <iostream>
 
-#include <DumpFile.hh>
+#include "DumpFile.hh"
 
 
 void message() {
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
         while (1) {
             std::cin.read(buffer,BUFFER_SIZE);
             if (!std::cin) {
-                int gcount = std::cin.gcount();
+                auto gcount = std::cin.gcount();
                 if (gcount > 0) {
                     fwrite((void*) buffer, 1, gcount, f);
                 }

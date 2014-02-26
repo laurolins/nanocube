@@ -1,6 +1,6 @@
-#include <QueryParser.hh>
+#include "QueryParser.hh"
 
-#include <QuadTree.hh>
+#include "QuadTree.hh"
 
 namespace query {
 
@@ -493,7 +493,7 @@ void QueryParser::parse(std::string query_st)
     bool ok = qi::parse(begin, end, parser, result);
     if (!ok || begin != end) {
         std::stringstream ss;
-        int offset = begin - query_st.begin();
+        auto offset = begin - query_st.begin();
         int margin = 3;
         ss << "Couldn't parse expression at location " << offset << std::endl;
         ss << std::string(margin, ' ') << query_st << std::endl;

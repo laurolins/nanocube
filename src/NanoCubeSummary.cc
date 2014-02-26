@@ -1,4 +1,4 @@
-#include <NanoCubeSummary.hh>
+#include "NanoCubeSummary.hh"
 
 #include <algorithm>
 #include <iostream>

@@ -1,4 +1,4 @@
-#include <STree.hh>
+#include "STree.hh"
 
 namespace stree
 {

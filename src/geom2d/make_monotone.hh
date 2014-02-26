@@ -6,8 +6,8 @@
 
 #include <stdexcept>
 
-#include <geom2d/point.hh>
-#include <geom2d/polygon.hh>
+#include "point.hh"
+#include "polygon.hh"
 
 namespace geom2d {
 

@@ -2,27 +2,20 @@
 #include <iomanip>
 #include <thread>
 #include <functional>
-
-#include <DumpFile.hh>
-
-#include <MemoryUtil.hh>
-
-#include <NanoCube.hh>
-
-#include <Query.hh>
-#include <QueryParser.hh>
-
-#include <Server.hh>
-
-#include <NanoCubeQueryResult.hh>
-
-#include <NanoCubeSummary.hh>
-
-#include <json.hh>
+#include <fstream>
 
 #include <zlib.h>
-
 #include <boost/thread/shared_mutex.hpp>
+
+#include "DumpFile.hh"
+#include "MemoryUtil.hh"
+#include "NanoCube.hh"
+#include "Query.hh"
+#include "QueryParser.hh"
+#include "Server.hh"
+#include "NanoCubeQueryResult.hh"
+#include "NanoCubeSummary.hh"
+#include "json.hh"
 
 //
 // geometry.hh and maps.hh
@@ -30,8 +23,8 @@
 // that deals with a hardcoded x:29bits, y:29bits, level: 6bits
 // scheme of quadtree addresses on 64-bit unsigned integer
 //
-#include <geometry.hh>
-#include <maps.hh>
+#include "geometry.hh"
+#include "maps.hh"
 
 using namespace nanocube;
 
@@ -125,6 +118,7 @@ struct Options {
     uint64_t report_frequency    { 100000 };
     uint64_t batch_size          {   1000 };
     uint64_t sleep_for_ns        {    100 };
+    std::string input_filename;
 };
 
 Options::Options(const std::vector<std::string> &argv)
@@ -155,6 +149,9 @@ Options::Options(const std::vector<std::string> &argv)
             }
             if (tokens[0].compare("--report-frequency") == 0 || tokens[0].compare("--rf") == 0) { // report frequency
                 report_frequency = std::stoull(tokens[1]);
+            }
+            if (tokens[0].compare("--in") == 0) { // report frequency
+                input_filename = tokens[1];
             }
         }
     }
@@ -904,12 +901,6 @@ void NanoCubeServer::write()
 }
 
 
-
-
-
-
-
-
 //------------------------------------------------------------------------------
 // main
 //------------------------------------------------------------------------------
@@ -922,20 +913,30 @@ int main(int argc, char *argv[]) {
     }
 
     Options options(params);
-
-    // read input file description
-    dumpfile::DumpFileDescription input_file_description;
-    std::cin >> input_file_description;
-
-    // create nanocube_schema from input_file_description
-    ::nanocube::Schema nanocube_schema(input_file_description);
-
-    // create nanocube
-    NanoCube nanocube(nanocube_schema);
-
-    // start nanocube http server
-    NanoCubeServer nanocube_server(nanocube, options, std::cin);
-
+    
+    auto run = [&options](std::istream& is) {
+        // read input file description
+        dumpfile::DumpFileDescription input_file_description;
+        is >> input_file_description;
+        
+        // create nanocube_schema from input_file_description
+        ::nanocube::Schema nanocube_schema(input_file_description);
+        
+        // create nanocube
+        NanoCube nanocube(nanocube_schema);
+        
+        // start nanocube http server
+        NanoCubeServer nanocube_server(nanocube, options, is);
+    };
+    
+    if (options.input_filename.size()) {
+        std::ifstream is(options.input_filename);
+        run(is);
+    }
+    else {
+        run(std::cin);
+    }
+    
     // join write thread
     return 0;
 

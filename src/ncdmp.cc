@@ -1,4 +1,4 @@
-#include <ncdmp_base.hh>
+#include "ncdmp_base.hh"
 
 //-----------------------------------------------------------------------------
 // main
@@ -158,6 +158,7 @@ int main(int argc, char **argv) {
             std::string name = params.at(0);
             std::string field_uint_name = params.at(1);
             int num_bytes = std::stoi(params.at(2));
+            std::cout << num_bytes << std::endl;
 
             mapping_scheme.addFieldMap(new FD_VarUInt(name, field_uint_name, num_bytes));
 
@@ -205,10 +206,21 @@ int main(int argc, char **argv) {
     // log scheme
     // std::cout << mapping_scheme << std::endl;
 
+    
+    
+#if 0
+    std::ifstream istream("/Users/llins/att/data/utah-cdrs/utah.dmp");
+#else
+    auto &istream = std::cin;
+#endif
+    
+    
     // read input description
     dumpfile::DumpFileDescription input_description;
-    std::cin >> input_description;
+    istream >> input_description;
 
+    // std::cout << input_description << std::endl;
+    
     if (copy_all) {
         mapping_scheme = MappingScheme();
         for (auto field: input_description.fields) {

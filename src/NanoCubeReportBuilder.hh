@@ -24,7 +24,7 @@
 
 #include <boost/type_traits/is_same.hpp>
 
-#include <Report.hh>
+#include "Report.hh"
 
 #define xNANOCUBE_REPORT_BUILDER
 
