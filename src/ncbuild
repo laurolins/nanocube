@@ -83,6 +83,8 @@ nc.cc                     \
 json.cc                   \
 qtfilter.cc               \
 mongoose.c                \
+util/timer.cc           \
+util/tokenizer.cc       \
 geom2d/base.cc            \
 geom2d/boundingbox.cc	  \
 geom2d/make_monotone.cc	  \
@@ -98,6 +100,7 @@ compile_cmd = '''%s -std=c++11 -O3 \
 -DLIST_DIMENSION_NAMES=%s \
 -DLIST_VARIABLE_TYPES=%s  \
 -DVERSION=ncbuild  \
+-ftemplate-depth=512 \
 -o %s \
 %s \
 -lpthread \
