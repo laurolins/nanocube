@@ -46,6 +46,11 @@ BaseWidthCountTarget* Target::asBaseWidthCountTarget()
     throw std::exception();
 }
 
+void Target::replace(RawAddress , RawAddress )
+{
+    throw std::runtime_error("ooops");
+}
+
 //-----------------------------------------------------------------------------
 // ListTarget
 //-----------------------------------------------------------------------------
@@ -67,6 +72,15 @@ ListTarget* ListTarget::asListTarget() {
     return this;
 }
 
+void ListTarget::replace(RawAddress addr_old, RawAddress addr_new)
+{
+    for (auto &v: list) {
+        if (v == addr_old) {
+            v = addr_new;
+        }
+    }
+}
+
 //-----------------------------------------------------------------------------
 // FindAndDiveTarget
 //-----------------------------------------------------------------------------
@@ -80,6 +94,13 @@ FindAndDiveTarget::FindAndDiveTarget(RawAddress base, int offset):
 FindAndDiveTarget* FindAndDiveTarget::asFindAndDiveTarget() {
     return this;
 }
+
+void FindAndDiveTarget::replace(RawAddress addr_old, RawAddress addr_new) {
+    if (base == addr_old) {
+        base = addr_new;
+    }
+}
+
 
 //-----------------------------------------------------------------------------
 // RangeTarget
@@ -95,6 +116,14 @@ RangeTarget* RangeTarget::asRangeTarget() {
     return this;
 }
 
+void RangeTarget::replace(RawAddress addr_old, RawAddress addr_new)
+{
+    if (min_address == addr_old)
+        min_address = addr_new;
+    if (max_address == addr_old)
+        max_address = addr_new;
+}
+
 //-----------------------------------------------------------------------------
 // SequenceTarget
 //-----------------------------------------------------------------------------
@@ -106,6 +135,15 @@ SequenceTarget::SequenceTarget(const std::vector<RawAddress>& addresses):
 
 SequenceTarget* SequenceTarget::asSequenceTarget() {
     return this;
+}
+
+void SequenceTarget::replace(RawAddress addr_old, RawAddress addr_new)
+{
+    for (auto &v: addresses) {
+        if (v == addr_old) {
+            v = addr_new;
+        }
+    }
 }
 
 
@@ -122,6 +160,13 @@ BaseWidthCountTarget::BaseWidthCountTarget(RawAddress base, int width, int count
 
 BaseWidthCountTarget* BaseWidthCountTarget::asBaseWidthCountTarget() {
     return this;
+}
+
+void BaseWidthCountTarget::replace(RawAddress addr_old, RawAddress addr_new)
+{
+    if (base == addr_old) {
+        base = addr_new;
+    }
 }
 
 //-----------------------------------------------------------------------------

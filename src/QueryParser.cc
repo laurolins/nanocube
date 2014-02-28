@@ -135,33 +135,43 @@ AddressFunction::AddressFunction(std::string name):
 RawAddress AddressFunction::getRawAddress() const
 {
     // only qaddr for now
-    assert(parameters.size() == 3 && name.compare("qaddr") == 0);
-
-    int x     = (int) parameters[0];
-    int y     = (int) parameters[1];
-    int level = (int) parameters[2];
-
-    typedef quadtree::Address<29,int> QAddr;
-
-    QAddr addr(x, y, level, true);
-
+    // assert(parameters.size() == 3 && name.compare("qaddr") == 0);
+    
+    if (parameters.size() == 3 && name.compare("qaddr") == 0) {
+        
+        int x     = (int) parameters[0];
+        int y     = (int) parameters[1];
+        int level = (int) parameters[2];
+        
+        typedef quadtree::Address<29,int> QAddr;
+        
+        QAddr addr(x, y, level, true);
+        
 #if 0
-    std::cout << "QAddr(x:" << x << ", y:" << y << ", level:" << level << ")" << std::endl;
-    std::cout << "   x:     " << addr.getLevelXCoord() << std::endl;
-    std::cout << "   y:     " << addr.getLevelYCoord() << std::endl;
-    std::cout << "   level: " << addr.level            << std::endl;
-    std::cout << "   raw:   " << addr.raw()            << std::endl;
-    QAddr addr2(addr.raw());
-    std::cout << "QAddr(" << addr.raw() << ")" << std::endl;
-    std::cout << "   x:     " << addr2.getLevelXCoord() << std::endl;
-    std::cout << "   y:     " << addr2.getLevelYCoord() << std::endl;
-    std::cout << "   level: " << addr2.level            << std::endl;
-    std::cout << "   raw:   " << addr2.raw()            << std::endl;
+        std::cout << "QAddr(x:" << x << ", y:" << y << ", level:" << level << ")" << std::endl;
+        std::cout << "   x:     " << addr.getLevelXCoord() << std::endl;
+        std::cout << "   y:     " << addr.getLevelYCoord() << std::endl;
+        std::cout << "   level: " << addr.level            << std::endl;
+        std::cout << "   raw:   " << addr.raw()            << std::endl;
+        QAddr addr2(addr.raw());
+        std::cout << "QAddr(" << addr.raw() << ")" << std::endl;
+        std::cout << "   x:     " << addr2.getLevelXCoord() << std::endl;
+        std::cout << "   y:     " << addr2.getLevelYCoord() << std::endl;
+        std::cout << "   level: " << addr2.level            << std::endl;
+        std::cout << "   raw:   " << addr2.raw()            << std::endl;
 #endif
-
-    // std::cout << "getRawAddress: " << addr.raw() << "  from  " << addr << " check " << QAddr(addr.raw()).raw() << std::endl;
-
-    return (RawAddress) addr.raw();
+        
+        // std::cout << "getRawAddress: " << addr.raw() << "  from  " << addr << " check " << QAddr(addr.raw()).raw() << std::endl;
+        
+        return (RawAddress) addr.raw();
+    }
+    else if (parameters.size() == 0 && name.compare("root") == 0) {
+        
+        // root function
+        return (RawAddress) 0xFFFFFFFFFFFFFFFFULL; // indicates root
+        
+    }
+    else throw QueryParserException("Don't know function " + std::string(name));
 }
 
 AddressFunction* AddressFunction::asAddressFunction() {

@@ -347,7 +347,22 @@ void NanoCubeServer::parse(std::string              query_st,
 
             ::query::parser::TargetExpression *target = dimension->target;
 
+
             target->updateQueryDescription(index, query_description);
+
+
+            RawAddress replacement = 0ULL;
+            { // replace raw addresses ~0ULL;
+                auto field    = schema.dump_file_description.getFieldByName(dimension->name);
+                // if it is a categorical field replacement will be 2^(bytes * 8) - 1;
+                if (field->field_type.name.find("nc_dim_cat_") == 0) {
+                    replacement = (1ULL << (field->getNumBytes() * 8)) - 1;
+                }
+            }
+            
+            query_description.targets[index]->replace(~0ULL, replacement);
+            
+
         }
         catch(dumpfile::DumpFileException &e) {
             std::cout << "(Warning) Dimension " << dimension->name << " not found. Disconsidering it." << std::endl;

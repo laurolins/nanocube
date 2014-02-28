@@ -42,6 +42,9 @@ public: // data members
     virtual FindAndDiveTarget*    asFindAndDiveTarget();
     virtual BaseWidthCountTarget* asBaseWidthCountTarget();
 
+    virtual void replace(RawAddress addr_old, RawAddress add_new);
+
+    
 public: // data memebrs
 
     Type type;
@@ -66,6 +69,8 @@ public: // methods
 
     ListTarget* asListTarget();
 
+    void replace(RawAddress addr_old, RawAddress add_new);
+    
 public: // data memebers
 
     std::vector<RawAddress> list;
@@ -85,6 +90,8 @@ public: // constructors
 public: // methods
 
     FindAndDiveTarget* asFindAndDiveTarget();
+
+    void replace(RawAddress addr_old, RawAddress addr_new);
 
 public: // data memebers
 
@@ -106,6 +113,10 @@ public: // constructors
 
 public: // methods
     BaseWidthCountTarget* asBaseWidthCountTarget();
+
+
+    void replace(RawAddress addr_old, RawAddress addr_new);
+
 
 public: // data memebers
     RawAddress base;
@@ -129,6 +140,8 @@ public: // methods
 
     RangeTarget* asRangeTarget();
 
+    void replace(RawAddress addr_old, RawAddress addr_new);
+
 public: // data memebers
 
     RawAddress min_address;
@@ -150,6 +163,8 @@ public: // constructors
 public: // methods
 
     SequenceTarget* asSequenceTarget();
+
+    void replace(RawAddress addr_old, RawAddress addr_new);
 
 public: // data memebers
 
