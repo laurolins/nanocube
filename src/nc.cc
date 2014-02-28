@@ -17,6 +17,9 @@
 #include "NanoCubeSummary.hh"
 #include "json.hh"
 
+
+#include "util/timer.hh"
+
 //
 // geometry.hh and maps.hh
 // are used just for the serveTile routine
@@ -118,6 +121,10 @@ struct Options {
     uint64_t report_frequency    { 100000 };
     uint64_t batch_size          {   1000 };
     uint64_t sleep_for_ns        {    100 };
+
+    uint64_t    logmem_delay     {   5000 };
+    std::string logmem;
+    
     std::string input_filename;
 };
 
@@ -136,10 +143,10 @@ Options::Options(const std::vector<std::string> &argv)
                 max_points = std::stoull(tokens[1]);
             }
             if (tokens[0].compare("--threads") == 0) {
-                no_mongoose_threads = std::stoull(tokens[1]);
+                no_mongoose_threads = std::stoi(tokens[1]);
             }
             if (tokens[0].compare("--port") == 0) {
-                initial_port = std::stoull(tokens[1]);
+                initial_port = std::stoi(tokens[1]);
             }
             if (tokens[0].compare("--batch_size") == 0 || tokens[0].compare("--bs") == 0) {
                 batch_size = std::stoull(tokens[1]);
@@ -152,6 +159,12 @@ Options::Options(const std::vector<std::string> &argv)
             }
             if (tokens[0].compare("--in") == 0) { // report frequency
                 input_filename = tokens[1];
+            }
+            if (tokens[0].compare("--logmem") == 0) { // report frequency
+                logmem = tokens[1];
+            }
+            if (tokens[0].compare("--logmem-delay") == 0) { // report frequency
+                logmem_delay = std::stoull(tokens[1]);
             }
         }
     }
@@ -913,6 +926,21 @@ int main(int argc, char *argv[]) {
     }
 
     Options options(params);
+    
+    
+    
+    std::unique_ptr<std::ostream> ostream;
+    std::unique_ptr<timer::Timer> timer_ptr;
+    if (options.logmem.size() > 0) {
+        ostream = std::unique_ptr<std::ostream>(new std::ofstream(options.logmem));
+        timer_ptr = std::unique_ptr<timer::Timer>(new timer::Timer(timer::Milliseconds(options.logmem_delay)));
+        timer_ptr->subscribe([&ostream]() {
+            auto mem_info = memory_util::MemInfo::get();
+            auto memory = mem_info.res_MB();
+            ostream->operator<<(memory) << "MB" << std::endl;
+        });
+    }
+    
     
     auto run = [&options](std::istream& is) {
         // read input file description

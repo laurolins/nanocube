@@ -1127,65 +1127,69 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
 {
     // preprocess and cache sequence (assuming the vector won't change)
     // be careful with multi-threading (receive a cache then)
-
+    
     //
     // check if traversal mask is on cache
     // if it is reuse the mask, otherwise compute
     // a new mask and cache it
     //
-
-    qtfilter::Node* mask_root_node = nullptr;
-
-    auto it = cache.find((void*) &seq);
-
-    if (it == cache.end()) {
-
-        // assert that the raw addresses are at the same level
-        // make the max intersection level be
-
-        // prepare quadtree filter
-
-        int level = N;
-        for (RawAddress a: seq) {
-            AddressType addr(a);
-            level = std::min(level,addr.level);
-        }
-
-        geom2d::Polygon polygon;
-
-        for (RawAddress a: seq) {
-            geom2d::Tile tile(a);
-            geom2d::Point p = tile.center();
-
-            // std::cout << tile.x << ", " << tile.y << ", " <<  tile.z << std::endl;
-            // std::cout << p.x    << ", " << p.y    << std::endl;
-
-            polygon.add(p);
-        }
+    
+    
+    
+    //    auto it = cache.find((void*) &seq);
+    //
+    //    if (it == cache.end()) {
+    
+    
+    // hack to avoid growing the cache forever
+    //        if (cache.size() > 10000) {
+    //            cache.clear();
+    //        }
+    
+    // assert that the raw addresses are at the same level
+    // make the max intersection level be
+    
+    // prepare quadtree filter
+    
+    int level = N;
+    for (RawAddress a: seq) {
+        AddressType addr(a);
+        level = std::min(level,addr.level);
+    }
+    
+    geom2d::Polygon polygon;
+    
+    for (RawAddress a: seq) {
+        geom2d::Tile tile(a);
+        geom2d::Point p = tile.center();
         
-        // polygon.save("/tmp/query.poly");
-
-        // std::cout << "Polgon sides: " << polygon.size() << std::endl;
-
-        //        {
-        //            using namespace geom2d::io;
-        //            std::cout << polygon << std::endl;
-        //        }
-
-        // compute the filter quadtree
-        mask_root_node = qtfilter::intersect(polygon, level, true);
-
-
-        cache[(void*) &seq] = reinterpret_cast<void*>(mask_root_node);
-
+        // std::cout << tile.x << ", " << tile.y << ", " <<  tile.z << std::endl;
+        // std::cout << p.x    << ", " << p.y    << std::endl;
+        
+        polygon.add(p);
     }
-    else {
-        mask_root_node = reinterpret_cast<qtfilter::Node*>(it->second);
-    }
-
-    if (mask_root_node == nullptr)
-        return;
-
+    
+    // polygon.save("/tmp/query.poly");
+    
+    // std::cout << "Polgon sides: " << polygon.size() << std::endl;
+    
+    //        {
+    //            using namespace geom2d::io;
+    //            std::cout << polygon << std::endl;
+    //        }
+    
+    // compute the filter quadtree
+    std::unique_ptr<qtfilter::Node> mask_root_node_uptr(qtfilter::intersect(polygon, level, true));
+    qtfilter::Node *mask_root_node = mask_root_node_uptr.get();
+    
+//        cache[(void*) &seq] = reinterpret_cast<void*>(mask_root_node);
+//    }
+//    else {
+//        mask_root_node = reinterpret_cast<qtfilter::Node*>(it->second);
+//    }
+//    if (mask_root_node == nullptr)
+//        return;
+//    std::cout << "cached polygons: " << cache.size() << std::endl;
 
     // node has the filter
 

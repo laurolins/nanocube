@@ -201,7 +201,7 @@ void geom2d::Polygon::makeCCW()
     Point c = points[ top_index < n-1 ? top_index+1 : 0 ];
     
     if (geom2d::area2(a,b,c) < 0) {
-        std::cout << "<Warning> Input polygon is in CW orientation and will be reversed to CCW orientation" << std::endl;
+        // std::cout << "<Warning> Input polygon is in CW orientation and will be reversed to CCW orientation" << std::endl;
         for (size_t i=0;i<n/2;i++) {
             std::swap(points[i], points[n-1-i]);
         }

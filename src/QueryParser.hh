@@ -349,8 +349,16 @@ private: // methods
     void pushBaseWidthCountTarget();
 
     void collectDimensions();
-
+   
+    template <typename T>
+    T* allocate(T *obj) {
+        allocated_objects.push_back(std::unique_ptr<Expression>(obj));
+        return obj;
+    }
+    
 public: // data members
+    
+    std::vector<std::unique_ptr<Expression>> allocated_objects;
 
     std::stack<Expression*>    stack;
     std::vector<Dimension*>    dimensions;

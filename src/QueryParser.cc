@@ -363,12 +363,12 @@ QueryParser::QueryParser():
 
 void QueryParser::pushAddress(uint64_t number) {
     // std::cout << "push address: " << number << std::endl;
-    stack.push(new Address(number));
+    stack.push(allocate(new Address(number)));
 }
 
 void QueryParser::startFunction(std::string name) {
     // std::cout << "push function: " << name << std::endl;
-    stack.push(new AddressFunction(name));
+    stack.push(allocate(new AddressFunction(name)));
 }
 
 void QueryParser::addFunctionParameter(uint64_t number) {
@@ -380,7 +380,7 @@ void QueryParser::addFunctionParameter(uint64_t number) {
 
 void QueryParser::startDimension(std::string name) {
     // std::cout << "start Dimension: " << name << std::endl;
-    stack.push(new Dimension(name, anchor_flag));
+    stack.push(allocate(new Dimension(name, anchor_flag)));
     anchor_flag = false; // consume anchor_flag
 }
 
@@ -393,7 +393,7 @@ void QueryParser::pushRangeTarget() {
     AddressExpression *min = stack.top()->asAddressExpression();
     stack.pop();
 
-    stack.push(new RangeTarget(min,max));
+    stack.push(allocate(new RangeTarget(min,max)));
 }
 
 void QueryParser::pushSequenceStart() {
@@ -404,8 +404,8 @@ void QueryParser::pushSequenceStart() {
 void QueryParser::pushSequenceTarget() {
     // std::cout << "pop max and min then push RangeTarget" << std::endl;
 
-    SequenceTarget* seq_target = new SequenceTarget();
-
+    SequenceTarget* seq_target = allocate(new SequenceTarget());
+    
     while (stack.top() != nullptr) {
         seq_target->addAddressExpression(stack.top()->asAddressExpression());
         stack.pop();
@@ -422,9 +422,9 @@ void QueryParser::pushDiveTarget(uint64_t dive_depth) {
     SingleTarget *single_target = stack.top()->asSingleTarget();
     stack.pop();
 
-    stack.push(new DiveTarget(single_target->address, dive_depth));
+    stack.push(allocate(new DiveTarget(single_target->address, dive_depth)));
 
-    delete single_target;
+    // delete single_target;
 }
 
 void QueryParser::pushNumber(uint64_t number) {
@@ -444,9 +444,9 @@ void QueryParser::pushBaseWidthCountTarget() {
     SingleTarget *single_target = stack.top()->asSingleTarget();
     stack.pop();
 
-    stack.push(new BaseWidthCountTarget(single_target->address, width, count));
+    stack.push(allocate(new BaseWidthCountTarget(single_target->address, width, count)));
 
-    delete single_target;
+    // delete single_target;
 }
 
 void QueryParser::pushSingleTarget()
@@ -454,7 +454,7 @@ void QueryParser::pushSingleTarget()
     AddressExpression *addr = stack.top()->asAddressExpression();
     stack.pop();
 
-    stack.push(new SingleTarget(addr));
+    stack.push(allocate(new SingleTarget(addr)));
 }
 
 void QueryParser::setTarget() {
@@ -486,6 +486,10 @@ void QueryParser::collectDimensions()
 
 void QueryParser::parse(std::string query_st)
 {
+    // clear any previous result
+    this->allocated_objects.clear();
+    
+    
     int result = 0;
     typename QueryParser::iterator_type begin = query_st.begin();
     typename QueryParser::iterator_type end   = query_st.end();

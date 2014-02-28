@@ -323,7 +323,7 @@ bool Iterator<Content>::next() {
     }
 
     // only gets here if it is on level 1
-    const int num_links = tree.links.size();
+    auto num_links = tree.links.size();
     if (current_index >= num_links) {
         current_node = nullptr;
         return false;
