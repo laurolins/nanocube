@@ -5,6 +5,7 @@
 #include <vector>
 #include <deque>
 #include <thread>
+#include <mutex>
 
 #include "signal.hh"
 

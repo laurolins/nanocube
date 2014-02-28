@@ -1,6 +1,7 @@
 #include<cstddef>
 
 #include"Query.hh"
+#include <stdexcept>
 
 namespace query {
 
