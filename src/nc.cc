@@ -804,6 +804,11 @@ void NanoCubeServer::serveSchema(Request &request)
                         .dict_entry("key", key)
                         .dict_entry("value", value);
             }
+            {
+                json::ContextGuard g3 = writer.dict()
+                        .dict_entry("key", "name")
+                        .dict_entry("value", dump_file.name);
+            }
         }
     }
 
