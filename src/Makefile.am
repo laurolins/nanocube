@@ -17,7 +17,9 @@ nc_q25_u2_u4          \
 nc_q25_c1_u2_u4       \
 nc_q25_c1_c1_u2_u4    \
 nc_q25_c1_c1_c1_u2_u4 \
-nc_q25_c1_u2_u8
+nc_q25_c1_u2_u8       \
+nc_q17_c1_c1_c1_u2_u4 \
+nc_q25_c1_c2_u2_u4
 
 # AM_CPPFLAGS = -I$(top_srcdir)/src
 AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD
@@ -198,3 +200,24 @@ nc_q25_c1_u2_u8_CXXFLAGS = \
     -DVERSION=\"$(VERSION)\"
 nc_q25_c1_u2_u8_SOURCES =\
     $(nc_SOURCES)
+
+nc_q25_c1_c2_u2_u4_LDFLAGS  = $(NC_LIBS)
+nc_q25_c1_c2_u2_u4_CXXFLAGS = \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25,c1,c2 \
+    -DLIST_VARIABLE_TYPES=u2,u4 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_c1_c2_u2_u4_SOURCES =\
+    $(nc_SOURCES)
+
+nc_q17_c1_c1_c1_u2_u4_LDFLAGS  = $(NC_LIBS)
+nc_q17_c1_c1_c1_u2_u4_CXXFLAGS = \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q17,c1,c1,c1 \
+    -DLIST_VARIABLE_TYPES=u2,u4 \
+    -DVERSION=\"$(VERSION)\"
+nc_q17_c1_c1_c1_u2_u4_SOURCES =\
+    $(nc_SOURCES)
+

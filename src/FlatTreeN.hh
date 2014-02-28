@@ -136,6 +136,12 @@ struct Link: public Node<Structure::Size, typename Structure::ContentType>
     Link(RawAddress addr);
     // Node<Content> &asNode();
 
+    uint64_t getLabel() const {
+        uint64_t label = 0;
+        std::copy(&raw_address[0], &raw_address[Structure::Size], (char*) &label);
+        return label;
+    }
+
     inline RawAddress getRawAddress() const;
 
     char raw_address[Structure::Size]; // raw bytes encoding label
@@ -587,7 +593,7 @@ bool Iterator<Structure>::next() {
 //        current_label = std::to_string(current_index);
 //        current_node = &tree.links[current_index];
         auto &link = tree.links[current_index];
-        current_label = std::to_string(link.label);
+        current_label = std::to_string(link.getLabel());
         current_node = &link;
         return true;
     }
