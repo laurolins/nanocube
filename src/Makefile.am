@@ -16,7 +16,8 @@ nc_q25_q25_u2_u4      \
 nc_q25_u2_u4          \
 nc_q25_c1_u2_u4       \
 nc_q25_c1_c1_u2_u4    \
-nc_q25_c1_c1_c1_u2_u4
+nc_q25_c1_c1_c1_u2_u4 \
+nc_q25_c1_u2_u8
 
 # AM_CPPFLAGS = -I$(top_srcdir)/src
 AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD
@@ -103,6 +104,9 @@ qtfilter.hh               \
 qtfilter.cc               \
 util/tokenizer.cc         \
 util/tokenizer.hh         \
+util/timer.cc             \
+util/timer.hh             \
+util/signal.hh            \
 geom2d/base.cc            \
 geom2d/base.hh		  \
 geom2d/boundingbox.cc	  \
@@ -183,4 +187,14 @@ nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = \
     -DLIST_VARIABLE_TYPES=u2,u4 \
     -DVERSION=\"$(VERSION)\"
 nc_q25_c1_c1_c1_u2_u4_SOURCES =\
+    $(nc_SOURCES)
+
+nc_q25_c1_u2_u8_LDFLAGS  = $(NC_LIBS)
+nc_q25_c1_u2_u8_CXXFLAGS = \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25,c1 \
+    -DLIST_VARIABLE_TYPES=u2,u8 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_c1_u2_u8_SOURCES =\
     $(nc_SOURCES)
