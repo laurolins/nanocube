@@ -192,10 +192,9 @@ SingleTarget *SingleTarget::asSingleTarget()
     return this;
 }
 
-void SingleTarget::updateQueryDescription(int /*dimension_index*/,
-                                          ::query::QueryDescription& /*q*/) const
+void SingleTarget::updateQueryDescription(int dimension_index, ::query::QueryDescription &q) const
 {
- //    q.setFindAndDiveTarget(dimension_index,base_address->getRawAddress(),(int) this->dive_depth);
+    q.setFindAndDiveTarget(dimension_index, address->getRawAddress(), (int) 0);
 }
 
 //------------------------------------------------------------------------------

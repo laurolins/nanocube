@@ -49,7 +49,7 @@ BaseWidthCountTarget* Target::asBaseWidthCountTarget()
 
 void Target::replace(RawAddress , RawAddress )
 {
-    throw std::runtime_error("ooops");
+    // throw std::exception();
 }
 
 //-----------------------------------------------------------------------------
