@@ -211,6 +211,7 @@ public: // Public Methods
     void serveSummary   (Request &request);
     void serveGraphViz  (Request &request);
     void serveTiming    (Request &request);
+    void serveVersion   (Request &request);
 
 public:
 
@@ -277,6 +278,7 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     auto stats_handler         = std::bind(&NanoCubeServer::serveStats, this, std::placeholders::_1);
     auto schema_handler        = std::bind(&NanoCubeServer::serveSchema, this, std::placeholders::_1);
 
+    auto version_handler       = std::bind(&NanoCubeServer::serveVersion, this, std::placeholders::_1);
 
     auto tbin_handler          = std::bind(&NanoCubeServer::serveTBin, this, std::placeholders::_1);
 
@@ -305,6 +307,8 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     server.registerHandler("tbin",      tbin_handler);
     server.registerHandler("summary",   summary_handler);
     server.registerHandler("graphviz",  graphviz_handler);
+
+    server.registerHandler("version",  version_handler);
 
     server.registerHandler("timing",  timing_handler);
 
@@ -765,6 +769,12 @@ void NanoCubeServer::serveTiming(Request &request)
 
     server.toggleTiming(!server.isTiming());
     request.respondJson(server.isTiming() ? "Timing is On" : "Timing is Off");
+}
+
+void NanoCubeServer::serveVersion(Request &request)
+{
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+    request.respondJson(VERSION);
 }
 
 void NanoCubeServer::serveSchema(Request &request)
