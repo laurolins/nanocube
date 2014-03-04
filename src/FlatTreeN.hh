@@ -6,14 +6,16 @@
 
 #include "ContentHolder.hh"
 
+#include "cache.hh"
+
 
 //-----------------------------------------------------------------------------
 // DECLARATIONS
 //-----------------------------------------------------------------------------
 
 namespace flattree_n {
-
-using Cache = std::unordered_map<void*, void*>;
+    
+    using Cache = nanocube::Cache;
 
 using PathSize   = uint8_t;
 using Level      = int32_t;

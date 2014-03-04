@@ -18,6 +18,8 @@
 
 #include "NanoCubeQueryException.hh"
 
+#include "cache.hh"
+
 #include <vector>
 #include <stack>
 #include <stdint.h>
@@ -25,8 +27,6 @@
 #include <unordered_map>
 
 namespace nanocube {
-
-using Cache = std::unordered_map<void*, void*>;
 
 namespace query {
 

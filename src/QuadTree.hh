@@ -12,6 +12,7 @@
 
 #include "QuadTreeNode.hh"
 
+#include "cache.hh"
 
 #include "qtfilter.hh" // used in visitSequence to create a quadtree
                        // filter based on a sequence of raw addresses
@@ -23,7 +24,7 @@
 namespace quadtree
 {
 
-using Cache = std::unordered_map<void*, void*>;
+        using Cache = nanocube::Cache;
 
 //-----------------------------------------------------------------------------
 // typedefs
@@ -1134,53 +1135,49 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
     // a new mask and cache it
     //
     
-    
-    
-    //    auto it = cache.find((void*) &seq);
-    //
-    //    if (it == cache.end()) {
-    
-    
-    // hack to avoid growing the cache forever
-    //        if (cache.size() > 10000) {
-    //            cache.clear();
-    //        }
-    
-    // assert that the raw addresses are at the same level
-    // make the max intersection level be
-    
-    // prepare quadtree filter
-    
-    int level = N;
-    for (RawAddress a: seq) {
-        AddressType addr(a);
-        level = std::min(level,addr.level);
+    void* key = (void*) &seq; // not elegant, but should work
+    auto mask = cache.getMask(key);
+    if (!mask) {
+        
+        // assert that the raw addresses are at the same level
+        // make the max intersection level be
+        
+        // prepare quadtree filter
+        
+        int level = N;
+        for (RawAddress a: seq) {
+            AddressType addr(a);
+            level = std::min(level,addr.level);
+        }
+        
+        geom2d::Polygon polygon;
+        
+        for (RawAddress a: seq) {
+            geom2d::Tile tile(a);
+            geom2d::Point p = tile.center();
+            
+            // std::cout << tile.x << ", " << tile.y << ", " <<  tile.z << std::endl;
+            // std::cout << p.x    << ", " << p.y    << std::endl;
+            
+            polygon.add(p);
+        }
+        
+        // polygon.save("/tmp/query.poly");
+        
+        // std::cout << "Polgon sides: " << polygon.size() << std::endl;
+        
+        //        {
+        //            using namespace geom2d::io;
+        //            std::cout << polygon << std::endl;
+        //        }
+        
+        // compute the filter quadtree
+        mask = qtfilter::intersect(polygon, level, true);
+        cache.insertMask(key, mask);
     }
     
-    geom2d::Polygon polygon;
-    
-    for (RawAddress a: seq) {
-        geom2d::Tile tile(a);
-        geom2d::Point p = tile.center();
-        
-        // std::cout << tile.x << ", " << tile.y << ", " <<  tile.z << std::endl;
-        // std::cout << p.x    << ", " << p.y    << std::endl;
-        
-        polygon.add(p);
-    }
-    
-    // polygon.save("/tmp/query.poly");
-    
-    // std::cout << "Polgon sides: " << polygon.size() << std::endl;
-    
-    //        {
-    //            using namespace geom2d::io;
-    //            std::cout << polygon << std::endl;
-    //        }
-    
-    // compute the filter quadtree
-    std::unique_ptr<qtfilter::Node> mask_root_node_uptr(qtfilter::intersect(polygon, level, true));
-    qtfilter::Node *mask_root_node = mask_root_node_uptr.get();
+//    std::unique_ptr<qtfilter::Node> mask_root_node_uptr(qtfilter::intersect(polygon, level, true));
+//    qtfilter::Node *mask_root_node = mask_root_node_uptr.get();
     
 //        cache[(void*) &seq] = reinterpret_cast<void*>(mask_root_node);
 //    }
@@ -1208,7 +1205,7 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
 
     // stack and mask go in sync
     std::vector<qtfilter::Node*> mask_stack;
-    mask_stack.push_back(mask_root_node);
+    mask_stack.push_back(mask);
 
     while (!stack.empty())
     {

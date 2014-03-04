@@ -13,6 +13,7 @@
 
 #include "ContentHolder.hh"
 
+#include "cache.hh"
 
 //
 // Needed Mechanisms
@@ -26,8 +27,8 @@
 
 namespace flattree
 {
-
-using Cache = std::unordered_map<void*, void*>;
+    
+        using Cache = nanocube::Cache;
 
 typedef unsigned char PathSize;
 typedef unsigned char PathIndex;

@@ -41,6 +41,8 @@ DumpFile.cc           \
 DumpFile.hh
 
 nc_SOURCES = \
+cache.cc                  \
+cache.hh                  \
 Common.cc                 \
 Common.hh                 \
 ContentHolder.hh          \

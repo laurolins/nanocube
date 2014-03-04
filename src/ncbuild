@@ -57,6 +57,7 @@ print "Building " + filename + " and copying it to folder " + nanocube_bin + "..
 # sources = "Common.cc DumpFile.cc MemoryUtil.cc MercatorProjection.cc NanoCubeQueryException.cc NanoCubeQueryResult.cc NanoCubeSchema.cc QuadTree.cc QuadTreeNode.cc Query.cc QueryParser.cc QueryResult.cc Report.cc Server.cc Stopwatch.cc TimeBinFunction.cc TimeSeries.cc Util.cc vector.cc mongoose.c nc.cc NanoCubeSummary.cc"
 
 sources = '''\
+cache.cc                  \
 Common.cc                 \
 DumpFile.cc               \
 MemoryUtil.cc             \
