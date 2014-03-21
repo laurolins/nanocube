@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
             std::string name = params.at(0);
             std::string field_uint_name = params.at(1);
             int num_bytes = std::stoi(params.at(2));
-            std::cout << num_bytes << std::endl;
+            // std::cout << num_bytes << std::endl;
 
             mapping_scheme.addFieldMap(new FD_VarUInt(name, field_uint_name, num_bytes));
 

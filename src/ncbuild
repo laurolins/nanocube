@@ -100,7 +100,7 @@ compile_cmd = '''%s -std=c++11 -O3 \
 -D_GLIBCXX_USE_NANOSLEEP  \
 -DLIST_DIMENSION_NAMES=%s \
 -DLIST_VARIABLE_TYPES=%s  \
--DVERSION=ncbuild  \
+-DVERSION=\\"ncbuild\\"  \
 -ftemplate-depth=512 \
 -o %s \
 %s \
