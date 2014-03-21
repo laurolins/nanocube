@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <link rel="stylesheet"
+          href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css"/>
+    <link rel="stylesheet"
+          href="lib/leaflet.draw/leaflet.draw.css"/>
+    <style type='text/css'>
+     html,body{
+       height: 100%;
+       width: 100%;
+       margin: 0px;
+       padding: 0px;
+     }
+
+     .leaflet-container {
+       background: #000;
+     }     
+
+     #src{
+       font: 10pt sans-serif;
+       height:100%;
+       width: 50%;
+       margin: 0;
+       padding: 0;
+       float: left;
+     }
+
+     #dst{
+       font: 10pt sans-serif;
+       height:100%;
+       width: 50%;
+       margin: 0;
+       padding: 0;
+       float: left;
+     }
+
+     #info{
+       position: absolute;
+       font: 10pt sans-serif;
+       color: white;
+       top:5px;
+       right:5px;
+     }
+
+     #time{
+       position: absolute;
+       font: 10pt sans-serif;
+       height: 100px;
+       width: 960px;
+       left:50%;
+       bottom:20px;
+       margin-left: -480px ;
+       background-color:#555;
+       opacity: 0.8;
+     }
+          
+     .axis path,
+     .axis line{
+       fill: none;
+       stroke: #fff;
+       shape-rendering: crispEdges;
+     }
+     .axis text {
+       fill: #fff;
+       stroke:none;
+     }
+     
+     .brush .extent {
+       stroke: #fff;
+       fill-opacity: .125;
+       shape-rendering: crispEdges;
+     }
+    </style>
+    
+  </head>
+
+  <body>
+    <div id='src'></div>
+    <div id='dst'></div>
+    <div id='time'></div>
+    <div id='info'></div>
+  </body>
+
+  <!-- Start of scripts-->
+  <!-- jQuery, Leaflet, Underscore includes -->
+  <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+  <script src="http://underscorejs.org/underscore-min.js"></script>
+  <script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
+  <script src="lib/colorbrewer.js"></script>
+
+  <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet-src.js"></script>
+  <script src="lib/leaflet.draw/leaflet.draw-src.js"></script>
+  <script src="lib/L.Map.Sync.js"></script>
+
+  <!-- Custom includes -->
+  <script src="nanocube2.js"></script>
+  
+  <script src="TileLatLngUtils.js"></script>
+
+  <script src="NanocubeLayer.js"></script>
+  <script src="Timeseries.js"></script>
+  <script src="GroupedBarChart.js"></script>
+
+  <script src="QueryConstraint.js"></script>
+  <script src="Variables.js"></script>
+  <script src="Model.js"></script>
+
+
+  <!-- Main -->
+  <script>
+   $(function(){
+     var nc = new Nanocube({ 
+       //url: "http://localhost:29513",
+       url:"http://naraj.research.att.com:29526", 
+       ready: function(nc){
+         var options = {nanocube:nc, 
+                        binsize:1,
+                        colormaps: [{colors:colorbrewer.PuBuGn[9].reverse(),
+                                     domain:[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1]},
+                                    {colors:colorbrewer.YlOrRd[9].reverse(),
+                                     domain:[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1]},
+                                    ]};
+         
+         var model = new Model(options);
+         model.spatial_vars.src.map.setView([37.75,-122.42],12);
+         model.spatial_vars.dst.map.setView([37.75,-122.42],12);
+       }
+     });
+   });
+
+
+  </script>
+</html>
