@@ -241,12 +241,9 @@ Model.prototype.createMap = function(spvar,cm){
         maxZoom: Math.min(18,spvar.maxlevel+1)
     });
 
-    //var maptile = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
-    var maptile = L.tileLayer('http://{s}.tile.cloudmade.com/{key}/{styleid}/256/{z}/{x}/{y}.png',
+    var maptile = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
                               {
                                   noWrap:true,
-                                  key: '4f5c5233516d4c39a218425764d98def',
-                                  styleid: 999,
                                   opacity:0.5
                               });
     
