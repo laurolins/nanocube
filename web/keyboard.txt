@@ -1,0 +1,17 @@
+Keyboard instructions:
+
+      Heatmap:
+      '<': decrease opacity
+      '>': increase opacity
+      ',': decrease size of each square/ spot
+      '.': increase size of each square/ spot
+      's': Toggle the display of squares or smoothed spots.
+
+      Background Map:
+      'd': decrease opacity (looks darker)
+      'b': increase opacity (looks brighter)
+
+      Timeseries:
+      't': Toggle the resolutions of the time series, hours/days/weeks
+      'g': Toggle the display of the global time series when there are
+      polygon/rect selections.
