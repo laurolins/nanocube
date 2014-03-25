@@ -172,6 +172,10 @@ int Field::getNumTokens() const {
 }
 
 void Field::addValueName(uint64_t value, std::string valname) {
+    if (map_value_to_valname.find(value) != map_value_to_valname.end()) {
+        std::string old_name = map_value_to_valname[value];
+        map_valname_to_value.erase(old_name);
+    }
     map_value_to_valname[value]   = valname;
     map_valname_to_value[valname] = value;
 }

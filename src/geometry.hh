@@ -142,7 +142,7 @@ public:
 
     inline constexpr auto center() const -> BasePoint<U,T>;
 
-    inline constexpr auto corner(Corner c) -> BasePoint<U,T>;
+    inline constexpr auto corner(Corner c) const -> BasePoint<U,T>;
 
     auto normalize(const BasePoint<U,T>& p) const -> BasePoint<units::norm,double>;
     auto denormalize(const BasePoint<units::norm,double>& p) const -> BasePoint<U,T>;
