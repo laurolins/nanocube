@@ -1,0 +1,13 @@
+Scripts for starting nanocubes from a csv file
+
+Set PATHs for nanocube executables
+    eg. Nanocube is installed with prefix /usr/local    
+        export NANOCUBE_BIN=/usr/local/bin
+        export PATH=$NANOCUBE_BIN:$PATH
+
+Run csv2Nanocube.py on the csv file and pipe the output to ncserve
+  eg. python csv2Nanocube.py  --catcol 'Primary Type' --timebinsize 1D crime50k.csv  | ncserve --rf=100000 --threads=100
+
+  Example options:
+    --catcol denotes column of categorical attribute   
+    --timebinsize denotes the finest interval for aggregation overtime
