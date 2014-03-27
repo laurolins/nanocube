@@ -30,7 +30,7 @@ class NanocubeInput:
         start = True
         for f in files:
             comp = None
-            if f.name.split()[-1] == 'gz':
+            if f.name.split('.')[-1] == 'gz':
                 comp = 'gzip'
             reader = pd.read_csv(f,chunksize=5000,compression=comp)
             for i,data in enumerate(reader):
