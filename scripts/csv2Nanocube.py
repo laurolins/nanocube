@@ -4,7 +4,7 @@ import numpy as np
 
 class NanocubeInput:
     def __init__(self, args):
-        self.name=args.InputFile[0].name
+        self.name=args.InputFile[0]
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
         self.spname=[c.replace(' ','_') for c in args.spname]
@@ -18,21 +18,19 @@ class NanocubeInput:
         self.field=[]
         self.valname={}
 
-        coi = self.datecol+self.catcol+self.latcol+self.loncol
-
         #cmd = 'ncserve --rf=100000 --threads=100'
         #self.ncproc = subprocess.Popen([cmd], stdin=subprocess.PIPE,
         #                               shell=True)
 
-        self.readcsv(args.InputFile,coi)
+        self.readcsv(args.InputFile)
 
-    def readcsv(self,files,coi):
+    def readcsv(self,files):
         start = True
         for f in files:
             comp = None
-            if f.name.split('.')[-1] == 'gz':
+            if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
-            reader = pd.read_csv(f,chunksize=5000,compression=comp)
+            reader = pd.read_csv(f,chunksize=100000,compression=comp)
             for i,data in enumerate(reader):
                 if start:
                     #compute the time offset
@@ -41,7 +39,7 @@ class NanocubeInput:
                     year = data[self.datecol].min().min().year
                     self.offset = datetime.datetime(year=year,month=1,day=1)
 
-                data = self.processData(data,coi)
+                data = self.processData(data)
 
                 if start:
                     sys.stdout.write(self.header(data))
@@ -49,19 +47,27 @@ class NanocubeInput:
 
                 self.writeRawData(data)
 
-    def processData(self, data, coi):
+    def processData(self, data):
+        #fix column names
         data.columns = [c.replace(' ', '_') for c in data.columns]
+
+        if self.countcol not in data.columns: #add count
+            data[self.countcol]=1
+
+        #get NaN's for errors
+        data[self.countcol] = data[self.countcol].astype(np.float)
+
+        #drop bad data
+        coi = self.datecol+self.catcol+self.latcol+self.loncol+[self.countcol]
         data = data[coi].dropna()
-            
-            
+                    
+        #process data
         data = self.processLatLon(data)
         data = self.processCat(data)
         data = self.processDate(data,self.offset)
-            
-        if self.countcol not in data.columns:
-            data[self.countcol]=1
-            data[self.countcol] = data[self.countcol].astype('<u4')
-
+        
+        #sort by date
+        data = data.sort(self.datecol[0])
         return data
     
     def writeRawData(self,data):
@@ -79,13 +85,13 @@ class NanocubeInput:
             columns += [d]
             data[d] = data[d].astype('<u2'); 
 
-        columns += ['count']
-        data['count'] = data['count'].astype('<u4'); 
+        columns += [self.countcol]
+        data[self.countcol] = data[self.countcol].astype('<u4')
 
         data = data[columns] #permute
 
         rec = data.to_records(index=False)
-        #print rec
+
         rec.tofile(sys.stdout)
             
     def processLatLon(self,data):
@@ -93,7 +99,10 @@ class NanocubeInput:
             lat = self.latcol[i]
             lon = self.loncol[i]
             lvl = self.levels
-            
+            data[lon] = data[lon].astype(np.float)
+            data[lat] = data[lat].astype(np.float)
+            data = data.dropna()
+
             data = data[data[lon] > -180]
             data = data[data[lon] < 180]
             data = data[data[lat] > -85.0511]
@@ -173,13 +182,13 @@ class NanocubeInput:
                                                self.timebinsize.astype(np.int))
             h += 'field: %s nc_dim_time_2\n'%(d)
 
-        h += 'field: count nc_var_uint_4\n\n'
+        h += 'field: %s nc_var_uint_4\n\n' %(self.countcol)
         return h
 
 def main(argv):
     #parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('InputFile',type=argparse.FileType('r'), nargs='+')
+    parser.add_argument('InputFile',type=str, nargs='+')
     parser.add_argument('--timebinsize',type=str, default='1h')
     parser.add_argument('--datecol', type=str,nargs='+',default=['Date'])
     parser.add_argument('--spname', type=str,nargs='+',default=['src'])
