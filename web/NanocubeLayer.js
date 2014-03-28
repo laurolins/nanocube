@@ -70,22 +70,20 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
     var pixels = imgData.data; 
     var length = pixels.length;
     
-    //set color
-    var that = this;
-
     if (! this.smooth){ //blocky rendering
         ctx.imageSmoothingEnabled = false;
         ctx.webkitImageSmoothingEnabled = false;
         ctx.mozImageSmoothingEnabled = false;
     }
 
+    //set color
+    var that = this;
     data.forEach(function(d){ 
         if(d.v < 1e-6){ 
             return;
         }
 
         var color = d3.rgb(that.colormap(d.v/that.max));
-        //var color = {r:255,g:0,b:0};
         var idx = (imgData.height-1-d.y)*imgData.width + d.x;
         pixels[idx*4]=color.r;
         pixels[idx*4+1]=color.g ;
@@ -122,11 +120,8 @@ L.NanocubeLayer.prototype.processData = function(bindata){
         return null;
     }
     
-    var x_array = new Uint8Array(n_records);
-    var y_array = new Uint8Array(n_records);
-    var count_array = new Float64Array(n_records);
-    
-    var logdata = new Array(n_records);
+    var logdata = [];
+    logdata.length = n_records;
     var maxv = -Infinity;
     var minv = Infinity;
     
@@ -138,10 +133,14 @@ L.NanocubeLayer.prototype.processData = function(bindata){
             continue;
         }
 
-        rv = Math.log(rv);
+        rv = Math.log(rv+1);
         logdata[i] = {x:rx, y:ry, v: rv};
         maxv = Math.max(maxv,rv);
         minv = Math.min(minv,rv);
+    }
+
+    if (maxv == -Infinity && minv == Infinity){ //zeros only
+        return null;
     }
     
     return {min:minv,max:maxv,data:logdata};

@@ -87,7 +87,7 @@ Model.prototype.initVars = function(){
 
             var nbins = tinfo.end-tinfo.start+1;
                                 
-            var binsize = 1.0/60;  //Math.ceil(nbins/$('#'+v.name).width()*1);
+            var binsize = 1.0/60;
             binsize = Math.max(1e-6,binsize);
 
 
@@ -241,9 +241,12 @@ Model.prototype.createMap = function(spvar,cm){
         maxZoom: Math.min(18,spvar.maxlevel+1)
     });
 
-    var maptile = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
+    //var maptile = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
+    var maptile = L.tileLayer('http://{s}.tile.cloudmade.com/{key}/{styleid}/256/{z}/{x}/{y}.png',
                               {
                                   noWrap:true,
+                                  key: '4f5c5233516d4c39a218425764d98def',
+                                  styleid: 999,
                                   opacity:0.5
                               });
     
@@ -303,8 +306,10 @@ Model.prototype.addDraw = function(map,spvar){
         }
     });
     map.editControl.setDrawingOptions({
-        rectangle:{shapeOptions:{color: this.nextColor(), opacity:.9}},
-        polygon:{shapeOptions:{color: this.nextColor(), opacity:.9}}
+        rectangle:{shapeOptions:{color: this.nextColor(), weight: 2,
+                                 opacity:.9}},
+        polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
+                               opacity:.9}}
     });
   
     map.editControl.addTo(map);
@@ -351,13 +356,15 @@ Model.prototype.drawCreated = function(e,spvar){
     //set next color
     if (e.layerType == 'rectangle'){
         spvar.map.editControl.setDrawingOptions({
-            rectangle:{shapeOptions:{color: this.nextColor(),opacity:.9}}
+            rectangle:{shapeOptions:{color: this.nextColor(),weight: 2,
+                                     opacity:.9}}
         });
     }
     
     if (e.layerType == 'polygon'){
         spvar.map.editControl.setDrawingOptions({
-            polygon:{shapeOptions:{color: this.nextColor(),opacity:.9}}
+            polygon:{shapeOptions:{color: this.nextColor(),weight: 2,
+                                   opacity:.9}}
         });
     }
     this.redraw(spvar,false);
@@ -553,24 +560,29 @@ Model.prototype.updateInfo = function(){
         if (json == null){
             return;
         }
-
-        var tvar  = that.temporal_vars.time;
-        var b2h = tvar.bin_to_hour;
+        
+        var tvarname = Object.keys(that.temporal_vars)[0];
+        var tvar  = that.temporal_vars[tvarname];
         var time_const = tvar.constraints[0];
         var start = time_const.selection_start;
 
         var startdate = new Date(tvar.date_offset);
-        startdate.setHours(startdate.getHours()+start*b2h);
+        
+        //Set time in milliseconds from 1970
+        startdate.setTime(startdate.getTime()+
+                          start*tvar.bin_to_hour*3600*1000);
 
-        var dhours = time_const.selected_bins * b2h;
+        var dhours = time_const.selected_bins *tvar.bin_to_hour;
 
         var enddate = new Date(startdate);
-        enddate.setHours(enddate.getHours()+dhours);
+        enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
         var count = json.root.value;   
+        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
         $('#info').text(startdate.toLocaleString() + ' - ' 
                         + enddate.toLocaleString() + ' '
-                        + ' Total: ' + count);
+                        + ' Total: ' + countstr);
     });
 };
 

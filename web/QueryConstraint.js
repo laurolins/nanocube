@@ -55,7 +55,7 @@ TemporalConstraint.prototype.add = function(q){
 };
 
 TemporalConstraint.prototype.addSelf = function(q){
-    var minbinsize = Math.ceil(this.nbins/$('#'+this.dim).width());
+    var minbinsize = Math.ceil(this.nbins/$('#'+this.dim).width()*1.5);
     var binsize = Math.max(minbinsize,this.binsize);
 
     this.start = Math.max(this.start,0);
