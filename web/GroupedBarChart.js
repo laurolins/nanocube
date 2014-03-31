@@ -1,20 +1,19 @@
 function GroupedBarChart(id){
-    var content = $(id).css('content');
     var margin = {top:10,right:10,left:50,bottom:30};
 
-    if (!(content == "none" || content == "")){ //fix for firefox
-        content = content.substr(1,content.length-2); //remove ''
-        content = content.replace(/\\/g, ''); //fix for firefox slashes
-        content = $.parseJSON(content);
-
-        if (content.margin != undefined){
-            margin.top = content.margin.top || margin.top;
-            margin.left = content.margin.left || margin.left;
-            margin.right = content.margin.right || margin.right;
-            margin.bottom = content.margin.bottom || margin.bottom;
-        }
-    }
+    //setup the d3 margins from the css margin variables
+    margin.left = Math.max(margin.left, parseInt($(id).css('margin-left')));
+    margin.right = Math.max(margin.right, parseInt($(id).css('margin-right')));
+    margin.top = Math.max(margin.top, parseInt($(id).css('margin-top')));
+    margin.bottom = Math.max(margin.bottom, 
+                             parseInt($(id).css('margin-bottom')));
     
+    $(id).css('margin','0px 0px 0px 0px');
+    $(id).css('margin-left','0px');
+    $(id).css('margin-right','0px');
+    $(id).css('margin-top','0px');
+    $(id).css('margin-bottom','0px');
+
     this.data = {};
     this.selection=null;
 

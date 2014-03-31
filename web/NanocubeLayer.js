@@ -3,13 +3,14 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
         L.TileLayer.Canvas.prototype.initialize.call(this, options);
         this.model = options.model;
         this.variable = options.variable;
+        this.log = true;
         
         this.colormap = d3.scale.linear()
             .domain(options.colormap.domain)
             .range(options.colormap.colors);
 
-        this.coarselevels = 0;
-        this.smooth = true;
+        this.coarselevels = 1;
+        this.smooth = false;
     }
 });
 
@@ -133,7 +134,9 @@ L.NanocubeLayer.prototype.processData = function(bindata){
             continue;
         }
 
-        rv = Math.log(rv+1);
+        if (this.log){
+            rv = Math.log(rv+1);
+        }
         logdata[i] = {x:rx, y:ry, v: rv};
         maxv = Math.max(maxv,rv);
         minv = Math.min(minv,rv);
