@@ -13,6 +13,8 @@ class NanocubeInput:
         self.latcol=[c.replace(' ','_') for c in args.latcol]
         self.loncol=[c.replace(' ','_') for c in args.loncol]
         self.countcol=args.countcol.replace(' ','_')
+        self.datefmt=args.datefmt
+
         self.levels = args.levels
         
         self.field=[]
@@ -35,7 +37,8 @@ class NanocubeInput:
                 if start:
                     #compute the time offset
                     for i,d in enumerate(self.datecol):
-                        data[d] = (pd.to_datetime(data[d]))
+                        data[d] = data[d].apply(str)
+                        data[d] = (pd.to_datetime(data[d],format=self.datefmt))
                     year = data[self.datecol].min().min().year
                     self.offset = datetime.datetime(year=year,month=1,day=1)
 
@@ -64,7 +67,7 @@ class NanocubeInput:
         #process data
         data = self.processLatLon(data)
         data = self.processCat(data)
-        data = self.processDate(data,self.offset)
+        data = self.processDate(data,offset=self.offset)
         
         #sort by date
         data = data.sort(self.datecol[0])
@@ -115,7 +118,8 @@ class NanocubeInput:
     def processDate(self,inputdata,offset):
         data = inputdata.copy()
         for i,d in enumerate(self.datecol):
-            data[d] = pd.to_datetime(data[d],coerce=True)
+            data[d] = pd.to_datetime(data[d],format=self.datefmt,
+                                     infer_datetime_format=True,coerce=True)
             data = data.dropna()
 
             data[d] -= offset
@@ -191,6 +195,7 @@ def main(argv):
     parser.add_argument('InputFile',type=str, nargs='+')
     parser.add_argument('--timebinsize',type=str, default='1h')
     parser.add_argument('--datecol', type=str,nargs='+',default=['Date'])
+    parser.add_argument('--datefmt', type=str, default=None)
     parser.add_argument('--spname', type=str,nargs='+',default=['src'])
     parser.add_argument('--levels', type=int, default=25)
     parser.add_argument('--latcol', type=str,nargs='+',default=['Latitude'])
