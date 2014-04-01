@@ -1,5 +1,7 @@
 Scripts for starting nanocubes from a csv file
 
+Requires: Pandas and Numpy
+
 Set PATHs for nanocube executables
     eg. Nanocube is installed with prefix /usr/local    
         export NANOCUBE_BIN=/usr/local/bin

@@ -12,13 +12,18 @@ class NanocubeInput:
         self.datecol=[c.replace(' ','_') for c in args.datecol]
         self.latcol=[c.replace(' ','_') for c in args.latcol]
         self.loncol=[c.replace(' ','_') for c in args.loncol]
-        self.countcol=args.countcol.replace(' ','_')
-        self.datefmt=args.datefmt
+        
+        self.countcol = args.countcol
+        if self.countcol is not None :
+            self.countcol=self.countcol.replace(' ','_')
 
+        self.datefmt=args.datefmt
         self.levels = args.levels
         
         self.field=[]
         self.valname={}
+        self.offset=None
+        
 
         #cmd = 'ncserve --rf=100000 --threads=100'
         #self.ncproc = subprocess.Popen([cmd], stdin=subprocess.PIPE,
@@ -27,32 +32,33 @@ class NanocubeInput:
         self.readcsv(args.InputFile)
 
     def readcsv(self,files):
-        start = True
+        coi = self.datecol+self.catcol+self.latcol+self.loncol
+        if self.countcol is not None:
+            coi += [self.countcol]
+
         for f in files:
             comp = None
             if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
-            reader = pd.read_csv(f,chunksize=100000,compression=comp)
-            for i,data in enumerate(reader):
-                if start:
-                    #compute the time offset
-                    for i,d in enumerate(self.datecol):
-                        data[d] = data[d].apply(str)
-                        data[d] = (pd.to_datetime(data[d],format=self.datefmt))
-                    year = data[self.datecol].min().min().year
-                    self.offset = datetime.datetime(year=year,month=1,day=1)
+            reader = pd.read_csv(f,usecols=coi,
+                                 chunksize=100000,
+                                 compression=comp)
 
+            start = (self.offset is None)
+            for i,data in enumerate(reader):
                 data = self.processData(data)
 
                 if start:
                     sys.stdout.write(self.header(data))
-                    start = False
-
+                
                 self.writeRawData(data)
 
     def processData(self, data):
         #fix column names
         data.columns = [c.replace(' ', '_') for c in data.columns]
+
+        if self.countcol is None:
+            self.countcol = 'count'
 
         if self.countcol not in data.columns: #add count
             data[self.countcol]=1
@@ -61,13 +67,12 @@ class NanocubeInput:
         data[self.countcol] = data[self.countcol].astype(np.float)
 
         #drop bad data
-        coi = self.datecol+self.catcol+self.latcol+self.loncol+[self.countcol]
-        data = data[coi].dropna()
+        data = data.dropna().copy()
                     
         #process data
         data = self.processLatLon(data)
         data = self.processCat(data)
-        data = self.processDate(data,offset=self.offset)
+        data = self.processDate(data)
         
         #sort by date
         data = data.sort(self.datecol[0])
@@ -115,17 +120,23 @@ class NanocubeInput:
             data[lat] = self.latToTileY(data[lat],lvl)
         return data
             
-    def processDate(self,inputdata,offset):
+    def processDate(self,inputdata):
         data = inputdata.copy()
-        for i,d in enumerate(self.datecol):
+        for i,d in enumerate(self.datecol): #convert strings to datetime
+            data[d] = data[d].apply(str)
             data[d] = pd.to_datetime(data[d],format=self.datefmt,
                                      infer_datetime_format=True,coerce=True)
-            data = data.dropna()
+        data = data.dropna()
+        
+        if self.offset is None: #compute offset
+            year = data[self.datecol].min().min().year
+            self.offset = datetime.datetime(year=year,month=1,day=1)
 
-            data[d] -= offset
+        for i,d in enumerate(self.datecol):
+            data[d] -= self.offset
             data[d] = data[d] / self.timebinsize
         return data
-            
+        
     def processCat(self,data):
         for i,c in enumerate(self.catcol):            
             #fix the spaces
@@ -201,7 +212,7 @@ def main(argv):
     parser.add_argument('--latcol', type=str,nargs='+',default=['Latitude'])
     parser.add_argument('--loncol', type=str,nargs='+',default=['Longitude'])
     parser.add_argument('--catcol', type=str,nargs='+',default=[])
-    parser.add_argument('--countcol', type=str, default='count')
+    parser.add_argument('--countcol', type=str, default=None)
     args = parser.parse_args()
 
     ncinput = NanocubeInput(args)    
