@@ -3,16 +3,28 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
         L.TileLayer.Canvas.prototype.initialize.call(this, options);
         this.model = options.model;
         this.variable = options.variable;
-        this.log = true;
-        
         this.colormap = d3.scale.linear()
             .domain(options.colormap.domain)
             .range(options.colormap.colors);
 
         this.coarselevels = 1;
         this.smooth = false;
+        
+        this.show_count = false;
+        this.log = true;
     }
 });
+
+L.NanocubeLayer.prototype.toggleLog = function(){
+    this.log = !this.log;
+    this.redraw();
+};
+
+L.NanocubeLayer.prototype.toggleShowCount = function(){
+    this.show_count = !this.show_count;
+    this.redraw();
+};
+
 
 L.NanocubeLayer.prototype.redraw = function(){
     //this.reallydraw = true;
@@ -53,20 +65,30 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
     var that = this;
     this.model.tileQuery(this.variable, tile, drill, function(data){
         var result = that.processData(data);
-        if(result == null){
-            return;
-        }
 
-        that.max = Math.max(that.max, result.max);
-        that.min = Math.min(that.min, result.min);
-        
-        that.renderTile(canvas,size,result.data);
+        if(result !=null){
+            that.max = Math.max(that.max, result.max);
+            that.min = Math.min(that.min, result.min);
+            that.renderTile(canvas,size,result.data);
+        }        
+        else{
+            that.renderTile(canvas,size,null);
+        }
     });
     this.tileDrawn(canvas);
 };
 
 L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
     var ctx = canvas.getContext('2d');
+    
+    if (data == null){
+        if (this.show_count){//draw grid box
+            this.drawGridCount(ctx,data);
+        }
+        return;
+    }
+
+
     var imgData=ctx.createImageData(size,size);
     var pixels = imgData.data; 
     var length = pixels.length;
@@ -79,17 +101,30 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
 
     //set color
     var that = this;
+    var minv = that.min;
+    var maxv = that.max;
+    if (this.log){
+        minv = Math.log(minv);
+        maxv = Math.log(maxv);
+    }
+
     data.forEach(function(d){ 
         if(d.v < 1e-6){ 
             return;
         }
 
-        var color = d3.rgb(that.colormap(d.v/that.max));
+        var v = d.v;
+        if (that.log){
+            v = Math.log(v+1);
+        }
+
+        v = (v-minv)/maxv;
+        var color = d3.rgb(that.colormap(v));
         var idx = (imgData.height-1-d.y)*imgData.width + d.x;
         pixels[idx*4]=color.r;
         pixels[idx*4+1]=color.g ;
         pixels[idx*4+2]=color.b;
-        pixels[idx*4+3]= d.v/that.max*255*2;
+        pixels[idx*4+3]= v*255*2;
     });
     
     //set image
@@ -105,9 +140,28 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
     }
     else{
         ctx.putImageData(imgData,0,0);
+    }        
+
+    if (this.show_count){//draw grid box
+        this.drawGridCount(ctx,data);
     }
 };
 
+L.NanocubeLayer.prototype.drawGridCount = function(ctx,data){
+    ctx.lineWidth="0.5";
+    ctx.strokeStyle="white";
+    ctx.rect(0,0,ctx.canvas.width,ctx.canvas.height);
+    ctx.stroke();
+
+    if(data != null){
+        //Total count
+        var total = data.reduce(function(prev,curr){return prev+curr.v;},0);
+        var totalstr =  total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        ctx.font="10pt sans-serif";
+        ctx.fillStyle="white";
+        ctx.fillText(totalstr,10,20);
+    }
+};
 
 L.NanocubeLayer.prototype.processData = function(bindata){
     if(bindata == null){
@@ -121,8 +175,8 @@ L.NanocubeLayer.prototype.processData = function(bindata){
         return null;
     }
     
-    var logdata = [];
-    logdata.length = n_records;
+    var data = [];
+    data.length = n_records;
     var maxv = -Infinity;
     var minv = Infinity;
     
@@ -134,10 +188,11 @@ L.NanocubeLayer.prototype.processData = function(bindata){
             continue;
         }
 
-        if (this.log){
-            rv = Math.log(rv+1);
-        }
-        logdata[i] = {x:rx, y:ry, v: rv};
+        //if (this.log){
+        //    rv = Math.log(rv+1);
+        //}
+
+        data[i] = {x:rx, y:ry, v: rv};
         maxv = Math.max(maxv,rv);
         minv = Math.min(minv,rv);
     }
@@ -146,7 +201,7 @@ L.NanocubeLayer.prototype.processData = function(bindata){
         return null;
     }
     
-    return {min:minv,max:maxv,data:logdata};
+    return {min:minv,max:maxv,data:data};
 };
 
 

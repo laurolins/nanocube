@@ -252,7 +252,8 @@ Model.prototype.createMap = function(spvar,cm){
         model: this,
         variable: spvar,
         noWrap:true,
-        colormap:cm
+        colormap:cm,
+        log: this.options.logcolormap
     });
 
     var that = this;
@@ -350,6 +351,19 @@ Model.prototype.drawCreated = function(e,spvar){
     this.colormap[e.layer._leaflet_id] = color;
     spvar.addSelection(e.layer._leaflet_id, tilelist);
 
+    //draw count on the polygon
+    var q = this.totalcount_query(spvar.constraints[e.layer._leaflet_id]);
+    q.run_query(function(json){
+        if (json == null){
+            return;
+        }
+        var count = json.root.value;   
+        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        e.layer.bindPopup(countstr);
+        e.layer.on('mouseover', function(){e.layer.openPopup();});
+        e.layer.on('mouseout', function(){e.layer.closePopup();});
+    });
+
     //set next color
     if (e.layerType == 'rectangle'){
         spvar.map.editControl.setDrawingOptions({
@@ -388,6 +402,17 @@ Model.prototype.drawEdited = function(e,spvar){
         var tilelist = genTileList(coords, Math.min(spvar.maxlevel, 
                                                     e.target._zoom+8));
         spvar.updateSelection(layer._leaflet_id,tilelist);
+    
+        //draw count on the polygon
+        var q = that.totalcount_query(spvar.constraints[layer._leaflet_id]);
+        q.run_query(function(json){
+            if (json == null){
+                return;
+            }
+            var count=json.root.value;   
+            var countstr=count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
+            layer.bindPopup(countstr);
+        });
     });
 
     this.redraw(spvar,false);
@@ -401,6 +426,19 @@ Model.prototype.drawEditing = function(e,spvar){
     var tilelist = genTileList(coords, Math.min(spvar.maxlevel, 
                                                 e.target._zoom+8));
     spvar.updateSelection(obj._leaflet_id,tilelist);
+
+    //draw count on the polygon
+    var q = this.totalcount_query(spvar.constraints[obj._leaflet_id]);
+    q.run_query(function(json){
+        if (json == null){
+            return;
+        }
+        var count = json.root.value;   
+        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        obj.bindPopup(countstr);
+        obj.closePopup();
+    });
+
     this.redraw(spvar,false);
 };
 
@@ -477,6 +515,15 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
             return that.redraw(); //refresh
             break;
 
+        case 99: // 'c' toggle count
+            return heatmap.toggleShowCount(); //refresh
+            break;
+
+        case 108: // 'l' toggle log scale
+            return heatmap.toggleLog(); //refresh
+            break;
+
+
         default:
             break;
         }        
@@ -526,7 +573,7 @@ Model.prototype.queries = function(vref){
 };
 
 //Total Count
-Model.prototype.totalcount_query = function(){
+Model.prototype.totalcount_query = function(spconst){
     var q = this.nanocube.query();
     var that = this;
     //add constraints of the other variables
@@ -539,12 +586,17 @@ Model.prototype.totalcount_query = function(){
         q = thisvref.constraints[0].add(q);
     });
     
-    //add spatial view constraints
-    Object.keys(that.spatial_vars).forEach(function(v){
-        var thisvref = that.spatial_vars[v];
-        q = thisvref.view_const.add(q);
-    });
-    
+    if (spconst == undefined){
+        //add spatial view constraints
+        Object.keys(that.spatial_vars).forEach(function(v){
+            var thisvref = that.spatial_vars[v];
+            q = thisvref.view_const.add(q);
+        });
+    }
+    else{
+        q = spconst.add(q);
+    }
+
     return q;
 };
 

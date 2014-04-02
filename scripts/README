@@ -8,7 +8,7 @@ Set PATHs for nanocube executables
         export PATH=$NANOCUBE_BIN:$PATH
 
 Run csv2Nanocube.py on the csv file and pipe the output to ncserve
-  eg. python csv2Nanocube.py  --catcol 'Primary Type' --timebinsize 1D crime50k.csv  | ncserve --rf=100000 --threads=100
+  eg. python csv2Nanocube.py  --catcol='Primary Type' --timebinsize=1D crime50k.csv  | ncserve --rf=100000 --threads=100
 
   Example options:
     --catcol denotes column of categorical attribute   
