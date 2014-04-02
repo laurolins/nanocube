@@ -7,15 +7,12 @@ class NanocubeInput:
         self.name=args.InputFile[0]
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
-        self.spname=[c.replace(' ','_') for c in args.spname]
-        self.catcol=[c.replace(' ','_') for c in args.catcol]
-        self.datecol=[c.replace(' ','_') for c in args.datecol]
-        self.latcol=[c.replace(' ','_') for c in args.latcol]
-        self.loncol=[c.replace(' ','_') for c in args.loncol]
-        
+        self.spname=args.spname
+        self.catcol=args.catcol
+        self.datecol=args.datecol
+        self.latcol=args.latcol
+        self.loncol=args.loncol
         self.countcol = args.countcol
-        if self.countcol is not None :
-            self.countcol=self.countcol.replace(' ','_')
 
         self.datefmt=args.datefmt
         self.levels = args.levels
@@ -24,11 +21,6 @@ class NanocubeInput:
         self.valname={}
         self.offset=None
         
-
-        #cmd = 'ncserve --rf=100000 --threads=100'
-        #self.ncproc = subprocess.Popen([cmd], stdin=subprocess.PIPE,
-        #                               shell=True)
-
         self.readcsv(args.InputFile)
 
     def readcsv(self,files):
@@ -41,7 +33,7 @@ class NanocubeInput:
             comp = None
             if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
-            reader = pd.read_csv(f,usecols=coi+['SSID_x'],
+            reader = pd.read_csv(f,usecols=coi,
                                  chunksize=100000,
                                  compression=comp)
 
@@ -56,9 +48,6 @@ class NanocubeInput:
                 self.writeRawData(data)
 
     def processData(self, data):
-        #fix column names
-        data.columns = [c.replace(' ', '_') for c in data.columns]
-
         if self.countcol is None:
             self.countcol = 'count'
 
@@ -132,7 +121,6 @@ class NanocubeInput:
         if self.offset is None: #compute offset
             year = data[self.datecol].min().min().year
             self.offset = datetime.datetime(year=year,month=1,day=1)
-            print self.offset
 
         for i,d in enumerate(self.datecol):
             data[d] -= self.offset
@@ -181,25 +169,27 @@ class NanocubeInput:
 
     def header(self,data):
         h = ''
-        h += 'name: %s\n'%(self.name)
+        h += 'name: %s\n'%(self.name.replace(' ',"_"))
         h += 'encoding: binary\n'
         for sp in self.spname:
             h += 'metadata: %s__origin degrees_mercator_quadtree%d\n'%(
                 sp,self.levels)
-            h += 'field: %s nc_dim_quadtree_%d\n'%(sp, self.levels)
+            h += 'field: %s nc_dim_quadtree_%d\n'%(sp.replace(' ',"_"), 
+                                                   self.levels)
             
         for c in self.catcol:
-            h += 'field: %s nc_dim_cat_1\n'%(c)
+            h += 'field: %s nc_dim_cat_1\n'%(c.replace(' ',"_"))
             for k in self.valname[c]:
-                h+='valname: %s %d %s\n'%(c,self.valname[c][k],k)
+                h+='valname: %s %d %s\n'%(c.replace(' ',"_"),
+                                          self.valname[c][k],k)
                         
         for d in self.datecol:
             h += "metadata: tbin %s_%s_%ds\n"%(self.offset.date(),
                                                self.offset.time(),
                                                self.timebinsize.astype(np.int))
-            h += 'field: %s nc_dim_time_2\n'%(d)
+            h += 'field: %s nc_dim_time_2\n'%(d.replace(' ',"_"))
 
-        h += 'field: %s nc_var_uint_4\n\n' %(self.countcol)
+        h += 'field: %s nc_var_uint_4\n\n' %(self.countcol.replace(' ',"_"))
         return h
 
 def main(argv):
