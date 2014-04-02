@@ -36,20 +36,22 @@ class NanocubeInput:
         if self.countcol is not None:
             coi += [self.countcol]
 
+        start = True
         for f in files:
             comp = None
             if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
-            reader = pd.read_csv(f,usecols=coi,
+            reader = pd.read_csv(f,usecols=coi+['SSID_x'],
                                  chunksize=100000,
                                  compression=comp)
 
-            start = (self.offset is None)
             for i,data in enumerate(reader):
-                data = self.processData(data)
+                data = data[coi].copy()
 
+                data = self.processData(data)
                 if start:
                     sys.stdout.write(self.header(data))
+                    start = False
                 
                 self.writeRawData(data)
 
@@ -75,7 +77,7 @@ class NanocubeInput:
         data = self.processDate(data)
         
         #sort by date
-        data = data.sort(self.datecol[0])
+        #data = data.sort(self.datecol[0])
         return data
     
     def writeRawData(self,data):
@@ -99,7 +101,6 @@ class NanocubeInput:
         data = data[columns] #permute
 
         rec = data.to_records(index=False)
-
         rec.tofile(sys.stdout)
             
     def processLatLon(self,data):
@@ -131,6 +132,7 @@ class NanocubeInput:
         if self.offset is None: #compute offset
             year = data[self.datecol].min().min().year
             self.offset = datetime.datetime(year=year,month=1,day=1)
+            print self.offset
 
         for i,d in enumerate(self.datecol):
             data[d] -= self.offset
