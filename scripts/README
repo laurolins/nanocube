@@ -2,14 +2,17 @@ Scripts for starting nanocubes from a csv file
 
 Requires: Pandas and Numpy
 
-Set PATHs for nanocube executables
-    eg. Nanocube is installed with prefix /usr/local    
-        export NANOCUBE_BIN=/usr/local/bin
-        export PATH=$NANOCUBE_BIN:$PATH
-
-Run csv2Nanocube.py on the csv file and pipe the output to ncserve
-  eg. python csv2Nanocube.py  --catcol='Primary Type' --timebinsize=1D crime50k.csv  | ncserve --rf=100000 --threads=100
+After compiling Nanocubes, run csv2Nanocube.py on the csv file and pipe the output to ncserve
+  e.g. 
+  python csv2Nanocube.py  --catcol='Primary Type' --timebinsize=1D crime50k.csv  | NANOCUBE_BIN=../src ../src/ncserve --rf=100000 --threads=100
 
   Example options:
     --catcol denotes column of categorical attribute   
     --timebinsize denotes the finest interval for aggregation overtime
+
+Start a webserver in the web/
+  e.g.
+  cd ../web
+  python -m SimpleHTTPServer 8000
+
+Point your browser to http://localhost:8000/ to start exploring

@@ -11,6 +11,7 @@ AM_INIT_AUTOMAKE([foreign])
 
 AC_PROG_CC
 AC_PROG_CPP
+AC_PROG_LIBTOOL
 
 # Checks for programs.
 dnl host_os=`uname`
@@ -35,6 +36,11 @@ AX_CXX_COMPILE_STDCXX_11(noext)
 
 # check zlib
 AX_CHECK_ZLIB()
+
+#check boost
+BOOST_REQUIRE([1.51])
+BOOST_THREADS
+BOOST_SYSTEM
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h])

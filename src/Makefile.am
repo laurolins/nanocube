@@ -21,8 +21,11 @@ nc_q25_c1_u2_u8       \
 nc_q17_c1_c1_c1_u2_u4 \
 nc_q25_c1_c2_u2_u4
 
-# AM_CPPFLAGS = -I$(top_srcdir)/src
-AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD
+AM_CPPFLAGS = -I$(top_srcdir)/src
+AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS)
+AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_SYSTEM_LDFLAGS)
+LIBS += $(BOOST_THREAD_LIBS) $(BOOST_SYSTEM_LIBS)
+
 
 ncdmp_SOURCES =       \
 ncdmp.cc              \
@@ -131,10 +134,10 @@ VERSION = $(shell cat $(top_srcdir)/VERSION)
 AM_CXXFLAGS += -DVERSION=\"$(VERSION)\"
 
 # NC_LIBS = -ldl -lpthread -lboost_thread -lboost_system
-NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
+#NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
 
-nc_q20_q20_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q20_q20_u2_u4_CXXFLAGS = \
+nc_q20_q20_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q20_q20_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q20,q20 \
@@ -143,8 +146,8 @@ nc_q20_q20_u2_u4_CXXFLAGS = \
 nc_q20_q20_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_q25_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q25_q25_u2_u4_CXXFLAGS = \
+nc_q25_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q25,q25 \
@@ -153,8 +156,8 @@ nc_q25_q25_u2_u4_CXXFLAGS = \
 nc_q25_q25_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q25_u2_u4_CXXFLAGS = \
+nc_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q25 \
@@ -163,8 +166,8 @@ nc_q25_u2_u4_CXXFLAGS = \
 nc_q25_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_c1_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q25_c1_u2_u4_CXXFLAGS = \
+nc_q25_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q25,c1 \
@@ -173,8 +176,8 @@ nc_q25_c1_u2_u4_CXXFLAGS = \
 nc_q25_c1_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_c1_c1_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q25_c1_c1_u2_u4_CXXFLAGS = \
+nc_q25_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q25,c1,c1 \
@@ -183,8 +186,8 @@ nc_q25_c1_c1_u2_u4_CXXFLAGS = \
 nc_q25_c1_c1_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_c1_c1_c1_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = \
+nc_q25_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q25,c1,c1,c1 \
@@ -193,8 +196,8 @@ nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = \
 nc_q25_c1_c1_c1_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_c1_u2_u8_LDFLAGS  = $(NC_LIBS)
-nc_q25_c1_u2_u8_CXXFLAGS = \
+nc_q25_c1_u2_u8_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_u2_u8_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q25,c1 \
@@ -203,8 +206,8 @@ nc_q25_c1_u2_u8_CXXFLAGS = \
 nc_q25_c1_u2_u8_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_c1_c2_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q25_c1_c2_u2_u4_CXXFLAGS = \
+nc_q25_c1_c2_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_c2_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q25,c1,c2 \
@@ -213,8 +216,8 @@ nc_q25_c1_c2_u2_u4_CXXFLAGS = \
 nc_q25_c1_c2_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q17_c1_c1_c1_u2_u4_LDFLAGS  = $(NC_LIBS)
-nc_q17_c1_c1_c1_u2_u4_CXXFLAGS = \
+nc_q17_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q17_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
     -D_GLIBCXX_USE_SCHED_YIELD \
     -DLIST_DIMENSION_NAMES=q17,c1,c1,c1 \
@@ -222,4 +225,3 @@ nc_q17_c1_c1_c1_u2_u4_CXXFLAGS = \
     -DVERSION=\"$(VERSION)\"
 nc_q17_c1_c1_c1_u2_u4_SOURCES =\
     $(nc_SOURCES)
-

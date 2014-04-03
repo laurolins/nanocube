@@ -65,11 +65,13 @@ class NanocubeInput:
         for i,div in enumerate(self.catcol):
             nval = len(self.valname[div])
             height = 20*nval+50 #50 is the default margin size
+            lmargin = max(30,max([len(k) for k in self.valname[div]])*7)
             div = div.replace(" ", "_");
             config['div'][div] = {'position': 'absolute',
-                                  'font': '9pt sans-serif',
+                                  'font': '10pt sans-serif',
+                                  'margin-left':'%dpx'%(lmargin+20),
                                   'height':'%dpx'%(height) ,
-                                  'width': '300px',
+                                  'width': '%dpx'%(200+lmargin),
                                   'top': '%dpx'%(top),
                                   'right': '10px',
                                   'background-color':'#555', 
@@ -289,6 +291,12 @@ def main(argv):
     parser.add_argument('--catcol', type=str,nargs='+',default=[])
     parser.add_argument('--countcol', type=str, default=None)
     args = parser.parse_args()
+
+    if 'NANOCUBE_WEB' not in os.environ:
+        os.environ['NANOCUBE_WEB'] = '../web'
+
+    if 'NANOCUBE_BIN' not in os.environ:
+        os.environ['NANOCUBE_BIN'] = '../src'
 
     ncinput = NanocubeInput(args)    
 
