@@ -27,6 +27,7 @@ dnl fi
 
 AC_PROG_CXX([AS_VAR_GET([cpp_compiler])])
 
+LT_LIB_DLLOAD
 LT_INIT([dlopen])
 
 AC_LANG([C++])

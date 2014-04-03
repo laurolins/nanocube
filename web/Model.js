@@ -241,11 +241,9 @@ Model.prototype.createMap = function(spvar,cm){
         maxZoom: Math.min(18,spvar.maxlevel+1)
     });
 
-    var maptile = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
-                              {
-                                  noWrap:true,
-                                  opacity:0.4
-                              });
+    var maptile = L.tileLayer(this.options.tilesurl,{
+        noWrap:true,
+        opacity:0.4 });
     
     var heatmap = new L.NanocubeLayer({
         opacity: 0.6,

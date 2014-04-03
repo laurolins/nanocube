@@ -24,7 +24,8 @@ function initNanocube(config){
             var options = {
                 nanocube:nc,
                 colormaps: [{colors:colorbrewer.YlOrRd[9].reverse(),
-                             domain:cdomain}]
+                             domain:cdomain}],
+                maptileurl:config.tileurl
             };
 
             //create the model

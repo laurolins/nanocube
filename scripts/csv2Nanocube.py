@@ -93,6 +93,7 @@ class NanocubeInput:
         
         config['url'] = 'http://%s:29512'%(socket.getfqdn())
         config['title'] = self.name
+        config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
 
         json.dump(config, open(os.environ['NANOCUBE_WEB']
                                + '/config.json','wb'),indent=4);
