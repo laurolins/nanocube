@@ -1,0 +1,27 @@
+html,body{
+    height: 100%;
+    width: 100%;
+    margin: 0px;
+    padding: 0px;
+}
+
+.leaflet-container {
+    background: #000;
+}     
+
+.axis path,
+.axis line{
+    fill: none;
+    stroke: #fff;
+    shape-rendering: crispEdges;
+}
+.axis text {
+    fill: #fff;
+    stroke:none;
+}
+
+.brush .extent {
+    stroke: #fff;
+    fill-opacity: .125;
+    shape-rendering: crispEdges;
+}

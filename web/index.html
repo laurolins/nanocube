@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
+    <link rel="stylesheet"
+          href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css"/>
+    <link rel="stylesheet"href="lib/leaflet.draw/leaflet.draw.css"/>
+    <link rel="stylesheet" href="nanocube2.css"/>    
+  </head>
+
+  <body>
+  </body>
+
+  <!-- Start of scripts-->
+  <!-- jQuery, Leaflet, Underscore includes -->
+  <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+  <script src="http://underscorejs.org/underscore-min.js"></script>
+  <script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
+
+  <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
+  <script src="lib/leaflet.draw/leaflet.draw-src.js"></script>
+  <script src="lib/L.Map.Sync.js"></script>
+
+  <!-- Heatmap JS includes -->
+  <script src="lib/colorbrewer.js"></script>
+
+  <!-- Custom includes -->
+  <script src="nanocube2.js"></script>
+  <script src="TileLatLngUtils.js"></script>
+
+  <script src="NanocubeLayer.js"></script>
+  <script src="Timeseries.js"></script>
+  <script src="GroupedBarChart.js"></script>
+
+  <script src="QueryConstraint.js"></script>
+  <script src="Variables.js"></script>
+  <script src="Model.js"></script>
+
+  <script src="init.js"></script>
+
+  <!-- Main -->
+  <script>
+
+   //main
+   $(function(){
+     $.getJSON('./config.json',function(config){
+       initPage(config);
+       initNanocube(config);
+     });
+   });
+  </script>
+</html>

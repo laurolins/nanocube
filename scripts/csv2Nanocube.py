@@ -1,4 +1,6 @@
-import sys,dateutil,datetime,argparse,re,subprocess
+import sys,dateutil,datetime,argparse,re,subprocess,os,json,socket
+
+import cStringIO as StringIO
 import pandas as pd
 import numpy as np
 
@@ -9,7 +11,7 @@ class NanocubeInput:
 
         self.spname=args.spname
         self.catcol=args.catcol
-        self.datecol=args.datecol
+        self.timecol=args.timecol
         self.latcol=args.latcol
         self.loncol=args.loncol
         self.countcol = args.countcol
@@ -21,19 +23,90 @@ class NanocubeInput:
         self.valname={}
         self.offset=None
         
+        self.minlatlon={s:[float("inf"),float("inf")] for s in self.spname}
+        self.maxlatlon={s:[float("-inf"),float("-inf")] for s in self.spname}
+
+
+        #start nanocube
+        #cmd = os.environ['NANOCUBE_BIN']+'/ncserve --rf=1000 --threads=100'
+        #self.ncproc = subprocess.Popen([cmd],stdin=subprocess.PIPE,
+        #                               shell=True)
+
         self.readcsv(args.InputFile)
+        self.writeConfigFile()
+        
+    def writeConfigFile(self):
+        config = {}
+        config['div'] = {}
+        #map
+        for div in self.spname:
+            div = div.replace(" ", "_");
+            config['div'][div] = {'height':'100%',
+                                  'width':'%d%%'%(100/len(self.spname)),
+                                  'padding':0, 'margin': 0, 
+                                  'float' :'left',
+                                  'z-index':0}
+
+        #time
+        for i,div in enumerate(self.timecol):
+            div = div.replace(" ", "_");
+            config['div'][div] = {'position': 'absolute',
+                                  'font': '10pt sans-serif',
+                                  'height':'100px',
+                                  'width': '960px',
+                                  'bottom': '%dpx'%(i*(100+10)+10),
+                                  'left': '10px',
+                                  'background-color':'#555', 
+                                  'opacity': 0.8,
+                                  'z-index':1}
+                                  
+        #cat
+        top = 20
+        for i,div in enumerate(self.catcol):
+            nval = len(self.valname[div])
+            height = 20*nval+50 #50 is the default margin size
+            div = div.replace(" ", "_");
+            config['div'][div] = {'position': 'absolute',
+                                  'font': '9pt sans-serif',
+                                  'height':'%dpx'%(height) ,
+                                  'width': '300px',
+                                  'top': '%dpx'%(top),
+                                  'right': '10px',
+                                  'background-color':'#555', 
+                                  'opacity': 0.8,
+                                  'z-index':1}
+            top +=height+10
+
+        #other info
+        config['div']['info'] = {'position': 'absolute',
+                                 'font': '10pt sans-serif',
+                                 'color': 'white',
+                                 'top': '5px',
+                                 'right': '5px',
+                                 'opacity': 0.9,
+                                 'z-index':1}
+
+        config['latlonbox'] = { 'min':self.minlatlon,
+                                'max':self.maxlatlon }
+        
+        config['url'] = 'http://%s:29512'%(socket.getfqdn())
+        config['title'] = self.name
+
+        json.dump(config, open(os.environ['NANOCUBE_WEB']
+                               + '/config.json','wb'),indent=4);
 
     def readcsv(self,files):
-        coi = self.datecol+self.catcol+self.latcol+self.loncol
+        coi = self.timecol+self.catcol+self.latcol+self.loncol
         if self.countcol is not None:
             coi += [self.countcol]
-
         start = True
         for f in files:
             comp = None
             if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
             reader = pd.read_csv(f,usecols=coi,
+                                 parse_dates=self.timecol,
+                                 infer_datetime_format=True,
                                  chunksize=100000,
                                  compression=comp)
 
@@ -46,7 +119,7 @@ class NanocubeInput:
                     start = False
                 
                 self.writeRawData(data)
-
+                        
     def processData(self, data):
         if self.countcol is None:
             self.countcol = 'count'
@@ -64,9 +137,9 @@ class NanocubeInput:
         data = self.processLatLon(data)
         data = self.processCat(data)
         data = self.processDate(data)
-        
+                                
         #sort by date
-        #data = data.sort(self.datecol[0])
+        #data = data.sort(self.timecol[0])
         return data
     
     def writeRawData(self,data):
@@ -80,7 +153,7 @@ class NanocubeInput:
             columns += [c]
             data[c] = data[c].astype('<u1'); 
 
-        for i,d in enumerate(self.datecol):                
+        for i,d in enumerate(self.timecol):                
             columns += [d]
             data[d] = data[d].astype('<u2'); 
 
@@ -106,23 +179,33 @@ class NanocubeInput:
             data = data[data[lat] > -85.0511]
             data = data[data[lat] < 85.0511]
 
+            #update min max latlon
+            self.minlatlon[spname][0] = min(data[lat].min(),
+                                            self.minlatlon[spname][0])
+            self.minlatlon[spname][1] = min(data[lon].min(),
+                                            self.minlatlon[spname][1])
+            self.maxlatlon[spname][0] = max(data[lat].max(),
+                                            self.maxlatlon[spname][0])
+            self.maxlatlon[spname][1] = max(data[lon].max(),
+                                            self.maxlatlon[spname][1])
+
             data[lon] = self.lonToTileX(data[lon],lvl)
             data[lat] = self.latToTileY(data[lat],lvl)
         return data
             
     def processDate(self,inputdata):
         data = inputdata.copy()
-        for i,d in enumerate(self.datecol): #convert strings to datetime
-            data[d] = data[d].apply(str)
-            data[d] = pd.to_datetime(data[d],format=self.datefmt,
-                                     infer_datetime_format=True,coerce=True)
+        for i,d in enumerate(self.timecol): #convert strings to datetime
+            data[d] = pd.to_datetime(data[d].apply(str),
+                                     infer_datetime_format=True,
+                                     format=self.datefmt,coerce=True)
         data = data.dropna()
         
         if self.offset is None: #compute offset
-            year = data[self.datecol].min().min().year
+            year = data[self.timecol].min().min().year
             self.offset = datetime.datetime(year=year,month=1,day=1)
 
-        for i,d in enumerate(self.datecol):
+        for i,d in enumerate(self.timecol):
             data[d] -= self.offset
             data[d] = data[d] / self.timebinsize
         return data
@@ -130,7 +213,7 @@ class NanocubeInput:
     def processCat(self,data):
         for i,c in enumerate(self.catcol):            
             #fix the spaces
-            data[c] = data[c].apply(lambda x : x.replace(' ','_'))
+            data[c] = data[c].apply(lambda x : str(x).replace(' ','_'))
 
             if c not in self.valname:
                 self.valname[c] = {}
@@ -183,7 +266,7 @@ class NanocubeInput:
                 h+='valname: %s %d %s\n'%(c.replace(' ',"_"),
                                           self.valname[c][k],k)
                         
-        for d in self.datecol:
+        for d in self.timecol:
             h += "metadata: tbin %s_%s_%ds\n"%(self.offset.date(),
                                                self.offset.time(),
                                                self.timebinsize.astype(np.int))
@@ -197,7 +280,7 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('InputFile',type=str, nargs='+')
     parser.add_argument('--timebinsize',type=str, default='1h')
-    parser.add_argument('--datecol', type=str,nargs='+',default=['Date'])
+    parser.add_argument('--timecol', type=str,nargs='+',default=['Date'])
     parser.add_argument('--datefmt', type=str, default=None)
     parser.add_argument('--spname', type=str,nargs='+',default=['src'])
     parser.add_argument('--levels', type=int, default=25)

@@ -1,5 +1,5 @@
 function GroupedBarChart(id){
-    var margin = {top:10,right:10,left:50,bottom:30};
+    var margin = {top:10,right:10,left:100,bottom:30};
 
     //setup the d3 margins from the css margin variables
     margin.left = Math.max(margin.left, parseInt($(id).css('margin-left')));
