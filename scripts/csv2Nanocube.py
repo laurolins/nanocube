@@ -65,7 +65,7 @@ class NanocubeInput:
         for i,div in enumerate(self.catcol):
             nval = len(self.valname[div])
             height = 20*nval+50 #50 is the default margin size
-            lmargin = max(30,max([len(k) for k in self.valname[div]])*7)
+            lmargin = max(30,max([len(k) for k in self.valname[div]])*8)
             div = div.replace(" ", "_");
             config['div'][div] = {'position': 'absolute',
                                   'font': '10pt sans-serif',
