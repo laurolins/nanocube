@@ -12,18 +12,15 @@ function initPage(config){
 
 function initNanocube(config){
     var nc = new Nanocube({ 
-        url:config.url, 
+        url:config.url,
         ready: function(nc){
-            //for colormap use
-            var cdomain = new Array(11);
-            for(var i =0; i < cdomain.length; i++){
-                cdomain[i] = i*1.0/(cdomain.length-1);
-            }
+            var cm = colorbrewer.YlOrRd[9].reverse();
+            var cdomain = cm.map(function(d,i){return i*1.0/(cm.length-1);});
             
             //set options (colormap etc)
             var options = {
                 nanocube:nc,
-                colormaps: [{colors:colorbrewer.YlOrRd[9].reverse(),
+                colormaps: [{colors:cm,
                              domain:cdomain}],
                 tilesurl:config.tilesurl
             };

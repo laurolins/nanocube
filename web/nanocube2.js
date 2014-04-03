@@ -65,7 +65,7 @@ function Nanocube(opts) {
             addr = addr.toString();
             var start = addr.substring(0,addr.length-8);
             var end = addr.substring(addr.length-8,addr.length);
-            console.log(start,end);
+            //console.log(start,end);
 
             start = parseInt(start,16);
             end = parseInt(end,16);
@@ -73,7 +73,7 @@ function Nanocube(opts) {
             if (isNaN(start)) start=0;
             if (isNaN(end)) end=0;
 
-            console.log(start,end,end-start);
+            //console.log(start,end,end-start);
 
             
             var tbinfo = that.getTbinInfo();

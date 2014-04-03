@@ -41,13 +41,14 @@
 
   <!-- Main -->
   <script>
-
    //main
    $(function(){
-     $.getJSON('./config.json',function(config){
+     var conf = "config.json"
+     $.getJSON(conf, function(config){
        initPage(config);
        initNanocube(config);
-     });
+     })
+     .fail(function(){throw new Error("Fail to get or parse"+conf);});
    });
   </script>
 </html>
