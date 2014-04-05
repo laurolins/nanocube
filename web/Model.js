@@ -237,6 +237,12 @@ Model.prototype.removeObsolete= function(k){
 
 //Setup maps
 Model.prototype.createMap = function(spvar,cm){
+    var w = $('#' + spvar.dim).width();
+    var h = $('#' + spvar.dim).height();
+
+    $('#' + spvar.dim).width(Math.max(w,100));
+    $('#' + spvar.dim).height(Math.max(h,100));
+
     var map=L.map(spvar.dim,{
         maxZoom: Math.min(18,spvar.maxlevel+1)
     });
@@ -452,6 +458,18 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
             maptiles = map._layers[k];
         }
     });
+
+    //panel btns
+    $("#btn_dec_r").on('click', function(){
+            heatmap.coarselevels = Math.max(0,heatmap.coarselevels-1);
+            return heatmap.redraw();
+    });
+
+    $("#btn_inc_r").on('click', function(){
+            heatmap.coarselevels = Math.max(0,heatmap.coarselevels+1);
+            return heatmap.redraw();
+    });
+
 
     //Keyboard interactions
     var that = this;

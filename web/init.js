@@ -4,9 +4,16 @@ function initPage(config){
     
     for (var d in config.div){
         //insert the divs
-        $("body").append("<div id="+ d +"></div>");
+        $("#maincontent").prepend("<div id="+ d +"></div>");
+
+
         //set CSS
         $("#"+d).css(config.div[d]);
+ 
+        //hack for fixing maps for now
+        if($("#"+d).height() == 0){
+            $("#"+d).height($("#nc-container").height());
+        }
     }
 }
 

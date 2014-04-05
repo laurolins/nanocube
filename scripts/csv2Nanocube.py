@@ -61,15 +61,15 @@ class NanocubeInput:
                                   'z-index':1}
                                   
         #cat
-        top = 20
+        top = 30
         for i,div in enumerate(self.catcol):
             nval = len(self.valname[div])
             height = 20*nval+50 #50 is the default margin size
-            lmargin = max(30,max([len(k) for k in self.valname[div]])*8)
+            lmargin = max(30,10*max([len(k) for k in self.valname[div]]))
             div = div.replace(" ", "_");
             config['div'][div] = {'position': 'absolute',
                                   'font': '10pt sans-serif',
-                                  'margin-left':'%dpx'%(lmargin+20),
+                                  'margin-left':'%dpx'%(lmargin),
                                   'height':'%dpx'%(height) ,
                                   'width': '%dpx'%(200+lmargin),
                                   'top': '%dpx'%(top),
@@ -85,13 +85,15 @@ class NanocubeInput:
                                  'color': 'white',
                                  'top': '5px',
                                  'right': '5px',
+                                 'height': '1em',
                                  'opacity': 0.9,
+                                 'padding':0,
                                  'z-index':1}
 
         config['latlonbox'] = { 'min':self.minlatlon,
                                 'max':self.maxlatlon }
         
-        config['url'] = 'http://%s:29512'%(socket.getfqdn())
+        config['url'] = 'http://%s:29512'%("localhost")
         config['title'] = self.name
         config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
 

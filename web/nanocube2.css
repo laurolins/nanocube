@@ -1,8 +1,19 @@
-html,body{
-    height: 100%;
+html, body, .ui-content, #nc-container{
+    height: 100% !important;
     width: 100%;
     margin: 0px;
     padding: 0px;
+}
+
+#panelbtn{
+    position: absolute;
+    top: 10px;
+    left: 40px;
+    z-index: 1;
+}
+
+#ctrlpanel{
+    opacity:0.95;
 }
 
 .leaflet-container {
