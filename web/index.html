@@ -6,6 +6,7 @@
                                    initial-scale=1"> 
     
     <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.2/jquery.mobile-1.4.2.min.css">
+    
     <link rel="stylesheet"
           href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css"/>
     <link rel="stylesheet"href="lib/leaflet.draw/leaflet.draw.css"/>
@@ -14,18 +15,91 @@
   
   <body>
     <div id="nc-container">
-      <div data-role="page" id="pageone" data-theme="b">
-        <div data-role="panel" id="ctrlpanel" data-display="overlay"> 
-          
-
+      <div data-role="page" id="pageone">
+        <div data-role="panel" id="ctrlpanel" data-display="reveal"> 
+          <div data-role="main" class="ui-content"> 
+            <ul data-role="listview" data-inset="true">
+              <li data-role="list-divider">Geographical map</li>
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Opacity:</legend>
+                    <button id="map-op-btn-inc" class="ui-shadow
+                                   ui-btn ui-corner-all ui-icon-plus
+                                   ui-btn-inline
+                                   ui-btn-icon-notext">plus</button>
+                    <button id="map-op-btn-dec" class="ui-shadow
+                                   ui-btn ui-corner-all ui-icon-minus
+                                   ui-btn-inline
+                                   ui-btn-icon-notext">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              
+              <li data-role="list-divider">Heatmap</li>
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Opacity:</legend>
+                    <button id="heatmap-op-btn-inc" class="ui-shadow
+                                   ui-btn ui-corner-all ui-icon-plus
+                                   ui-btn-inline
+                                   ui-btn-icon-notext">plus</button>
+                    <button id="heatmap-op-btn-dec" class="ui-shadow
+                                   ui-btn ui-corner-all ui-icon-minus
+                                   ui-btn-inline
+                                   ui-btn-icon-notext">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Radius:</legend>
+                    <button id="heatmap-rad-btn-inc" class="ui-shadow
+                                   ui-btn ui-corner-all ui-icon-plus
+                                   ui-btn-inline
+                                   ui-btn-icon-notext">plus</button>
+                    <button id="heatmap-rad-btn-dec" class="ui-shadow
+                                   ui-btn ui-corner-all ui-icon-minus
+                                   ui-btn-inline
+                                   ui-btn-icon-notext">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-grid">Grid:</label>
+                  <select name="flip-grid" id="flip-grid"
+                          data-role="slider"
+                          data-mini="true"> 
+                    <option value="off">Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-ts">Global TS:</label>
+                  <select name="flip-ts" id="flip-ts"
+                          data-role="slider"
+                          data-mini="true"> 
+                    <option value="off">Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+            </ul>
+          </div>
         </div>
-
+        
         <div id="maincontent" data-role="content" >
           <div id="panelbtn">
-            <a href="#ctrlpanel" class="ui-btn ui-mini 
-                                        ui-corner-all
-                                        ui-btn-inline">Ctrl Panel</a>
-          </div>
+            <a href="#ctrlpanel" class="ui-btn ui-icon-carat-r
+                                        ui-btn-icon-notext
+                                        ui-corner-all">No text</a>  
+          </div>          
         </div>      
       </div>    
     </div>

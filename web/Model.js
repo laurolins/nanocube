@@ -459,15 +459,44 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
         }
     });
 
+
+
+
     //panel btns
-    $("#btn_dec_r").on('click', function(){
-            heatmap.coarselevels = Math.max(0,heatmap.coarselevels-1);
-            return heatmap.redraw();
+    $("#heatmap-rad-btn-dec").on('click', function(){
+        var heatmapop = heatmap.options.opacity;
+        heatmap.coarselevels = Math.max(0,heatmap.coarselevels-1);
+        return heatmap.redraw();
+    });
+    
+    $("#heatmap-rad-btn-inc").on('click', function(){
+        var heatmapop = heatmap.options.opacity;
+        heatmap.coarselevels = Math.max(0,heatmap.coarselevels+1);
+        return heatmap.redraw();
+    });
+    
+    $("#heatmap-op-btn-dec").on('click', function(){
+        var heatmapop = heatmap.options.opacity;
+        heatmapop = Math.max(heatmapop-0.1,0);
+        return heatmap.setOpacity(heatmapop);
+    });
+    
+    $("#heatmap-op-btn-inc").on('click', function(){
+        var heatmapop = heatmap.options.opacity;
+        heatmapop = Math.max(heatmapop+0.1,0);
+        return heatmap.setOpacity(heatmapop);
     });
 
-    $("#btn_inc_r").on('click', function(){
-            heatmap.coarselevels = Math.max(0,heatmap.coarselevels+1);
-            return heatmap.redraw();
+    $("#map-op-btn-dec").on('click', function(){
+        var mapop = maptiles.options.opacity;
+        mapop = Math.max(mapop-0.1,0);
+        return maptiles.setOpacity(mapop);
+    });
+    
+    $("#map-op-btn-inc").on('click', function(){
+        var mapop = maptiles.options.opacity;
+        mapop = Math.max(mapop+0.1,0);
+        return maptiles.setOpacity(mapop);
     });
 
 
@@ -479,9 +508,10 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
         if ( e.which == 13 ) {
             e.preventDefault();
         }
-        
+       
         var heatmapop = heatmap.options.opacity;
         var mapop = maptiles.options.opacity;
+
         switch(code){
             //Coarsening
         case 44: //','
