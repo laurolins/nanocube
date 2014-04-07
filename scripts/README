@@ -1,6 +1,6 @@
 Scripts for starting nanocubes from a csv file
 
-Requires: Pandas and Numpy
+Requires: Pandas and Numpy>=1.7
 
 After compiling Nanocubes, run csv2Nanocube.py on the csv file and pipe the output to ncserve
   e.g. 

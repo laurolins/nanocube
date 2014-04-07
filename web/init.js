@@ -2,20 +2,31 @@ function initPage(config){
     //set the title
     $(document).attr('title', config.title);
     
+    var contents = [];
     for (var d in config.div){
         //insert the divs
         $("#maincontent").prepend("<div id="+ d +"></div>");
 
 
+        var div = $("#"+d);
         //set CSS
-        $("#"+d).css(config.div[d]);
- 
-        //hack for fixing maps for now
-        if($("#"+d).height() == 0){
-            $("#"+d).height($("#nc-container").height());
+        div.css(config.div[d]);
+
+        if(div.height() <  1){            
+           contents.push(div);
         }
     }
+
+    $(window).on("resize load orientationchange", function(){
+        contents.forEach(function(div){
+            div.height($("#nc-container").height());
+            div.width($("#nc-container").width());
+        });
+    });
+
+    $(window).resize(); //force resize on the first call    
 }
+
 
 function initNanocube(config){
     var nc = new Nanocube({ 
