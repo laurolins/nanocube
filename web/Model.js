@@ -274,8 +274,13 @@ Model.prototype.createMap = function(spvar,cm){
     maptile.addTo(map);
     heatmap.addTo(map);
 
+    //register panel functions
+    this.panelFuncs(maptile,heatmap);
+
+
     //register keyboard shortcuts
     this.keyboardShortcuts(spvar,map,heatmap);
+
 
     //Drawing Rect and Polygons
     this.addDraw(map,spvar,false);
@@ -446,22 +451,8 @@ Model.prototype.drawEditing = function(e,spvar){
     this.redraw(spvar,false);
 };
 
-//Keyboard
-Model.prototype.keyboardShortcuts = function(spvar,map){
-    var maptiles, heatmap;
-    //get the maptiles and heatmap
-    Object.keys(map._layers).forEach(function(k){
-        if (map._layers[k] instanceof L.NanocubeLayer){
-            heatmap = map._layers[k];
-        }
-        else{
-            maptiles = map._layers[k];
-        }
-    });
-
-
-
-
+//Panel
+Model.prototype.panelFuncs = function(maptiles,heatmap){
     //panel btns
     $("#heatmap-rad-btn-dec").on('click', function(){
         var heatmapop = heatmap.options.opacity;
@@ -499,6 +490,28 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
         return maptiles.setOpacity(mapop);
     });
 
+    $("#flip-grid").on('change', function(){
+        return heatmap.toggleShowCount(); //refresh
+    });
+
+    $("#flip-log").on('change', function(){
+        return heatmap.toggleLog(); //refresh
+    });    
+};
+
+
+//Keyboard
+Model.prototype.keyboardShortcuts = function(spvar,map){
+    var maptiles, heatmap;
+    //get the maptiles and heatmap
+    Object.keys(map._layers).forEach(function(k){
+        if (map._layers[k] instanceof L.NanocubeLayer){
+            heatmap = map._layers[k];
+        }
+        else{
+            maptiles = map._layers[k];
+        }
+    });
 
     //Keyboard interactions
     var that = this;
