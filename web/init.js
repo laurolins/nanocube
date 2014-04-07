@@ -6,24 +6,22 @@ function initPage(config){
     for (var d in config.div){
         //insert the divs
         $("#maincontent").prepend("<div id="+ d +"></div>");
-
-
+        
         var div = $("#"+d);
         //set CSS
         div.css(config.div[d]);
-
+        
         if(div.height() <  1){            
-           contents.push(div);
+            contents.push(div);
         }
     }
-
+    
     $(window).on("resize load orientationchange", function(){
         contents.forEach(function(div){
             div.height($("#nc-container").height());
-            div.width($("#nc-container").width());
         });
     });
-
+    
     $(window).resize(); //force resize on the first call    
 }
 
