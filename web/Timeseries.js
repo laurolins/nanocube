@@ -37,7 +37,6 @@ function Timeseries(id, margin){
         that.brushended(that);
     });
     
-
     //Zoom
     this.zoom= d3.behavior.zoom();
     this.zoom.size([width,height]);
@@ -65,6 +64,11 @@ function Timeseries(id, margin){
               + margin.top + ")").call(this.zoom);
 
     //add svg stuffs
+    this.svg.append("text")
+        .attr("x", 5)
+        .attr("y", 5)
+        .text("");
+
     this.svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + (height) + ")")
@@ -82,6 +86,25 @@ function Timeseries(id, margin){
         .attr("y", 0)
         .attr("height", height);
 }
+
+Timeseries.prototype.setBinSizeTxt=function(timeinh){
+    var timestr = "";
+    if (timeinh < 1/60.0){
+        timestr = d3.round(timeinh*3600,1) + "s";
+    }
+    else if (timeinh < 1){
+        timestr = d3.round(timeinh*60,1) + "m";
+    }
+    else if (timeinh < 24){
+        timestr = d3.round(timeinh,1) + "h";
+    }
+    else if (timeinh >= 24){
+        timestr = d3.round(timeinh/24.0,1) + "D";
+    }
+
+    this.svg.select("text")
+        .text(timestr);
+};
 
 Timeseries.prototype.setData=function(line,key){
     this.data[key] = line; 

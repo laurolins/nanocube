@@ -22,6 +22,11 @@ html, body, .ui-content, #nc-container{
     stroke:none;
 }
 
+text {
+    fill: #fff;
+    stroke:none;
+}
+
 .brush .extent {
     stroke: #fff;
     fill-opacity: .125;

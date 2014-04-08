@@ -40,6 +40,7 @@ function TemporalConstraint(dim,start,end,bintohour){
     this.selection_start=start; 
     this.selected_bins=this.nbins;
     this.bintohour = bintohour;
+    this.binsize=1;
 }
 
 TemporalConstraint.prototype=new Constraint();

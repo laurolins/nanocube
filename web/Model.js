@@ -1,5 +1,5 @@
 var MAXCACHE=150;
-var hourbSizes = [1,12,24,24*7]; 
+var hourbSizes = [1,12,24,7*24]; 
 var colors = colorbrewer.Set1[9];
 
 function Model(opt){
@@ -22,6 +22,7 @@ Model.prototype.initVars = function(){
     this.cat_vars = {};
     this.temporal_vars = {};    
 
+    //loop through the schema and create the variables
     var that = this;
     variables.forEach(function(v){
         var vref={};
@@ -42,6 +43,7 @@ Model.prototype.initVars = function(){
                                          vref.maxlevel);
             }
 
+            //Create the map and heatmap
             var ret = that.createMap(vref,cm);
             vref.map=ret.map;
             vref.heatmap=ret.heatmap;
@@ -54,7 +56,7 @@ Model.prototype.initVars = function(){
             that.spatial_vars[v.name] = vref;
             break;
 
-        case 'cat': //Create a cat var and barchart
+        case 'cat': //Create a categorical var and barchart
             if ($('#'+v.name).length < 1){
                 return;
             }
@@ -79,6 +81,7 @@ Model.prototype.initVars = function(){
                 return;
             }
 
+            //Get the time information
             var tinfo = that.nanocube.timeinfo;
             
             vref  = new TimeVar(v.name, tinfo.date_offset,
@@ -86,13 +89,6 @@ Model.prototype.initVars = function(){
                                 tinfo.bin_to_hour);
 
             var nbins = tinfo.end-tinfo.start+1;
-                                
-            var binsize = 1.0/60;
-            binsize = Math.max(1e-6,binsize);
-
-
-            hourbSizes.unshift(binsize);
-            that.changeBinSize(vref);
 
             //init gui
             vref.widget = new Timeseries('#'+v.name);
@@ -106,6 +102,12 @@ Model.prototype.initVars = function(){
                 that.redraw();
             };
 
+            //set the timeseries to the finest resolution
+            while (tinfo.bin_to_hour >=  hourbSizes[0]){
+                hourbSizes.shift();
+            }
+
+            that.setTimeBinSize(tinfo.bin_to_hour,vref);
             that.temporal_vars[v.name] = vref;
             break;
         default:
@@ -129,12 +131,22 @@ Model.prototype.redraw = function(calling_var,sp){
             that.updateInfo();
         }
     });
-    
+
+    //update each spatial polygon constraints
+    Object.keys(that.spatial_vars).forEach(function(v){
+        var spvar = that.spatial_vars[v];
+        spvar.map.drawnItems.eachLayer(function(layer){
+            that.updatePolygonCount(layer, spvar);
+        });
+    });
+   
+    //temporal
     Object.keys(that.temporal_vars).forEach(function(v){
         var thisvref = that.temporal_vars[v];
         if(calling_var != thisvref){ that.jsonQuery(thisvref); }
     });
 
+    //categorical
     Object.keys(that.cat_vars).forEach(function(v){
         var thisvref = that.cat_vars[v];
         if(calling_var != thisvref){ that.jsonQuery(thisvref); }
@@ -360,18 +372,12 @@ Model.prototype.drawCreated = function(e,spvar){
     this.colormap[e.layer._leaflet_id] = color;
     spvar.addSelection(e.layer._leaflet_id, tilelist);
 
+    //events for popups
+    e.layer.on('mouseover', function(){e.layer.openPopup();});
+    e.layer.on('mouseout', function(){e.layer.closePopup();});
+
     //draw count on the polygon
-    var q = this.totalcount_query(spvar.constraints[e.layer._leaflet_id]);
-    q.run_query(function(json){
-        if (json == null){
-            return;
-        }
-        var count = json.root.value;   
-        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        e.layer.bindPopup(countstr);
-        e.layer.on('mouseover', function(){e.layer.openPopup();});
-        e.layer.on('mouseout', function(){e.layer.closePopup();});
-    });
+    this.updatePolygonCount(e.layer, spvar);
 
     //set next color
     if (e.layerType == 'rectangle'){
@@ -388,6 +394,19 @@ Model.prototype.drawCreated = function(e,spvar){
         });
     }
     this.redraw(spvar,false);
+};
+
+//draw count on the polygon
+Model.prototype.updatePolygonCount = function(layer, spvar){ 
+    var q = this.totalcount_query(spvar.constraints[layer._leaflet_id]);
+    q.run_query(function(json){
+        if (json == null){
+            return;
+        }
+        var count = json.root.value;   
+        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
+        layer.bindPopup(countstr);
+    });
 };
 
 Model.prototype.drawDeleted = function(e,spvar){
@@ -411,17 +430,7 @@ Model.prototype.drawEdited = function(e,spvar){
         var tilelist = genTileList(coords, Math.min(spvar.maxlevel, 
                                                     e.target._zoom+8));
         spvar.updateSelection(layer._leaflet_id,tilelist);
-    
-        //draw count on the polygon
-        var q = that.totalcount_query(spvar.constraints[layer._leaflet_id]);
-        q.run_query(function(json){
-            if (json == null){
-                return;
-            }
-            var count=json.root.value;   
-            var countstr=count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
-            layer.bindPopup(countstr);
-        });
+        this.updatePolygonCount(layer, spvar);
     });
 
     this.redraw(spvar,false);
@@ -454,6 +463,8 @@ Model.prototype.drawEditing = function(e,spvar){
 //Panel
 Model.prototype.panelFuncs = function(maptiles,heatmap){
     //panel btns
+    var that = this;
+
     $("#heatmap-rad-btn-dec").on('click', function(){
         var heatmapop = heatmap.options.opacity;
         heatmap.coarselevels = Math.max(0,heatmap.coarselevels-1);
@@ -497,6 +508,27 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
     $("#flip-log").on('change', function(){
         return heatmap.toggleLog(); //refresh
     });    
+
+
+    $("#tbinsize-btn-dec").on('click', function(){
+        var k = Object.keys(that.temporal_vars);
+        var tvar = that.temporal_vars[k[0]];
+        var hr = hourbSizes.pop();
+
+        hourbSizes.unshift(tvar.binSizeHour());
+        that.setTimeBinSize(hr, tvar); //shift in reverse       
+        return that.redraw(); //refresh
+    });
+    
+    $("#tbinsize-btn-inc").on('click', function(){
+        var k = Object.keys(that.temporal_vars);
+        var tvar = that.temporal_vars[k[0]];
+        var hr = hourbSizes.shift();
+
+        hourbSizes.push(tvar.binSizeHour());
+        that.setTimeBinSize(hr, tvar); //shift forward
+        return that.redraw(); //refresh
+    });
 };
 
 
@@ -570,7 +602,11 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
             break;
 
         case 116: // 't' bin size change
-            that.changeBinSize(that.temporal_vars.time);
+            var k = Object.keys(that.temporal_vars);
+            var tvar = that.temporal_vars[k[0]];
+            var hr = hourbSizes.shift();
+            hourbSizes.push(tvar.binSizeHour());
+            that.setTimeBinSize(hr,tvar);
             return that.redraw(); //refresh
             break;
 
@@ -700,12 +736,10 @@ Model.prototype.toggleGlobal = function(spvar){
     this.removeObsolete(spvar.dim);
 };
 
-//Toggle time aggregation
-Model.prototype.changeBinSize = function(tvar){ 
-    //take the next one
-    var hrbsize  = hourbSizes.shift();
-    hourbSizes.push(hrbsize);
-
+//Set time aggregation
+Model.prototype.setTimeBinSize = function(hr, tvar){ 
     var b2h = tvar.bin_to_hour;
-    tvar.binSize(Math.ceil(hrbsize*1.0/b2h));    
+    //update on the time series plot
+    tvar.widget.setBinSizeTxt(hr);
+    tvar.setBinSize(Math.ceil(hr*1.0/b2h));
 };

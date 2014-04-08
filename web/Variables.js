@@ -61,20 +61,13 @@ function TimeVar(dim,date_offset,start,end,bin_to_hour){
     this.constraints[0].dim = dim; //this is ugly
 }
 
-TimeVar.prototype.binSize=function(binsize){
-    /*if ('widget' in that){ //compute a good binsize
-        var minbinsize = Math.ceil(this.constraints[0].selected_bins/
-                                   $('#'+that.dim).width());
-        this.constraints[0].binsize = 1;
-        var binsize = Math.max(minbinsize,this.constraints[0].binsize);
-        that.binSize(binsize);
-        
-        console.log(minbinsize,this.constraints[0].binsize,$('#'+that.dim).width(),this.constraints[0].selected_bins);
-    }*/
-
+TimeVar.prototype.setBinSize=function(binsize){
     this.constraints[0].binSize(binsize);
 };
 
+TimeVar.prototype.binSizeHour=function(){
+    return this.constraints[0].binsize*this.bin_to_hour;
+};
 
 TimeVar.prototype.jsonToList=function(json){
     if (json == null){ //nothing to do
