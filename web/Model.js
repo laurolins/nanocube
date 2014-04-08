@@ -1,5 +1,5 @@
 var MAXCACHE=150;
-var hourbSizes = [1,12,24,7*24]; 
+var hourbSizes = [1,12,24,7*24];
 var colors = colorbrewer.Set1[9];
 
 function Model(opt){
@@ -7,7 +7,7 @@ function Model(opt){
     this.options = opt;
 
     this.query_cache = {};
-    this.colormap = {};
+    this.selcolors = {};
 
     //initialize the variables
     this.initVars();
@@ -20,7 +20,7 @@ Model.prototype.initVars = function(){
     });
     this.spatial_vars = {};
     this.cat_vars = {};
-    this.temporal_vars = {};    
+    this.temporal_vars = {};
 
     //loop through the schema and create the variables
     var that = this;
@@ -36,7 +36,7 @@ Model.prototype.initVars = function(){
 
             var cm = that.options.colormaps.shift();
             vref  = new SpatialVar(v.name);
-            
+
             vref.maxlevel = +t[2];
             if (that.options.heatmapmaxlevel != undefined){
                 vref.maxlevel = Math.min(that.options.heatmapmaxlevel,
@@ -52,7 +52,7 @@ Model.prototype.initVars = function(){
             }
 
             var mid = Math.floor(cm.colors.length/2.0);
-            that.colormap[v.name] = cm.colors[mid];
+            that.selcolors[v.name] = cm.colors[mid];
             that.spatial_vars[v.name] = vref;
             break;
 
@@ -83,9 +83,9 @@ Model.prototype.initVars = function(){
 
             //Get the time information
             var tinfo = that.nanocube.timeinfo;
-            
+
             vref  = new TimeVar(v.name, tinfo.date_offset,
-                                tinfo.start,tinfo.end, 
+                                tinfo.start,tinfo.end,
                                 tinfo.bin_to_hour);
 
             var nbins = tinfo.end-tinfo.start+1;
@@ -139,7 +139,7 @@ Model.prototype.redraw = function(calling_var,sp){
             that.updatePolygonCount(layer, spvar);
         });
     });
-   
+
     //temporal
     Object.keys(that.temporal_vars).forEach(function(v){
         var thisvref = that.temporal_vars[v];
@@ -153,7 +153,7 @@ Model.prototype.redraw = function(calling_var,sp){
     });
 };
 
-//Tile queries for Spatial Variables 
+//Tile queries for Spatial Variables
 Model.prototype.tileQuery = function(vref,tile,drill,callback){
     var q = this.nanocube.query();
     var that = this;
@@ -165,8 +165,8 @@ Model.prototype.tileQuery = function(vref,tile,drill,callback){
         q = that.cat_vars[v].constraints[0].add(q);
     });
 
-    Object.keys(that.spatial_vars).forEach(function(v){        
-        var spvref = that.spatial_vars[v]; 
+    Object.keys(that.spatial_vars).forEach(function(v){
+        var spvref = that.spatial_vars[v];
         if(vref != spvref){
             q = spvref.view_const.add(q);
         }
@@ -190,7 +190,7 @@ Model.prototype.tileQuery = function(vref,tile,drill,callback){
 
 //Caching Functions
 Model.prototype.setCache = function(qstr,data){
-    
+
     this.query_cache[qstr] = data;
     var keys = Object.keys(this.query_cache);
 
@@ -220,13 +220,13 @@ Model.prototype.jsonQuery = function(v){
         var q = queries[k];
         var qstr = q.toString('query');
         var json = that.getCache(qstr);
-        var color = that.colormap[k];
+        var color = that.selcolors[k];
 
         if (json != null){ //cached
             v.update(json,k,color);
         }
         else{
-            q.run_query(function(json){ 
+            q.run_query(function(json){
                 v.update(json,k,color);
                 that.setCache(qstr,json);
             });
@@ -262,7 +262,7 @@ Model.prototype.createMap = function(spvar,cm){
     var maptile = L.tileLayer(this.options.tilesurl,{
         noWrap:true,
         opacity:0.4 });
-    
+
     var heatmap = new L.NanocubeLayer({
         opacity: 0.6,
         model: this,
@@ -280,7 +280,7 @@ Model.prototype.createMap = function(spvar,cm){
 
         spvar.setCurrentView(tilelist);
         that.redraw(spvar);
-        that.updateInfo();        
+        that.updateInfo();
     });
 
     maptile.addTo(map);
@@ -330,9 +330,9 @@ Model.prototype.addDraw = function(map,spvar){
         polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
                                opacity:.9}}
     });
-  
+
     map.editControl.addTo(map);
-    
+
     //Leaflet created event
     var that = this;
     map.on('draw:created', function (e) {
@@ -365,11 +365,11 @@ Model.prototype.drawCreated = function(e,spvar){
     coords = coords.map(function(e){ return L.latLng(e[1],e[0]);});
     coords.pop();
 
-    var tilelist = genTileList(coords, Math.min(spvar.maxlevel, 
-                                                e.target._zoom+8));
+    var tilelist = genTileList(coords, 
+                               Math.min(spvar.maxlevel,e.target._zoom+8));
     var color = e.layer.options.color;
 
-    this.colormap[e.layer._leaflet_id] = color;
+    this.selcolors[e.layer._leaflet_id] = color;
     spvar.addSelection(e.layer._leaflet_id, tilelist);
 
     //events for popups
@@ -386,7 +386,7 @@ Model.prototype.drawCreated = function(e,spvar){
                                      opacity:.9}}
         });
     }
-    
+
     if (e.layerType == 'polygon'){
         spvar.map.editControl.setDrawingOptions({
             polygon:{shapeOptions:{color: this.nextColor(),weight: 2,
@@ -397,13 +397,13 @@ Model.prototype.drawCreated = function(e,spvar){
 };
 
 //draw count on the polygon
-Model.prototype.updatePolygonCount = function(layer, spvar){ 
+Model.prototype.updatePolygonCount = function(layer, spvar){
     var q = this.totalcount_query(spvar.constraints[layer._leaflet_id]);
     q.run_query(function(json){
         if (json == null){
             return;
         }
-        var count = json.root.value;   
+        var count = json.root.value;
         var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
         layer.bindPopup(countstr);
     });
@@ -414,7 +414,7 @@ Model.prototype.drawDeleted = function(e,spvar){
     var that = this;
     layers.eachLayer(function (layer) {
         spvar.deleteSelection(layer._leaflet_id);
-        delete that.colormap[layer._leaflet_id];
+        delete that.selcolors[layer._leaflet_id];
         that.removeObsolete(layer._leaflet_id);
     });
     this.redraw();
@@ -427,7 +427,7 @@ Model.prototype.drawEdited = function(e,spvar){
         var coords = layer.toGeoJSON().geometry.coordinates[0];
         coords = coords.map(function(e){ return L.latLng(e[1],e[0]); });
         coords.pop();
-        var tilelist = genTileList(coords, Math.min(spvar.maxlevel, 
+        var tilelist = genTileList(coords, Math.min(spvar.maxlevel,
                                                     e.target._zoom+8));
         spvar.updateSelection(layer._leaflet_id,tilelist);
         this.updatePolygonCount(layer, spvar);
@@ -441,7 +441,7 @@ Model.prototype.drawEditing = function(e,spvar){
     var obj = e.layer._shape || e.layer._poly;
 
     var coords = obj._latlngs; // no need to convert
-    var tilelist = genTileList(coords, Math.min(spvar.maxlevel, 
+    var tilelist = genTileList(coords, Math.min(spvar.maxlevel,
                                                 e.target._zoom+8));
     spvar.updateSelection(obj._leaflet_id,tilelist);
 
@@ -451,7 +451,7 @@ Model.prototype.drawEditing = function(e,spvar){
         if (json == null){
             return;
         }
-        var count = json.root.value;   
+        var count = json.root.value;
         var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         obj.bindPopup(countstr);
         obj.closePopup();
@@ -470,19 +470,19 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
         heatmap.coarselevels = Math.max(0,heatmap.coarselevels-1);
         return heatmap.redraw();
     });
-    
+
     $("#heatmap-rad-btn-inc").on('click', function(){
         var heatmapop = heatmap.options.opacity;
         heatmap.coarselevels = Math.max(0,heatmap.coarselevels+1);
         return heatmap.redraw();
     });
-    
+
     $("#heatmap-op-btn-dec").on('click', function(){
         var heatmapop = heatmap.options.opacity;
         heatmapop = Math.max(heatmapop-0.1,0);
         return heatmap.setOpacity(heatmapop);
     });
-    
+
     $("#heatmap-op-btn-inc").on('click', function(){
         var heatmapop = heatmap.options.opacity;
         heatmapop = Math.max(heatmapop+0.1,0);
@@ -494,7 +494,7 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
         mapop = Math.max(mapop-0.1,0);
         return maptiles.setOpacity(mapop);
     });
-    
+
     $("#map-op-btn-inc").on('click', function(){
         var mapop = maptiles.options.opacity;
         mapop = Math.max(mapop+0.1,0);
@@ -507,7 +507,7 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#flip-log").on('change', function(){
         return heatmap.toggleLog(); //refresh
-    });    
+    });
 
 
     $("#tbinsize-btn-dec").on('click', function(){
@@ -516,10 +516,10 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
         var hr = hourbSizes.pop();
 
         hourbSizes.unshift(tvar.binSizeHour());
-        that.setTimeBinSize(hr, tvar); //shift in reverse       
+        that.setTimeBinSize(hr, tvar); //shift in reverse
         return that.redraw(); //refresh
     });
-    
+
     $("#tbinsize-btn-inc").on('click', function(){
         var k = Object.keys(that.temporal_vars);
         var tvar = that.temporal_vars[k[0]];
@@ -553,7 +553,7 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
         if ( e.which == 13 ) {
             e.preventDefault();
         }
-       
+
         var heatmapop = heatmap.options.opacity;
         var mapop = maptiles.options.opacity;
 
@@ -567,7 +567,7 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
             heatmap.coarselevels = Math.min(8,heatmap.coarselevels+1);
             return heatmap.redraw();
             break;
-            
+
             //Opacity
         case 60: //'shift + ,'
             //decrease opacity
@@ -621,7 +621,7 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
 
         default:
             break;
-        }        
+        }
     });
 };
 
@@ -649,7 +649,7 @@ Model.prototype.queries = function(vref){
         var thisvref = that.spatial_vars[v];
         q = thisvref.view_const.add(q);
     });
-        
+
     //add spatial selection constraints
     var res = {};
     Object.keys(that.spatial_vars).forEach(function(v){
@@ -659,7 +659,7 @@ Model.prototype.queries = function(vref){
             res[c]  = thisvref.constraints[c].add(newq);
         });
     });
-    
+
     Object.keys(res).forEach(function(c){
         res[c] = vref.constraints[0].addSelf(res[c]);
     });
@@ -680,7 +680,7 @@ Model.prototype.totalcount_query = function(spconst){
         var thisvref = that.cat_vars[v];
         q = thisvref.constraints[0].add(q);
     });
-    
+
     if (spconst == undefined){
         //add spatial view constraints
         Object.keys(that.spatial_vars).forEach(function(v){
@@ -695,7 +695,7 @@ Model.prototype.totalcount_query = function(spconst){
     return q;
 };
 
-//Set the total count 
+//Set the total count
 Model.prototype.updateInfo = function(){
     var that = this;
     var q = this.totalcount_query();
@@ -704,14 +704,14 @@ Model.prototype.updateInfo = function(){
         if (json == null){
             return;
         }
-        
+
         var tvarname = Object.keys(that.temporal_vars)[0];
         var tvar  = that.temporal_vars[tvarname];
         var time_const = tvar.constraints[0];
         var start = time_const.selection_start;
 
         var startdate = new Date(tvar.date_offset);
-        
+
         //Set time in milliseconds from 1970
         startdate.setTime(startdate.getTime()+
                           start*tvar.bin_to_hour*3600*1000);
@@ -721,23 +721,23 @@ Model.prototype.updateInfo = function(){
         var enddate = new Date(startdate);
         enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
-        var count = json.root.value;   
+        var count = json.root.value;
         var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-        $('#info').text(startdate.toLocaleString() + ' - ' 
+        $('#info').text(startdate.toLocaleString() + ' - '
                         + enddate.toLocaleString() + ' '
                         + ' Total: ' + countstr);
     });
 };
 
 //Toggle view constraint for spatial variables
-Model.prototype.toggleGlobal = function(spvar){ 
+Model.prototype.toggleGlobal = function(spvar){
     spvar.toggleViewConst();
     this.removeObsolete(spvar.dim);
 };
 
 //Set time aggregation
-Model.prototype.setTimeBinSize = function(hr, tvar){ 
+Model.prototype.setTimeBinSize = function(hr, tvar){
     var b2h = tvar.bin_to_hour;
     //update on the time series plot
     tvar.widget.setBinSizeTxt(hr);
