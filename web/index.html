@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <meta http-equiv="Pragma" content="no-cache"> 
+    <meta http-equiv="Expires" content="-1"> 
+    <meta http-equiv="cache-control" content="no-store">
+
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width,
           initial-scale=1"> 
@@ -40,8 +44,12 @@
     <script>
      //main
      $(function(){
-       var conf = "config.json"
-       $.getJSON(conf, function(config){
+       var conf = window.location.hash.substring(1)
+       if (conf == ""){
+         conf = "config";
+       }
+
+       $.getJSON(conf+".json", function(config){
          initPage(config);
          initNanocube(config);
        })

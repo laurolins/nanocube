@@ -466,38 +466,36 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
     var that = this;
 
     $("#heatmap-rad-btn-dec").on('click', function(){
-        var heatmapop = heatmap.options.opacity;
-        heatmap.coarselevels = Math.max(0,heatmap.coarselevels-1);
+        heatmap.coarselevels = Math.max(heatmap.coarselevels-1,0);
         return heatmap.redraw();
     });
 
     $("#heatmap-rad-btn-inc").on('click', function(){
-        var heatmapop = heatmap.options.opacity;
-        heatmap.coarselevels = Math.max(0,heatmap.coarselevels+1);
+        heatmap.coarselevels = Math.min(heatmap.coarselevels+1,8);
         return heatmap.redraw();
     });
 
     $("#heatmap-op-btn-dec").on('click', function(){
         var heatmapop = heatmap.options.opacity;
-        heatmapop = Math.max(heatmapop-0.1,0);
+        heatmapop = Math.max(heatmapop-0.1, 1e-3);
         return heatmap.setOpacity(heatmapop);
     });
 
     $("#heatmap-op-btn-inc").on('click', function(){
         var heatmapop = heatmap.options.opacity;
-        heatmapop = Math.max(heatmapop+0.1,0);
+        heatmapop = Math.min(heatmapop+0.1, 1.0);
         return heatmap.setOpacity(heatmapop);
     });
 
     $("#map-op-btn-dec").on('click', function(){
         var mapop = maptiles.options.opacity;
-        mapop = Math.max(mapop-0.1,0);
+        mapop = Math.max(mapop-0.1, 1e-3);
         return maptiles.setOpacity(mapop);
     });
 
     $("#map-op-btn-inc").on('click', function(){
         var mapop = maptiles.options.opacity;
-        mapop = Math.max(mapop+0.1,0);
+        mapop = Math.min(mapop+0.1, 1.0);
         return maptiles.setOpacity(mapop);
     });
 
