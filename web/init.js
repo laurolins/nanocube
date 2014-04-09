@@ -38,7 +38,8 @@ function initNanocube(config){
                 nanocube:nc,
                 colormaps: [{colors:cm,
                              domain:cdomain}],
-                tilesurl:config.tilesurl
+                tilesurl:config.tilesurl,
+                heatmapmaxlevel:config.heatmapmaxlevel
             };
 
             //create the model

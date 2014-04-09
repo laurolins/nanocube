@@ -39,13 +39,14 @@ class NanocubeInput:
         config = {}
         config['div'] = {}
         #map
-        for div in self.spname:
-            div = div.replace(" ", "_");
-            config['div'][div] = {'height':'100%',
+        for v in self.spname:
+            div = v.replace(" ", "_");
+            config['div'][v] = {'height':'100%',
                                   'width':'%d%%'%(100/len(self.spname)),
                                   'padding':0, 'margin': 0, 
                                   'float' :'left',
                                   'z-index':0}
+            config['heatmapmaxlevel'] = self.levels
 
         #time
         for i,div in enumerate(self.timecol):
