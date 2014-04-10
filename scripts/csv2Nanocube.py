@@ -111,8 +111,6 @@ class NanocubeInput:
             if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
             reader = pd.read_csv(f,usecols=coi,
-                                 parse_dates=self.timecol,
-                                 infer_datetime_format=True,
                                  chunksize=100000,
                                  compression=comp)
 
@@ -197,13 +195,18 @@ class NanocubeInput:
             data[lat] = self.latToTileY(data[lat],lvl)
         return data.dropna()
             
-    def processDate(self, data):
-        #data = inputdata.copy()
-        #for i,d in enumerate(self.timecol): #convert strings to datetime
-        #    data[d] = pd.to_datetime(data[d].apply(str),
-        #                             infer_datetime_format=True,
-        #                             format=self.datefmt,coerce=True)
-        
+    def processDate(self, data):         
+        for i,d in enumerate(self.timecol): 
+            #convert strings to dates
+            data[d] = pd.to_datetime(data[d].apply(str),
+                                     infer_datetime_format=True,
+                                     format=self.datefmt)
+            #if the strings are crazy coerce will fix it 
+            data[d] = pd.to_datetime(data[d],coerce=True)
+            
+        #drop NaT
+        data=data.dropna()
+
         if self.offset is None: #compute offset
             year = data[self.timecol].min().min().year
             self.offset = datetime.datetime(year=year,month=1,day=1)
@@ -211,7 +214,7 @@ class NanocubeInput:
         for i,d in enumerate(self.timecol):
             data[d] -= self.offset
             data[d] = data[d] / self.timebinsize
-        return data.dropna().sort(self.timecol)
+        return data.sort(self.timecol)
         
     def processCat(self,data):
         for i,c in enumerate(self.catcol):            
