@@ -117,7 +117,7 @@ class NanocubeInput:
                                  compression=comp)
 
             for i,data in enumerate(reader):
-                data = data[coi].copy()
+                data = data[coi].dropna()
 
                 data = self.processData(data)
                 if start:
@@ -137,15 +137,13 @@ class NanocubeInput:
         data[self.countcol] = data[self.countcol].astype(np.float)
 
         #drop bad data
-        data = data.dropna().copy()
-                    
+        data = data.dropna()
+
         #process data
         data = self.processLatLon(data)
         data = self.processCat(data)
         data = self.processDate(data)
                                 
-        #sort by date
-        #data = data.sort(self.timecol[0])
         return data
     
     def writeRawData(self,data):
@@ -197,15 +195,14 @@ class NanocubeInput:
 
             data[lon] = self.lonToTileX(data[lon],lvl)
             data[lat] = self.latToTileY(data[lat],lvl)
-        return data
+        return data.dropna()
             
-    def processDate(self,inputdata):
-        data = inputdata.copy()
-        for i,d in enumerate(self.timecol): #convert strings to datetime
-            data[d] = pd.to_datetime(data[d].apply(str),
-                                     infer_datetime_format=True,
-                                     format=self.datefmt,coerce=True)
-        data = data.dropna()
+    def processDate(self, data):
+        #data = inputdata.copy()
+        #for i,d in enumerate(self.timecol): #convert strings to datetime
+        #    data[d] = pd.to_datetime(data[d].apply(str),
+        #                             infer_datetime_format=True,
+        #                             format=self.datefmt,coerce=True)
         
         if self.offset is None: #compute offset
             year = data[self.timecol].min().min().year
@@ -214,7 +211,7 @@ class NanocubeInput:
         for i,d in enumerate(self.timecol):
             data[d] -= self.offset
             data[d] = data[d] / self.timebinsize
-        return data
+        return data.dropna().sort(self.timecol)
         
     def processCat(self,data):
         for i,c in enumerate(self.catcol):            
@@ -233,7 +230,7 @@ class NanocubeInput:
                     self.valname[c][l] = newid
                     
             data[c] = data[c].apply(lambda x : self.valname[c][x])
-        return data
+        return data.dropna()
             
     def latToTileY(self,lat_deg,zoom):
         lat_deg = np.maximum(-85.0511,lat_deg)
