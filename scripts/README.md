@@ -14,7 +14,7 @@ Requires gcc >=4.7, Boost >= 1.48 and Python pandas (pip install pandas)
         
         #activate the virtualenv, type "deactivate" to disable the env
         source myPy/bin/activate
-        pip install numpy pandas
+        pip install argparse numpy pandas
 
 1. Get Nanocubes from github
 
