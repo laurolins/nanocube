@@ -41,8 +41,7 @@ Requires gcc >=4.7, Boost >= 1.48 and Python pandas (pip install pandas)
 part of the chicago crime dataset)
 
         cd ../scripts
-        python csv2Nanocube.py    --catcol='Primary Type' crime50k.csv\
-        | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100
+        python csv2Nanocube.py --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100
 
 This should be it. Point your browser to http://localhost:8000 for the
 viewer
