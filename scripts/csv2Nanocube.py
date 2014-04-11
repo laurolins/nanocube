@@ -23,8 +23,16 @@ class NanocubeInput:
         self.valname={}
         self.offset=None
         
-        self.minlatlon={s:[float("inf"),float("inf")] for s in self.spname}
-        self.maxlatlon={s:[float("-inf"),float("-inf")] for s in self.spname}
+        self.minlatlon={}
+        self.maxlatlon={}
+
+        for s in self.spname:
+            self.minlatlon[s] = [float("inf"),float("inf")]
+            self.maxlatlon[s] = [float("-inf"),float("-inf")]
+
+        #this requires 2.7 does not work on 2.6
+        #self.minlatlon={s:[float("inf"),float("inf")] for s in self.spname}
+        #self.maxlatlon={s:[float("-inf"),float("-inf")] for s in self.spname}
 
 
         #start nanocube
