@@ -18,7 +18,9 @@ function initPage(config){
     
     $(window).on("resize load orientationchange", function(){
         contents.forEach(function(div){
+            //this will not work for multi maps
             div.height($("#nc-container").height());
+            div.width($("#nc-container").width());
         });
     });
     
@@ -47,9 +49,9 @@ function initNanocube(config){
 
             //set the initial view
             for(var sp in config.latlonbox.min){
-                model.spatial_vars[sp].map.fitBounds([config.latlonbox.min[sp],
-                                                      config.latlonbox.max[sp]
-                                                     ]);
+                model.spatial_vars[sp]
+                    .map.fitBounds([config.latlonbox.min[sp],
+                                    config.latlonbox.max[sp]]);
             }
         }
     });

@@ -1,6 +1,5 @@
 html, body, .ui-content, #nc-container{
-    height: 100% !important;
-    min-height: 100% !important;
+    height: 100%;
     width: 100%;
     margin: 0px;
     padding: 0px;
@@ -49,6 +48,7 @@ text {
 
 /* Adjust the width of the left reveal menu. */
 #pageone #ctrlpanel.ui-panel {
+    opacity: 1.0;
     width: 24em;
 }
 

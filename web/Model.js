@@ -249,11 +249,18 @@ Model.prototype.removeObsolete= function(k){
 
 //Setup maps
 Model.prototype.createMap = function(spvar,cm){
-    var w = $('#' + spvar.dim).width();
+    /*var w = $('#' + spvar.dim).width();
     var h = $('#' + spvar.dim).height();
 
-    $('#' + spvar.dim).width(Math.max(w,100));
-    $('#' + spvar.dim).height(Math.max(h,100));
+    //$('#' + spvar.dim).width(Math.max(w,100));
+    //$('#' + spvar.dim).height(Math.max(h,100));
+    if(w < 100){
+        $('#' + spvar.dim).width(Math.max(w,100));
+    }
+    if(h < 100){
+        $('#' + spvar.dim).height(Math.max(h,100));
+    }
+     */
 
     var map=L.map(spvar.dim,{
         maxZoom: Math.min(18,spvar.maxlevel+1)

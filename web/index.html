@@ -48,12 +48,11 @@
        if (conf == ""){
          conf = "config";
        }
-
+       
        $.getJSON(conf+".json", function(config){
          initPage(config);
          initNanocube(config);
-       })
-    .fail(function(){throw new Error("Fail to get or parse"+conf);});
+       }).fail(function(){throw new Error("Fail to get or parse"+conf);});
      });
     </script>
   </head>
@@ -61,7 +60,7 @@
   <body>
     <div id="nc-container">
       <div data-role="page" id="pageone">
-        <div data-role="panel" id="ctrlpanel" data-display="reveal"> 
+        <div data-role="panel" id="ctrlpanel" data-display="overlay"> 
           <div data-role="main" class="ui-content"> 
             <ul data-role="listview" data-inset="true">
               <li data-role="list-divider">Geographical map</li>
@@ -161,6 +160,30 @@
                 </div>
               </li>
             </ul>
+          </div>
+          
+          <!-- keyboard instructions -->
+          <a href="#popupBasic" data-rel="popup" class="ui-btn 
+             ui-corner-all ui-shadow ui-btn-inline" data-mini="true" 
+             data-transition="pop">Keyboard shortcuts</a>
+          <div data-role="popup" id="popupBasic">
+            <h4>Geographical Map: </h4>
+            <p>
+              <code>d</code>: decrease opacity (looks darker)<br />
+              <code>b</code>: increase opacity (looks brighter)<br />
+            </p>
+            <h4>Heatmap</h4>
+            <p>
+              <code>&lt;</code>: decrease opacity<br />
+              <code>&gt;</code>: increase opacity<br />
+              <code>,</code>: decrease radius<br />
+              <code>.</code>: increase radius<br />
+            </p>
+            <h4>Timeseries</h4>
+            <p>
+              <code>g</code>: Toggle the display of the global time
+              series when there are polygon/rect selections.
+            </p>
           </div>
         </div>
         
