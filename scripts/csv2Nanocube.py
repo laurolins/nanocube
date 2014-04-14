@@ -120,7 +120,7 @@ class NanocubeInput:
                 comp = 'gzip'
             reader = pd.read_csv(f,usecols=coi,
                                  chunksize=100000,
-                                 error_bad_lines=False;
+                                 error_bad_lines=False,
                                  compression=comp)
 
             for i,data in enumerate(reader):
