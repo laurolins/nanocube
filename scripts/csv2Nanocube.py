@@ -15,6 +15,7 @@ class NanocubeInput:
         self.latcol=args.latcol
         self.loncol=args.loncol
         self.countcol = args.countcol
+        self.sep = args.sep
 
         self.datefmt=args.datefmt
         self.levels = args.levels
@@ -121,6 +122,7 @@ class NanocubeInput:
             reader = pd.read_csv(f,usecols=coi,
                                  chunksize=100000,
                                  error_bad_lines=False,
+                                 sep=self.sep,                                
                                  compression=comp)
 
             for i,data in enumerate(reader):
@@ -303,6 +305,7 @@ def main(argv):
     parser.add_argument('--loncol', type=str,nargs='+',default=['Longitude'])
     parser.add_argument('--catcol', type=str,nargs='+',default=[])
     parser.add_argument('--countcol', type=str, default=None)
+    parser.add_argument('--sep', type=str, default=None)
     args = parser.parse_args()
 
     if 'NANOCUBE_WEB' not in os.environ:
