@@ -62,7 +62,9 @@ This procedure assumes your machine is not running anything on ports
         $ cd web
         $ python -m SimpleHTTPServer &
 
-3. Run the script and pipe it to the nanocubes server using the included example dataset
+3. Run the script and pipe it to the nanocubes server using the
+   included example dataset
+   ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2)
 
         $ cd ../scripts
         $ python csv2Nanocube.py --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100
@@ -83,7 +85,7 @@ viewer
 ## Further Details
 
 For a better understanding on how to ingest data into nanocubes and
-querying a nanocube follow this
+how to query nanocubes follow this
 [link](https://github.com/laurolins/nanocube/wiki). For larger
 datasets or if you want more flexibility on ingesting/querying data
 using nanocubes, the CSV loading method illustrated above might not be
