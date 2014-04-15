@@ -9,49 +9,88 @@ elements at interactive rates in a web browser, and in some cases nanocubes
 uses sufficiently little memory that you can run a nanocube in a
 modern-day laptop.
 
-## News
+## Versions
 
-2013-10-22: [Overview: how to use nanocubes](https://github.com/laurolins/nanocube/wiki)
+| Number | Description |
+|:------:|-------------|
+| 2.1 | Javascript front-end, CSV Loading, Bug Fixes  |
+| 2.0 | New feature-rich querying API                  |
+| 1.0 | Original version with a simple querying API   |
 
-## Prerequisites
+## Compiling latest version
 
-The nanocubes server is written in C++ 11. You'll need a recent
-version of [boost](http://www.boost.org) (we use 1.51) and the
-[GNU build system](http://www.gnu.org/software/autoconf/). 
+**Prerequisites** The nanocubes server is written in C++ 11 (gcc >=4.7.2). You'll need a
+recent version of [boost](http://www.boost.org) (>=1.48) and the
+[GNU build system](http://www.gnu.org/software/autoconf/).
 
-## Building
+Run the following commands to compile nanocubes on your linux/mac system.
 
-    $ git clone https://github.com/laurolins/nanocube.git
+    $ wget https://github.com/laurolins/nanocube/archive/2.1.zip
+    $ unzip 2.1.zip
+    $ cd nanocube-2.1
     $ ./bootstrap
-    $ CXX='g++-4.7' ./configure
+    $ ./configure
     $ make
 
-## Running
+If a recent version of gcc is not the default, you can run `configure`
+with the specfic recent version of gcc in your system. For example
 
-The way nanocube servers currently work is they read a dataset from
-`stdin` and then start an HTTP server which answers queries. There's
-no authentication mechanism! You should solve this at a different
-level of your stack (we internally use nginx running as an HTTP proxy).
+    $ CXX=g++-4.8 ./configure
 
-You'll also need a client application that can issue nanocube queries
-and build visualizations with it. We offer an example Javascript
-client API
-[here](https://github.com/laurolins/nanocube/tree/1.0/api/js), and are
-currently working on a complete, self-contained example. We'll be
-releasing the C++ client as open source in the near future as well.
+If your system has tcmalloc installed, we suggest linking nanocubes with it.
+For example
 
-You'll quickly learn that the nanocube HTTP server is not as, ahem,
-battle-hardened as you and we would like it to be. We welcome feedback
-on the form of [email](mailto:cscheid@research.att.com),
-[issues](http://github.com/laurolins/nanocube/issues), and,
-especially,
-[pull requests](http://github.com/laurolins/nanocube/pulls).
+    $ CXX=g++-4.8 ./configure LIBS=<path-to-tcmalloc>/libtcmalloc_minimal.a
+
+## Loading a CSV file into a nanocube
+
+This procedure assumes your machine is not running anything on ports
+8000 and 29512
+
+1. Installing Pandas in a separate python env (Optional)
+
+        $ wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.4.tar.gz
+        $ tar xfz virtualenv-1.11.4.tar.gz
+        $ python virtualenv-1.11.4/virtualenv.py  myPy
+        
+        # activate the virtualenv, type "deactivate" to disable the env
+        $ source myPy/bin/activate
+        $ pip install argparse numpy pandas
+
+2. Start a web server in the "web" directory and send it to background
+
+        $ cd web
+        $ python -m SimpleHTTPServer &
+
+3. Run the script and pipe it to the nanocubes server using the included example dataset
+
+        $ cd ../scripts
+        $ python csv2Nanocube.py --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100
+
+This should be it. Point your browser to http://localhost:8000 for the
+viewer
+
+        Parameters for csv2Nanocube.py
+        --catcol='Column names of categorical variable'
+        --latcol='Column names of latitude'
+        --loncol='Column names of longitude'
+        --countcol='Column names of the count'
+        --timecol='Column names of the time variable'
+        --timebinsize='time bin size in seconds(s) minutes(m) hours(h) days(D)
+        e.g. 1D/30m/60s'
 
 
-## Branches
+## Further Details
 
-You should probably start with the
-[1.0 branch](https://github.com/laurolins/nanocube/tree/1.0).  The
-master branch is currently much more unstable than the 1.0 branch,
-which is the one that hosts the nanocube server code that's currently
-running on [nanocubes.net](http://nanocubes.net).
+For a better understanding on how to ingest data into nanocubes and
+querying a nanocube follow this
+[link](https://github.com/laurolins/nanocube/wiki). For larger
+datasets or if you want more flexibility on ingesting/querying data
+using nanocubes, the CSV loading method illustrated above might not be
+the most efficient way to go.
+
+# Asking for help
+
+IRC: #nanocubes channel on irc.freenode.net
+
+mailing list: http://mailman.nanocubes.net/mailman/listinfo/nanocubes-discuss_mailman.nanocubes.net
