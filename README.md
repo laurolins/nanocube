@@ -64,7 +64,7 @@ This procedure assumes your machine is not running anything on ports
 
 3. Run the script and pipe it to the nanocubes server using the
    included example dataset
-   ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2)
+   ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2))
 
         $ cd ../scripts
         $ python csv2Nanocube.py --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100
@@ -79,6 +79,7 @@ viewer
         --countcol='Column names of the count'
         --timecol='Column names of the time variable'
         --timebinsize='time bin size in seconds(s) minutes(m) hours(h) days(D)
+        --sep='Delimiter of Columns'
         e.g. 1D/30m/60s'
 
 
@@ -88,7 +89,7 @@ For a better understanding on how to ingest data into nanocubes and
 how to query nanocubes follow this
 [link](https://github.com/laurolins/nanocube/wiki). For larger
 datasets or if you want more flexibility on ingesting/querying data
-using nanocubes, the CSV loading method illustrated above might not be
+using nanocubes the CSV loading method illustrated above might not be
 the most efficient way to go.
 
 # Asking for help
