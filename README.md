@@ -9,15 +9,15 @@ elements at interactive rates in a web browser, and in some cases nanocubes
 uses sufficiently little memory that you can run a nanocube in a
 modern-day laptop.
 
-## Versions
+## Releases
 
 | Number | Description |
 |:------:|-------------|
 | 2.1 | Javascript front-end, CSV Loading, Bug Fixes  |
 | 2.0 | New feature-rich querying API                  |
-| 1.0 | Original version with a simple querying API   |
+| 1.0 | Original release with a simple querying API   |
 
-## Compiling latest version
+## Compiling latest release
 
 **Prerequisites** The nanocubes server is written in C++ 11 (gcc >=4.7.2). You'll need a
 recent version of [boost](http://www.boost.org) (>=1.48) and the
