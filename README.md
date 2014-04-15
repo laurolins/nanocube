@@ -92,7 +92,7 @@ datasets or if you want more flexibility on ingesting/querying data
 using nanocubes the CSV loading method illustrated above might not be
 the most efficient way to go.
 
-# Asking for help
+## Asking for help
 
 IRC: #nanocubes channel on irc.freenode.net
 
