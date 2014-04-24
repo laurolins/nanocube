@@ -83,7 +83,6 @@ function genTileList(coords, zoom){
     });
 };
 
-
 function boundsToTileList(b,zoom){
     var x0 = b.getNorthEast().lng;
     var y0 = b.getNorthEast().lat;
@@ -93,4 +92,17 @@ function boundsToTileList(b,zoom){
     return genTileList([L.latLng(y0,x0),L.latLng(y0,x1),
                         L.latLng(y1,x1),L.latLng(y1,x0)],
                        zoom);
+}
+
+function bboxGeoJSON(geojson){
+    var coords = geojson.geometry.coordinates[0];
+    var bbmin = coords.reduce(function(prev,curr){
+       return [Math.min(prev[0],curr[0]),Math.min(prev[1],curr[1])];
+    },[Infinity,Infinity]);
+
+    var bbmax = coords.reduce(function(prev,curr){
+       return [Math.max(prev[0],curr[0]),Math.max(prev[1],curr[1])];
+    },[-Infinity,-Infinity]);
+    
+    return [bbmin,bbmax];
 }

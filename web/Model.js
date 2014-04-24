@@ -135,9 +135,6 @@ Model.prototype.redraw = function(calling_var,sp){
     //update each spatial polygon constraints
     Object.keys(that.spatial_vars).forEach(function(v){
         var spvar = that.spatial_vars[v];
-        spvar.map.drawnItems.eachLayer(function(layer){
-            that.updatePolygonCount(layer, spvar);
-        });
     });
 
     //temporal
@@ -380,11 +377,15 @@ Model.prototype.drawCreated = function(e,spvar){
     spvar.addSelection(e.layer._leaflet_id, tilelist);
 
     //events for popups
-    e.layer.on('mouseover', function(){e.layer.openPopup();});
+    var that = this;
+    e.layer.on('mouseover', function(){
+        //update polygon count before opening popup
+        that.updatePolygonCount(e.layer, spvar);
+        e.layer.openPopup();
+    });
+
     e.layer.on('mouseout', function(){e.layer.closePopup();});
 
-    //draw count on the polygon
-    this.updatePolygonCount(e.layer, spvar);
 
     //set next color
     if (e.layerType == 'rectangle'){
@@ -407,12 +408,20 @@ Model.prototype.drawCreated = function(e,spvar){
 Model.prototype.updatePolygonCount = function(layer, spvar){
     var q = this.totalcount_query(spvar.constraints[layer._leaflet_id]);
     q.run_query(function(json){
-        if (json == null){
-            return;
+        var countstr ="Count: 0";
+        if (json != null){
+            var count = json.root.value;
+            countstr ="Count: ";
+            countstr += count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
         }
-        var count = json.root.value;
-        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
-        layer.bindPopup(countstr);
+
+        var geojson = layer.toGeoJSON();
+        var bbox = bboxGeoJSON(geojson);
+        var bboxstr = "Bbox: ";
+        bboxstr += "(("+bbox[0][0].toFixed(3)+","+bbox[0][1].toFixed(3)+"),";
+        bboxstr += "("+bbox[1][0].toFixed(3)+","+bbox[1][1].toFixed(3)+"))";
+
+        layer.bindPopup(countstr+"<br />" +bboxstr);
     });
 };
 
@@ -436,8 +445,7 @@ Model.prototype.drawEdited = function(e,spvar){
         coords.pop();
         var tilelist = genTileList(coords, Math.min(spvar.maxlevel,
                                                     e.target._zoom+8));
-        spvar.updateSelection(layer._leaflet_id,tilelist);
-        this.updatePolygonCount(layer, spvar);
+        spvar.updateSelection(layer._leaflet_id,tilelist);        
     });
 
     this.redraw(spvar,false);
@@ -451,19 +459,6 @@ Model.prototype.drawEditing = function(e,spvar){
     var tilelist = genTileList(coords, Math.min(spvar.maxlevel,
                                                 e.target._zoom+8));
     spvar.updateSelection(obj._leaflet_id,tilelist);
-
-    //draw count on the polygon
-    var q = this.totalcount_query(spvar.constraints[obj._leaflet_id]);
-    q.run_query(function(json){
-        if (json == null){
-            return;
-        }
-        var count = json.root.value;
-        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        obj.bindPopup(countstr);
-        obj.closePopup();
-    });
-
     this.redraw(spvar,false);
 };
 
