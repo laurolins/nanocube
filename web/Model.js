@@ -515,7 +515,7 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#flip-refresh").on('change', function(){
         if (this.value == "on"){
-            that.animate(true,14); 
+            that.animate(true,1); 
         }
         else{
             that.animate(false); 
@@ -756,7 +756,7 @@ Model.prototype.setTimeBinSize = function(hr, tvar){
 };
 
 
-Model.prototype.updateTimeStep = function(stepsize){
+Model.prototype.updateTimeStep = function(stepsize,window){
     var that = this;
     $.getJSON(this.nanocube.getTQuery(), function(json){
         var addr = json.root.children[0].addr;
@@ -779,7 +779,7 @@ Model.prototype.updateTimeStep = function(stepsize){
             time_const.nbins=end-start+1;
         }
         else{ //advance
-            time_const.nbins=stepsize;
+            time_const.nbins=window;
             time_const.start+=stepsize;
             if(time_const.start >= end){
                 time_const.start=start;
@@ -792,13 +792,13 @@ Model.prototype.updateTimeStep = function(stepsize){
     });
 };
 
-Model.prototype.animate = function(auto,stepsize){
+Model.prototype.animate = function(auto,stepsize,window){
     auto = typeof auto !== 'undefined' ? auto : false;
     var that = this;
     if (auto){
         this.cache_off = true;
         this.interval = setInterval(function(){
-            that.updateTimeStep(stepsize);
+            that.updateTimeStep(stepsize,window);
             console.log("auto refresh");
         },1000);
     }
