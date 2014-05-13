@@ -515,7 +515,7 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#flip-refresh").on('change', function(){
         if (this.value == "on"){
-            that.animate(true,1); 
+            that.animate(true,1,5); 
         }
         else{
             that.animate(false); 

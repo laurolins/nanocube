@@ -139,6 +139,12 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
     
     //set image
     var sc = canvas.width*1.0/size;
+
+    //clear the canvas
+    imgBlankData = ctx.createImageData(canvas.width,canvas.height);
+    ctx.putImageData(imgBlankData,0,0);
+
+    //scale
     if (sc !=1){
         //create a proxy canvas
         var newCanvas = $('<canvas>')
