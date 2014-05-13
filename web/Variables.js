@@ -53,7 +53,6 @@ function TimeVar(dim,date_offset,start,end,bin_to_hour){
     this.dim = dim;
     this.bin_to_hour = bin_to_hour;
     this.date_offset = date_offset;
-    //this.bin_size = 1;
 
     //setup constraint
     this.constraints = {};

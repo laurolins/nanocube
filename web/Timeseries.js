@@ -40,7 +40,6 @@ function Timeseries(id, margin){
     //Zoom
     this.zoom= d3.behavior.zoom();
     this.zoom.size([width,height]);
-    //this.zoom.scaleExtent([1,Infinity]);
 
     var bext;
     this.zoom.on("zoomstart", function(){
@@ -143,7 +142,7 @@ Timeseries.prototype.zoomed=function(){
     this.update_display_callback(xdom[0],xdom[1]);
 };
 
-Timeseries.prototype.updateRanges = function (){
+Timeseries.prototype.updateRanges=function(){
     var that = this;
     var data = Object.keys(that.data).reduce(function(previous,current){ 
         return previous.concat(that.data[current].data);

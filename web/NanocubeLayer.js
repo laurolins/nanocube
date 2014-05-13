@@ -89,8 +89,8 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
     var ctx = canvas.getContext('2d');
     
     if (data == null){
-        var imgData = ctx.createImageData(canvas.width,canvas.height);
-        ctx.putImageData(imgData,0,0);
+        var imgBlankData = ctx.createImageData(canvas.width,canvas.height);
+        ctx.putImageData(imgBlankData,0,0);
 
         if (this.show_count){//draw grid box
             this.drawGridCount(ctx,data);

@@ -14,23 +14,6 @@ function Model(opt){
 
     this.cache_off = false;
     
-
-};
-
-Model.prototype.autoRefresh = function(auto){
-    auto = typeof auto !== 'undefined' ? auto : false;
-    if (auto){
-        this.cache_off = true;
-        var that = this;
-        setInterval(function(){
-            that.redraw();
-            console.log("auto refresh");
-        },10000);
-    }
-    else{
-        this.cache_off = false;
-        clearInterval();
-    }
 };
 
 //Init Variables according to the schema
@@ -218,11 +201,8 @@ Model.prototype.setCache = function(qstr,data){
 };
 
 Model.prototype.getCache = function(qstr){
-    if (this.cache_off){
-        return null;
-    }
 
-    if (qstr in this.query_cache){
+    if (!this.cache_off && (qstr in this.query_cache)){
         return this.query_cache[qstr];
     }
     else{
@@ -535,10 +515,10 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#flip-refresh").on('change', function(){
         if (this.value == "on"){
-            that.autoRefresh(true); 
+            that.animate(true,14); 
         }
         else{
-            that.autoRefresh(false); 
+            that.animate(false); 
         }
     });
 
@@ -649,7 +629,6 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
         case 108: // 'l' toggle log scale
             return heatmap.toggleLog(); //refresh
             break;
-
 
         default:
             break;
@@ -774,4 +753,58 @@ Model.prototype.setTimeBinSize = function(hr, tvar){
     //update on the time series plot
     tvar.widget.setBinSizeTxt(hr);
     tvar.setBinSize(Math.ceil(hr*1.0/b2h));
+};
+
+
+Model.prototype.updateTimeStep = function(stepsize){
+    var that = this;
+    $.getJSON(this.nanocube.getTQuery(), function(json){
+        var addr = json.root.children[0].addr;
+        addr = addr.toString();
+        var start = addr.substring(0,addr.length-8);
+        var end = addr.substring(addr.length-8,addr.length);
+
+        start = parseInt(start,16);
+        end = parseInt(end,16);
+        
+        if (isNaN(start)) start=0;
+        if (isNaN(end)) end=0;
+        
+        var tvarname = Object.keys(that.temporal_vars)[0];
+        var tvar  = that.temporal_vars[tvarname];
+        var time_const = tvar.constraints[0];
+        
+        if (stepsize < 0){ //reset
+            time_const.start=start;
+            time_const.nbins=end-start+1;
+        }
+        else{ //advance
+            time_const.nbins=stepsize;
+            time_const.start+=stepsize;
+            if(time_const.start >= end){
+                time_const.start=start;
+            }
+        }
+        
+        time_const.setSelection(0,0);
+        tvar.widget.x.domain([0,1]);
+        that.redraw();
+    });
+};
+
+Model.prototype.animate = function(auto,stepsize){
+    auto = typeof auto !== 'undefined' ? auto : false;
+    var that = this;
+    if (auto){
+        this.cache_off = true;
+        this.interval = setInterval(function(){
+            that.updateTimeStep(stepsize);
+            console.log("auto refresh");
+        },1000);
+    }
+    else{
+        clearInterval(this.interval);
+        this.updateTimeStep(-1);
+        this.cache_off = false;
+    }
 };
