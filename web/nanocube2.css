@@ -5,7 +5,7 @@ html, body, .ui-content, #nc-container{
     padding: 0px;
 }
 
-legend,#flip-grid-label,#flip-log-label {
+legend,#flip-grid-label,#flip-log-label, #flip-refresh-label{
     font-size: 10pt;
 }
 

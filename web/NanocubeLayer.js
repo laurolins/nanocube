@@ -27,9 +27,16 @@ L.NanocubeLayer.prototype.toggleShowCount = function(){
 
 
 L.NanocubeLayer.prototype.redraw = function(){
-    //this.reallydraw = true;
-    L.TileLayer.Canvas.prototype.redraw.call(this);
+    if (this._map) {
+	//this._reset({hard: false});  //no hard resetting 
+	this._update();
+    }
+    for (var i in this._tiles) {
+	this._redrawTile(this._tiles[i]);
+    }
+    return this;
 };
+
 
 L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){    
     var drill = Math.min(this.variable.maxlevel-zoom,8) - this.coarselevels ;
@@ -82,6 +89,9 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
     var ctx = canvas.getContext('2d');
     
     if (data == null){
+        var imgData = ctx.createImageData(canvas.width,canvas.height);
+        ctx.putImageData(imgData,0,0);
+
         if (this.show_count){//draw grid box
             this.drawGridCount(ctx,data);
         }

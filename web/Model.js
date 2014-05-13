@@ -11,6 +11,26 @@ function Model(opt){
 
     //initialize the variables
     this.initVars();
+
+    this.cache_off = false;
+    
+
+};
+
+Model.prototype.autoRefresh = function(auto){
+    auto = typeof auto !== 'undefined' ? auto : false;
+    if (auto){
+        this.cache_off = true;
+        var that = this;
+        setInterval(function(){
+            that.redraw();
+            console.log("auto refresh");
+        },10000);
+    }
+    else{
+        this.cache_off = false;
+        clearInterval();
+    }
 };
 
 //Init Variables according to the schema
@@ -198,6 +218,10 @@ Model.prototype.setCache = function(qstr,data){
 };
 
 Model.prototype.getCache = function(qstr){
+    if (this.cache_off){
+        return null;
+    }
+
     if (qstr in this.query_cache){
         return this.query_cache[qstr];
     }
@@ -509,6 +533,14 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
         return heatmap.toggleLog(); //refresh
     });
 
+    $("#flip-refresh").on('change', function(){
+        if (this.value == "on"){
+            that.autoRefresh(true); 
+        }
+        else{
+            that.autoRefresh(false); 
+        }
+    });
 
     $("#tbinsize-btn-dec").on('click', function(){
         var k = Object.keys(that.temporal_vars);

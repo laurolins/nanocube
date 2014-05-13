@@ -21,7 +21,7 @@
     <script src="http://underscorejs.org/underscore-min.js"></script>
     <script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
     
-    <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet-src.js"></script>
     <script src="lib/leaflet.draw/leaflet.draw-src.js"></script>
     <script src="lib/L.Map.Sync.js"></script>
     <script src="lib/colorbrewer.js"></script>
@@ -52,7 +52,7 @@
        $.getJSON(conf+".json", function(config){
          initPage(config);
          initNanocube(config);
-       }).fail(function(){throw new Error("Fail to get or parse"+conf);});
+       }).fail(function(){throw new Error("Fail to get or parse "+conf);});
      });
     </script>
   </head>
@@ -122,6 +122,7 @@
                   </select>
                 </div>
               </li>
+
               <li>
                 <div class="ui-field-contain">
                   <label for="flip-log">Log:</label>
@@ -133,6 +134,19 @@
                   </select>
                 </div>
               </li>
+              
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-refresh">Refresh:</label>
+                  <select name="flip-refresh" id="flip-refresh"
+                          data-role="slider"
+                          data-mini="true"> 
+                    <option value="off" selected>Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+
               <li data-role="list-divider">Time Series</li>
               <li>
                 <!-- <div class="ui-field-contain">
