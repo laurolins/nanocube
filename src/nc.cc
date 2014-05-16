@@ -919,19 +919,33 @@ void NanoCubeServer::write()
 
     uint64_t count = 0;
 
-    std::cout << "reading data..." << std::endl;
+    // std::cout << "reading data..." << std::endl;
 
     bool done = false;
 
+    auto record_size = this->nanocube.schema.dump_file_description.record_size;
+    auto num_bytes_per_batch = record_size * batch_size;
+    
+    std::stringstream ss;
+    char buffer[num_bytes_per_batch];
     while (!done) {
+        
+        // std::cerr << "reading " << num_bytes_per_batch << "...";
+        input_stream.read(buffer,num_bytes_per_batch);
+        auto read_bytes = input_stream.gcount();
+        // std::cerr << " " << read_bytes << " were read" << std::endl;
+        
+        ss.clear();
+        ss.write(buffer, read_bytes);
 
         // write a batch of points
+        if (read_bytes > 0)
         {
             boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
             for (uint64_t i=0;i<batch_size && !done;++i)
             {
                 // std::cout << i << std::endl;
-                bool ok = nanocube.add(input_stream);
+                bool ok = nanocube.add(ss);
                 if (!ok) {
                     // std::cout << "not ok" << std::endl;
                     done = true;

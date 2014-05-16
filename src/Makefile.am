@@ -11,9 +11,9 @@ AUTOMAKE_OPTIONS = subdir-objects
 bin_PROGRAMS =        \
 ncdmp                 \
 ncserve               \
+nc_q25_u2_u4          \
 nc_q20_q20_u2_u4      \
 nc_q25_q25_u2_u4      \
-nc_q25_u2_u4          \
 nc_q25_c1_u2_u4       \
 nc_q25_c1_c1_u2_u4    \
 nc_q25_c1_c1_c1_u2_u4 \
