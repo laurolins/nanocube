@@ -305,7 +305,7 @@ def main(argv):
     parser.add_argument('--loncol', type=str,nargs='+',default=['Longitude'])
     parser.add_argument('--catcol', type=str,nargs='+',default=[])
     parser.add_argument('--countcol', type=str, default=None)
-    parser.add_argument('--sep', type=str, default=None)
+    parser.add_argument('--sep', type=str, default=',')
     args = parser.parse_args()
 
     if 'NANOCUBE_WEB' not in os.environ:
