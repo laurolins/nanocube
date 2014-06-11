@@ -19,13 +19,16 @@ nc_q25_c1_c1_u2_u4    \
 nc_q25_c1_c1_c1_u2_u4 \
 nc_q25_c1_u2_u8       \
 nc_q17_c1_c1_c1_u2_u4 \
-nc_q25_c1_c2_u2_u4
+nc_q25_c1_c2_u2_u4    \
+ncmaster
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS)
-AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS)
+AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_MPI_LDFLAGS)
 LIBS += $(BOOST_THREAD_LIBS)
-
+#LIBS += $(BOOST_MPI_LIBS)
+#LIBS += $(BOOST_SERIALIZATION_LIBS)
+LIBS += $(BOOST_ASIO_LIBS)
 
 ncdmp_SOURCES =       \
 ncdmp.cc              \
@@ -41,7 +44,18 @@ MercatorProjection.hh
 ncserve_SOURCES =     \
 ncserve.cc            \
 DumpFile.cc           \
-DumpFile.hh
+DumpFile.hh           \
+mongoose.c            \
+mongoose.h
+
+ncmaster_SOURCES =    \
+ncmaster.cc           \
+Master.cc             \
+Master.hh             \
+vector.cc             \
+vector.hh             \
+mongoose.c            \
+mongoose.h            
 
 nc_SOURCES = \
 cache.cc                  \
@@ -129,6 +143,7 @@ geom2d/polygon.cc         \
 geom2d/polygon.hh	  \
 geom2d/tile.cc		  \
 geom2d/tile.hh 
+
 
 VERSION = $(shell cat $(top_srcdir)/VERSION)
 AM_CXXFLAGS += -DVERSION=\"$(VERSION)\"
