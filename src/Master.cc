@@ -23,11 +23,24 @@
 #include "NanoCubeSchema.hh"
 #include "DumpFile.hh"
 #include "maps.hh"
+#include "QueryParser.hh"
+#include "Query.hh"
 
 
 //-------------------------------------------------------------------------
 // Master Request Impl.
 //-------------------------------------------------------------------------
+
+template <typename Iter>
+std::string join(Iter begin, Iter end, std::string const& separator)
+{
+    std::ostringstream result;
+    if (begin != end)
+        result << *begin++;
+    while (begin != end)
+        result << separator << *begin++;
+    return result.str();
+}
 
 MasterRequest::MasterRequest(mg_connection *conn, const std::vector<std::string> &params, std::string uri):
     conn(conn), params(params), response_size(0)
@@ -47,6 +60,8 @@ MasterRequest::MasterRequest(mg_connection *conn, const std::vector<std::string>
 //        request.respondJson(e.what());
 //        return;
 //    }
+
+    query_params = join(params.begin()+2, params.end(), "/");
 
 
     if(params[1].compare("schema")==0){
@@ -108,7 +123,7 @@ void MasterRequest::respondJson(std::string msg_content)
        << "Content-Length: %d"             << sep << sep
        << "%s";
 
-    response_size = 106 + (int) msg_content.size();
+    response_size = 0 + (int) msg_content.size();
     //response_size = 106 + (int) size; // banchmark data transfer
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
@@ -132,7 +147,7 @@ void MasterRequest::respondOctetStream(const void *ptr, int size)
        << "Access-Control-Allow-Origin: *"         << sep
        << "Content-Length: %d"                     << sep << sep;
 
-    response_size = 114;
+    response_size = 0;
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), size);
 
@@ -206,7 +221,7 @@ void Master::processSlave(MasterRequest &request)
     //Server: Master
 }
 
-std::vector<char> Master::requestSlave(MasterRequest &request, Slave &slave)
+std::vector<char> Master::requestSlave(std::string uri, Slave &slave)
 {
     //Client: Master
     //Server: Slave
@@ -221,7 +236,7 @@ std::vector<char> Master::requestSlave(MasterRequest &request, Slave &slave)
     socket.connect(endpoint);
 
     char buffer[1024];
-    std::string uri = request.uri_strtranslated;
+    //std::string uri = request.uri_strtranslated;
     sprintf(buffer, "GET %s HTTP/1.1\n\n", uri.c_str());
     
     boost::asio::write(socket, boost::asio::buffer(buffer));
@@ -302,7 +317,7 @@ void Master::requestAllSlaves(MasterRequest &request)
         bool isAggregating = false;
         for(i = 0; i<slaves.size(); i++)
         {
-            auto content = requestSlave(request, slaves[i]);
+            auto content = requestSlave(request.uri_strtranslated, slaves[i]);
 
             if(request.uri_translated == MasterRequest::SCHEMA)
             {
@@ -356,6 +371,45 @@ void Master::requestAllSlaves(MasterRequest &request)
         }
         else if(request.uri_original == MasterRequest::TILE)
         {
+            //
+            ::query::QueryDescription query_description;
+
+            std::cout << "1" << std::endl;
+
+            try {
+                std::cout << request.query_params << std::endl;
+                parse(request.query_params, query_description);
+            }
+            catch (::query::parser::QueryParserException &e) {
+                request.respondJson(e.what());
+                return;
+            }
+
+            std::cout << "2" << std::endl;
+
+            ::maps::Tile tile;
+            auto *target = query_description.getFirstAnchoredTarget();
+            if (target) {
+                auto *find_and_dive_target = target->asFindAndDiveTarget();
+                if (find_and_dive_target) {
+                    ::query::RawAddress raw_address = find_and_dive_target->base;
+                    tile = maps::Tile(raw_address);
+                }
+                else {
+                    request.respondJson("problem");
+                    return;
+                }
+            }
+            else {
+                request.respondJson("problem");
+                return;
+            }
+
+            std::cout << "3" << std::endl;
+
+            //
+
+
             using Edge  = ::vector::Edge;
             using Value = ::vector::Value;
             using INode = ::vector::InternalNode;
@@ -367,7 +421,7 @@ void Master::requestAllSlaves(MasterRequest &request)
                 for (auto it: inode->children) {
                     Edge &e = it.second;
 
-#if 0
+#if 1
                     maps::Tile subtile(e.label);
                     maps::Tile relative_tile = tile.relativeTile(subtile);
 
@@ -381,8 +435,6 @@ void Master::requestAllSlaves(MasterRequest &request)
                     Value value = e.node->asLeafNode()->value;
                     uint8_t ii = subtile.getY() - ((subtile.getY() >> 7) << 7);
                     uint8_t jj = subtile.getX() - ((subtile.getX() >> 7) << 7);
-
-                    std::cerr << "pixel: " << ii << ", " << jj << std::endl;
 #endif
 
 
@@ -580,6 +632,92 @@ void Master::requestAllSlaves(MasterRequest &request)
 
 }
 
+void Master::parse(std::string              query_st,
+                   ::query::QueryDescription &query_description)
+{
+    ::query::parser::QueryParser parser;
+    parser.parse(query_st);
+
+    //std::cout << ::query::parser::Print(parser) << std::endl;
+    
+    auto& schema = *this->schema.get();
+
+    std::cout << schema.dump_file_description << std::endl;
+
+    //return;
+    std::cout << parser.dimensions.size() << std::endl;
+
+    return;
+
+    for (::query::parser::Dimension *dimension: parser.dimensions) {
+        try {
+
+            std::cout << dimension->name << std::endl;
+            std::cout << dimension->target << std::endl;
+
+            std::cout << "2" << std::endl;
+
+            int index = schema.getDimensionIndex(dimension->name);
+            // std::cout << "Index of dimension " << dimension->name << " is " << index << std::endl;
+
+            std::cout << "3" << std::endl;
+
+            bool anchored = dimension->anchored;
+
+            std::cout << "4" << std::endl;
+
+            query_description.setAnchor(index, anchored);
+
+            std::cout << "5" << std::endl;
+
+            ::query::parser::TargetExpression *target = dimension->target;
+
+            std::cout << "6" << std::endl;
+
+            target->updateQueryDescription(index, query_description);
+
+            std::cout << "7" << std::endl;
+
+            RawAddress replacement = 0ULL;
+            { // replace raw addresses ~0ULL;
+                auto field    = schema.dump_file_description.getFieldByName(dimension->name);
+                // if it is a categorical field replacement will be 2^(bytes * 8) - 1;
+                if (field->field_type.name.find("nc_dim_cat_") == 0) {
+                    replacement = (1ULL << (field->getNumBytes() * 8)) - 1;
+                }
+            }
+
+            std::cout << "8" << std::endl;
+            
+            query_description.targets[index]->replace(~0ULL, replacement);
+
+            std::cout << "9" << std::endl;
+            
+
+        }
+        catch(dumpfile::DumpFileException &e) {
+            std::cout << "(Warning) Dimension " << dimension->name << " not found. Disconsidering it." << std::endl;
+            continue;
+        }
+    }
+
+    std::cout << "10" << std::endl;
+}
+
+void Master::requestSchema()
+{
+    auto strschema = requestSlave("/binschema", slaves[0]);
+
+    // read input file description
+    std::istringstream iss(std::string(strschema.begin(), strschema.end()));
+    dumpfile::DumpFileDescription input_file_description;
+    iss >> input_file_description;
+    
+    // create nanocube_schema from input_file_description
+    schema.reset(new nanocube::Schema(input_file_description));
+
+}
+
 void* Master::mg_callback(mg_event event, mg_connection *conn)
 { // blocks current thread
 
@@ -658,6 +796,9 @@ void* __mg_master_callback(mg_event event, mg_connection *conn)
 
 void Master::start(int mongoose_threads) // blocks current thread
 {
+
+    //Request schema
+    requestSchema();
 
     //boost::mpi::communicator mpicom;
     //std::cout << "**Master: I am process " << mpicom.rank() << " of " << mpicom.size() << "." << std::endl;

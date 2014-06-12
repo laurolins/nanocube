@@ -60,6 +60,10 @@ NanoCubeSchema.cc     \
 NanoCubeSchema.hh     \
 DumpFile.cc           \
 DumpFile.hh           \
+Query.cc              \
+Query.hh              \
+QueryParser.cc        \
+QueryParser.hh        \
 json.cc               \
 json.hh               \
 mongoose.c            \

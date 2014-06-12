@@ -12,10 +12,13 @@
 #include <exception>
 #include <stdexcept>
 #include <functional>
+#include <memory>
 
 // #include <boost/mpi/environment.hpp>
 // #include <boost/mpi/communicator.hpp>
 // #include <boost/mpi/nonblocking.hpp>
+
+#include "NanoCubeSchema.hh"
 
 #include "mongoose.h"
 
@@ -51,6 +54,7 @@ public:
 
     std::string uri_strtranslated;
     std::string uri_stroriginal;
+    std::string query_params;
 
 };
 
@@ -103,10 +107,12 @@ struct Master {
     bool isTiming() const;
     const std::string currentDateTime();
 
-    std::vector<char> requestSlave(MasterRequest &request, Slave &slave);
+    std::vector<char> requestSlave(std::string uri, Slave &slave);
     void processSlave(MasterRequest &request);
     void requestAllSlaves(MasterRequest &request);
+    void requestSchema();
     void *mg_callback(mg_event event, mg_connection *conn);
+    void parse(std::string query_st, ::query::QueryDescription &query_description);
 
 
     int port;
@@ -117,4 +123,5 @@ private:
     bool is_timing;
     std::ofstream timing_of;
     std::vector<Slave> slaves;
+    std::unique_ptr<nanocube::Schema> schema;
 };
