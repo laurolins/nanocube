@@ -35,7 +35,9 @@ Master.hh \
     NanoCubeSchema.hh \
     mongoose.h \
     maps.hh \
-    geometry.hh
+    geometry.hh \
+    Query.hh \
+    QueryParser.hh
 
 SOURCES =                    \
 Master.cc                    \
@@ -47,7 +49,9 @@ ncmaster.cc \
     NanoCubeSchema.cc \
     mongoose.c \
     maps.cc \
-    geometry.cc
+    geometry.cc \
+    Query.cc \
+    QueryParser.cc
 
 # stree_serve.cc
 # QuadTreeSerialization.cc     \
