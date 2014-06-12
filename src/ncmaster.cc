@@ -14,14 +14,14 @@ int main(int argc, char **argv)
 {
 
     //Read servers file
-//    if(argc <= 1)
-//    {
-//        std::cout << "Usage: ./ncmaster [file with servers]\n" << std::endl;
-//        return 1;
-//    }
+   if(argc <= 1)
+   {
+       std::cout << "Usage: ./ncmaster [file with servers]\n" << std::endl;
+       return 1;
+   }
 
     std::vector<Slave> slaves;
-    /*
+    
     std::ifstream file;
     file.open(argv[1]);
     if(file.is_open())
@@ -44,10 +44,7 @@ int main(int argc, char **argv)
     {
         std::cout << "Unable to open file\n"; 
     }
-    */
-    slaves.push_back({"127.0.0.1", 29513});
-    slaves.push_back({"127.0.0.1", 29514});
-    slaves.push_back({"127.0.0.1", 29515});
+    
 
 
 

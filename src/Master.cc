@@ -337,12 +337,10 @@ void Master::requestAllSlaves(MasterRequest &request)
 
         if(request.uri_original == MasterRequest::BIN_QUERY)
         {
-            std::cerr << "BIN_QUERY query!!" << std::endl;
             // request.respondOctetStream(aggregatedVector);
         }
         else if(request.uri_original == MasterRequest::QUERY)
         {
-            std::cerr << "QUERY query!!" << std::endl;
 
             //Convert vector to JSON and respond.
             dumpfile::DumpFileDescription dummydump;
@@ -358,7 +356,6 @@ void Master::requestAllSlaves(MasterRequest &request)
         }
         else if(request.uri_original == MasterRequest::TILE)
         {
-            std::cerr << "TILE query!!" << std::endl;
             using Edge  = ::vector::Edge;
             using Value = ::vector::Value;
             using INode = ::vector::InternalNode;
