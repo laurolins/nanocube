@@ -12,22 +12,82 @@
 
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
-#include <boost/serialization/vector.hpp>
+// #include <boost/serialization/vector.hpp>
 #include <boost/asio.hpp>
 
 #include "mongoose.h"
 
 #include "Master.hh"
 #include "vector.hh"
+#include "NanoCubeQueryResult.hh"
+#include "NanoCubeSchema.hh"
+#include "DumpFile.hh"
+#include "maps.hh"
 
 
 //-------------------------------------------------------------------------
 // Master Request Impl.
 //-------------------------------------------------------------------------
 
-MasterRequest::MasterRequest(mg_connection *conn, const std::vector<std::string> &params):
+MasterRequest::MasterRequest(mg_connection *conn, const std::vector<std::string> &params, std::string uri):
     conn(conn), params(params), response_size(0)
-{}
+{
+
+    // std::string query_st = "src=[qaddr(0,0,2),qaddr(0,0,2)]/@dst=qaddr(1,0,1)+1";
+    //std::string query_st = ss.str();
+
+    // log
+    // std::cout << query_st << std::endl;
+
+//    ::query::QueryDescription query_description;
+//    try {
+//        this->parse(query_st, nanocube.schema, query_description);
+//    }
+//    catch (::query::parser::QueryParserException &e) {
+//        request.respondJson(e.what());
+//        return;
+//    }
+
+
+    if(params[1].compare("schema")==0){
+        uri_original = SCHEMA;
+        uri_translated = SCHEMA;
+
+        uri_stroriginal   = uri;
+        uri_strtranslated = uri;
+    }
+    else if(params[1].compare("tile")==0){
+        uri_original = TILE;
+        uri_translated = BIN_QUERY;
+
+        uri_stroriginal = uri;
+        uri_strtranslated = uri;
+        uri_strtranslated.replace(1,4, "binquery");
+    }
+    else if(params[1].compare("tquery")==0){
+        uri_original = TQUERY;
+        uri_translated = TQUERY;
+
+        uri_stroriginal = uri;
+        uri_strtranslated = uri;
+    }
+    else if(params[1].compare("query")==0){
+        uri_original = QUERY;
+        uri_translated = BIN_QUERY;
+
+        uri_stroriginal = uri;
+        uri_strtranslated = uri;
+        uri_strtranslated.replace(1,5, "binquery");
+    }
+    else if(params[1].compare("binquery")==0){
+        uri_original = BIN_QUERY;
+        uri_translated = BIN_QUERY;
+
+        uri_stroriginal = uri;
+        uri_strtranslated = uri;
+        uri_strtranslated.replace(1,5, "binquery");
+    }
+}
 
 
 static std::string _content_type[] {
@@ -85,30 +145,6 @@ void MasterRequest::respondOctetStream(const void *ptr, int size)
     //std::cout << "===end MasterRequest::respondOctetStream===" << std::endl;
 }
 
-void MasterRequest::printInfo()
-{
-    std::cout << "Request info:" << std::endl;
-    const struct mg_request_info *request_info = mg_get_request_info(conn);
-    std::cout << request_info->request_method << std::endl;
-    std::cout << request_info->uri << std::endl;
-    std::cout << request_info->http_version << std::endl;
-    std::cout << request_info->query_string << std::endl;
-    //std::cout << request_info->post_data << std::endl;
-    std::cout << request_info->remote_user << std::endl;
-    //std::cout << request_info->log_message << std::endl;
-    std::cout << request_info->remote_ip << std::endl;
-    std::cout << request_info->remote_port << std::endl;
-    //std::cout << request_info->post_data_len << std::endl;
-    //std::cout << request_info->status_code << std::endl;
-    std::cout << request_info->is_ssl << std::endl;
-    std::cout << request_info->num_headers << std::endl;
-}
-
-char* MasterRequest::getURI()
-{
-    const struct mg_request_info *request_info = mg_get_request_info(conn);
-    return request_info->uri;
-}
 
 const char* MasterRequest::getHeader(char* headername)
 {
@@ -134,6 +170,23 @@ Slave::Slave(std::string address, int port):
     port(port)
 {}
 
+/*
+void Slave::setResponse(std::string res)
+{
+    response = res;
+
+    //Parse response
+    int pos0 = response.find("Content-Type");
+    int pos1 = response.find("\r\n", pos0);
+    content_type = response.substr(pos0+14, pos1-pos0-14);
+
+    pos0 = response.find("Content-Length");
+    pos1 = response.find("\r\n", pos0);
+    content_length = std::stoi(response.substr(pos0+16, pos1-pos0-16));
+
+    content = response.substr(response.length()-content_length, content_length);
+}
+*/
 
 //-------------------------------------------------------------------------
 // Master
@@ -153,13 +206,12 @@ void Master::processSlave(MasterRequest &request)
     //Server: Master
 }
 
-void Master::requestSlave(MasterRequest &request, Slave &slave)
+std::vector<char> Master::requestSlave(MasterRequest &request, Slave &slave)
 {
     //Client: Master
     //Server: Slave
 
     
-
     std::cout << "Connecting to slave..." << std::endl;
 
     boost::asio::io_service io_service;
@@ -169,22 +221,15 @@ void Master::requestSlave(MasterRequest &request, Slave &slave)
     socket.connect(endpoint);
 
     char buffer[1024];
-    std::string uri(request.getURI());
-    // if(uri.substr(1,5).compare("query") == 0)
-    // {
-    //     std::cout << uri << std::endl;
-    //     std::cout << "Replacing query for binquery" << std::endl;
-    //     uri.replace(1,5, "binquery");
-    //     std::cout << uri << std::endl;
-    // }
+    std::string uri = request.uri_strtranslated;
     sprintf(buffer, "GET %s HTTP/1.1\n\n", uri.c_str());
     
     boost::asio::write(socket, boost::asio::buffer(buffer));
 
-    std::string response;
+    std::vector<char> response;
     for (;;)
     {
-        char buf[128];
+        char buf[1024];
         boost::system::error_code error;
 
         size_t len = socket.read_some(boost::asio::buffer(buf), error);
@@ -201,53 +246,48 @@ void Master::requestSlave(MasterRequest &request, Slave &slave)
     socket.close();
     std::cout << "Finished connection..." << std::endl;
 
+    std::string aux(response.begin(), response.end());
+    auto pos = aux.find("\r\n\r\n");
 
-    //Parse response
-    int pos0 = response.find("Content-Type");
-    int pos1 = response.find("\r\n", pos0);
-    std::string type = response.substr(pos0+14, pos1-pos0-14);
+    return std::vector<char>(aux.begin()+pos+4,aux.end());
 
-    pos0 = response.find("Content-Length");
-    pos1 = response.find("\r\n", pos0);
-    int length = std::stoi(response.substr(pos0+16, pos1-pos0-16));
+//    int pos0 = response.find("Content-Type");
+//    int pos1 = response.find("\r\n", pos0);
+//    content_type = response.substr(pos0+14, pos1-pos0-14);
 
-    std::string content = response.substr(response.length()-length, length);
+//    pos0 = response.find("Content-Length");
+//    pos1 = response.find("\r\n", pos0);
+//    content_length = std::stoi(response.substr(pos0+16, pos1-pos0-16));
 
-    // if(uri.substr(1,8).compare("binquery") == 0)
+//    content = response.substr(response.length()-content_length, content_length);
+
+//    auto pos = response.begin();
+//    bool new_line = false;
+//    while (pos != response.end()) {
+//        if (new_line && *pos == '\n') {
+//            ++pos;
+//            break;
+//        }
+//        else if (*pos == '\n') {
+//            new_line = true;
+//        }
+//        else {
+//            new_line = false;
+//        }
+//        ++pos;
+//    }
+
+    //slave.setResponse(response);
+    //return std::vector<char>(pos,response.end());
+
+    // if(type.compare("application/json") == 0)
     // {
-    //     //std::stringstream is(content);
-    //     //std::stringstream os;
-    //     //is << content;
-    //     //auto result = vector::deserialize(is);
-    //     //std::cout << result + result << std::endl;
-
-    //     //std::cout << content << std::endl;
-    //     //vector::serialize(content, os);
-    //     //std::cout << vector::deserialize(is) << std::endl;
-    //     //std::cout << vector::deserialize(os) << std::endl;
-
-    //     //std::cout << os.str() << std::endl;
-
+    //     request.respondJson(content);
+    // }
+    // else
+    // {
     //     request.respondOctetStream(content.c_str(), content.size()); 
-    // }
-    // else{
-    //     if(type.compare("application/json") == 0)
-    //     {
-    //         request.respondJson(content);
-    //     }
-    //     else
-    //     {
-    //         request.respondOctetStream(content.c_str(), content.size()); 
-    //     } 
-    // }
-    if(type.compare("application/json") == 0)
-    {
-        request.respondJson(content);
-    }
-    else
-    {
-        request.respondOctetStream(content.c_str(), content.size()); 
-    } 
+    // } 
 
 
 }
@@ -258,10 +298,110 @@ void Master::requestAllSlaves(MasterRequest &request)
     try
     {
         int i=0;
+        vector::Vector aggregatedVector;
+        bool isAggregating = false;
         for(i = 0; i<slaves.size(); i++)
         {
-            requestSlave(request, slaves[i]);
+            auto content = requestSlave(request, slaves[i]);
+
+            if(request.uri_translated == MasterRequest::SCHEMA)
+            {
+                auto schema_st = std::string(content.begin(), content.end());
+                std::cerr << schema_st << std::endl;
+                request.respondJson(schema_st);
+                break;
+            }
+            else if(request.uri_translated == MasterRequest::TQUERY)
+            {
+                request.respondJson(std::string(content.begin(), content.end()));
+                break;
+            }
+            else
+            {
+                //content is binary. Create vector and apply operations.
+                std::istringstream is(std::string(content.begin(), content.end()));
+                auto result = vector::deserialize(is);
+
+                //First time
+                if(isAggregating == false)
+                {
+                    aggregatedVector = result;
+                    isAggregating = true;
+                }
+                else
+                {
+                    aggregatedVector = aggregatedVector + result;
+                }
+            }
         }
+
+        if(request.uri_original == MasterRequest::BIN_QUERY)
+        {
+            std::cerr << "BIN_QUERY query!!" << std::endl;
+            // request.respondOctetStream(aggregatedVector);
+        }
+        else if(request.uri_original == MasterRequest::QUERY)
+        {
+            std::cerr << "QUERY query!!" << std::endl;
+
+            //Convert vector to JSON and respond.
+            dumpfile::DumpFileDescription dummydump;
+            nanocube::Schema dummyschema(dummydump);
+            nanocube::QueryResult queryresult(aggregatedVector, dummyschema);
+
+            std::ostringstream os;
+            queryresult.json(os);
+
+            //std::cout << os.str() << std::endl;
+
+            request.respondJson(os.str());
+        }
+        else if(request.uri_original == MasterRequest::TILE)
+        {
+            std::cerr << "TILE query!!" << std::endl;
+            using Edge  = ::vector::Edge;
+            using Value = ::vector::Value;
+            using INode = ::vector::InternalNode;
+
+            uint32_t written_bytes = 0;
+            std::ostringstream os;
+            if (aggregatedVector.root) {
+                INode *inode = aggregatedVector.root->asInternalNode();
+                for (auto it: inode->children) {
+                    Edge &e = it.second;
+
+#if 0
+                    maps::Tile subtile(e.label);
+                    maps::Tile relative_tile = tile.relativeTile(subtile);
+
+                    Value value = e.node->asLeafNode()->value;
+                    uint8_t ii = relative_tile.getY();
+                    uint8_t jj = relative_tile.getX();
+#else
+
+                    maps::Tile subtile(e.label);
+
+                    Value value = e.node->asLeafNode()->value;
+                    uint8_t ii = subtile.getY() - ((subtile.getY() >> 7) << 7);
+                    uint8_t jj = subtile.getX() - ((subtile.getX() >> 7) << 7);
+
+                    std::cerr << "pixel: " << ii << ", " << jj << std::endl;
+#endif
+
+
+                    // i, j, value
+                    os.write((char*) &ii, sizeof(uint8_t));
+                    os.write((char*) &jj, sizeof(uint8_t));
+                    os.write((char*) &value, sizeof(Value));
+
+                    written_bytes += sizeof(uint8_t) + sizeof(uint8_t) + sizeof(Value);
+
+                } // transfering data to main matrix
+            }
+
+            request.respondOctetStream(os.str().c_str(), written_bytes);
+        }
+
     }
     catch (std::exception& e)
     {
@@ -467,7 +607,7 @@ void* Master::mg_callback(mg_event event, mg_connection *conn)
         std::vector<std::string> tokens;
         boost::split(tokens, uri, boost::is_any_of("/"));
 
-        MasterRequest request(conn, tokens);
+        MasterRequest request(conn, tokens, uri);
 
         if (tokens.size() == 0) {
             // std::cout << "Request URI: " << uri << std::endl;

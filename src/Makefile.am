@@ -54,6 +54,14 @@ Master.cc             \
 Master.hh             \
 vector.cc             \
 vector.hh             \
+NanoCubeQueryResult.cc\
+NanoCubeQueryResult.hh\
+NanoCubeSchema.cc     \
+NanoCubeSchema.hh     \
+DumpFile.cc           \
+DumpFile.hh           \
+json.cc               \
+json.hh               \
 mongoose.c            \
 mongoose.h            
 

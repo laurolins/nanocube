@@ -13,9 +13,9 @@
 #include <stdexcept>
 #include <functional>
 
-#include <boost/mpi/environment.hpp>
-#include <boost/mpi/communicator.hpp>
-#include <boost/mpi/nonblocking.hpp>
+// #include <boost/mpi/environment.hpp>
+// #include <boost/mpi/communicator.hpp>
+// #include <boost/mpi/nonblocking.hpp>
 
 #include "mongoose.h"
 
@@ -26,16 +26,13 @@
 struct MasterRequest {
 
     enum Type { JSON_OBJECT=0, OCTET_STREAM=1};
+    enum Uri {SCHEMA=0, QUERY=1, BIN_QUERY=2, TILE=3, TQUERY=4};
 
-    MasterRequest(mg_connection *conn, const std::vector<std::string> &params);
+    MasterRequest(mg_connection *conn, const std::vector<std::string> &params, std::string uri);
 
     void respondJson(std::string msg);
 
     void respondOctetStream(const void *ptr, int size);
-
-    void printInfo();
-
-    char* getURI();
 
     const char* getHeader(char* headername);
 
@@ -48,6 +45,12 @@ public:
     const std::vector<std::string> &params;
 
     int response_size;
+
+    Uri uri_translated; //uri from the master to the slaves
+    Uri uri_original; //uri from the browser to the master
+
+    std::string uri_strtranslated;
+    std::string uri_stroriginal;
 
 };
 
@@ -74,8 +77,15 @@ struct Slave {
 public:
     Slave(std::string address, int port);
 
+    //void setResponse(std::string response);
+
     std::string address;
     int port;
+    std::string content_type;
+    int content_length;
+
+private:
+    std::string response;
 };
 
 
@@ -93,7 +103,7 @@ struct Master {
     bool isTiming() const;
     const std::string currentDateTime();
 
-    void requestSlave(MasterRequest &request, Slave &slave);
+    std::vector<char> requestSlave(MasterRequest &request, Slave &slave);
     void processSlave(MasterRequest &request);
     void requestAllSlaves(MasterRequest &request);
     void *mg_callback(mg_event event, mg_connection *conn);
