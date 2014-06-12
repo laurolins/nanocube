@@ -206,7 +206,7 @@ public: // Public Methods
     void serveTimeQuery (Request &request, bool json, bool compression);
     void serveTile      (Request &request);
     void serveStats     (Request &request);
-    void serveSchema    (Request &request);
+    void serveSchema    (Request &request, bool json);
     void serveSetValname(Request &request);
     void serveTBin      (Request &request);
     void serveSummary   (Request &request);
@@ -277,19 +277,22 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     auto binary_tquery_comp_handler = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, binary, compression);
 
     auto stats_handler         = std::bind(&NanoCubeServer::serveStats, this, std::placeholders::_1);
-    auto schema_handler        = std::bind(&NanoCubeServer::serveSchema, this, std::placeholders::_1);
 
-    auto valname_handler         = std::bind(&NanoCubeServer::serveSetValname, this, std::placeholders::_1);
+    auto binary_schema_handler = std::bind(&NanoCubeServer::serveSchema,     this, std::placeholders::_1, binary);
+    
+    auto schema_handler        = std::bind(&NanoCubeServer::serveSchema,     this, std::placeholders::_1, json);
 
-    auto version_handler       = std::bind(&NanoCubeServer::serveVersion, this, std::placeholders::_1);
+    auto valname_handler       = std::bind(&NanoCubeServer::serveSetValname, this, std::placeholders::_1);
+
+    auto version_handler       = std::bind(&NanoCubeServer::serveVersion,    this, std::placeholders::_1);
 
     auto tbin_handler          = std::bind(&NanoCubeServer::serveTBin, this, std::placeholders::_1);
 
     auto summary_handler       = std::bind(&NanoCubeServer::serveSummary, this, std::placeholders::_1);
 
-    auto graphviz_handler       = std::bind(&NanoCubeServer::serveGraphViz, this, std::placeholders::_1);
+    auto graphviz_handler      = std::bind(&NanoCubeServer::serveGraphViz, this, std::placeholders::_1);
 
-    auto timing_handler       = std::bind(&NanoCubeServer::serveTiming, this, std::placeholders::_1);
+    auto timing_handler        = std::bind(&NanoCubeServer::serveTiming, this, std::placeholders::_1);
 
     auto tile_handler         = std::bind(&NanoCubeServer::serveTile, this, std::placeholders::_1);
 
@@ -308,6 +311,7 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
 
     server.registerHandler("stats",     stats_handler);
     server.registerHandler("schema",    schema_handler);
+    server.registerHandler("binschema", binary_schema_handler);
     server.registerHandler("valname",   valname_handler);
     server.registerHandler("tbin",      tbin_handler);
     server.registerHandler("summary",   summary_handler);
@@ -825,46 +829,53 @@ void NanoCubeServer::serveSetValname(Request &request)
     }
 }
 
-void NanoCubeServer::serveSchema(Request &request)
+void NanoCubeServer::serveSchema(Request &request, bool json)
 {
     auto &dump_file = nanocube.schema.dump_file_description;
     
-    
     std::stringstream ss;
-    json::JsonWriter writer(ss);
+    if (json) {
     
-    // everything is a big dictionary
-    {
-        json::ContextGuard g = writer.dict();
+        json::JsonWriter writer(ss);
+        
+        // everything is a big dictionary
         {
-            json::ContextGuard g2 = writer.list("fields");
-            for (auto f: dump_file.fields) {
-                json::ContextGuard g3 = writer.dict()
-                .dict_entry("name", f->name)
-                .dict_entry("type", f->field_type.name);
-                {
-                    json::ContextGuard g4 = writer.dict("valnames");
-                    for (auto it: f->map_value_to_valname) {
-                        writer.dict_entry(it.second, it.first);
+            json::ContextGuard g = writer.dict();
+            {
+                json::ContextGuard g2 = writer.list("fields");
+                for (auto f: dump_file.fields) {
+                    json::ContextGuard g3 = writer.dict()
+                    .dict_entry("name", f->name)
+                    .dict_entry("type", f->field_type.name);
+                    {
+                        json::ContextGuard g4 = writer.dict("valnames");
+                        for (auto it: f->map_value_to_valname) {
+                            writer.dict_entry(it.second, it.first);
+                        }
                     }
                 }
             }
-        }
-        {
-            json::ContextGuard g2 = writer.list("metadata");
-            for (auto it: dump_file.metadata) {
-                auto key   = it.first;
-                auto value = it.second;
-                json::ContextGuard g3 = writer.dict()
-                .dict_entry("key", key)
-                .dict_entry("value", value);
-            }
             {
-                json::ContextGuard g3 = writer.dict()
-                .dict_entry("key", "name")
-                .dict_entry("value", dump_file.name);
+                json::ContextGuard g2 = writer.list("metadata");
+                for (auto it: dump_file.metadata) {
+                    auto key   = it.first;
+                    auto value = it.second;
+                    json::ContextGuard g3 = writer.dict()
+                    .dict_entry("key", key)
+                    .dict_entry("value", value);
+                }
+                {
+                    json::ContextGuard g3 = writer.dict()
+                    .dict_entry("key", "name")
+                    .dict_entry("value", dump_file.name);
+                }
             }
         }
+        request.respondJson(ss.str());
+    }
+    else {
+        ss << nanocube.schema.dump_file_description;
+        request.respondText(ss.str());
     }
     
     //    {
@@ -881,7 +892,6 @@ void NanoCubeServer::serveSchema(Request &request)
     // nanocube.mountReport(report);
     //    std::stringstream ss;
     //    ss << nanocube.schema.dump_file_description;
-    request.respondJson(ss.str());
 }
 
 

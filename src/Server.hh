@@ -27,6 +27,8 @@ struct Request {
 
     void respondJson(std::string msg_content);
 
+    void respondText(std::string msg_content);
+
     void respondOctetStream(const void *ptr, int size);
 
 private:

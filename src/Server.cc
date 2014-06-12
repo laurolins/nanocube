@@ -28,22 +28,40 @@ Request::Request(mg_connection *conn, const std::vector<std::string> &params):
 
 static std::string _content_type[] {
     std::string("application/json")         /* 0 */,
-    std::string("application/octet-stream") /* 1 */
+    std::string("application/octet-stream") /* 1 */,
+    std::string("text/plain")         /* 2 */
 };
 
-void Request::respondJson(std::string msg_content)
+void Request::respondText(std::string msg_content)
 {
     const std::string sep = "\r\n";
 
     std::stringstream ss;
     ss << "HTTP/1.1 200 OK"                << sep
-       << "Content-Type: application/json" << sep
+       << "Content-Type: text/plain"       << sep
        << "Access-Control-Allow-Origin: *" << sep
        << "Content-Length: %d"             << sep << sep
        << "%s";
 
-    // response_size = 106 + (int) msg_content.size();
-    response_size = 106 + (int) msg_content.size(); // banchmark data transfer
+    // response_size = 106 + (int) msg_content.size(); // banchmark data transfer
+    response_size = (int) msg_content.size();
+    // check how a binary stream would work here
+    mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
+}
+
+void Request::respondJson(std::string msg_content)
+{
+    const std::string sep = "\r\n";
+    
+    std::stringstream ss;
+    ss << "HTTP/1.1 200 OK"             << sep
+    << "Content-Type: application/json" << sep
+    << "Access-Control-Allow-Origin: *" << sep
+    << "Content-Length: %d"             << sep << sep
+    << "%s";
+    
+    // response_size = 106 + (int) msg_content.size(); // banchmark data transfer
+    response_size = (int) msg_content.size();
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
 }
@@ -58,7 +76,7 @@ void Request::respondOctetStream(const void *ptr, int size)
        << "Access-Control-Allow-Origin: *"         << sep
        << "Content-Length: %d"                     << sep << sep;
 
-    response_size = 114;
+    response_size = 0; // 114;
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), size);
 
