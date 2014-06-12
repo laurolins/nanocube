@@ -640,43 +640,42 @@ void Master::parse(std::string              query_st,
 
     //std::cout << ::query::parser::Print(parser) << std::endl;
     
-    auto& schema = *this->schema.get();
-
-    std::cout << schema.dump_file_description << std::endl;
+    // std::cout << schema_dump_file_descriptions << std::endl;
 
     //return;
-    std::cout << parser.dimensions.size() << std::endl;
+    // std::cout << parser.dimensions.size() << std::endl;
 
+    auto &schema = *this->schema.get();
+    
     return;
 
     for (::query::parser::Dimension *dimension: parser.dimensions) {
         try {
 
-            std::cout << dimension->name << std::endl;
-            std::cout << dimension->target << std::endl;
-
-            std::cout << "2" << std::endl;
+            // std::cout << dimension->name << std::endl;
+            // std::cout << dimension->target << std::endl;
+            // std::cout << "2" << std::endl;
 
             int index = schema.getDimensionIndex(dimension->name);
             // std::cout << "Index of dimension " << dimension->name << " is " << index << std::endl;
 
-            std::cout << "3" << std::endl;
+            // std::cout << "3" << std::endl;
 
             bool anchored = dimension->anchored;
 
-            std::cout << "4" << std::endl;
+            // std::cout << "4" << std::endl;
 
             query_description.setAnchor(index, anchored);
 
-            std::cout << "5" << std::endl;
+            // std::cout << "5" << std::endl;
 
             ::query::parser::TargetExpression *target = dimension->target;
 
-            std::cout << "6" << std::endl;
+            // std::cout << "6" << std::endl;
 
             target->updateQueryDescription(index, query_description);
 
-            std::cout << "7" << std::endl;
+            // std::cout << "7" << std::endl;
 
             RawAddress replacement = 0ULL;
             { // replace raw addresses ~0ULL;
@@ -687,11 +686,11 @@ void Master::parse(std::string              query_st,
                 }
             }
 
-            std::cout << "8" << std::endl;
+            // std::cout << "8" << std::endl;
             
             query_description.targets[index]->replace(~0ULL, replacement);
 
-            std::cout << "9" << std::endl;
+            // std::cout << "9" << std::endl;
             
 
         }
@@ -701,7 +700,7 @@ void Master::parse(std::string              query_st,
         }
     }
 
-    std::cout << "10" << std::endl;
+    // std::cout << "10" << std::endl;
 }
 
 void Master::requestSchema()
@@ -710,12 +709,17 @@ void Master::requestSchema()
 
     // read input file description
     std::istringstream iss(std::string(strschema.begin(), strschema.end()));
-    dumpfile::DumpFileDescription input_file_description;
-    iss >> input_file_description;
+    iss >> schema_dump_file_descriptions;
     
     // create nanocube_schema from input_file_description
-    schema.reset(new nanocube::Schema(input_file_description));
-
+    schema.reset(new nanocube::Schema(schema_dump_file_descriptions));
+    
+    
+    
+    std::cout << "--------- schema -----------" << std::endl;
+    std::cout << schema.get()->dump_file_description << std::endl;
+    std::cout << "----------------------------" << std::endl;
+    
 }
 
 void* Master::mg_callback(mg_event event, mg_connection *conn)

@@ -123,5 +123,7 @@ private:
     bool is_timing;
     std::ofstream timing_of;
     std::vector<Slave> slaves;
+    
+    dumpfile::DumpFileDescription     schema_dump_file_descriptions;
     std::unique_ptr<nanocube::Schema> schema;
 };

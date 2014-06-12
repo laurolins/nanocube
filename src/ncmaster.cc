@@ -30,7 +30,7 @@ int main(int argc, char **argv)
         while ( std::getline (file,line) )
         {
             std::cout << "Node: " << line << std::endl;
-            int sep = line.find(":");
+            auto sep = line.find(":");
             std::string address = line.substr(0, sep);
             int port = atoi(line.substr(sep+1).c_str());
 
@@ -56,7 +56,7 @@ int main(int argc, char **argv)
         tentative++;
         try {
             std::cout << "Starting MasterServer on port " << master.port << std::endl;
-            master.start(100);
+            master.start(1);
         }
         catch (MasterException &e) {
             std::cout << e.what() << std::endl;
