@@ -63,7 +63,13 @@ DumpFile.hh           \
 json.cc               \
 json.hh               \
 mongoose.c            \
-mongoose.h            
+mongoose.h            \
+maps.cc               \
+maps.hh               \
+geometry.cc           \
+geometry.hh
+
+
 
 nc_SOURCES = \
 cache.cc                  \
