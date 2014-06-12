@@ -371,10 +371,11 @@ void Master::requestAllSlaves(MasterRequest &request)
         }
         else if(request.uri_original == MasterRequest::TILE)
         {
+
+
+#if 1
             //
             ::query::QueryDescription query_description;
-
-            std::cout << "1" << std::endl;
 
             try {
                 std::cout << request.query_params << std::endl;
@@ -384,8 +385,7 @@ void Master::requestAllSlaves(MasterRequest &request)
                 request.respondJson(e.what());
                 return;
             }
-
-            std::cout << "2" << std::endl;
+            std::cout << query_description.getFirstAnchoredTarget() << std::endl;
 
             ::maps::Tile tile;
             auto *target = query_description.getFirstAnchoredTarget();
@@ -396,18 +396,17 @@ void Master::requestAllSlaves(MasterRequest &request)
                     tile = maps::Tile(raw_address);
                 }
                 else {
-                    request.respondJson("problem");
+                    request.respondJson("problem1");
                     return;
                 }
             }
             else {
-                request.respondJson("problem");
+                request.respondJson("problem2");
                 return;
             }
 
-            std::cout << "3" << std::endl;
-
             //
+#endif
 
 
             using Edge  = ::vector::Edge;
@@ -643,18 +642,14 @@ void Master::parse(std::string              query_st,
     // std::cout << schema_dump_file_descriptions << std::endl;
 
     //return;
-    // std::cout << parser.dimensions.size() << std::endl;
 
     auto &schema = *this->schema.get();
-    
-    return;
 
     for (::query::parser::Dimension *dimension: parser.dimensions) {
         try {
 
             // std::cout << dimension->name << std::endl;
             // std::cout << dimension->target << std::endl;
-            // std::cout << "2" << std::endl;
 
             int index = schema.getDimensionIndex(dimension->name);
             // std::cout << "Index of dimension " << dimension->name << " is " << index << std::endl;
@@ -685,12 +680,8 @@ void Master::parse(std::string              query_st,
                     replacement = (1ULL << (field->getNumBytes() * 8)) - 1;
                 }
             }
-
-            // std::cout << "8" << std::endl;
             
             query_description.targets[index]->replace(~0ULL, replacement);
-
-            // std::cout << "9" << std::endl;
             
 
         }
