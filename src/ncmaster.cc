@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include "mongoose.h"
 
@@ -14,11 +15,11 @@ int main(int argc, char **argv)
 {
 
     //Read servers file
-   if(argc <= 1)
-   {
+    if(argc <= 1)
+    {
        std::cout << "Usage: ./ncmaster [file with servers]\n" << std::endl;
        return 1;
-   }
+    }
 
     std::vector<Slave> slaves;
     
@@ -42,7 +43,8 @@ int main(int argc, char **argv)
     }
     else
     {
-        std::cout << "Unable to open file\n"; 
+        std::cout << "Unable to open file\n";
+        return 0;
     }
     
 
