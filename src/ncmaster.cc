@@ -46,9 +46,6 @@ int main(int argc, char **argv)
     }
     
 
-
-
-
     Master master(slaves);
 
     int tentative=0;
@@ -56,7 +53,7 @@ int main(int argc, char **argv)
         tentative++;
         try {
             std::cout << "Starting MasterServer on port " << master.port << std::endl;
-            master.start(1);
+            master.start(20);
         }
         catch (MasterException &e) {
             std::cout << e.what() << std::endl;

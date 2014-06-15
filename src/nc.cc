@@ -783,7 +783,7 @@ void NanoCubeServer::serveTiming(Request &request)
 void NanoCubeServer::serveVersion(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-    request.respondJson(VERSION);
+    request.respondJson(NANOCUBE_VERSION);
 }
 
 void NanoCubeServer::serveSetValname(Request &request)
