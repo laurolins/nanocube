@@ -20,11 +20,14 @@ nc_q25_c1_c1_c1_u2_u4 \
 nc_q25_c1_u2_u8       \
 nc_q17_c1_c1_c1_u2_u4 \
 nc_q25_c1_c2_u2_u4    \
-ncmaster
+ncmaster              \
+ncdistribute          \
+ncdeamon
 
 AM_CPPFLAGS = -I$(top_srcdir)/src
 AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS)
-AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_MPI_LDFLAGS)
+AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS)
+#AM_LDFLAGS += $(BOOST_MPI_LDFLAGS)
 LIBS += $(BOOST_THREAD_LIBS)
 #LIBS += $(BOOST_MPI_LIBS)
 #LIBS += $(BOOST_SERIALIZATION_LIBS)
@@ -40,6 +43,20 @@ DumpFile.cc           \
 DumpFile.hh           \
 MercatorProjection.cc \
 MercatorProjection.hh
+
+ncdistribute_SOURCES =\
+ncdistribute.cc       \
+NanoCubeSchema.cc     \
+NanoCubeSchema.hh     \
+DumpFile.cc           \
+DumpFile.hh         
+
+ncdeamon_SOURCES =    \
+ncdeamon.cc           \
+NanoCubeSchema.cc     \
+NanoCubeSchema.hh     \
+DumpFile.cc           \
+DumpFile.hh
 
 ncserve_SOURCES =     \
 ncserve.cc            \
@@ -75,7 +92,7 @@ geometry.hh
 
 
 
-nc_SOURCES = \
+nc_SOURCES =              \
 cache.cc                  \
 cache.hh                  \
 Common.cc                 \
