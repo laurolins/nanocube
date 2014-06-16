@@ -528,25 +528,21 @@ void NanoCubeServer::insert_from_tcp()
 
     boost::asio::ip::tcp::socket socket(io_service);
 
-    std::vector<char> response;
-
-    std::cout << "before acceptor.accept(socket);" << std::endl;
-
-    acceptor.accept(socket);
-    
     std::cout << "tcp insert-port opened on " <<  port << std::endl;
-
+    acceptor.accept(socket);
 
     bool done = false;
 
-    std::stringstream ss;
     
     std::size_t count = 0;
 
     auto record_size = nanocube.schema.dump_file_description.record_size;
+    std::size_t record[record_size];
     
     std::size_t bytes_on_stream = 0;
 
+    std::stringstream ss;
+    
     char buf[1024];
     while (!done)
     {
@@ -560,46 +556,58 @@ void NanoCubeServer::insert_from_tcp()
             throw boost::system::system_error(error); // Some other error.
 
         ss.write(buf, len);
+        // ss.flush();
         bytes_on_stream += len;
 
-        std::cout << "there are " << bytes_on_stream << " bytes on the stream" << std::endl;
+//        while (bytes_on_stream > record_size) {
+//            ss.read(&record[0], record_size);
+//            
+//            for (int i=0;i<record_size;++i) {
+//                unsigned char value = record[i];
+//                std::cout << " " << std::hex << (int) value << std::dec;
+//            }
+//            std::cout << std::endl;
+//            
+//            nanocube.schema.dump_file_description.writeRecordTextualDescription(std::cout, &record[0], record_size);
+//            std::cout << std::endl;
+//            bytes_on_stream -= record_size;
+//        }
 
-        unsigned char ch;
-        int i=0;
-        while (bytes_on_stream > 0) {
-            ch = buf[i];
-            // ss >> ch;
-            std::cout << " " << std::hex << (int) ch;
-            --bytes_on_stream;
-            ++i;
-        }
-        std::cout << std::endl;
         
-        // auto num_records_to_add = bytes_on_stream / record_size;
-        // if (num_records_to_add > 0) {
-        //     boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
-        //     for (std::size_t k=0;k<num_records_to_add;++k) {
-        //         bool ok = nanocube.add(ss);
-        //         if (!ok) {
-        //             done = true;
-        //             break;
-        //         }
-
-        //         ++count;
-                
-        //         // make sure report frequency is a multiple of batch size
-        //         if (count % options.report_frequency.getValue() == 0) {
-        //             std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
-        //         }
-                
-        //         bytes_on_stream -= record_size;
-        //     }
-        // }
+//        std::cout << "there are " << bytes_on_stream << " bytes on the stream" << std::endl;
+//        unsigned char ch;
+//        int i=0;
+//        while (bytes_on_stream > 0) {
+//            // ch = buf[i];
+//            ss.read((char*) &ch,1);
+//            std::cout << " " << std::hex << (int) ch << std::dec;
+//            --bytes_on_stream;
+//            ++i;
+//        }
+//        std::cout << std::endl;
+        
+        auto num_records_to_add = bytes_on_stream / record_size;
+        if (num_records_to_add > 0) {
+            boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
+            for (std::size_t k=0;k<num_records_to_add;++k) {
+                bool ok = nanocube.add(ss);
+                if (!ok) {
+                    done = true;
+                    break;
+                }
+                ++count;
+                // make sure report frequency is a multiple of batch size
+                if (count % options.report_frequency.getValue() == 0) {
+                    std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+                }
+                bytes_on_stream -= record_size;
+            }
+        }
     }
 }
 
 //
-//        
+//
 //        response.insert(response.end(), buf, buf+len);
 //
 //        if (response.size() > 0) {

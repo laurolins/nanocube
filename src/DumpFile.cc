@@ -273,6 +273,34 @@ int DumpFileDescription::getNumFieldsByType(const FieldType &field_type) const {
     }
     return count;
 }
+    
+    
+    
+    
+void DumpFileDescription::writeRecordTextualDescription(std::ostream &os, char* data, int len) {
+    // assuming a binary record!
+    if (len < record_size) {
+        throw DumpFileException("Not enough bytes for a record");
+    }
+    
+    os << "{";
+    std::size_t offset = 0;
+    std::size_t value;
+    bool first = true;
+    for (auto &f: this->fields) {
+        auto num_bytes = f->getNumBytes();
+        value = 0;
+        std::copy(data + f->offset_inside_record,
+                  data + f->offset_inside_record + num_bytes,
+                  (char*) &value);
+        if (!first)
+            os << " ";
+        os << f->name << ":" << num_bytes << ":" << value;
+        first = false;
+        offset += num_bytes;
+    }
+    os << "}";
+}
 
 std::istream &operator>>(std::istream &is, DumpFileDescription &dump_file) {
 
