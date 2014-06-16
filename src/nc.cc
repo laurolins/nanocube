@@ -19,6 +19,7 @@
 #include "NanoCubeSummary.hh"
 #include "json.hh"
 
+#include "util/signal.hh"
 
 #include "util/timer.hh"
 
@@ -395,7 +396,15 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
 //        tentative++;
     try {
         std::cerr << "Starting NanoCubeServer on port " << server.port << std::endl;
-        server.start(options.no_mongoose_threads.getValue());
+        auto pid = getpid();
+        sig::Signal<> success_signal;
+        success_signal.connect([pid]() {
+            std::stringstream ss;
+            ss << "/tmp/nanocube-leaf-" << pid;
+            std::ofstream os(ss.str());
+            os.close();
+        });
+        server.start(options.no_mongoose_threads.getValue(), &success_signal);
     }
     catch (ServerException &e) {
         std::cerr << e.what() << std::endl;
@@ -409,9 +418,6 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
 
 
     insert_from_tcp_thread.join();
-
-
-
 }
 
 
@@ -438,6 +444,10 @@ void NanoCubeServer::insert_from_stdin()
         
         // std::cerr << "reading " << num_bytes_per_batch << "...";
         input_stream.read(buffer,num_bytes_per_batch);
+        
+        if (!input_stream)
+            break;
+        
         auto read_bytes = input_stream.gcount();
         // std::cerr << " " << read_bytes << " were read" << std::endl;
         
@@ -1550,14 +1560,13 @@ int main(int argc, char *argv[]) {
         NanoCubeServer nanocube_server(nanocube, options, is);
     };
     
-//    if (options.input_filename.size()) {
-//        std::ifstream is(options.input_filename);
-//        run(is);
-//    }
-//    else {
+    if (options.schema.getValue().size()) {
+        std::ifstream is(options.schema.getValue());
+        run(is);
+    }
+    else {
         run(std::cin);
-
-// }
+    }
     
     // join write thread
     return 0;

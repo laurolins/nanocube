@@ -189,7 +189,7 @@ void* __mg_callback(mg_event event, mg_connection *conn)
     return _server->mg_callback(event, conn);
 }
 
-void Server::start(int mongoose_threads) // blocks current thread
+void Server::start(int mongoose_threads, sig::Signal<>* success_signal) // blocks current thread
 {
     char p[256];
     sprintf(p,"%d",port);
@@ -212,6 +212,11 @@ void Server::start(int mongoose_threads) // blocks current thread
     // ctx = mg_start(&callback, NULL, options);
 
     std::cout << "Server on port " << port << std::endl;
+    
+    if (success_signal) {
+        success_signal->trigger();
+    }
+    
     while (!done) // this thread will be blocked
         std::this_thread::sleep_for(std::chrono::seconds(1));
 

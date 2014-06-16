@@ -13,6 +13,8 @@
 #include <stdexcept>
 #include <functional>
 
+#include "util/signal.hh"
+
 #include "mongoose.h"
 
 //-------------------------------------------------------------------------
@@ -69,7 +71,7 @@ struct Server {
 
     void registerHandler(std::string name, const RequestHandler &handler);
 
-    void start(int mongoose_threads);
+    void start(int mongoose_threads, sig::Signal<>* success_signal=nullptr);
     void stop();
     bool toggleTiming(bool b);
     bool isTiming() const;

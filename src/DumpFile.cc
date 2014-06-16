@@ -308,7 +308,7 @@ std::istream &operator>>(std::istream &is, DumpFileDescription &dump_file) {
 
     // read line
     while (1)
-    {   
+    {
         is.getline(buffer, 1000);
         std::string line(buffer);
 
