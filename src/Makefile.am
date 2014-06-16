@@ -11,25 +11,38 @@ AUTOMAKE_OPTIONS = subdir-objects
 bin_PROGRAMS =        \
 ncdmp                 \
 ncserve               \
-nc_q25_u2_u4          \
-nc_q20_q20_u2_u4      \
-nc_q25_q25_u2_u4      \
 nc_q25_c1_u2_u4       \
-nc_q25_c1_c1_u2_u4    \
-nc_q25_c1_c1_c1_u2_u4 \
-nc_q25_c1_u2_u8       \
-nc_q17_c1_c1_c1_u2_u4 \
-nc_q25_c1_c2_u2_u4    \
 ncmaster              \
 nanocube              \
-nanocube-leaf
+nanocube-leaf         \
+nanocube-distribute   \
+nanocube-deamon
+
+#
+# nc_q25_u2_u4          \
+# nc_q20_q20_u2_u4      \
+# nc_q25_q25_u2_u4      \
+# nc_q25_c1_c1_u2_u4    \
+# nc_q25_c1_c1_c1_u2_u4 \
+# nc_q25_c1_u2_u8       \
+# nc_q17_c1_c1_c1_u2_u4 \
+# nc_q25_c1_c2_u2_u4    \
+#
+
+
 
 AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/src/mongoose
 AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS) -DHAVE_SSTREAM
 AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_MPI_LDFLAGS)
 
+#AM_CPPFLAGS = -I$(top_srcdir)/src
+#AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS)
+#AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS)
+#AM_LDFLAGS += $(BOOST_MPI_LDFLAGS)
+
 LIBS += $(BOOST_THREAD_LIBS)
 LIBS += $(BOOST_ASIO_LIBS)
+
 #LIBS += $(BOOST_MPI_LIBS)
 #LIBS += $(BOOST_SERIALIZATION_LIBS)
 
@@ -51,6 +64,20 @@ DumpFile.hh           \
 MercatorProjection.cc \
 MercatorProjection.hh
 
+nanocube_distribute_SOURCES = \
+nanocube-distribute.cc        \
+NanoCubeSchema.cc      \
+NanoCubeSchema.hh      \
+DumpFile.cc            \
+DumpFile.hh         
+
+nanocube_deamon_SOURCES =    \
+nanocube-deamon.cc           \
+NanoCubeSchema.cc     \
+NanoCubeSchema.hh     \
+DumpFile.cc           \
+DumpFile.hh
+
 ncserve_SOURCES =     \
 ncserve.cc            \
 DumpFile.cc           \
@@ -71,7 +98,7 @@ ncmaster.cc           \
 vector.cc
 
 
-nc_SOURCES = \
+nc_SOURCES =              \
 cache.cc                  \
 cache.hh                  \
 Common.cc                 \
@@ -165,36 +192,6 @@ AM_CXXFLAGS += -DNANOCUBE_VERSION=\"$(NANOCUBE_VERSION)\"
 # NC_LIBS = -ldl -lpthread -lboost_thread -lboost_system
 #NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
 
-nc_q20_q20_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
-nc_q20_q20_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q20,q20 \
-    -DLIST_VARIABLE_TYPES=u2,u4 \
-    -DVERSION=\"$(VERSION)\"
-nc_q20_q20_u2_u4_SOURCES =\
-    $(nc_SOURCES)
-
-nc_q25_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
-nc_q25_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q25,q25 \
-    -DLIST_VARIABLE_TYPES=u2,u4 \
-    -DVERSION=\"$(VERSION)\"
-nc_q25_q25_u2_u4_SOURCES =\
-    $(nc_SOURCES)
-
-nc_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
-nc_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q25 \
-    -DLIST_VARIABLE_TYPES=u2,u4 \
-    -DVERSION=\"$(VERSION)\"
-nc_q25_u2_u4_SOURCES =\
-    $(nc_SOURCES)
-
 nc_q25_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
 nc_q25_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
@@ -205,52 +202,84 @@ nc_q25_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
 nc_q25_c1_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
-nc_q25_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
-nc_q25_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q25,c1,c1 \
-    -DLIST_VARIABLE_TYPES=u2,u4 \
-    -DVERSION=\"$(VERSION)\"
-nc_q25_c1_c1_u2_u4_SOURCES =\
-    $(nc_SOURCES)
 
-nc_q25_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
-nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q25,c1,c1,c1 \
-    -DLIST_VARIABLE_TYPES=u2,u4 \
-    -DVERSION=\"$(VERSION)\"
-nc_q25_c1_c1_c1_u2_u4_SOURCES =\
-    $(nc_SOURCES)
+# nc_q20_q20_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q20_q20_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q20,q20 \
+#     -DLIST_VARIABLE_TYPES=u2,u4 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q20_q20_u2_u4_SOURCES =\
+#     $(nc_SOURCES)
 
-nc_q25_c1_u2_u8_LDFLAGS  = $(AM_LDFLAGS)
-nc_q25_c1_u2_u8_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q25,c1 \
-    -DLIST_VARIABLE_TYPES=u2,u8 \
-    -DVERSION=\"$(VERSION)\"
-nc_q25_c1_u2_u8_SOURCES =\
-    $(nc_SOURCES)
+# nc_q25_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q25_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q25,q25 \
+#     -DLIST_VARIABLE_TYPES=u2,u4 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q25_q25_u2_u4_SOURCES =\
+#     $(nc_SOURCES)
 
-nc_q25_c1_c2_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
-nc_q25_c1_c2_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q25,c1,c2 \
-    -DLIST_VARIABLE_TYPES=u2,u4 \
-    -DVERSION=\"$(VERSION)\"
-nc_q25_c1_c2_u2_u4_SOURCES =\
-    $(nc_SOURCES)
+# nc_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q25 \
+#     -DLIST_VARIABLE_TYPES=u2,u4 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q25_u2_u4_SOURCES =\
+#     $(nc_SOURCES)
 
-nc_q17_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
-nc_q17_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
-    -D_GLIBCXX_USE_NANOSLEEP \
-    -D_GLIBCXX_USE_SCHED_YIELD \
-    -DLIST_DIMENSION_NAMES=q17,c1,c1,c1 \
-    -DLIST_VARIABLE_TYPES=u2,u4 \
-    -DVERSION=\"$(VERSION)\"
-nc_q17_c1_c1_c1_u2_u4_SOURCES =\
-    $(nc_SOURCES)
+
+# nc_q25_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q25_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q25,c1,c1 \
+#     -DLIST_VARIABLE_TYPES=u2,u4 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q25_c1_c1_u2_u4_SOURCES =\
+#     $(nc_SOURCES)
+
+# nc_q25_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q25,c1,c1,c1 \
+#     -DLIST_VARIABLE_TYPES=u2,u4 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q25_c1_c1_c1_u2_u4_SOURCES =\
+#     $(nc_SOURCES)
+
+# nc_q25_c1_u2_u8_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q25_c1_u2_u8_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q25,c1 \
+#     -DLIST_VARIABLE_TYPES=u2,u8 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q25_c1_u2_u8_SOURCES =\
+#     $(nc_SOURCES)
+
+# nc_q25_c1_c2_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q25_c1_c2_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q25,c1,c2 \
+#     -DLIST_VARIABLE_TYPES=u2,u4 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q25_c1_c2_u2_u4_SOURCES =\
+#     $(nc_SOURCES)
+
+# nc_q17_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+# nc_q17_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+#     -D_GLIBCXX_USE_NANOSLEEP \
+#     -D_GLIBCXX_USE_SCHED_YIELD \
+#     -DLIST_DIMENSION_NAMES=q17,c1,c1,c1 \
+#     -DLIST_VARIABLE_TYPES=u2,u4 \
+#     -DVERSION=\"$(VERSION)\"
+# nc_q17_c1_c1_c1_u2_u4_SOURCES =\
+#     $(nc_SOURCES)

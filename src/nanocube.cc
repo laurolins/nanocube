@@ -40,13 +40,13 @@ int main(int argc, char** argv) {
         Options options(args);
         auto command = options.command.getValue();
 
-        std::vector<std::string> valid_commands { { "leaf", "composite", "distributed", "deamon" } };
+        std::vector<std::string> valid_commands { { "leaf", "composite", "distribute", "deamon" } };
 
         auto it = std::find(valid_commands.begin(), valid_commands.end(), command);
         if (it == valid_commands.end()) {
             std::stringstream ss;
             ss << "Invalid Command: " << command << std::endl;
-            ss << "Try: leaf, composite, distributed, deamon";
+            ss << "Try: leaf, composite, distribute, deamon";
             throw std::string(ss.str());
         }
 
