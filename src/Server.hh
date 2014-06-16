@@ -13,7 +13,6 @@
 #include <stdexcept>
 #include <functional>
 
-#include "util/signal.hh"
 
 #include "mongoose.h"
 
@@ -71,7 +70,7 @@ struct Server {
 
     void registerHandler(std::string name, const RequestHandler &handler);
 
-    void start(int mongoose_threads, sig::Signal<>* success_signal=nullptr);
+    void start(int mongoose_threads);
     void stop();
     bool toggleTiming(bool b);
     bool isTiming() const;
@@ -86,6 +85,8 @@ private:
 
     std::unordered_map<std::string, RequestHandler> handlers;
 
+    struct mg_context *ctx { nullptr };
+    
     bool done;
     bool is_timing;
     std::ofstream timing_of;
