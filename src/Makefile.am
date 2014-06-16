@@ -36,8 +36,9 @@ LIBS += $(BOOST_ASIO_LIBS)
 nanocube_SOURCES =    \
 nanocube.cc
 
-nanocube_leaf_SOURCES =    \
-nanocube-leaf.cc
+nanocube_leaf_SOURCES = \
+nanocube-leaf.cc        \
+DumpFile.cc
 
 ncdmp_SOURCES =       \
 ncdmp.cc              \
