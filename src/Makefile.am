@@ -72,11 +72,7 @@ DumpFile.cc            \
 DumpFile.hh         
 
 nanocube_deamon_SOURCES =    \
-nanocube-deamon.cc           \
-NanoCubeSchema.cc     \
-NanoCubeSchema.hh     \
-DumpFile.cc           \
-DumpFile.hh
+nanocube-deamon.cc           
 
 ncserve_SOURCES =     \
 ncserve.cc            \
