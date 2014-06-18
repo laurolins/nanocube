@@ -78,16 +78,13 @@ struct Server {
 
     void *mg_callback(mg_event event, mg_connection *conn);
 
-
-    int port;
-    int mongoose_threads;
+    int port { 29512 };
+    int mongoose_threads { 10 };
 private:
 
     std::unordered_map<std::string, RequestHandler> handlers;
 
     struct mg_context *ctx { nullptr };
-    
-    bool done;
-    bool is_timing;
+    bool is_timing { false };
     std::ofstream timing_of;
 };

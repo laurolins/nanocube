@@ -100,11 +100,7 @@ ServerException::ServerException(const std::string &message):
 // Server
 //-------------------------------------------------------------------------
 
-Server::Server():
-  port(29512),
-  mongoose_threads(10),
-  done(false),
-  is_timing(false)
+Server::Server()
 {}
 
 void Server::registerHandler(std::string name, const RequestHandler &handler)
@@ -191,6 +187,7 @@ void* __mg_callback(mg_event event, mg_connection *conn)
 
 void Server::start(int mongoose_threads) // blocks current thread
 {
+    
     char p[256];
     sprintf(p,"%d",port);
     std::string port_st = p;
@@ -203,28 +200,29 @@ void Server::start(int mongoose_threads) // blocks current thread
     std::string mongoose_string = std::to_string(mongoose_threads);
     // struct mg_context *ctx;
     const char *options[] = {"listening_ports", port_st.c_str(), "num_threads", mongoose_string.c_str(), NULL};
+    
     ctx = mg_start(&__mg_callback, NULL, options);
-
-    if (!ctx) {
+    
+    if (ctx == nullptr)
+    {
         throw ServerException("Couldn't create mongoose context... exiting!");
     }
 
-#if 0
-    // ctx = mg_start(&callback, NULL, options);
-    std::cout << "Server on port " << port << std::endl;
-    while (!done) // this thread will be blocked
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-    // sleep(1);
-    // TODO: missing a clean stop of mongoose
-    mg_stop(ctx);
-#endif
 }
 
-void Server::stop()
+void Server::stop() // blocks current thread
 {
-  done = true;
-  handlers.clear();
+    if (ctx) {
+        mg_stop(ctx);
+        ctx = nullptr;
+    }
 }
+
+//void Server::stop()
+//{
+//  done = true;
+//  handlers.clear();
+//}
 
 bool Server::toggleTiming(bool b)
 {
