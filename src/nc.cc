@@ -3,6 +3,7 @@
 #include <thread>
 #include <functional>
 #include <fstream>
+#include <mutex>
 
 #include <zlib.h>
 
@@ -289,11 +290,18 @@ public:
 
     void insert_from_stdin();
     void insert_from_tcp();
+    
+    void addMessage(std::string s);
+    void printMessages();
 
 public: // Data Members
 
-    NanoCube &nanocube;
-
+    std::mutex messages_mutex;
+    std::vector<std::string> messages;
+    
+    std::uint64_t inserted_points { 0 };
+    
+    NanoCube     &nanocube;
     Options      &options;
     std::istream &input_stream;
 
@@ -307,6 +315,19 @@ public: // Data Members
 
 };
 
+void NanoCubeServer::addMessage(std::string s) {
+    std::lock_guard<std::mutex> lock(messages_mutex);
+    messages.push_back(s);
+}
+
+void NanoCubeServer::printMessages() {
+    std::lock_guard<std::mutex> lock(messages_mutex);
+    for (auto &s: messages) {
+        std::cerr << s;
+    }
+    messages.clear();
+}
+
 //------------------------------------------------------------------------------
 // NanoCubeServer Impl.
 //------------------------------------------------------------------------------
@@ -316,8 +337,11 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     options(options),
     input_stream(input_stream)
 {
-    // start a thread to write on nanocube
-    // auto f = std::bind(&NanoCubeServer::write, *this);
+    // initial message
+    std::stringstream ss;
+    ss << "query-port:  " <<  options.query_port.getValue() << std::endl
+        << "insert-port: " <<  options.insert_port.getValue() << std::endl;
+    addMessage(ss.str());
     
     // start thread to insert records coming from stdin
     std::thread insert_from_stdin_thread(&NanoCubeServer::insert_from_stdin, this);
@@ -328,13 +352,13 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     // start threads for serving queries (uses mongoose)
     initializeQueryServer();
     
-    std::cerr << "query-port:  " <<  options.query_port.getValue() << std::endl;
-    std::cerr << "insert-port: " <<  options.insert_port.getValue() << std::endl;
     
     while (!finish) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
+        printMessages();
     }
     
+    // TODO: move this somewhere else
     io_service.stop();
     
     // close mongoose
@@ -397,13 +421,10 @@ void NanoCubeServer::initializeQueryServer()
     server.registerHandler("query",      json_query_handler);
     server.registerHandler("binquery",   binary_query_handler);
     server.registerHandler("binqueryz",  binary_query_comp_handler);
-    
     server.registerHandler("tile",       tile_handler);
-    
     server.registerHandler("tquery",     json_tquery_handler);
     server.registerHandler("bintquery",  binary_tquery_handler);
     server.registerHandler("bintqueryz", binary_tquery_comp_handler);
-    
     server.registerHandler("stats",     stats_handler);
     server.registerHandler("schema",    schema_handler);
     server.registerHandler("binschema", binary_schema_handler);
@@ -411,27 +432,18 @@ void NanoCubeServer::initializeQueryServer()
     server.registerHandler("tbin",      tbin_handler);
     server.registerHandler("summary",   summary_handler);
     server.registerHandler("graphviz",  graphviz_handler);
+    server.registerHandler("version",   version_handler);
+    server.registerHandler("timing",    timing_handler);
+    server.registerHandler("start",     graphviz_handler);
     
-    server.registerHandler("version",  version_handler);
-    
-    server.registerHandler("timing",  timing_handler);
-    
-    server.registerHandler("start",  graphviz_handler);
-    
-    // start mongoose server on query port
-    //    int tentative=0;
-    //    while (tentative < 100) {
-    //        tentative++;
     try {
-        std::cerr << "Starting NanoCubeServer on port " << server.port << std::endl;
         server.start(options.no_mongoose_threads.getValue());
-        std::cerr << "Server on port " << server.port << std::endl;
     }
     catch (ServerException &e) {
-        std::cerr << "Couldn't bind query port: " << server.port << std::endl;
+        std::stringstream ss;
+        ss << "Problem binding query-port:  " <<  server.port << std::endl;
+        addMessage(ss.str());
         finish = true;
-//        std::cerr << e.what() << std::endl;
-//        exit(127);
     }
 }
 
@@ -442,8 +454,6 @@ void NanoCubeServer::insert_from_stdin()
 
     stopwatch::Stopwatch sw;
     sw.start();
-
-    uint64_t count = 0;
 
     // std::cout << "reading data..." << std::endl;
 
@@ -482,8 +492,8 @@ void NanoCubeServer::insert_from_stdin()
                 }
                 else {
                     // std::cout << "ok" << std::endl;
-                    ++count;
-                    done = (options.max_points.getValue() > 0 && count == options.max_points.getValue());
+                    ++inserted_points;
+                    done = (options.max_points.getValue() > 0 && inserted_points == options.max_points.getValue());
                 }
             }
         }
@@ -497,8 +507,11 @@ void NanoCubeServer::insert_from_stdin()
         }
 
         // make sure report frequency is a multiple of batch size
-        if (count % options.report_frequency.getValue() == 0) {
-            std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+        if (inserted_points % options.report_frequency.getValue() == 0) {
+            std::cout << "(stdin) count: " << std::setw(10) << inserted_points
+            << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
+            << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+            addMessage(ss.str());
         }
 
         // std::this_thread::sleep_for(std::mill)
@@ -524,35 +537,32 @@ void NanoCubeServer::insert_from_stdin()
 
     } // loop to insert objects into the nanocube
 
-    std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
-    // std::cout << "count: " << count << " mem. res: " << memory_util::MemInfo::get().res_MB() << "MB." << std::endl;
 
-    // test query using query language
-    std::cout << "Number of points inserted " << count << std::endl;
-
+    if (inserted_points > 0) {
+        std::cout << "(stdin:done) count: " << std::setw(10) << inserted_points
+        << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
+        << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+        addMessage(ss.str());
+    }
 }
 
 
 void NanoCubeServer::insert_from_tcp()
 {
+    using Socket = boost::asio::ip::tcp::socket;
+
+    auto port = options.insert_port.getValue();
+    if (port== 0)
+        return;
+
     try {
 
-        auto port = options.insert_port.getValue();
-        
-        
-        // std::cout << "insert_from_tcp port is " <<  port << std::endl;
-        if (port== 0)
-            return;
-        
-        
-        using boost::asio::ip::tcp;
-        tcp::acceptor acceptor(io_service, tcp::endpoint(tcp::v4(), port));
-        boost::asio::ip::tcp::socket socket(io_service);
+        bool restart = true;
 
-        auto process_incoming_data = [&]() {
+        auto process_incoming_data = [&](Socket &socket) {
           
-//            stopwatch::Stopwatch sw;
-//            sw.start();
+            stopwatch::Stopwatch sw;
+            sw.start();
 
             bool done = false;
             
@@ -572,10 +582,14 @@ void NanoCubeServer::insert_from_tcp()
                 
                 std::size_t len = socket.read_some(boost::asio::buffer(buf), error);
                 
-                if (error == boost::asio::error::eof)
+                if (error == boost::asio::error::eof) {
                     break; // Connection closed cleanly by peer.
-                else if (error)
+                    restart = true; // wait for a new connection on the same port
+                }
+                else if (error) {
+                    restart = false;
                     throw boost::system::system_error(error); // Some other error.
+                }
                 
                 ss.write(buf, len);
                 // ss.flush();
@@ -619,9 +633,13 @@ void NanoCubeServer::insert_from_tcp()
                         }
                         ++count;
                         // make sure report frequency is a multiple of batch size
-//                        if (count % options.report_frequency.getValue() == 0) {
-//                            std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
-//                        }
+                        if ((inserted_points % options.report_frequency.getValue()) == 0) {
+                            std::stringstream ss;
+                            ss << "count: " << std::setw(10) << inserted_points
+                                << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
+                                << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+                            addMessage(ss.str());
+                        }
                         bytes_on_stream -= record_size;
                         
                     }
@@ -633,291 +651,38 @@ void NanoCubeServer::insert_from_tcp()
         };
         
         
-        // check handler
-        auto handler = [&](const boost::system::error_code& ec) {
-            if (ec)
-                return;
-            
-            try {
-                process_incoming_data();
+        while (restart) {
+            {
+                using boost::asio::ip::tcp;
+                tcp::acceptor acceptor(io_service, tcp::endpoint(tcp::v4(), port));
+                Socket socket(io_service);
+                
+                // check handler
+                auto handler = [&](const boost::system::error_code& ec) {
+                    if (ec)
+                        return;
+                    
+                    try {
+                        process_incoming_data(socket);
+                    }
+                    catch(...) {
+                        finish = true;
+                    }
+                };
+                
+                acceptor.async_accept(socket, handler);
+                io_service.run();
             }
-            catch(...) {
-                finish = true;
-            }
-        };
-
-        
-        acceptor.async_accept(socket, handler);
-        
-        //
-        io_service.run();
-        
+        }
+    
     }
     catch(std::exception &e) {
+        std::stringstream ss;
+        ss << "Problem binding insert-port: " << port << std::endl;
+        addMessage(ss.str());
         finish = true; // turn of problem flag
-        std::cerr << e.what() << std::endl;
     }
-
-
-
 }
-
-//
-//
-//        response.insert(response.end(), buf, buf+len);
-//
-//        if (response.size() > 0) {
-//
-//
-//
-//            boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
-//            for (uint64_t i=0;i<batch_size && !done;++i)
-//            {
-//                // std::cout << i << std::endl;
-//                bool ok = nanocube.add(ss);
-//                if (!ok) {
-//                    // std::cout << "not ok" << std::endl;
-//                    done = true;
-//                }
-//                else {
-//                    // std::cout << "ok" << std::endl;
-//                    ++count;
-//                    done = (options.max_points.getValue() > 0 && count == options.max_points.getValue());
-//                }
-//            }
-//
-//
-//
-//        }
-//
-//
-//
-//
-//
-//        // std::cerr << "reading " << num_bytes_per_batch << "...";
-//        input_stream.read(buffer,num_bytes_per_batch);
-//        auto read_bytes = input_stream.gcount();
-//        // std::cerr << " " << read_bytes << " were read" << std::endl;
-//        
-//        ss.clear();
-//        ss.write(buffer, read_bytes);
-//
-//        // write a batch of points
-//        if (read_bytes > 0)
-//        {
-//            boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
-//            for (uint64_t i=0;i<batch_size && !done;++i)
-//            {
-//                // std::cout << i << std::endl;
-//                bool ok = nanocube.add(ss);
-//                if (!ok) {
-//                    // std::cout << "not ok" << std::endl;
-//                    done = true;
-//                }
-//                else {
-//                    // std::cout << "ok" << std::endl;
-//                    ++count;
-//                    done = (options.max_points.getValue() > 0 && count == options.max_points.getValue());
-//                }
-//            }
-//        }
-//
-//        // shared_mutex.
-//        if (options.sleep_for_ns.getValue() == 0) {
-//            std::this_thread::yield(); // if there is a query it should wake up
-//        }
-//        else {
-//            std::this_thread::sleep_for(std::chrono::nanoseconds(options.sleep_for_ns.getValue()));
-//        }
-//
-//        // make sure report frequency is a multiple of batch size
-//        if (count % options.report_frequency.getValue() == 0) {
-//            std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
-//        }
-
-
-
-
-
-
-
-
-
-
-
-//
-//
-//
-//
-//
-//
-//
-//    }
-//
-
-
-
-    // // socket.connect(endpoint);
-
-    // char buffer[1024];
-    // //std::string uri = request.uri_strtranslated;
-    // sprintf(buffer, "GET %s HTTP/1.1\n\n", uri.c_str());
-    
-    // boost::asio::write(socket, boost::asio::buffer(buffer));
-
-    // std::vector<char> response;
-    // for (;;)
-    // {
-    //     char buf[1024];
-    //     boost::system::error_code error;
-
-    //     size_t len = socket.read_some(boost::asio::buffer(buf), error);
-
-    //     if (error == boost::asio::error::eof)
-    //         break; // Connection closed cleanly by peer.
-    //     else if (error)
-    //         throw boost::system::system_error(error); // Some other error.
-
-    //     //std::cout.write(buf, len);
-    //     response.insert(response.end(), buf, buf+len);
-    // }
-//
-//    socket.close();
-//    std::cout << "Finished connection..." << std::endl;
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
-//    uint64_t batch_size = options.batch_size.getValue(); // add 10k points before
-//
-//    stopwatch::Stopwatch sw;
-//    sw.start();
-//
-//    uint64_t count = 0;
-//
-//    // std::cout << "reading data..." << std::endl;
-//
-//    bool done = false;
-//
-//    auto record_size = this->nanocube.schema.dump_file_description.record_size;
-//    auto num_bytes_per_batch = record_size * batch_size;
-//    
-//    std::stringstream ss;
-//    char buffer[num_bytes_per_batch];
-//    while (!done) {
-//        
-//        // std::cerr << "reading " << num_bytes_per_batch << "...";
-//        input_stream.read(buffer,num_bytes_per_batch);
-//        auto read_bytes = input_stream.gcount();
-//        // std::cerr << " " << read_bytes << " were read" << std::endl;
-//        
-//        ss.clear();
-//        ss.write(buffer, read_bytes);
-//
-//        // write a batch of points
-//        if (read_bytes > 0)
-//        {
-//            boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
-//            for (uint64_t i=0;i<batch_size && !done;++i)
-//            {
-//                // std::cout << i << std::endl;
-//                bool ok = nanocube.add(ss);
-//                if (!ok) {
-//                    // std::cout << "not ok" << std::endl;
-//                    done = true;
-//                }
-//                else {
-//                    // std::cout << "ok" << std::endl;
-//                    ++count;
-//                    done = (options.max_points.getValue() > 0 && count == options.max_points.getValue());
-//                }
-//            }
-//        }
-//
-//        // shared_mutex.
-//        if (options.sleep_for_ns.getValue() == 0) {
-//            std::this_thread::yield(); // if there is a query it should wake up
-//        }
-//        else {
-//            std::this_thread::sleep_for(std::chrono::nanoseconds(options.sleep_for_ns.getValue()));
-//        }
-//
-//        // make sure report frequency is a multiple of batch size
-//        if (count % options.report_frequency.getValue() == 0) {
-//            std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
-//        }
-//
-//        // std::this_thread::sleep_for(std::mill)
-//
-////        bool ok = nanocube.add(std::cin);
-////        if (!ok) {
-////            // std::cout << "not ok" << std::endl;
-////            break;
-////        }
-//
-////        { // generate pdf
-////            report::Report report(nanocube.DIMENSION + 1);
-////            nanocube.mountReport(report);
-////            std::string filename     = "/tmp/bug"+std::to_string(count)+".dot";
-////            std::string pdf_filename = "/tmp/bug"+std::to_string(count)+".pdf";
-////            std::ofstream of(filename);
-////            report::report_graphviz(of, report);
-////            of.close();
-////            system(("dot -Tpdf " + filename + " > " + pdf_filename).c_str());
-////        }
-//
-//
-//
-//    } // loop to insert objects into the nanocube
-//
-//    std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
-//    // std::cout << "count: " << count << " mem. res: " << memory_util::MemInfo::get().res_MB() << "MB." << std::endl;
-//
-//    // test query using query language
-//    std::cout << "Number of points inserted " << count << std::endl;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 void NanoCubeServer::parse(std::string              query_st,

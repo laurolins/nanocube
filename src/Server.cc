@@ -105,7 +105,7 @@ Server::Server()
 
 void Server::registerHandler(std::string name, const RequestHandler &handler)
 {
-    std::cout << "Registering handler: " << name << std::endl;
+//    std::cout << "Registering handler: " << name << std::endl;
     handlers[name] = handler;
 }
 
