@@ -508,7 +508,8 @@ void NanoCubeServer::insert_from_stdin()
 
         // make sure report frequency is a multiple of batch size
         if (inserted_points % options.report_frequency.getValue() == 0) {
-            std::cout << "(stdin) count: " << std::setw(10) << inserted_points
+            std::stringstream ss;
+            ss << "(stdin) count: " << std::setw(10) << inserted_points
             << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
             << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
             addMessage(ss.str());
@@ -539,7 +540,8 @@ void NanoCubeServer::insert_from_stdin()
 
 
     if (inserted_points > 0) {
-        std::cout << "(stdin:done) count: " << std::setw(10) << inserted_points
+        std::stringstream ss;
+        ss << "(stdin:done) count: " << std::setw(10) << inserted_points
         << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
         << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
         addMessage(ss.str());
@@ -557,7 +559,11 @@ void NanoCubeServer::insert_from_tcp()
 
     try {
 
-        bool restart = true;
+        //
+        // TODO: keep reopening port even when connection has been closed
+        //
+        
+        // bool restart = true;
 
         auto process_incoming_data = [&](Socket &socket) {
           
@@ -566,10 +572,8 @@ void NanoCubeServer::insert_from_tcp()
 
             bool done = false;
             
-            std::size_t count = 0;
-            
             auto record_size = nanocube.schema.dump_file_description.record_size;
-            std::size_t record[record_size];
+            // std::size_t record[record_size];
             
             std::size_t bytes_on_stream = 0;
             
@@ -583,11 +587,14 @@ void NanoCubeServer::insert_from_tcp()
                 std::size_t len = socket.read_some(boost::asio::buffer(buf), error);
                 
                 if (error == boost::asio::error::eof) {
+                    addMessage("socket.read_some: EOF... restarting");
+                    // restart = true; // wait for a new connection on the same port
+                    // io_service.stop();
                     break; // Connection closed cleanly by peer.
-                    restart = true; // wait for a new connection on the same port
                 }
                 else if (error) {
-                    restart = false;
+                    addMessage("socket.read_some: NOT EOF... not restarting");
+                    // restart = false;
                     throw boost::system::system_error(error); // Some other error.
                 }
                 
@@ -631,7 +638,7 @@ void NanoCubeServer::insert_from_tcp()
                             done = true;
                             break;
                         }
-                        ++count;
+                        ++inserted_points;
                         // make sure report frequency is a multiple of batch size
                         if ((inserted_points % options.report_frequency.getValue()) == 0) {
                             std::stringstream ss;
@@ -651,29 +658,34 @@ void NanoCubeServer::insert_from_tcp()
         };
         
         
-        while (restart) {
-            {
-                using boost::asio::ip::tcp;
-                tcp::acceptor acceptor(io_service, tcp::endpoint(tcp::v4(), port));
-                Socket socket(io_service);
-                
-                // check handler
-                auto handler = [&](const boost::system::error_code& ec) {
-                    if (ec)
-                        return;
-                    
-                    try {
-                        process_incoming_data(socket);
-                    }
-                    catch(...) {
-                        finish = true;
-                    }
-                };
-                
-                acceptor.async_accept(socket, handler);
-                io_service.run();
+//        while (restart) {
+//
+        using boost::asio::ip::tcp;
+        tcp::acceptor acceptor(io_service, tcp::endpoint(tcp::v4(), port));
+        Socket socket(io_service);
+
+        //boost::asio::socket_base::keep_alive option(true);
+        //socket.set_option(option);
+        
+        // check handler
+        auto handler = [&](const boost::system::error_code& ec) {
+            if (ec)
+                return;
+            
+            try {
+                process_incoming_data(socket);
             }
-        }
+            catch(...) {
+                finish = true;
+            }
+        };
+        
+        acceptor.async_accept(socket, handler);
+        io_service.run();
+
+            // io_service.restart();
+//
+//        }
     
     }
     catch(std::exception &e) {

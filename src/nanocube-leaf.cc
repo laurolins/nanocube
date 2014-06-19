@@ -6,6 +6,8 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 #include <tclap/CmdLine.h> // templetized command line options
 
@@ -151,7 +153,6 @@ int main(int argc, char **argv)
         std::cerr << "Dimensions: " << nc_schema.dimensions_spec << std::endl;
         std::cerr << "Variables:  " << nc_schema.time_and_variables_spec << std::endl;
 #endif
-        
         //
         // TODO: run some tests
         //
@@ -159,32 +160,103 @@ int main(int argc, char **argv)
         //    (2) are all field types starting with nc_ prefix
         //
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         // pipe
         int pipe_fds[2];
         if(pipe(pipe_fds) == -1)
         {
             std::cerr << "Couldn't create pipe!" << std::endl;
-            // perror("ERROR");
             exit(127);
         }
 
         int pipe_read_file_descriptor  = pipe_fds[0];
         int pipe_write_file_descriptor = pipe_fds[1];
 
+        
+        
         // create pipe
 
         // Spawn a child to run the program.
         pid_t pid = fork();
-        if (pid == 0) { /* child process */
 
+        if (pid != 0) { /* parent process */
+            close(pipe_read_file_descriptor);
+
+
+            std::stringstream ss;
+            if (schema_filename.size() == 0) // if schema came from stdin,
+            {                                // we have to send it again.
+                ss << input_file_description;
+                ss << std::endl;
+            }
+            
+            auto redirect = [](std::string initial_content, int fd_write) {
+
+                std::cout << "started redirecting stdin content to write-channel of parent-child pipe" << std::endl;
+                
+                FILE *f = fdopen(fd_write, "w");
+                
+                if (initial_content.size() > 0) {
+                    fwrite((void*) initial_content.c_str(), 1 , initial_content.size(), f);
+                }
+                
+                // write everything coming from stdin to child process
+                const int BUFFER_SIZE = 4095;
+                char buffer[BUFFER_SIZE + 1];
+                while (1) {
+                    std::cin.read(buffer,BUFFER_SIZE);
+                    if (!std::cin) {
+                        auto gcount = std::cin.gcount();
+                        if (gcount > 0) {
+                            fwrite((void*) buffer, 1, gcount, f);
+                        }
+                        break;
+                    }
+                    else {
+                        fwrite((void*) buffer, 1, BUFFER_SIZE, f);
+                    }
+                }
+                
+                // clear
+                fflush(f);
+                fclose(f);
+            
+            };
+            
+            // start thread to redirect
+            std::thread redirect_thread(redirect, ss.str(), pipe_write_file_descriptor);
+            
+            std::cerr << "parent process is waiting..." << std::endl;
+
+            // std::this_thread::sleep_for(std::chrono::seconds(1));
+            
+            waitpid(pid,0,0); /* wait for child to exit */
+            
+            // redirect_thread.exit
+            // redirect_thread.join();
+            
+        }
+        else {
             close(pipe_write_file_descriptor);
-
+            
             /* both file descriptors refer to pipe_read_file_descriptor */
             /* std::cin becomes the pipe read channel */
             dup2(pipe_read_file_descriptor, STDIN_FILENO);
-            
             close(pipe_read_file_descriptor);
-
+            
             // exec new process
             std::string program_name;
             {
@@ -208,61 +280,14 @@ int main(int argc, char **argv)
             
             // child process will be replaced by this other process
             // could we do thi in the main process? maybe
-            //execlp(program_name.c_str(), program_name.c_str(), NULL);
+            // execlp(program_name.c_str(), program_name.c_str(), NULL);
             execv(program_name.c_str(), argv);
 
             // failed to execute program
             std::cout << "Could not find program: " << program_name << std::endl;
+        
+            exit(-1); /* only if execv fails */
 
-            exit(127); /* only if execv fails */
-
-        }
-        else {
-
-            close(pipe_read_file_descriptor);
-
-            FILE *f = fdopen(pipe_write_file_descriptor, "w");
-
-            if (schema_filename.size() == 0) // if schema came from stdin, 
-            {                                // we have to send it again.
-
-                std::stringstream ss;
-                ss << input_file_description;
-                ss << std::endl;
-                std::string contents = ss.str();
-                fwrite((void*) contents.c_str(),1 , contents.size(), f);
-
-            }
-
-            // write everything coming from stdin to child process
-            const int BUFFER_SIZE = 4095;
-            char buffer[BUFFER_SIZE + 1];
-            while (1) {
-                std::cin.read(buffer,BUFFER_SIZE);
-                if (!std::cin) {
-                    auto gcount = std::cin.gcount();
-                    if (gcount > 0) {
-                        fwrite((void*) buffer, 1, gcount, f);
-                    }
-                    break;
-                }
-                else {
-                    fwrite((void*) buffer, 1, BUFFER_SIZE, f);
-                }
-            }
-
-            // clear
-            fflush(f);
-            // done writing on the pipe
-            fclose(f);
-
-            //
-            close(pipe_write_file_descriptor);
-
-            //
-            std::cerr << "parent process is waiting..." << std::endl;
-            waitpid(pid,0,0); /* wait for child to exit */
-            // waitpid(,0,0);
         }
 
         return 0;
