@@ -24,7 +24,7 @@ struct Options {
     TCLAP::ValueArg<std::string> hosts_file {  
             "h",              // flag
             "hosts",         // name
-            "Hosts file, containing address:port of hosts and distribution rules", // description
+            "Hosts file, containing address:port for query-only hosts and address:port:d for hosts running deamon.", // description
             true,            // required
             "",               // value
             "hosts-filename" // type description
@@ -34,7 +34,7 @@ struct Options {
     TCLAP::ValueArg<int> block_size {  
             "b",              // flag
             "block",         // name
-            "Block size, to be sent to each host", // description
+            "Block size, to be sent to each host.", // description
             false,            // required
             10000,               // value
             "block-size" // type description
@@ -44,7 +44,7 @@ struct Options {
     TCLAP::ValueArg<int> query_port {  
             "q",              // flag
             "query",         // name
-            "Query port", // description
+            "Query port.", // description
             false,            // required
             29512,               // value
             "query-port" // type description
@@ -54,7 +54,7 @@ struct Options {
     TCLAP::SwitchArg query_only {  
             "o",              // flag
             "query-only",         // name
-            "Only offer query", // description
+            "Only offer query.", // description
             false               // value
             };
 
