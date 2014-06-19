@@ -568,11 +568,11 @@ void NanoCubeServer::insert_from_tcp()
         auto process_incoming_data = [&](Socket &socket, Acceptor& acceptor) {
           
             while (true) {
-                {
-                    std::stringstream ss;
-                    ss << "(socket) established connection" << std::endl;
-                    addMessage(ss.str());
-                }
+//                {
+//                    std::stringstream ss;
+//                    ss << "(socket) established connection" << std::endl;
+//                    addMessage(ss.str());
+//                }
                 
                 stopwatch::Stopwatch sw;
                 sw.start();
@@ -667,9 +667,9 @@ void NanoCubeServer::insert_from_tcp()
                 
                 if (eof) {
                     socket.close();
-                    std::stringstream ss;
-                    ss << "(socket) eof received, entering accept(...) to wait for new connection on the same port" << std::endl;
-                    addMessage(ss.str());
+//                    std::stringstream ss;
+//                    ss << "(socket) eof received, entering accept(...) to wait for new connection on the same port" << std::endl;
+//                    addMessage(ss.str());
                     acceptor.accept(socket);
                 }
             }
@@ -706,11 +706,11 @@ void NanoCubeServer::insert_from_tcp()
             Socket   socket(io_service);
             acceptor.accept(socket);
             
-            {
-                std::stringstream ss;
-                ss << "(socket) established connection" << std::endl;
-                addMessage(ss.str());
-            }
+//            {
+//                std::stringstream ss;
+//                ss << "(socket) established connection" << std::endl;
+//                addMessage(ss.str());
+//            }
             
             stopwatch::Stopwatch sw;
             sw.start();
@@ -803,11 +803,11 @@ void NanoCubeServer::insert_from_tcp()
                 
             }
             
-            if (eof) {
-                std::stringstream ss;
-                ss << "(socket) eof received, entering accept(...) to wait for new connection on the same port" << std::endl;
-                addMessage(ss.str());
-            }
+//            if (eof) {
+//                std::stringstream ss;
+//                ss << "(socket) eof received, entering accept(...) to wait for new connection on the same port" << std::endl;
+//                addMessage(ss.str());
+//            }
         }
         
 #endif

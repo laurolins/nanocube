@@ -816,6 +816,12 @@ namespace vector {
 
 std::ostream& vector::operator<<(std::ostream &os, const Vector &v) {
 
+    
+    if (v.empty()) {
+        os << "empty" << std::endl;
+        return os;
+    }
+    
     std::stack<Item> stack;
     stack.push(Item(v.root.get(),0,0));
 

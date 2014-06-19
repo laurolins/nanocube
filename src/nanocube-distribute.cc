@@ -57,6 +57,15 @@ struct Options {
             "Only offer query.", // description
             false               // value
             };
+    
+    TCLAP::ValueArg<int> no_mongoose_threads {
+        "t",              // flag
+        "threads",        // name
+        "Number of threads for querying (mongoose)",     // description
+        false,                                 // required
+        10,                                   // value
+        "threads"                         // type description
+    };
 
 
 };
@@ -66,9 +75,16 @@ Options::Options(std::vector<std::string>& args) {
     cmd_line.add(block_size);
     cmd_line.add(query_port);
     cmd_line.add(query_only);
+    cmd_line.add(no_mongoose_threads);
     cmd_line.parse(args);
 }
 
+
+namespace {
+
+    std::istream* input_stream = nullptr;
+
+}
 
 
 dumpfile::DumpFileDescription input_file_description;
@@ -169,6 +185,7 @@ bool sendToSlave(Slave& slave, int batch_size, int records_to_send)
     //2 - Send data
     std::cout << "Sending data to slave... " <<  std::endl;
 
+    std::istream &is = *input_stream;
     
     int records_sent = 0;
     bool finished_input = false;
@@ -176,10 +193,10 @@ bool sendToSlave(Slave& slave, int batch_size, int records_to_send)
     auto num_bytes_per_batch = record_size * batch_size;
     char buffer[num_bytes_per_batch];
     while (records_sent < records_to_send) {
-        std::cin.read(buffer,num_bytes_per_batch);
+        is.read(buffer,num_bytes_per_batch);
         //std::cout << buffer << std::endl;
-        if (!std::cin) {
-            auto gcount = std::cin.gcount();
+        if (!is) {
+            auto gcount = is.gcount();
             if (gcount > 0) {
                 boost::asio::write(socket, boost::asio::buffer(buffer, gcount));
             }
@@ -212,7 +229,9 @@ void initScatter(Options& options, std::vector<Slave>& slaves)
     //Read schema
     //std::cout << std::cin.rdbuf();
 
-    std::cin >> input_file_description;
+    std::istream &is = *input_stream;
+    
+    is >> input_file_description;
     //nanocube::Schema nanocube_schema(input_file_description);
 
     int i=0;
@@ -258,7 +277,7 @@ void initGather(Options& options, std::vector<Slave>& slaves)
         tentative++;
         try {
             std::cout << "Starting MasterServer on port " << master.port << std::endl;
-            master.start(20);
+            master.start(options.no_mongoose_threads.getValue());
         }
         catch (MasterException &e) {
             std::cout << e.what() << std::endl;
@@ -282,6 +301,13 @@ void initGather(Options& options, std::vector<Slave>& slaves)
 int main(int argc, char *argv[])
 {
 
+#if 0
+    std::ifstream fixed_file("/Users/llins/projects/nanocube/scripts/crime50k.nano");
+    input_stream = &fixed_file;
+#else
+    input_stream = &std::cin;
+#endif
+    
     std::vector<std::string> args(argv, argv + argc);
     Options options(args);     
 
@@ -327,6 +353,9 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    
+    
+    
     std::cout << options.query_only.getValue() << std::endl;
 
     if(!options.query_only.getValue())

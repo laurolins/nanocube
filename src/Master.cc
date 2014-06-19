@@ -86,6 +86,13 @@ MasterRequest::MasterRequest(mg_connection *conn, const std::vector<std::string>
         uri_stroriginal = uri;
         uri_strtranslated = uri;
     }
+    else if(params[1].compare("tbin")==0){
+        uri_original = TBIN;
+        uri_translated = TBIN;
+        
+        uri_stroriginal = uri;
+        uri_strtranslated = uri;
+    }
     else if(params[1].compare("query")==0){
         uri_original = QUERY;
         uri_translated = BIN_QUERY;
@@ -95,12 +102,16 @@ MasterRequest::MasterRequest(mg_connection *conn, const std::vector<std::string>
         uri_strtranslated.replace(1,5, "binquery");
     }
     else if(params[1].compare("binquery")==0){
-        uri_original = BIN_QUERY;
-        uri_translated = BIN_QUERY;
-
-        uri_stroriginal = uri;
+        uri_original      = BIN_QUERY;
+        uri_translated    = BIN_QUERY;
+        uri_stroriginal   = uri;
         uri_strtranslated = uri;
-        uri_strtranslated.replace(1,5, "binquery");
+    }
+    else if(params[1].compare("bintquery")==0){
+        uri_original      = BIN_TQUERY;
+        uri_translated    = BIN_TQUERY;
+        uri_stroriginal   = uri;
+        uri_strtranslated = uri;
     }
 }
 
@@ -321,24 +332,39 @@ void Master::requestAllSlaves(MasterRequest &request)
 
     try
     {
+        
+        // aggregate result from all slaves (when it makes sense
+        // otherwise get from the first slave)
+        
         int i=0;
         vector::Vector aggregatedVector;
         bool isAggregating = false;
         for(i = 0; i<slaves.size(); i++)
         {
+            
+            std::cout << "requestSlave(" << request.uri_strtranslated << ")" << std::endl;
+            
             auto content = requestSlave(request.uri_strtranslated, slaves[i]);
 
-            if(request.uri_translated == MasterRequest::SCHEMA)
-            {
+            if(request.uri_translated == MasterRequest::SCHEMA) {
                 auto schema_st = std::string(content.begin(), content.end());
                 std::cerr << schema_st << std::endl;
                 request.respondJson(schema_st);
-                break;
+                return;
             }
             else if(request.uri_translated == MasterRequest::TQUERY)
             {
                 request.respondJson(std::string(content.begin(), content.end()));
-                break;
+                return;
+            }
+            else if(request.uri_translated == MasterRequest::TBIN)
+            {
+                request.respondJson(std::string(content.begin(), content.end()));
+                return;
+            }
+            else if (request.uri_translated == MasterRequest::BIN_TQUERY) {
+                request.respondOctetStream(&content[0], content.size());
+                return;
             }
             else
             {
@@ -346,6 +372,15 @@ void Master::requestAllSlaves(MasterRequest &request)
                 std::istringstream is(std::string(content.begin(), content.end()));
                 auto result = vector::deserialize(is);
 
+                
+                //
+                
+//                std::ofstream data("/tmp/results",std::fstream::out|std::fstream::app);
+//                data << request.uri_strtranslated << std::endl;
+//                data << "***(slave[" << i << "] result)" << std::endl;
+//                data << result << std::endl;
+                
+                
                 //First time
                 if(isAggregating == false)
                 {
@@ -355,15 +390,20 @@ void Master::requestAllSlaves(MasterRequest &request)
                 else
                 {
                     aggregatedVector = aggregatedVector + result;
+
+//                    data << "******(new aggregate)" << std::endl;
+//                    data << aggregatedVector << std::endl;
+
+                
                 }
+                
             }
         }
 
-        if(request.uri_original == MasterRequest::BIN_QUERY)
-        {
-            // request.respondOctetStream(aggregatedVector);
-        }
-        else if(request.uri_original == MasterRequest::QUERY)
+        
+        
+        //
+        if(request.uri_original == MasterRequest::QUERY)
         {
 
             //Convert vector to JSON and respond.
@@ -380,9 +420,6 @@ void Master::requestAllSlaves(MasterRequest &request)
         }
         else if(request.uri_original == MasterRequest::TILE)
         {
-
-
-#if 1
             //
             ::query::QueryDescription query_description;
 
@@ -414,10 +451,6 @@ void Master::requestAllSlaves(MasterRequest &request)
                 return;
             }
 
-            //
-#endif
-
-
             using Edge  = ::vector::Edge;
             using Value = ::vector::Value;
             using INode = ::vector::InternalNode;
@@ -429,22 +462,12 @@ void Master::requestAllSlaves(MasterRequest &request)
                 for (auto it: inode->children) {
                     Edge &e = it.second;
 
-#if 1
                     maps::Tile subtile(e.label);
                     maps::Tile relative_tile = tile.relativeTile(subtile);
 
                     Value value = e.node->asLeafNode()->value;
                     uint8_t ii = relative_tile.getY();
                     uint8_t jj = relative_tile.getX();
-#else
-
-                    maps::Tile subtile(e.label);
-
-                    Value value = e.node->asLeafNode()->value;
-                    uint8_t ii = subtile.getY() - ((subtile.getY() >> 7) << 7);
-                    uint8_t jj = subtile.getX() - ((subtile.getX() >> 7) << 7);
-#endif
-
 
                     // i, j, value
                     os.write((char*) &ii, sizeof(uint8_t));
@@ -455,10 +478,26 @@ void Master::requestAllSlaves(MasterRequest &request)
 
                 } // transfering data to main matrix
             }
-
+        
             request.respondOctetStream(os.str().c_str(), written_bytes);
-        }
 
+        }
+        else if(request.uri_original == MasterRequest::BIN_QUERY)
+        {
+            std::stringstream ss;
+            vector::serialize(aggregatedVector, ss);
+            std::string result = ss.str();
+
+//            std::ofstream data("/tmp/results",std::fstream::out|std::fstream::app);
+//            data << request.uri_strtranslated << std::endl;
+//            data << "result" << std::endl;
+//            for (auto ch: result) {
+//                data << std::hex << (unsigned int) ch << " ";
+//            }
+//            data << std::endl;
+            
+            request.respondOctetStream(result.c_str(), result.size());
+        }
     }
     catch (std::exception& e)
     {

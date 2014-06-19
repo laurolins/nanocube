@@ -29,7 +29,7 @@
 struct MasterRequest {
 
     enum Type { JSON_OBJECT=0, OCTET_STREAM=1};
-    enum Uri {SCHEMA=0, QUERY=1, BIN_QUERY=2, TILE=3, TQUERY=4};
+    enum Uri {SCHEMA=0, QUERY=1, BIN_QUERY=2, TILE=3, TQUERY=4, TBIN=5, BIN_TQUERY=6 };
 
     MasterRequest(mg_connection *conn, const std::vector<std::string> &params, std::string uri);
 
