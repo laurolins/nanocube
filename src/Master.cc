@@ -180,9 +180,11 @@ MasterException::MasterException(const std::string &message):
 // Slave
 //-------------------------------------------------------------------------
 
-Slave::Slave(std::string address, int port):
+Slave::Slave(std::string address):
     address(address),
-    port(port)
+    deamon_port(-1),
+    query_port(-1),
+    insert_port(-1)
 {}
 
 /*
@@ -230,7 +232,7 @@ std::vector<char> Master::requestSlave(std::string uri, Slave &slave)
     std::cout << "Connecting to slave..." << std::endl;
 
     boost::asio::io_service io_service;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.port);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.query_port);
     boost::asio::ip::tcp::socket socket(io_service);
 
     socket.connect(endpoint);

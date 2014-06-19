@@ -10,17 +10,9 @@
 #include "tclap/CmdLine.h"
 
 
+#include "Master.hh"
 #include "NanoCubeSchema.hh"
 #include "DumpFile.hh"
-
-
-struct Slave {
-    std::string address;
-    int deamon_port;
-    int slave_insert_port;
-    int slave_query_port;
-    //boost::asio::ip::tcp::socket* socket;
-};
 
 
 struct Options {
@@ -38,7 +30,7 @@ struct Options {
             "hosts-filename" // type description
             };
 
-    // -h or --hosts
+    // -b or --block
     TCLAP::ValueArg<int> block_size {  
             "b",              // flag
             "block",         // name
@@ -48,12 +40,32 @@ struct Options {
             "block-size" // type description
             };
 
+    // -q or --query
+    TCLAP::ValueArg<int> query_port {  
+            "q",              // flag
+            "query",         // name
+            "Query port", // description
+            false,            // required
+            29512,               // value
+            "query-port" // type description
+            };
+
+    // -o or --query-only
+    TCLAP::SwitchArg query_only {  
+            "o",              // flag
+            "query-only",         // name
+            "Only offer query", // description
+            false               // value
+            };
+
 
 };
 
 Options::Options(std::vector<std::string>& args) {
     cmd_line.add(hosts_file); // add command option
     cmd_line.add(block_size);
+    cmd_line.add(query_port);
+    cmd_line.add(query_only);
     cmd_line.parse(args);
 }
 
@@ -132,8 +144,8 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
     }
 
     std::cout << "ncserve insert port: " << insert_port <<  ", query port: " << query_port << std::endl;
-    slave.slave_insert_port = insert_port;
-    slave.slave_query_port = query_port;
+    slave.insert_port = insert_port;
+    slave.query_port = query_port;
 }
 
 //------------------------------------------------------------------------------
@@ -146,10 +158,10 @@ void sendToSlave(Slave& slave, int batch_size, int records_to_send)
     //slave.slave_insert_port = port;
 
     //1 - Connect to slave
-    std::cout << "Connecting to slave " << slave.address << ":" << slave.slave_insert_port << std::endl;
+    std::cout << "Connecting to slave " << slave.address << ":" << slave.insert_port << std::endl;
 
     boost::asio::io_service io_service;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.slave_insert_port);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.insert_port);
     boost::asio::ip::tcp::socket socket(io_service);
 
     socket.connect(endpoint);
@@ -185,48 +197,13 @@ void sendToSlave(Slave& slave, int batch_size, int records_to_send)
     std::cout << "Finished" <<  std::endl;
 }
 
-
 //------------------------------------------------------------------------------
-// main
-// file format:
-// distribution rules:
-// address:port
+// initScatter
 //------------------------------------------------------------------------------
-
-int main(int argc, char *argv[])
+void initScatter(Options& options, std::vector<Slave>& slaves)
 {
 
-    std::vector<std::string> args(argv, argv + argc);
-    Options options(args);     
-
-    //Read servers file
-    std::vector<Slave> slaves;
-    
-    std::ifstream file;
-    file.open(options.hosts_file.getValue());
-    if(file.is_open())
-    {
-        std::string line;
-        while ( std::getline (file,line) )
-        {
-            std::cout << "Node: " << line << std::endl;
-            auto sep = line.find(":");
-            std::string address = line.substr(0, sep);
-            int port = atoi(line.substr(sep+1).c_str());
-
-            Slave newslave;
-            newslave.address = address;
-            newslave.deamon_port = port;
-            slaves.push_back(newslave);
-        }
-
-        file.close();
-    }
-    else
-    {
-        std::cout << "Unable to open file\n"; 
-        return 0;
-    }
+    std::cout << "Initializing scattering..." << std::endl;
 
     //Read schema
     //std::cout << std::cin.rdbuf();
@@ -251,6 +228,106 @@ int main(int argc, char *argv[])
     }
 
 
+    std::cout << "Scattering finished" << std::endl;
+
+}
+
+
+//------------------------------------------------------------------------------
+// initGather
+//------------------------------------------------------------------------------
+void initGather(Options& options, std::vector<Slave>& slaves)
+{
+
+    std::cout << "Initializing gathering..." << std::endl;
+
+    Master master(slaves);
+
+    int tentative=0;
+    while (tentative < 100) {
+        tentative++;
+        try {
+            std::cout << "Starting MasterServer on port " << master.port << std::endl;
+            master.start(20);
+        }
+        catch (MasterException &e) {
+            std::cout << e.what() << std::endl;
+            master.port++;
+        }
+    }
+
+    std::cout << "Gathering finished" << std::endl;
+
+
+}
+
+
+//------------------------------------------------------------------------------
+// main
+// file format:
+// distribution rules:
+// address:port[:d]
+//------------------------------------------------------------------------------
+
+int main(int argc, char *argv[])
+{
+
+    std::vector<std::string> args(argv, argv + argc);
+    Options options(args);     
+
+    std::vector<Slave> slaves;
+
+    //Read hosts file
+    std::ifstream file;
+    file.open(options.hosts_file.getValue());
+    if(file.is_open())
+    {
+        std::string line;
+        while ( std::getline (file,line) )
+        {
+            int sep0 = line.find(":");
+	    int sep1 = line.find(":", sep0+1);
+            
+	    std::string address = line.substr(0, sep0);
+            int port = atoi(line.substr(sep0+1).c_str());
+
+	    Slave newslave(address);
+	    if(sep1 != std::string::npos)
+	    {
+	        //Port specified is from deamon
+		newslave.deamon_port = port;
+
+                std::cout << "Deamon: " << address << ":" << port << std::endl;
+	    }
+	    else
+	    {
+                //Port scpefied is from query port
+                newslave.query_port = port;
+
+                std::cout << "Query : " << address << ":" << port << std::endl;
+	    }
+
+            slaves.push_back(newslave);
+        }
+
+        file.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file\n"; 
+        return 0;
+    }
+
+    std::cout << options.query_only.getValue() << std::endl;
+
+    if(!options.query_only.getValue())
+    	initScatter(options, slaves);
+
+    initGather(options, slaves);
+
+
+
+	
 
     return 0;
     

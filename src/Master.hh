@@ -79,14 +79,18 @@ public:
 
 struct Slave {
 public:
-    Slave(std::string address, int port);
+    Slave(std::string address);
 
     //void setResponse(std::string response);
 
-    std::string address;
-    int port;
     std::string content_type;
     int content_length;
+
+    std::string address;
+    int deamon_port;
+    int insert_port;
+    int query_port;
+ 
 
 private:
     std::string response;

@@ -12,7 +12,6 @@ bin_PROGRAMS =        \
 ncdmp                 \
 ncserve               \
 nc_q25_c1_u2_u4       \
-ncmaster              \
 nanocube              \
 nanocube-leaf         \
 nanocube-distribute   \
@@ -66,10 +65,21 @@ MercatorProjection.hh
 
 nanocube_distribute_SOURCES = \
 nanocube-distribute.cc        \
-NanoCubeSchema.cc      \
-NanoCubeSchema.hh      \
-DumpFile.cc            \
-DumpFile.hh         
+NanoCubeSchema.cc             \
+NanoCubeSchema.hh             \
+DumpFile.cc                   \
+DumpFile.hh                   \
+Master.cc                     \
+Master.hh                     \
+NanoCubeQueryResult.cc        \
+Query.cc                      \
+QueryParser.cc                \
+geometry.cc                   \
+json.cc                       \
+maps.cc                       \
+mongoose/mongoose.c           \
+vector.cc
+
 
 nanocube_deamon_SOURCES =    \
 nanocube-deamon.cc           
@@ -79,20 +89,21 @@ ncserve.cc            \
 DumpFile.cc           \
 mongoose/mongoose.c
 
-ncmaster_SOURCES =    \
-DumpFile.cc           \
-Master.cc             \
-NanoCubeQueryResult.cc\
-NanoCubeSchema.cc     \
-Query.cc              \
-QueryParser.cc        \
-geometry.cc           \
-json.cc               \
-maps.cc               \
-mongoose/mongoose.c   \
-ncmaster.cc           \
-vector.cc
-
+#
+#ncmaster_SOURCES =    \
+#DumpFile.cc           \
+#Master.cc             \
+#NanoCubeQueryResult.cc\
+#NanoCubeSchema.cc     \
+#Query.cc              \
+#QueryParser.cc        \
+#geometry.cc           \
+#json.cc               \
+#maps.cc               \
+#mongoose/mongoose.c   \
+#ncmaster.cc           \
+#vector.cc
+#
 
 nc_SOURCES =              \
 cache.cc                  \
