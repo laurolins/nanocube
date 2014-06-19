@@ -7,18 +7,59 @@
 
 #include <boost/asio.hpp>
 
+#include "tclap/CmdLine.h"
+
+
 #include "NanoCubeSchema.hh"
 #include "DumpFile.hh"
 
 
 struct Slave {
-    std::string deamon_address;
+    std::string address;
     int deamon_port;
-    std::string slave_address;
     int slave_insert_port;
     int slave_query_port;
+    //boost::asio::ip::tcp::socket* socket;
 };
 
+
+struct Options {
+    Options(std::vector<std::string>& args);
+
+    TCLAP::CmdLine cmd_line { "Nanocube Distribute - distribute process", ' ', "2.3", false };
+
+    // -h or --hosts
+    TCLAP::ValueArg<std::string> hosts_file {  
+            "h",              // flag
+            "hosts",         // name
+            "Hosts file, containing address:port of hosts and distribution rules", // description
+            true,            // required
+            "",               // value
+            "hosts-filename" // type description
+            };
+
+    // -h or --hosts
+    TCLAP::ValueArg<int> block_size {  
+            "b",              // flag
+            "block",         // name
+            "Block size, to be sent to each host", // description
+            false,            // required
+            10000,               // value
+            "block-size" // type description
+            };
+
+
+};
+
+Options::Options(std::vector<std::string>& args) {
+    cmd_line.add(hosts_file); // add command option
+    cmd_line.add(block_size);
+    cmd_line.parse(args);
+}
+
+
+
+dumpfile::DumpFileDescription input_file_description;
 
 //------------------------------------------------------------------------------
 // wakeSlave
@@ -30,13 +71,13 @@ struct Slave {
 // 5 - Ready to send data
 //------------------------------------------------------------------------------
 
-void wakeSlave(Slave slave, dumpfile::DumpFileDescription schema)
+void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
 {
     // //1 - Connect to deamon
-    std::cout << "Connecting to deamon " << slave.deamon_address << ":" << slave.deamon_port << std::endl;
+    std::cout << "Connecting to deamon " << slave.address << ":" << slave.deamon_port << std::endl;
 
     boost::asio::io_service io_service;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.deamon_address), slave.deamon_port);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.deamon_port);
     boost::asio::ip::tcp::socket socket(io_service);
 
     socket.connect(endpoint);
@@ -91,34 +132,78 @@ void wakeSlave(Slave slave, dumpfile::DumpFileDescription schema)
     }
 
     std::cout << "ncserve insert port: " << insert_port <<  ", query port: " << query_port << std::endl;
+    slave.slave_insert_port = insert_port;
+    slave.slave_query_port = query_port;
+}
 
-    //4 - Connect to slave
+//------------------------------------------------------------------------------
+// sendToSlave
+//------------------------------------------------------------------------------
+void sendToSlave(Slave& slave, int batch_size, int records_to_send)
+{
 
+    //remove
+    //slave.slave_insert_port = port;
 
-    //5 - Ready to send data
+    //1 - Connect to slave
+    std::cout << "Connecting to slave " << slave.address << ":" << slave.slave_insert_port << std::endl;
+
+    boost::asio::io_service io_service;
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.slave_insert_port);
+    boost::asio::ip::tcp::socket socket(io_service);
+
+    socket.connect(endpoint);
+
+    //2 - Send schema
+    std::cout << "Sending data to slave... " <<  std::endl;
+
+    
+    int records_sent = 0;
+    auto record_size = input_file_description.record_size;
+    auto num_bytes_per_batch = record_size * batch_size;
+    char buffer[num_bytes_per_batch];
+    while (records_sent < records_to_send) {
+        std::cin.read(buffer,num_bytes_per_batch);
+        //std::cout << buffer << std::endl;
+        if (!std::cin) {
+            auto gcount = std::cin.gcount();
+            if (gcount > 0) {
+                boost::asio::write(socket, boost::asio::buffer(buffer, gcount));
+            }
+            break;
+        }
+        else {
+            boost::asio::write(socket, boost::asio::buffer(buffer, num_bytes_per_batch));
+        }
+        records_sent += batch_size;
+    }
+
+    std::cout << records_sent << std::endl;
+
+    socket.close();
+
+    std::cout << "Finished" <<  std::endl;
 }
 
 
 //------------------------------------------------------------------------------
 // main
 // file format:
+// distribution rules:
 // address:port
 //------------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
 
-    //Read servers file
-    if(argc <= 1)
-    {
-       std::cout << "Usage: ./ncdistribute [file with servers]\n" << std::endl;
-       return 1;
-    }
+    std::vector<std::string> args(argv, argv + argc);
+    Options options(args);     
 
+    //Read servers file
     std::vector<Slave> slaves;
     
     std::ifstream file;
-    file.open(argv[1]);
+    file.open(options.hosts_file.getValue());
     if(file.is_open())
     {
         std::string line;
@@ -130,7 +215,7 @@ int main(int argc, char *argv[])
             int port = atoi(line.substr(sep+1).c_str());
 
             Slave newslave;
-            newslave.deamon_address = address;
+            newslave.address = address;
             newslave.deamon_port = port;
             slaves.push_back(newslave);
         }
@@ -146,7 +231,6 @@ int main(int argc, char *argv[])
     //Read schema
     //std::cout << std::cin.rdbuf();
 
-    dumpfile::DumpFileDescription input_file_description;
     std::cin >> input_file_description;
     //nanocube::Schema nanocube_schema(input_file_description);
 
@@ -155,6 +239,17 @@ int main(int argc, char *argv[])
     {
         wakeSlave(slaves[i], input_file_description);
     }
+
+    sleep(5);
+
+    //Send data
+    int block_size = options.block_size.getValue();
+
+    for(i=0; i<slaves.size(); i++)
+    {
+        sendToSlave(slaves[i], block_size, block_size);
+    }
+
 
 
     return 0;
