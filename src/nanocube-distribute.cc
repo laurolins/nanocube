@@ -151,7 +151,7 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
 //------------------------------------------------------------------------------
 // sendToSlave
 //------------------------------------------------------------------------------
-void sendToSlave(Slave& slave, int batch_size, int records_to_send)
+bool sendToSlave(Slave& slave, int batch_size, int records_to_send)
 {
 
     //remove
@@ -166,11 +166,12 @@ void sendToSlave(Slave& slave, int batch_size, int records_to_send)
 
     socket.connect(endpoint);
 
-    //2 - Send schema
+    //2 - Send data
     std::cout << "Sending data to slave... " <<  std::endl;
 
     
     int records_sent = 0;
+    bool finished_input = false;
     auto record_size = input_file_description.record_size;
     auto num_bytes_per_batch = record_size * batch_size;
     char buffer[num_bytes_per_batch];
@@ -182,6 +183,7 @@ void sendToSlave(Slave& slave, int batch_size, int records_to_send)
             if (gcount > 0) {
                 boost::asio::write(socket, boost::asio::buffer(buffer, gcount));
             }
+            finished_input = true;
             break;
         }
         else {
@@ -195,6 +197,8 @@ void sendToSlave(Slave& slave, int batch_size, int records_to_send)
     socket.close();
 
     std::cout << "Finished" <<  std::endl;
+
+    return finished_input;
 }
 
 //------------------------------------------------------------------------------
@@ -221,10 +225,16 @@ void initScatter(Options& options, std::vector<Slave>& slaves)
 
     //Send data
     int block_size = options.block_size.getValue();
-
-    for(i=0; i<slaves.size(); i++)
+    bool finished_input = false;
+    i = 0;
+    for(;;)
     {
-        sendToSlave(slaves[i], block_size, block_size);
+        finished_input = sendToSlave(slaves[i], block_size, block_size);
+	      i++;
+	      if(i >= slaves.size())
+	          i = 0;
+        if(finished_input)
+            break;
     }
 
 
@@ -271,12 +281,12 @@ void initGather(Options& options, std::vector<Slave>& slaves)
 
 int main(int argc, char *argv[])
 {
-    
+
     std::vector<std::string> args(argv, argv + argc);
-    Options options(args);
-    
+    Options options(args);     
+
     std::vector<Slave> slaves;
-    
+
     //Read hosts file
     std::ifstream file;
     file.open(options.hosts_file.getValue());
@@ -286,30 +296,29 @@ int main(int argc, char *argv[])
         while ( std::getline (file,line) )
         {
             int sep0 = line.find(":");
-            int sep1 = line.find(":", sep0+1);
+	          int sep1 = line.find(":", sep0+1);
             
-            std::string address = line.substr(0, sep0);
+	          std::string address = line.substr(0, sep0);
             int port = atoi(line.substr(sep0+1).c_str());
-            
-            Slave newslave(address);
-            if(sep1 != std::string::npos)
-            {
-                //Port specified is from deamon
-                newslave.deamon_port = port;
-                
+
+	          Slave newslave(address);
+	          if(sep1 != std::string::npos)
+	          {
+	              //Port specified is from deamon
+		            newslave.deamon_port = port;
+
                 std::cout << "Deamon: " << address << ":" << port << std::endl;
-            }
-            else
-            {
+	          }
+	          else
+	          {
                 //Port scpefied is from query port
                 newslave.query_port = port;
-                
                 std::cout << "Query : " << address << ":" << port << std::endl;
             }
-            
+
             slaves.push_back(newslave);
         }
-        
+
         file.close();
     }
     else
@@ -321,13 +330,9 @@ int main(int argc, char *argv[])
     std::cout << options.query_only.getValue() << std::endl;
 
     if(!options.query_only.getValue())
-    	initScatter(options, slaves);
+        initScatter(options, slaves);
 
     initGather(options, slaves);
-
-
-
-	
 
     return 0;
     
