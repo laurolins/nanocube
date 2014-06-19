@@ -209,8 +209,8 @@ void Slave::setResponse(std::string res)
 // Master
 //-------------------------------------------------------------------------
 
-Master::Master(std::vector<Slave> slaves):
-  port(29511),
+Master::Master(std::vector<Slave> slaves, int port):
+  port(port),
   mongoose_threads(10),
   done(false),
   is_timing(false),

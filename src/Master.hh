@@ -103,7 +103,7 @@ private:
 
 struct Master {
 
-    Master(std::vector<Slave> slaves);
+    Master(std::vector<Slave> slaves, int port);
 
     void start(int mongoose_threads);
     void stop();
@@ -118,9 +118,9 @@ struct Master {
     void *mg_callback(mg_event event, mg_connection *conn);
     void parse(std::string query_st, ::query::QueryDescription &query_description);
 
-
     int port;
     int mongoose_threads;
+
 private:
 
     bool done;

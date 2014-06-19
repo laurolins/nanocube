@@ -241,7 +241,7 @@ void initGather(Options& options, std::vector<Slave>& slaves)
 
     std::cout << "Initializing gathering..." << std::endl;
 
-    Master master(slaves);
+    Master master(slaves, options.query_port.getValue());
 
     int tentative=0;
     while (tentative < 100) {
@@ -271,12 +271,12 @@ void initGather(Options& options, std::vector<Slave>& slaves)
 
 int main(int argc, char *argv[])
 {
-
+    
     std::vector<std::string> args(argv, argv + argc);
-    Options options(args);     
-
+    Options options(args);
+    
     std::vector<Slave> slaves;
-
+    
     //Read hosts file
     std::ifstream file;
     file.open(options.hosts_file.getValue());
@@ -286,30 +286,30 @@ int main(int argc, char *argv[])
         while ( std::getline (file,line) )
         {
             int sep0 = line.find(":");
-	    int sep1 = line.find(":", sep0+1);
+            int sep1 = line.find(":", sep0+1);
             
-	    std::string address = line.substr(0, sep0);
+            std::string address = line.substr(0, sep0);
             int port = atoi(line.substr(sep0+1).c_str());
-
-	    Slave newslave(address);
-	    if(sep1 != std::string::npos)
-	    {
-	        //Port specified is from deamon
-		newslave.deamon_port = port;
-
+            
+            Slave newslave(address);
+            if(sep1 != std::string::npos)
+            {
+                //Port specified is from deamon
+                newslave.deamon_port = port;
+                
                 std::cout << "Deamon: " << address << ":" << port << std::endl;
-	    }
-	    else
-	    {
+            }
+            else
+            {
                 //Port scpefied is from query port
                 newslave.query_port = port;
-
+                
                 std::cout << "Query : " << address << ":" << port << std::endl;
-	    }
-
+            }
+            
             slaves.push_back(newslave);
         }
-
+        
         file.close();
     }
     else

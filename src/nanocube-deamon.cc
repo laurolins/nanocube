@@ -87,7 +87,7 @@ pid_t initializeNcserve(std::string message, int input, int query)
         // could we do thi in the main process? maybe
         //execlp(program_name.c_str(), program_name.c_str(), NULL);
         //execv(program_name.c_str(), argv);
-        execlp("./nanocube-leaf", "nanocube-leaf", "-s", "schema.tmp", "-q", charquery, "-i", charinput, (char *)NULL);
+        execlp("nanocube-leaf", "nanocube-leaf", "-s", "schema.tmp", "-q", charquery, "-i", charinput, (char *)NULL);
 
         // failed to execute program
         printf("Could not open file\n");
