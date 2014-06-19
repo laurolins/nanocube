@@ -180,12 +180,19 @@ MasterException::MasterException(const std::string &message):
 // Slave
 //-------------------------------------------------------------------------
 
-Slave::Slave(std::string address):
-    address(address),
+Slave::Slave(std::string paddress):
     deamon_port(-1),
     query_port(-1),
     insert_port(-1)
-{}
+{
+    //Get ip address
+    boost::asio::io_service io_service;
+    boost::asio::ip::tcp::resolver resolver(io_service);
+    boost::asio::ip::tcp::resolver::query query(paddress, "");
+    boost::asio::ip::tcp::endpoint end = *resolver.resolve(query);
+    this->address = end.address().to_string();
+    std::cout << "Blabla:: " << this->address << std::endl;
+}
 
 /*
 void Slave::setResponse(std::string res)
