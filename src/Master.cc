@@ -205,6 +205,25 @@ Slave::Slave(std::string paddress):
     this->address = end.address().to_string();
 }
 
+void Slave::connect()
+{
+    std::cout << "Connecting to slave..." <<  address << ":" << query_port << std::endl;
+
+    boost::asio::io_service* io_service = new boost::asio::io_service();
+    boost::asio::ip::tcp::endpoint* endpoint = new boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(address), query_port);
+    socket = new boost::asio::ip::tcp::socket(*io_service);
+
+    socket->connect(*endpoint);
+}
+
+void Slave::close()
+{
+    std::cout << "Closing connection to slave..." <<  address << ":" << query_port << std::endl;
+
+    socket->close();
+    delete socket;
+}
+
 /*
 void Slave::setResponse(std::string res)
 {
@@ -234,31 +253,19 @@ Master::Master(std::vector<Slave> slaves):
   slaves(slaves)
 {}
 
-void Master::processSlave(MasterRequest &request)
+void Master::writeSlave(std::string uri, Slave &slave)
 {
-    //Client: Slave
-    //Server: Master
-}
-
-std::vector<char> Master::requestSlave(std::string uri, Slave &slave)
-{
-    //Client: Master
-    //Server: Slave
-
-    
-    std::cout << "Connecting to slave..." << std::endl;
-
-    boost::asio::io_service io_service;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.query_port);
-    boost::asio::ip::tcp::socket socket(io_service);
-
-    socket.connect(endpoint);
 
     char buffer[1024];
     //std::string uri = request.uri_strtranslated;
     sprintf(buffer, "GET %s HTTP/1.1\n\n", uri.c_str());
     
-    boost::asio::write(socket, boost::asio::buffer(buffer));
+    boost::asio::write(*(slave.socket), boost::asio::buffer(buffer));
+}
+
+std::vector<char> Master::readSlave(Slave& slave)
+{
+
 
     std::vector<char> response;
     for (;;)
@@ -266,7 +273,7 @@ std::vector<char> Master::requestSlave(std::string uri, Slave &slave)
         char buf[1024];
         boost::system::error_code error;
 
-        size_t len = socket.read_some(boost::asio::buffer(buf), error);
+        size_t len = slave.socket->read_some(boost::asio::buffer(buf), error);
 
         if (error == boost::asio::error::eof)
             break; // Connection closed cleanly by peer.
@@ -277,52 +284,10 @@ std::vector<char> Master::requestSlave(std::string uri, Slave &slave)
         response.insert(response.end(), buf, buf+len);
     }
 
-    socket.close();
-    std::cout << "Finished connection..." << std::endl;
-
     std::string aux(response.begin(), response.end());
     auto pos = aux.find("\r\n\r\n");
 
     return std::vector<char>(aux.begin()+pos+4,aux.end());
-
-//    int pos0 = response.find("Content-Type");
-//    int pos1 = response.find("\r\n", pos0);
-//    content_type = response.substr(pos0+14, pos1-pos0-14);
-
-//    pos0 = response.find("Content-Length");
-//    pos1 = response.find("\r\n", pos0);
-//    content_length = std::stoi(response.substr(pos0+16, pos1-pos0-16));
-
-//    content = response.substr(response.length()-content_length, content_length);
-
-//    auto pos = response.begin();
-//    bool new_line = false;
-//    while (pos != response.end()) {
-//        if (new_line && *pos == '\n') {
-//            ++pos;
-//            break;
-//        }
-//        else if (*pos == '\n') {
-//            new_line = true;
-//        }
-//        else {
-//            new_line = false;
-//        }
-//        ++pos;
-//    }
-
-    //slave.setResponse(response);
-    //return std::vector<char>(pos,response.end());
-
-    // if(type.compare("application/json") == 0)
-    // {
-    //     request.respondJson(content);
-    // }
-    // else
-    // {
-    //     request.respondOctetStream(content.c_str(), content.size()); 
-    // } 
-
 
 }
 
@@ -331,72 +296,79 @@ void Master::requestAllSlaves(MasterRequest &request)
 
     try
     {
+        //connect
+        int i = 0;
+        for(i = 0; i < slaves.size(); i++)
+        {
+            slaves[i].connect();
+        }
         
-        // aggregate result from all slaves (when it makes sense
-        // otherwise get from the first slave)
-        
-        int i=0;
+        //std::cout << "requestSlave(" << request.uri_strtranslated << ")" << std::endl;
+
+        if(request.uri_translated == MasterRequest::SCHEMA)
+        {
+            writeSlave(request.uri_strtranslated, slaves[0]);
+            auto content = readSlave(slaves[0]);
+            auto schema_st = std::string(content.begin(), content.end());
+            std::cerr << schema_st << std::endl;
+            request.respondJson(schema_st);
+            return;
+        }
+        else if(request.uri_translated == MasterRequest::TQUERY)
+        {
+            writeSlave(request.uri_strtranslated, slaves[0]);
+            auto content = readSlave(slaves[0]);
+            request.respondJson(std::string(content.begin(), content.end()));
+            return;
+        }
+        else if(request.uri_translated == MasterRequest::TBIN)
+        {
+            writeSlave(request.uri_strtranslated, slaves[0]);
+            auto content = readSlave(slaves[0]);
+            request.respondJson(std::string(content.begin(), content.end()));
+            return;
+        }
+        else if (request.uri_translated == MasterRequest::BIN_TQUERY)
+        {
+            writeSlave(request.uri_strtranslated, slaves[0]);
+            auto content = readSlave(slaves[0]);
+            request.respondOctetStream(&content[0], content.size());
+            return;
+        }
+
+        //Scatter
+        for(i = 0; i < slaves.size(); i++)
+        {
+            writeSlave(request.uri_strtranslated, slaves[i]);
+        }
+
+        //Gather
         vector::Vector aggregatedVector;
         bool isAggregating = false;
-        for(i = 0; i<slaves.size(); i++)
+        for(i = 0; i < slaves.size(); i++)
         {
-            
-            std::cout << "requestSlave(" << request.uri_strtranslated << ")" << std::endl;
-            
-            auto content = requestSlave(request.uri_strtranslated, slaves[i]);
+            auto content = readSlave(slaves[i]);
+            //content is binary. Create vector and apply operations.
+            std::istringstream is(std::string(content.begin(), content.end()));
+            auto result = vector::deserialize(is);
 
-            if(request.uri_translated == MasterRequest::SCHEMA) {
-                auto schema_st = std::string(content.begin(), content.end());
-                std::cerr << schema_st << std::endl;
-                request.respondJson(schema_st);
-                return;
-            }
-            else if(request.uri_translated == MasterRequest::TQUERY)
+            //First time
+            if(isAggregating == false)
             {
-                request.respondJson(std::string(content.begin(), content.end()));
-                return;
-            }
-            else if(request.uri_translated == MasterRequest::TBIN)
-            {
-                request.respondJson(std::string(content.begin(), content.end()));
-                return;
-            }
-            else if (request.uri_translated == MasterRequest::BIN_TQUERY) {
-                request.respondOctetStream(&content[0], content.size());
-                return;
+                aggregatedVector = result;
+                isAggregating = true;
             }
             else
             {
-                //content is binary. Create vector and apply operations.
-                std::istringstream is(std::string(content.begin(), content.end()));
-                auto result = vector::deserialize(is);
-
-                
-                //
-                
-//                std::ofstream data("/tmp/results",std::fstream::out|std::fstream::app);
-//                data << request.uri_strtranslated << std::endl;
-//                data << "***(slave[" << i << "] result)" << std::endl;
-//                data << result << std::endl;
-                
-                
-                //First time
-                if(isAggregating == false)
-                {
-                    aggregatedVector = result;
-                    isAggregating = true;
-                }
-                else
-                {
-                    aggregatedVector = aggregatedVector + result;
-
-//                    data << "******(new aggregate)" << std::endl;
-//                    data << aggregatedVector << std::endl;
-
-                
-                }
-                
+                aggregatedVector = aggregatedVector + result;
             }
+              
+        }
+
+        //disconnect
+        for(i = 0; i < slaves.size(); i++)
+        {
+            slaves[i].close();
         }
 
         
@@ -743,7 +715,10 @@ void Master::parse(std::string              query_st,
 
 void Master::requestSchema()
 {
-    auto strschema = requestSlave("/binschema", slaves[0]);
+    slaves[0].connect();
+    writeSlave("/binschema", slaves[0]);
+    auto strschema = readSlave(slaves[0]);
+    slaves[0].close();
 
     // read input file description
     std::istringstream iss(std::string(strschema.begin(), strschema.end()));
