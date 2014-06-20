@@ -90,6 +90,7 @@ public:
     int deamon_port;
     int insert_port;
     int query_port;
+    float load;
  
 
 private:
@@ -103,9 +104,9 @@ private:
 
 struct Master {
 
-    Master(std::vector<Slave> slaves, int port);
+    Master(std::vector<Slave> slaves);
 
-    void start(int mongoose_threads);
+    void start(int mongoose_threads, int mongoose_port);
     void stop();
     bool toggleTiming(bool b);
     bool isTiming() const;
@@ -118,7 +119,7 @@ struct Master {
     void *mg_callback(mg_event event, mg_connection *conn);
     void parse(std::string query_st, ::query::QueryDescription &query_description);
 
-    int port;
+    int mongoose_port;
     int mongoose_threads;
 
 private:

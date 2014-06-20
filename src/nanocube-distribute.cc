@@ -24,7 +24,7 @@ struct Options {
     TCLAP::ValueArg<std::string> hosts_file {  
             "h",              // flag
             "hosts",         // name
-            "Hosts file, containing address:port for query-only hosts and address:port:d for hosts running deamon.", // description
+            "Hosts file, containing address:port [q] [X], where [q] specifies a query-only host and [X] is a float number in the interval [0, 1.0], with the dataset porcentage going  to that host.", // description
             true,            // required
             "",               // value
             "hosts-filename" // type description
@@ -130,8 +130,6 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
 
         size_t len = socket.read_some(boost::asio::buffer(buf), error);
 
-        std::cout << "Received: " << len << std::endl;
-
         if (error == boost::asio::error::eof)
             break; // Connection closed cleanly by peer.
         else if (error)
@@ -142,7 +140,7 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
     }
 
     std::string aux(response.begin(), response.end());
-    std::cout << "Received message from deamon: " << aux << std::endl;
+    //std::cout << "Received message from deamon: " << aux << std::endl;
 
     //Parse response
     int pos0 = aux.find(":");
@@ -167,7 +165,7 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
 //------------------------------------------------------------------------------
 // sendToSlave
 //------------------------------------------------------------------------------
-bool sendToSlave(Slave& slave, int batch_size, int records_to_send)
+bool sendToSlave(Slave& slave, int batch_size)
 {
 
     //remove
@@ -192,7 +190,7 @@ bool sendToSlave(Slave& slave, int batch_size, int records_to_send)
     auto record_size = input_file_description.record_size;
     auto num_bytes_per_batch = record_size * batch_size;
     char buffer[num_bytes_per_batch];
-    while (records_sent < records_to_send) {
+    //while (1) {
         is.read(buffer,num_bytes_per_batch);
         //std::cout << buffer << std::endl;
         if (!is) {
@@ -201,15 +199,15 @@ bool sendToSlave(Slave& slave, int batch_size, int records_to_send)
                 boost::asio::write(socket, boost::asio::buffer(buffer, gcount));
             }
             finished_input = true;
-            break;
+            //break;
         }
         else {
             boost::asio::write(socket, boost::asio::buffer(buffer, num_bytes_per_batch));
         }
         records_sent += batch_size;
-    }
+    //}
 
-    std::cout << records_sent << std::endl;
+    std::cout << "Records sent: " << records_sent << std::endl;
 
     socket.close();
 
@@ -248,7 +246,7 @@ void initScatter(Options& options, std::vector<Slave>& slaves)
     i = 0;
     for(;;)
     {
-        finished_input = sendToSlave(slaves[i], block_size, block_size);
+        finished_input = sendToSlave(slaves[i], block_size * slaves[i].load);
 	      i++;
 	      if(i >= slaves.size())
 	          i = 0;
@@ -270,18 +268,19 @@ void initGather(Options& options, std::vector<Slave>& slaves)
 
     std::cout << "Initializing gathering..." << std::endl;
 
-    Master master(slaves, options.query_port.getValue());
+    Master master(slaves);
+    int current_port = options.query_port.getValue();
 
     int tentative=0;
     while (tentative < 100) {
         tentative++;
         try {
-            std::cout << "Starting MasterServer on port " << master.port << std::endl;
-            master.start(options.no_mongoose_threads.getValue());
+            std::cout << "Starting MasterServer on port " << current_port << std::endl;
+            master.start(options.no_mongoose_threads.getValue(), current_port);
         }
         catch (MasterException &e) {
             std::cout << e.what() << std::endl;
-            master.port++;
+            current_port++;
         }
     }
 
@@ -290,12 +289,91 @@ void initGather(Options& options, std::vector<Slave>& slaves)
 
 }
 
+int parseHostFile(Options& options, std::vector<Slave>& slaves)
+{
+    //Read hosts file
+    std::ifstream file;
+    file.open(options.hosts_file.getValue());
+    if(file.is_open())
+    {
+        std::string line;
+        while ( std::getline (file,line) )
+        {
+            int sep0 = line.find(":");
+	          int sep1 = line.find(" ", sep0+1);
+            int sep2 = line.find(" ", sep1+1);
+            
+            std::string address = line.substr(0, sep0);
+            std::string type = "d";
+            int port = 0.0;
+            float load = 1.0;
+            Slave newslave(address);
+
+            if(sep1 == std::string::npos && sep2 == std::string::npos)
+            {
+                //address:port
+                port = atoi(line.substr(sep0+1).c_str());
+            }
+            else if(sep2 == std::string::npos)
+            {
+                //address:port q or address:port X
+                port = atoi(line.substr(sep0+1, sep1-sep0-1).c_str());
+                std::string aux = line.substr(sep1+1);
+
+                if(aux.compare("q") == 0)
+                {
+                    type = "q";
+                }
+                else
+                {
+                   load = atof(aux.c_str());
+                }
+            }
+            else
+            {
+                //address:port q X 
+                port = atoi(line.substr(sep0+1, sep1-sep0-1).c_str());
+                type = line.substr(sep1+1, sep2-sep1-1);
+                load = atof(line.substr(sep2+1).c_str());
+            }
+
+            if(type.compare("q") == 0)
+            {
+                newslave.query_port = port;
+            }
+            else
+            {
+                newslave.deamon_port = port;
+            }
+
+            newslave.load = load;
+
+            slaves.push_back(newslave);
+
+            std::cout << "Node: " << type << ", " << address << ":" << port << ", Load: " << load << std::endl;
+        }
+
+        file.close();
+    }
+    else
+    {
+        std::cout << "Unable to open file\n"; 
+        return 0;
+    }
+
+    return 1;
+
+}
+
 
 //------------------------------------------------------------------------------
 // main
 // file format:
 // distribution rules:
-// address:port[:d]
+// address:port [q] [X]
+// address:port - host address and port
+// q: query only host
+// X: dataset porcentage going to that host (0.0 <= X <= 1.0)
 //------------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
@@ -313,50 +391,12 @@ int main(int argc, char *argv[])
 
     std::vector<Slave> slaves;
 
-    //Read hosts file
-    std::ifstream file;
-    file.open(options.hosts_file.getValue());
-    if(file.is_open())
+    int success = parseHostFile(options, slaves);
+
+    if(success == 0)
     {
-        std::string line;
-        while ( std::getline (file,line) )
-        {
-            int sep0 = line.find(":");
-	          int sep1 = line.find(":", sep0+1);
-            
-	          std::string address = line.substr(0, sep0);
-            int port = atoi(line.substr(sep0+1).c_str());
-
-	          Slave newslave(address);
-	          if(sep1 != std::string::npos)
-	          {
-	              //Port specified is from deamon
-		            newslave.deamon_port = port;
-
-                std::cout << "Deamon: " << address << ":" << port << std::endl;
-	          }
-	          else
-	          {
-                //Port scpefied is from query port
-                newslave.query_port = port;
-                std::cout << "Query : " << address << ":" << port << std::endl;
-            }
-
-            slaves.push_back(newslave);
-        }
-
-        file.close();
+        exit(1);
     }
-    else
-    {
-        std::cout << "Unable to open file\n"; 
-        return 0;
-    }
-
-    
-    
-    
-    std::cout << options.query_only.getValue() << std::endl;
 
     if(!options.query_only.getValue())
         initScatter(options, slaves);

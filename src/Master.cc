@@ -194,7 +194,8 @@ MasterException::MasterException(const std::string &message):
 Slave::Slave(std::string paddress):
     deamon_port(-1),
     query_port(-1),
-    insert_port(-1)
+    insert_port(-1),
+    load(1.0)
 {
     //Get ip address
     boost::asio::io_service io_service;
@@ -202,7 +203,6 @@ Slave::Slave(std::string paddress):
     boost::asio::ip::tcp::resolver::query query(paddress, "");
     boost::asio::ip::tcp::endpoint end = *resolver.resolve(query);
     this->address = end.address().to_string();
-    std::cout << "Blabla:: " << this->address << std::endl;
 }
 
 /*
@@ -227,8 +227,7 @@ void Slave::setResponse(std::string res)
 // Master
 //-------------------------------------------------------------------------
 
-Master::Master(std::vector<Slave> slaves, int port):
-  port(port),
+Master::Master(std::vector<Slave> slaves):
   mongoose_threads(10),
   done(false),
   is_timing(false),
@@ -755,9 +754,9 @@ void Master::requestSchema()
     
     
     
-    std::cout << "--------- schema -----------" << std::endl;
-    std::cout << schema.get()->dump_file_description << std::endl;
-    std::cout << "----------------------------" << std::endl;
+    //std::cout << "--------- schema -----------" << std::endl;
+    //std::cout << schema.get()->dump_file_description << std::endl;
+    //std::cout << "----------------------------" << std::endl;
     
 }
 
@@ -837,27 +836,26 @@ void* __mg_master_callback(mg_event event, mg_connection *conn)
     return _master->mg_callback(event, conn);
 }
 
-void Master::start(int mongoose_threads) // blocks current thread
+void Master::start(int mongoose_threads, int mongoose_port) // blocks current thread
 {
-
-    //Request schema
-    requestSchema();
 
     //boost::mpi::communicator mpicom;
     //std::cout << "**Master: I am process " << mpicom.rank() << " of " << mpicom.size() << "." << std::endl;
 
-    char p[256];
-    sprintf(p,"%d",port);
-    std::string port_st = p;
+    //char p[256];
+    //sprintf(p,"%d",port);
+    //std::string port_st = p;
     this->mongoose_threads = mongoose_threads;
+    this->mongoose_port = mongoose_port;
 
     // port_st.c_str();
     _master = this; // single master
     // auto callback = std::bind(&Server::mg_callback, this, std::placeholders::_1, std::placeholders::_2);
 
     std::string mongoose_string = std::to_string(mongoose_threads);
+    std::string port_string = std::to_string(mongoose_port);
     struct mg_context *ctx;
-    const char *options[] = {"listening_ports", port_st.c_str(), "num_threads", mongoose_string.c_str(), NULL};
+    const char *options[] = {"listening_ports", port_string.c_str(), "num_threads", mongoose_string.c_str(), NULL};
     ctx = mg_start(&__mg_master_callback, NULL, options);
 
     if (!ctx) {
@@ -866,7 +864,8 @@ void Master::start(int mongoose_threads) // blocks current thread
 
     // ctx = mg_start(&callback, NULL, options);
 
-    std::cout << "Master server on port " << port << std::endl;
+    requestSchema();
+    std::cout << "Master server on port " << mongoose_port << std::endl;
     while (!done) // this thread will be blocked
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
