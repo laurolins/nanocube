@@ -11,6 +11,8 @@
 #include <string>
 #include <iostream>
 
+#include <random>
+
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -158,6 +160,14 @@ int main(int argc, char *argv[])
 
     printf("Waiting for connection on port %d...\n", port);
 
+
+    // Seed with a real random value, if available
+    std::random_device rd;
+
+    // target port range 50100 - 59999
+    std::default_random_engine random_engine(rd());
+    std::uniform_int_distribution<int> uniform_dist(50100, 59999);
+
     /* The Big Loop */
     while (1) {
 
@@ -193,14 +203,16 @@ int main(int argc, char *argv[])
         int input = 0;
         int query = 0;
         int i = 0;
-        struct timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        //Using nano-seconds instead of seconds
-        srand((time_t)ts.tv_nsec);
+
+        // struct timespec ts;
+        // clock_gettime(CLOCK_MONOTONIC, &ts);
+        // //Using nano-seconds instead of seconds
+        // srand((time_t)ts.tv_nsec);
+
         for(i=0; i<NUM_TENTATIVES; i++)
         {
-            int input = rand() % 5000 + 2500;;
-            int query = input+1;
+            int input = uniform_dist(random_engine);
+            int query = uniform_dist(random_engine);
             pid_t pid = initializeNcserve(message, input, query);
 
             //char filepath[30];
