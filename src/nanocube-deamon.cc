@@ -14,6 +14,7 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <time.h>
 
 #define NUM_TENTATIVES 10
 
@@ -192,6 +193,10 @@ int main(int argc, char *argv[])
         int input = 0;
         int query = 0;
         int i = 0;
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        //Using nano-seconds instead of seconds
+        srand((time_t)ts.tv_nsec);
         for(i=0; i<NUM_TENTATIVES; i++)
         {
             int input = rand() % 5000 + 2500;;
