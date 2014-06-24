@@ -13,6 +13,7 @@ modern-day laptop.
 
 | Number | Description |
 |:------:|-------------|
+| 2.1.1 | fixed csv2Nanocube.py to work with pandas 0.14.0 |
 | 2.1 | Javascript front-end, CSV Loading, Bug Fixes  |
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
