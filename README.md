@@ -24,11 +24,12 @@ modern-day laptop.
 recent version of [boost](http://www.boost.org) (>=1.48) and the
 [GNU build system](http://www.gnu.org/software/autoconf/).
 
-Run the following commands to compile nanocubes on your linux/mac system.
+Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
+with valid release numbers (e.g. 2.1.1, 2.1, 2.0).
 
-    $ wget https://github.com/laurolins/nanocube/archive/2.1.zip
-    $ unzip 2.1.zip
-    $ cd nanocube-2.1
+    $ wget https://github.com/laurolins/nanocube/archive/X.X.X.zip
+    $ unzip X.X.X.zip
+    $ cd nanocube-X.X.X
     $ ./bootstrap
     $ ./configure
     $ make
@@ -83,6 +84,9 @@ viewer
         --sep='Delimiter of Columns'
         e.g. 1D/30m/60s'
 
+For this example we assume you are running everything on your
+localhost. Modify `config.json` accordingly in the `web` folder for
+different setups.
 
 ## Further Details
 
