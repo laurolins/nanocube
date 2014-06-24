@@ -205,25 +205,6 @@ Slave::Slave(std::string paddress):
     this->address = end.address().to_string();
 }
 
-void Slave::connect()
-{
-    std::cout << "Connecting to slave..." <<  address << ":" << query_port << std::endl;
-
-    boost::asio::io_service* io_service = new boost::asio::io_service();
-    boost::asio::ip::tcp::endpoint* endpoint = new boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(address), query_port);
-    socket = new boost::asio::ip::tcp::socket(*io_service);
-
-    socket->connect(*endpoint);
-}
-
-void Slave::close()
-{
-    std::cout << "Closing connection to slave..." <<  address << ":" << query_port << std::endl;
-
-    socket->close();
-    delete socket;
-}
-
 /*
 void Slave::setResponse(std::string res)
 {
@@ -253,17 +234,17 @@ Master::Master(std::vector<Slave> slaves):
   slaves(slaves)
 {}
 
-void Master::writeSlave(std::string uri, Slave &slave)
+void Master::writeSlave(std::string uri, boost::asio::ip::tcp::socket& socket)
 {
 
     char buffer[1024];
     //std::string uri = request.uri_strtranslated;
     sprintf(buffer, "GET %s HTTP/1.1\n\n", uri.c_str());
     
-    boost::asio::write(*(slave.socket), boost::asio::buffer(buffer));
+    boost::asio::write(socket, boost::asio::buffer(buffer));
 }
 
-std::vector<char> Master::readSlave(Slave& slave)
+void Master::readSlave(boost::asio::ip::tcp::socket& socket, std::vector<char>* content)
 {
 
 
@@ -273,7 +254,7 @@ std::vector<char> Master::readSlave(Slave& slave)
         char buf[1024];
         boost::system::error_code error;
 
-        size_t len = slave.socket->read_some(boost::asio::buffer(buf), error);
+        size_t len = socket.read_some(boost::asio::buffer(buf), error);
 
         if (error == boost::asio::error::eof)
             break; // Connection closed cleanly by peer.
@@ -287,7 +268,7 @@ std::vector<char> Master::readSlave(Slave& slave)
     std::string aux(response.begin(), response.end());
     auto pos = aux.find("\r\n\r\n");
 
-    return std::vector<char>(aux.begin()+pos+4,aux.end());
+    *content = std::vector<char>(aux.begin()+pos+4,aux.end());
 
 }
 
@@ -296,58 +277,119 @@ void Master::requestAllSlaves(MasterRequest &request)
 
     try
     {
-        //connect
-        int i = 0;
-        for(i = 0; i < slaves.size(); i++)
-        {
-            slaves[i].connect();
-        }
         
         //std::cout << "requestSlave(" << request.uri_strtranslated << ")" << std::endl;
+        if(request.uri_translated == MasterRequest::SCHEMA
+            || request.uri_translated == MasterRequest::TQUERY
+            || request.uri_translated == MasterRequest::TBIN
+            || request.uri_translated == MasterRequest::BIN_TQUERY)
+        {
+            std::vector<char> content;
+            boost::asio::io_service io_service;
+            boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slaves[0].address), slaves[0].query_port);
+            boost::asio::ip::tcp::socket socket(io_service);
 
-        if(request.uri_translated == MasterRequest::SCHEMA)
-        {
-            writeSlave(request.uri_strtranslated, slaves[0]);
-            auto content = readSlave(slaves[0]);
-            auto schema_st = std::string(content.begin(), content.end());
-            std::cerr << schema_st << std::endl;
-            request.respondJson(schema_st);
+            socket.connect(endpoint);
+            writeSlave(request.uri_strtranslated, socket);
+            readSlave(socket, &content);
+
+            if(request.uri_translated == MasterRequest::SCHEMA)
+            {
+                auto schema_st = std::string(content.begin(), content.end());
+                std::cerr << schema_st << std::endl;
+                request.respondJson(schema_st);
+            }
+            else if(request.uri_translated == MasterRequest::TQUERY)
+            {
+                request.respondJson(std::string(content.begin(), content.end()));
+            }
+            else if(request.uri_translated == MasterRequest::TBIN)
+            {
+                request.respondJson(std::string(content.begin(), content.end()));
+            }
+            else if (request.uri_translated == MasterRequest::BIN_TQUERY)
+            {
+                request.respondOctetStream(&content[0], content.size());
+            }
+
+            socket.close();
             return;
         }
-        else if(request.uri_translated == MasterRequest::TQUERY)
+
+        //Instead of storing in each Slave object, we need to do this, because of Mongoose threads
+        //(Slave objects are shared between all Mongoose threads)
+        std::vector<boost::asio::ip::tcp::socket*> sockets;
+        std::vector<boost::asio::ip::tcp::endpoint*> endpoints;
+        std::vector<boost::asio::io_service*> io_services;
+        std::vector<std::vector<char>*> contents;
+        int i = 0;
+        for(i = 0; i<slaves.size(); i++)
         {
-            writeSlave(request.uri_strtranslated, slaves[0]);
-            auto content = readSlave(slaves[0]);
-            request.respondJson(std::string(content.begin(), content.end()));
-            return;
+            boost::asio::io_service* io_service = new boost::asio::io_service();
+            boost::asio::ip::tcp::endpoint* endpoint = new boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(slaves[i].address), slaves[i].query_port);
+            boost::asio::ip::tcp::socket* socket = new boost::asio::ip::tcp::socket(*io_service);
+
+            sockets.push_back(socket);
+            endpoints.push_back(endpoint);
+            io_services.push_back(io_service);
         }
-        else if(request.uri_translated == MasterRequest::TBIN)
-        {
-            writeSlave(request.uri_strtranslated, slaves[0]);
-            auto content = readSlave(slaves[0]);
-            request.respondJson(std::string(content.begin(), content.end()));
-            return;
-        }
-        else if (request.uri_translated == MasterRequest::BIN_TQUERY)
-        {
-            writeSlave(request.uri_strtranslated, slaves[0]);
-            auto content = readSlave(slaves[0]);
-            request.respondOctetStream(&content[0], content.size());
-            return;
-        }
+
+#if 0
+        //Parallel write/read
 
         //Scatter
         for(i = 0; i < slaves.size(); i++)
         {
-            writeSlave(request.uri_strtranslated, slaves[i]);
+            sockets[i]->connect(*endpoints[i]);
+            writeSlave(request.uri_strtranslated, *sockets[i]);
         }
 
-        //Gather
+        //Gather threads
+        std::vector<std::thread> gather_threads;
+        
+        for(i = 0; i < slaves.size(); i++)
+        {
+            std::vector<char>* content = new std::vector<char>();
+            contents.push_back(content);
+
+            std::cout << "Gather " << i << std::endl;
+            gather_threads.push_back(std::thread(&Master::readSlave, this, *sockets[i], contents[i]));
+        }
+        
+        
+        //Join gather threads
+        for(i = 0; i < slaves.size(); i++)
+        {
+            std::cout << "Join " << i << std::endl;
+            gather_threads[i].join();
+            sockets[i]->close();
+        }
+#else
+        //Serial write/read
+
+        for(i = 0; i < slaves.size(); i++)
+        {
+            //std::cout << "Slave: " << i << std::endl;
+            std::vector<char>* content = new std::vector<char>();
+
+            sockets[i]->connect(*endpoints[i]);
+            writeSlave(request.uri_strtranslated, *sockets[i]);
+            readSlave(*sockets[i], content);
+            sockets[i]->close();
+
+            //std::cout << "a: " << std::string(content.begin(), content.end()) << std::endl;
+
+            contents.push_back(content);
+        }
+#endif
+
+        //Aggregate results
         vector::Vector aggregatedVector;
         bool isAggregating = false;
         for(i = 0; i < slaves.size(); i++)
         {
-            auto content = readSlave(slaves[i]);
+            //auto content = readSlave(i);
+            auto content = *contents[i];
             //content is binary. Create vector and apply operations.
             std::istringstream is(std::string(content.begin(), content.end()));
             auto result = vector::deserialize(is);
@@ -365,10 +407,13 @@ void Master::requestAllSlaves(MasterRequest &request)
               
         }
 
-        //disconnect
-        for(i = 0; i < slaves.size(); i++)
+        //Clean pointers
+        for(i = 0; i<slaves.size(); i++)
         {
-            slaves[i].close();
+            delete contents[i];
+            delete sockets[i];
+            delete endpoints[i];
+            delete io_services[i];
         }
 
         
@@ -715,10 +760,16 @@ void Master::parse(std::string              query_st,
 
 void Master::requestSchema()
 {
-    slaves[0].connect();
-    writeSlave("/binschema", slaves[0]);
-    auto strschema = readSlave(slaves[0]);
-    slaves[0].close();
+
+    std::vector<char> strschema;
+    boost::asio::io_service io_service;
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slaves[0].address), slaves[0].query_port);
+    boost::asio::ip::tcp::socket socket(io_service);
+
+    socket.connect(endpoint);
+    writeSlave("/binschema", socket);
+    readSlave(socket, &strschema);
+    socket.close();
 
     // read input file description
     std::istringstream iss(std::string(strschema.begin(), strschema.end()));

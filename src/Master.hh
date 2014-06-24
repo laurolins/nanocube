@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <functional>
 #include <memory>
+#include <thread>
 
 #include <boost/asio.hpp>
 // #include <boost/mpi/environment.hpp>
@@ -81,12 +82,8 @@ public:
 struct Slave {
 public:
     Slave(std::string address);
-    void connect();
-    void close();
 
     //void setResponse(std::string response);
-
-    boost::asio::ip::tcp::socket* socket;
     std::string content_type;
     int content_length;
 
@@ -116,8 +113,8 @@ struct Master {
     bool isTiming() const;
     const std::string currentDateTime();
 
-    void writeSlave(std::string uri, Slave& slave);
-    std::vector<char> readSlave(Slave& slave);
+    void writeSlave(std::string uri, boost::asio::ip::tcp::socket& socket);
+    void readSlave(boost::asio::ip::tcp::socket& socket, std::vector<char>* content);
     void requestAllSlaves(MasterRequest &request);
     void requestSchema();
     void *mg_callback(mg_event event, mg_connection *conn);
