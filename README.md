@@ -67,7 +67,7 @@ This procedure assumes your machine is not running anything on ports
    ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2))
 
         $ cd ../scripts
-        $ python csv2Nanocube.py --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100
+        $ python csv2Nanocube.py --sep=',' --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100
 
 This should be it. Point your browser to http://localhost:8000 for the
 viewer
