@@ -1494,11 +1494,9 @@ int main(int argc, char *argv[]) {
     }
 #endif
     
-    auto run = [&options](std::istream& is) {
-        // read input file description
-        dumpfile::DumpFileDescription input_file_description;
-        is >> input_file_description;
-        
+    auto run = [&options](std::istream& is, dumpfile::DumpFileDescription& input_file_description) {
+
+
         // create nanocube_schema from input_file_description
         ::nanocube::Schema nanocube_schema(input_file_description);
         
@@ -1510,11 +1508,19 @@ int main(int argc, char *argv[]) {
     };
     
     if (options.schema.getValue().size()) {
-        std::ifstream is(options.schema.getValue());
-        run(is);
+        // read schema from file
+        dumpfile::DumpFileDescription input_file_description;
+        std::ifstream ifs(options.schema.getValue());
+        ifs >> input_file_description;
+
+        run(std::cin, input_file_description);
     }
     else {
-        run(std::cin);
+        // read schema form input
+        dumpfile::DumpFileDescription input_file_description;
+        std::cin >> input_file_description;
+
+        run(std::cin, input_file_description);
     }
     
     // join write thread
