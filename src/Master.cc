@@ -766,6 +766,9 @@ void Master::requestSchema()
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slaves[0].address), slaves[0].query_port);
     boost::asio::ip::tcp::socket socket(io_service);
 
+    // wait 1 second
+    sleep(10);
+
     socket.connect(endpoint);
     writeSlave("/binschema", socket);
     readSlave(socket, &strschema);
@@ -834,6 +837,7 @@ void* Master::mg_callback(mg_event event, mg_connection *conn)
         if (is_timing) {
             //handlers[handler_name](request);
             //requestSlaves(request);
+            requestAllSlaves(request);
             auto t1 = std::chrono::high_resolution_clock::now();
             uint64_t elapsed_nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
             timing_of << currentDateTime() << " " << uri
@@ -891,6 +895,7 @@ void Master::start(int mongoose_threads, int mongoose_port) // blocks current th
     // ctx = mg_start(&callback, NULL, options);
 
     requestSchema();
+
     std::cout << "Master server on port " << mongoose_port << std::endl;
     while (!done) // this thread will be blocked
         std::this_thread::sleep_for(std::chrono::seconds(1));

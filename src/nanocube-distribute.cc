@@ -300,7 +300,7 @@ int parseHostFile(Options& options, std::vector<Slave>& slaves)
         while ( std::getline (file,line) )
         {
             int sep0 = line.find(":");
-	          int sep1 = line.find(" ", sep0+1);
+            int sep1 = line.find(" ", sep0+1);
             int sep2 = line.find(" ", sep1+1);
             
             std::string address = line.substr(0, sep0);

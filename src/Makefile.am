@@ -15,7 +15,8 @@ nc_q25_c1_u2_u4       \
 nanocube              \
 nanocube-leaf         \
 nanocube-distribute   \
-nanocube-deamon
+nanocube-deamon       \
+nanocube-sliding
 
 #
 # nc_q25_u2_u4          \
@@ -88,6 +89,23 @@ ncserve_SOURCES =     \
 ncserve.cc            \
 DumpFile.cc           \
 mongoose/mongoose.c
+
+nanocube_sliding_SOURCES = \
+nanocube-sliding.cc        \
+DumpFile.cc                \
+NanoCubeSchema.cc          \
+NanoCubeQueryResult.cc     \
+Master.cc                  \
+Query.cc                   \
+QueryParser.cc             \
+geometry.cc                \
+json.cc                    \
+maps.cc                    \
+mongoose/mongoose.c        \
+vector.cc
+
+
+
 
 #
 #ncmaster_SOURCES =    \

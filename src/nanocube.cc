@@ -17,7 +17,8 @@ struct Options {
     Options(std::vector<std::string> &args);
     TCLAP::CmdLine cmd_line { "Nanocube front-end program", ' ', "2.3", "true" };
     TCLAP::UnlabeledValueArg<std::string> command { "command", "command is one of the following: "
-            "leaf, composite, distributed, or deamon.\n"
+            "leaf, sliding, composite, distributed, or deamon.\n"
+            "sliding: start a local nanocube, with sliding windows\n"
             "leaf: start a local nanocube\ncomposite: start nanocube from existing nanocubes\n"
             "distributed: start distributed nanocubes on hosts with a deamon process\n"
             "deamon: start nanocube deamon process", true, "", "command" };
@@ -40,13 +41,13 @@ int main(int argc, char** argv) {
         Options options(args);
         auto command = options.command.getValue();
 
-        std::vector<std::string> valid_commands { { "leaf", "composite", "distribute", "deamon" } };
+        std::vector<std::string> valid_commands { { "leaf", "sliding", "composite", "distribute", "deamon" } };
 
         auto it = std::find(valid_commands.begin(), valid_commands.end(), command);
         if (it == valid_commands.end()) {
             std::stringstream ss;
             ss << "Invalid Command: " << command << std::endl;
-            ss << "Try: leaf, composite, distribute, deamon";
+            ss << "Try: leaf, sliding, composite, distribute, deamon";
             throw std::string(ss.str());
         }
 
