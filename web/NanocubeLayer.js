@@ -76,16 +76,16 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
         if(result !=null){
             that.max = Math.max(that.max, result.max);
             that.min = Math.min(that.min, result.min);
-            that.renderTile(canvas,size,result.data);
+            that.renderTile(canvas,size,tilePoint,zoom,result.data);
         }        
         else{
-            that.renderTile(canvas,size,null);
+            that.renderTile(canvas,size,tilePoint,zoom,null);
         }
     });
     this.tileDrawn(canvas);
 };
 
-L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
+L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,data){
     var ctx = canvas.getContext('2d');
     
     if (data == null){
@@ -93,7 +93,7 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
         ctx.putImageData(imgBlankData,0,0);
 
         if (this.show_count){//draw grid box
-            this.drawGridCount(ctx,data);
+            this.drawGridCount(ctx,tilePoint,zoom,data);
         }
         return;
     }
@@ -159,24 +159,26 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, data){
     }        
 
     if (this.show_count){//draw grid box
-        this.drawGridCount(ctx,data);
+        this.drawGridCount(ctx,tilePoint,zoom,data);
     }
 };
 
-L.NanocubeLayer.prototype.drawGridCount = function(ctx,data){
+L.NanocubeLayer.prototype.drawGridCount = function(ctx,tilePoint,zoom,data){
     ctx.lineWidth="0.5";
     ctx.strokeStyle="white";
     ctx.rect(0,0,ctx.canvas.width,ctx.canvas.height);
     ctx.stroke();
 
+    var totalstr =  "("+tilePoint.x + "," + tilePoint.y +","+zoom+")   ";
     if(data != null){
         //Total count
         var total = data.reduce(function(prev,curr){return prev+curr.v;},0);
-        var totalstr =  total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        ctx.font="10pt sans-serif";
-        ctx.fillStyle="white";
-        ctx.fillText(totalstr,10,20);
+        totalstr +=  total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     }
+    ctx.font="10pt sans-serif";
+    ctx.fillStyle="white";
+    ctx.fillText(totalstr,10,20);
+    
 };
 
 L.NanocubeLayer.prototype.processData = function(bindata){
