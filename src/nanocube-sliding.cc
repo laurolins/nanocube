@@ -45,16 +45,6 @@ struct Options {
 
     TCLAP::CmdLine cmd_line { "Nanocube Sliding Window", ' ', "2.3", false };
 
-    // -b or --block
-    TCLAP::ValueArg<int> block_size {  
-        "b",              // flag
-        "block",         // name
-        "Block size, to be sent to each host.", // description
-        false,            // required
-        10000,               // value
-        "block-size" // type description
-    };
-
     // -q or --query
     TCLAP::ValueArg<int> query_port {  
         "q",              // flag
@@ -93,6 +83,16 @@ struct Options {
         "num-windows"
     };
 
+    // should be std::size_t
+    TCLAP::ValueArg<int> report_frequency {
+        "f",              // flag
+        "report-frequency",        // name
+        "Report a line when inserting",     // description
+        false,                                 // required
+        100000,                                   // value
+        "report-frequency"                         // type description
+    };
+
     // -t or --threads
     TCLAP::ValueArg<int> no_mongoose_threads {
         "t",              // flag
@@ -117,13 +117,13 @@ struct Options {
 };
 
 Options::Options(std::vector<std::string>& args) {
-    cmd_line.add(block_size);
     cmd_line.add(query_port);
     cmd_line.add(query_only);
     cmd_line.add(no_mongoose_threads);
     cmd_line.add(window_size);
     cmd_line.add(num_windows);
     cmd_line.add(schema);
+    cmd_line.add(report_frequency);
     cmd_line.parse(args);
 }
 
@@ -186,7 +186,7 @@ struct NanoCubeSchema {
 //------------------------------------------------------------------------------
 struct Window {
 
-    Window(NanoCubeSchema nc_schema, std::string schema_filename, int windowid, int query_port);
+    Window(NanoCubeSchema nc_schema, std::string schema_filename, int windowid, int query_port, int report_frequency);
     void runProcess();
     void openStream();
     void writeStream(const void * ptr, size_t size, size_t count);
@@ -202,10 +202,12 @@ struct Window {
     int windowid;
     FILE* stream;
     int query_port;
+    int report_frequency;
 
 };
 
-Window::Window(NanoCubeSchema nc_schema, std::string schema_filename, int windowid, int query_port):
+Window::Window(NanoCubeSchema nc_schema, std::string schema_filename, int windowid, int query_port, int report_frequency):
+    report_frequency(report_frequency),
     nc_schema(nc_schema),
     schema_filename(schema_filename),
     windowid(windowid),
@@ -282,7 +284,12 @@ void Window::runProcess()
     // child process will be replaced by this other process
     // could we do thi in the main process? maybe
     // execlp(program_name.c_str(), program_name.c_str(), NULL);
-    execlp(program_name.c_str(), program_name.c_str(), "-q", std::to_string(query_port).c_str(), "-b", "1", "-s", schema_filename.c_str(), (char *)NULL);
+    execlp(program_name.c_str(), program_name.c_str(),
+        "-q", std::to_string(query_port).c_str(),
+        "-b", "1",
+        "-s", schema_filename.c_str(),
+        "-f", std::to_string(report_frequency).c_str(),
+         (char *)NULL);
 
     // failed to execute program
     std::cout << "Could not create leaf process." << std::endl;;
@@ -324,9 +331,9 @@ void Window::writeStream(const void * ptr, size_t size, size_t count)
 
 void Window::closeStream()
 {
-    close(pipe_write_file_descriptor);
     fflush(stream);
     fclose(stream);
+    close(pipe_write_file_descriptor);
 }
 
 
@@ -420,7 +427,7 @@ int main(int argc, char *argv[])
         std::uniform_int_distribution<int> uniform_dist(50100, 59999);
         int query_port = uniform_dist(random_engine);
 
-        Window newwindow = Window(nc_schema, schema_filename, i, query_port);
+        Window newwindow = Window(nc_schema, schema_filename, i, query_port, options.report_frequency.getValue());
         windows.push_back(newwindow);
         windows[i].initialize();
         windows[i].openStream();
@@ -468,7 +475,7 @@ int main(int argc, char *argv[])
         // std::cout << "num_bytes: " << time_dimension_field->field_type.num_bytes << std::endl;
         // std::cout << "num_tokens: " << time_dimension_field->field_type.num_tokens << std::endl;
 
-        sleep(10);
+        //sleep(10);
 
         int start_time     = -1;
         int window_size    = options.window_size.getValue();
