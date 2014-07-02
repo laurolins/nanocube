@@ -440,7 +440,7 @@ int main(int argc, char *argv[])
         // std::cout << "num_bytes: " << time_dimension_field->field_type.num_bytes << std::endl;
         // std::cout << "num_tokens: " << time_dimension_field->field_type.num_tokens << std::endl;
 
-        sleep(20);
+        sleep(5);
 
         int start_time = 8500;
         int window_size = options.window_size.getValue();
@@ -472,6 +472,7 @@ int main(int argc, char *argv[])
                 }
                 windows[current_window].killProcess();
                 windows[current_window].initialize();
+                windows[current_window].openStream();
 
                 std::cout << "    New window: " << current_window << " Last timestamp: " << window_end << std::endl;
             }
