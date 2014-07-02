@@ -186,7 +186,7 @@ struct NanoCubeSchema {
 //------------------------------------------------------------------------------
 struct Window {
 
-    Window(std::string schema_filename, int windowid, int query_port);
+    Window(NanoCubeSchema nc_schema, std::string schema_filename, int windowid, int query_port);
     void runProcess();
     void openStream();
     void writeStream(const void * ptr, size_t size, size_t count);
@@ -194,6 +194,7 @@ struct Window {
     void initialize();
     void killProcess();
 
+    NanoCubeSchema nc_schema;
     std::string schema_filename;
     int pipe_read_file_descriptor;
     int pipe_write_file_descriptor;
@@ -204,7 +205,8 @@ struct Window {
 
 };
 
-Window::Window(std::string schema_filename, int windowid, int query_port):
+Window::Window(NanoCubeSchema nc_schema, std::string schema_filename, int windowid, int query_port):
+    nc_schema(nc_schema),
     schema_filename(schema_filename),
     windowid(windowid),
     query_port(query_port)
@@ -255,7 +257,32 @@ void Window::runProcess()
 
     std::cout << "Child process " << getpid() << " is creating a nanocube leaf. Query: " << query_port << std::endl;
     
-    execlp("nanocube-leaf", "nanocube-leaf", "-q", std::to_string(query_port).c_str(), "-s", schema_filename.c_str(), (char *)NULL);
+    //execlp("nanocube-leaf", "nanocube-leaf", "-q", std::to_string(query_port).c_str(), "-b", "1", "-s", schema_filename.c_str(), (char *)NULL);
+    // exec new process
+    std::string program_name;
+    {
+        std::stringstream ss;
+
+        const char* binaries_path_ptr = std::getenv("NANOCUBE_BIN");
+        if (binaries_path_ptr) {
+            std::string binaries_path(binaries_path_ptr);
+            if (binaries_path.size() > 0 && binaries_path.back() != '/') {
+                binaries_path = binaries_path + "/";
+            }
+            ss << binaries_path;
+        }
+        else {
+            ss << "./";
+        }
+
+        ss << "nc" << nc_schema.dimensions_spec << nc_schema.time_and_variables_spec;
+        program_name = ss.str();
+    }
+    
+    // child process will be replaced by this other process
+    // could we do thi in the main process? maybe
+    // execlp(program_name.c_str(), program_name.c_str(), NULL);
+    execlp(program_name.c_str(), program_name.c_str(), "-q", std::to_string(query_port).c_str(), "-b", "1", "-s", schema_filename.c_str(), (char *)NULL);
 
     // failed to execute program
     std::cout << "Could not create leaf process." << std::endl;;
@@ -297,6 +324,7 @@ void Window::writeStream(const void * ptr, size_t size, size_t count)
 
 void Window::closeStream()
 {
+    close(pipe_write_file_descriptor);
     fflush(stream);
     fclose(stream);
 }
@@ -392,7 +420,7 @@ int main(int argc, char *argv[])
         std::uniform_int_distribution<int> uniform_dist(50100, 59999);
         int query_port = uniform_dist(random_engine);
 
-        Window newwindow = Window(schema_filename, i, query_port);
+        Window newwindow = Window(nc_schema, schema_filename, i, query_port);
         windows.push_back(newwindow);
         windows[i].initialize();
         windows[i].openStream();
@@ -446,6 +474,7 @@ int main(int argc, char *argv[])
         int window_size = options.window_size.getValue();
         int current_window = 0;
         int window_end = start_time + window_size;
+        int num_points = 0;
         while (1)
         {
             std::cin.read(buffer,num_bytes_per_batch);
@@ -484,6 +513,7 @@ int main(int argc, char *argv[])
                     //fwrite((void*) buffer, 1, gcount, f);
                     //std::cout << "@ Writing to window " << current_window << ", query: " << windows[current_window].query_port << std::endl;
                     windows[current_window].writeStream((void*) buffer, 1, gcount);
+                    num_points++;
                 }
                 break;
             }
@@ -491,14 +521,19 @@ int main(int argc, char *argv[])
                 //std::cout << "@ Writing to window " << current_window << ", query: " << windows[current_window].query_port << std::endl;
                 //fwrite((void*) buffer, 1, BUFFER_SIZE, f);
                 windows[current_window].writeStream((void*) buffer, 1, num_bytes_per_batch);
+                num_points++;
             }
+
+            
             
         }
-        
 
+        std::cout << "num_points: " << num_points << std::endl;
         std::cout << "closing redirections" << std::endl;
 
         // clear
+        //int aux = EOF;
+        //windows[current_window].writeStream((void*) aux, 1, 1);
         for(i = 0; i < windows.size(); i++)
         {
             windows[i].closeStream();

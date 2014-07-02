@@ -464,16 +464,27 @@ void NanoCubeServer::insert_from_stdin()
     
     std::stringstream ss;
     char buffer[num_bytes_per_batch];
+
+
+    
+
     while (!done) {
         
-        // std::cerr << "reading " << num_bytes_per_batch << "...";
+        //std::cerr << "reading " << num_bytes_per_batch << "...";
         input_stream.read(buffer,num_bytes_per_batch);
         
-        if (!input_stream)
-            break;
+        //FILE* file = fopen("verification.tmp","a+");
+        //fprintf(file,"%s", buffer);
+        //fclose(file);
         
+        if (!input_stream){
+            //std::cout << "break" << std::endl;
+            break;
+        }
+        
+        //std::cerr << " gcout..." << std::endl;
         auto read_bytes = input_stream.gcount();
-        // std::cerr << " " << read_bytes << " were read" << std::endl;
+        //std::cerr << " " << read_bytes << " were read" << std::endl;
         
         ss.clear();
         ss.write(buffer, read_bytes);
@@ -1494,7 +1505,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
     
-    auto run = [&options](std::istream& is, dumpfile::DumpFileDescription& input_file_description) {
+    auto run = [&options](std::istream& is, dumpfile::DumpFileDescription input_file_description) {
 
 
         // create nanocube_schema from input_file_description
