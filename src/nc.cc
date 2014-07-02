@@ -465,17 +465,16 @@ void NanoCubeServer::insert_from_stdin()
     std::stringstream ss;
     char buffer[num_bytes_per_batch];
 
-
-    
+    // {
+    //     std::ofstream ofs("/tmp/verification.tmp", std::ofstream::out | std::ofstream::app);
+    //     ofs << "open verification.tmp, num bytes per batch: " << num_bytes_per_batch << std::endl;
+    // }
 
     while (!done) {
-        
+
         //std::cerr << "reading " << num_bytes_per_batch << "...";
         input_stream.read(buffer,num_bytes_per_batch);
         
-        //FILE* file = fopen("verification.tmp","a+");
-        //fprintf(file,"%s", buffer);
-        //fclose(file);
         
         if (!input_stream){
             //std::cout << "break" << std::endl;
@@ -485,6 +484,16 @@ void NanoCubeServer::insert_from_stdin()
         //std::cerr << " gcout..." << std::endl;
         auto read_bytes = input_stream.gcount();
         //std::cerr << " " << read_bytes << " were read" << std::endl;
+
+        // {
+        //     std::ofstream ofs("/tmp/verification.tmp", std::ofstream::out | std::ofstream::app);
+        //     std::for_each(&buffer[0], &buffer[0] + read_bytes, [&ofs](char ch) {
+        //             int value = 0;
+        //             std::copy(&ch, &ch + 1, (char*) &value);
+        //             ofs << std::hex << value << std::dec << " ";
+        //         });
+        //     ofs << std::endl;
+        // }
         
         ss.clear();
         ss.write(buffer, read_bytes);
@@ -663,7 +672,7 @@ void NanoCubeServer::insert_from_tcp()
                             // make sure report frequency is a multiple of batch size
                             if ((inserted_points % options.report_frequency.getValue()) == 0) {
                                 std::stringstream ss;
-                                ss << "count: " << std::setw(10) << inserted_points
+                                ss << "(tcp) count: " << std::setw(10) << inserted_points
                                 << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
                                 << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
                                 addMessage(ss.str());
@@ -801,7 +810,7 @@ void NanoCubeServer::insert_from_tcp()
                         // make sure report frequency is a multiple of batch size
                         if ((inserted_points % options.report_frequency.getValue()) == 0) {
                             std::stringstream ss;
-                            ss << "count: " << std::setw(10) << inserted_points
+                            ss << "(tcp) count: " << std::setw(10) << inserted_points
                             << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
                             << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
                             addMessage(ss.str());

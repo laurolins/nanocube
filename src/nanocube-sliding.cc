@@ -468,13 +468,13 @@ int main(int argc, char *argv[])
         // std::cout << "num_bytes: " << time_dimension_field->field_type.num_bytes << std::endl;
         // std::cout << "num_tokens: " << time_dimension_field->field_type.num_tokens << std::endl;
 
-        sleep(5);
+        sleep(10);
 
-        int start_time = 8500;
-        int window_size = options.window_size.getValue();
+        int start_time     = -1;
+        int window_size    = options.window_size.getValue();
         int current_window = 0;
-        int window_end = start_time + window_size;
-        int num_points = 0;
+        int window_end     = -1;
+        int num_points     = 0;
         while (1)
         {
             std::cin.read(buffer,num_bytes_per_batch);
@@ -486,6 +486,12 @@ int main(int argc, char *argv[])
             int first_token_index = time_dimension_field->first_token_index;
             long timestamp = 0;
             std::copy(buffer+offset, buffer+offset+num_bytes, (char*)&timestamp);
+
+            // first record initialize time initial boundaries
+            if (start_time == -1) { 
+                start_time = timestamp;
+                window_end = start_time + window_size;
+            }
 
             //std::cout << timestamp << std::endl;
 
@@ -511,14 +517,14 @@ int main(int argc, char *argv[])
                 auto gcount = std::cin.gcount();
                 if (gcount > 0) {
                     //fwrite((void*) buffer, 1, gcount, f);
-                    //std::cout << "@ Writing to window " << current_window << ", query: " << windows[current_window].query_port << std::endl;
+                    // std::cout << "@ Writing to window " << current_window << ", query: " << windows[current_window].query_port << std::endl;
                     windows[current_window].writeStream((void*) buffer, 1, gcount);
                     num_points++;
                 }
                 break;
             }
             else {
-                //std::cout << "@ Writing to window " << current_window << ", query: " << windows[current_window].query_port << std::endl;
+                // std::cout << "@ Writing to window " << current_window << ", query: " << windows[current_window].query_port << std::endl;
                 //fwrite((void*) buffer, 1, BUFFER_SIZE, f);
                 windows[current_window].writeStream((void*) buffer, 1, num_bytes_per_batch);
                 num_points++;
@@ -538,5 +544,11 @@ int main(int argc, char *argv[])
         {
             windows[i].closeStream();
         }
+
+        waitpid(newpid, 0, 0);
+
     }
+
+    
+
 }
