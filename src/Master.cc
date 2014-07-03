@@ -123,8 +123,6 @@ static std::string _content_type[] {
 
 void MasterRequest::respondJson(std::string msg_content)
 {
-    //std::cout << "===start MasterRequest::respondJson===" << std::endl;
-
     const std::string sep = "\r\n";
 
     std::stringstream ss;
@@ -138,17 +136,10 @@ void MasterRequest::respondJson(std::string msg_content)
     //response_size = 106 + (int) size; // banchmark data transfer
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
-
-    
-    //std::cout << ss.str() << std::endl;
-    //printf(ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
-    //std::cout << "===end MasterRequest::respondJson===" << std::endl;
 }
 
 void MasterRequest::respondOctetStream(const void *ptr, int size)
 {
-
-    //std::cout << "===start MasterRequest::respondOctetStream===" << std::endl;
 
     const std::string sep = "\r\n";
 
@@ -167,8 +158,6 @@ void MasterRequest::respondOctetStream(const void *ptr, int size)
         mg_write(conn, ptr, size);
         response_size += size;
     }
-
-    //std::cout << "===end MasterRequest::respondOctetStream===" << std::endl;
 }
 
 
@@ -261,7 +250,6 @@ void Master::readSlave(boost::asio::ip::tcp::socket& socket, std::vector<char>* 
         else if (error)
             throw boost::system::system_error(error); // Some other error.
 
-        //std::cout.write(buf, len);
         response.insert(response.end(), buf, buf+len);
     }
 
@@ -277,8 +265,6 @@ void Master::requestAllSlaves(MasterRequest &request)
 
     try
     {
-        
-        //std::cout << "requestSlave(" << request.uri_strtranslated << ")" << std::endl;
         if(request.uri_translated == MasterRequest::SCHEMA
             || request.uri_translated == MasterRequest::TQUERY
             || request.uri_translated == MasterRequest::TBIN
@@ -369,15 +355,12 @@ void Master::requestAllSlaves(MasterRequest &request)
 
         for(i = 0; i < slaves.size(); i++)
         {
-            //std::cout << "Slave: " << i << std::endl;
             std::vector<char>* content = new std::vector<char>();
 
             sockets[i]->connect(*endpoints[i]);
             writeSlave(request.uri_strtranslated, *sockets[i]);
             readSlave(*sockets[i], content);
             sockets[i]->close();
-
-            //std::cout << "a: " << std::string(content.begin(), content.end()) << std::endl;
 
             contents.push_back(content);
         }
@@ -430,8 +413,6 @@ void Master::requestAllSlaves(MasterRequest &request)
             std::ostringstream os;
             queryresult.json(os);
 
-            //std::cout << os.str() << std::endl;
-
             request.respondJson(os.str());
         }
         else if(request.uri_original == MasterRequest::TILE)
@@ -440,14 +421,14 @@ void Master::requestAllSlaves(MasterRequest &request)
             ::query::QueryDescription query_description;
 
             try {
-                std::cout << request.query_params << std::endl;
+                std::cerr << request.query_params << std::endl;
                 parse(request.query_params, query_description);
             }
             catch (::query::parser::QueryParserException &e) {
                 request.respondJson(e.what());
                 return;
             }
-            std::cout << query_description.getFirstAnchoredTarget() << std::endl;
+            std::cerr << query_description.getFirstAnchoredTarget() << std::endl;
 
             ::maps::Tile tile;
             auto *target = query_description.getFirstAnchoredTarget();
@@ -701,40 +682,16 @@ void Master::parse(std::string              query_st,
     ::query::parser::QueryParser parser;
     parser.parse(query_st);
 
-    //std::cout << ::query::parser::Print(parser) << std::endl;
-    
-    // std::cout << schema_dump_file_descriptions << std::endl;
-
-    //return;
-
     auto &schema = *this->schema.get();
 
     for (::query::parser::Dimension *dimension: parser.dimensions) {
         try {
 
-            // std::cout << dimension->name << std::endl;
-            // std::cout << dimension->target << std::endl;
-
             int index = schema.getDimensionIndex(dimension->name);
-            // std::cout << "Index of dimension " << dimension->name << " is " << index << std::endl;
-
-            // std::cout << "3" << std::endl;
-
             bool anchored = dimension->anchored;
-
-            // std::cout << "4" << std::endl;
-
             query_description.setAnchor(index, anchored);
-
-            // std::cout << "5" << std::endl;
-
             ::query::parser::TargetExpression *target = dimension->target;
-
-            // std::cout << "6" << std::endl;
-
             target->updateQueryDescription(index, query_description);
-
-            // std::cout << "7" << std::endl;
 
             RawAddress replacement = 0ULL;
             { // replace raw addresses ~0ULL;
@@ -750,12 +707,10 @@ void Master::parse(std::string              query_st,
 
         }
         catch(dumpfile::DumpFileException &e) {
-            std::cout << "(Warning) Dimension " << dimension->name << " not found. Disconsidering it." << std::endl;
+            std::cerr << "(master) (Warning) Dimension " << dimension->name << " not found. Disconsidering it." << std::endl;
             continue;
         }
     }
-
-    // std::cout << "10" << std::endl;
 }
 
 void Master::requestSchema()
@@ -803,7 +758,7 @@ void* Master::mg_callback(mg_event event, mg_connection *conn)
 
         std::string uri(request_info->uri);
 
-        std::cout << "Master: Request URI: " << uri << std::endl;
+        std::cerr << "(master) Request URI: " << uri << std::endl;
 
         
 
@@ -816,14 +771,12 @@ void* Master::mg_callback(mg_event event, mg_connection *conn)
         MasterRequest request(conn, tokens, uri);
 
         if (tokens.size() == 0) {
-            // std::cout << "Request URI: " << uri << std::endl;
             std::stringstream ss;
             ss << "Master: bad URL: " << uri;
             request.respondJson(ss.str());
             return  (void*) ""; // mark as processed
         }
         else if (tokens.size() == 1) {
-            // std::cout << "Request URI: " << uri << std::endl;
             std::stringstream ss;
             ss << "Master: no handler name was provided on " << uri;
             request.respondJson(ss.str());
@@ -831,7 +784,6 @@ void* Master::mg_callback(mg_event event, mg_connection *conn)
         }
 
         std::string handler_name = tokens[1];
-        //std::cout << "Searching handler: " << handler_name << std::endl;
 
 
         if (is_timing) {
@@ -845,10 +797,9 @@ void* Master::mg_callback(mg_event event, mg_connection *conn)
                       << " input " << uri.length()
                       << " output " << request.response_size
                       << std::endl;
-            // std::cout << "Request URI: " << uri << std::endl;
         } else {
-            std::cout << "Master: Request URI: " << uri << std::endl;
-            std::cout << "Master: Request handler: " << handler_name << std::endl;
+            std::cerr << "(master) Request URI: " << uri << std::endl;
+            std::cerr << "(master) Request handler: " << handler_name << std::endl;
             //handlers[handler_name](request);
             requestAllSlaves(request);
             //request.printInfo();
@@ -896,7 +847,7 @@ void Master::start(int mongoose_threads, int mongoose_port) // blocks current th
 
     requestSchema();
 
-    std::cout << "Master server on port " << mongoose_port << std::endl;
+    std::cerr << "(master) server on port " << mongoose_port << std::endl;
     while (!done) // this thread will be blocked
         std::this_thread::sleep_for(std::chrono::seconds(1));
 

@@ -102,7 +102,7 @@ dumpfile::DumpFileDescription input_file_description;
 void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
 {
     // //1 - Connect to deamon
-    std::cout << "Connecting to deamon " << slave.address << ":" << slave.deamon_port << std::endl;
+    std::cerr << "(distribute) Connecting to deamon " << slave.address << ":" << slave.deamon_port << std::endl;
 
     boost::asio::io_service io_service;
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.deamon_port);
@@ -111,7 +111,7 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
     socket.connect(endpoint);
 
     //2 - Send schema
-    std::cout << "Sending schema to deamon... " <<  std::endl;
+    std::cerr << "(distribute) Sending schema to deamon... " <<  std::endl;
     std::ostringstream os;
     os << schema;
     boost::asio::write(socket, boost::asio::buffer(os.str()));
@@ -121,7 +121,7 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
     socket.connect(endpoint);
 
     //3 - Wait for slave port
-    std::cout << "Waiting for deamon to send ncserve query and insert ports... " <<  std::endl;
+    std::cerr << "(distribute) Waiting for deamon to send ncserve query and insert ports... " <<  std::endl;
     std::vector<char> response;
     for (;;)
     {
@@ -135,12 +135,10 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
         else if (error)
             throw boost::system::system_error(error); // Some other error.
 
-        //std::cout.write(buf, len);
         response.insert(response.end(), buf, buf+len);
     }
 
     std::string aux(response.begin(), response.end());
-    //std::cout << "Received message from deamon: " << aux << std::endl;
 
     //Parse response
     int pos0 = aux.find(":");
@@ -153,11 +151,11 @@ void wakeSlave(Slave& slave, dumpfile::DumpFileDescription schema)
 
     if(status.compare("ERROR") == 0)
     {
-        std::cout << "Deamon returned an error." << std::endl;
+        std::cerr << "(distribute) Deamon returned an error." << std::endl;
         return;
     }
 
-    std::cout << "ncserve insert port: " << insert_port <<  ", query port: " << query_port << std::endl;
+    std::cerr << "(distribute) ncserve insert port: " << insert_port <<  ", query port: " << query_port << std::endl;
     slave.insert_port = insert_port;
     slave.query_port = query_port;
 }
@@ -172,7 +170,7 @@ bool sendToSlave(Slave& slave, int batch_size)
     //slave.slave_insert_port = port;
 
     //1 - Connect to slave
-    std::cout << "Connecting to slave " << slave.address << ":" << slave.insert_port << std::endl;
+    std::cerr << "(distribute) Connecting to slave " << slave.address << ":" << slave.insert_port << std::endl;
 
     boost::asio::io_service io_service;
     boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(slave.address), slave.insert_port);
@@ -181,7 +179,7 @@ bool sendToSlave(Slave& slave, int batch_size)
     socket.connect(endpoint);
 
     //2 - Send data
-    std::cout << "Sending data to slave... " <<  std::endl;
+    std::cerr << "(distribute) Sending data to slave... " <<  std::endl;
 
     std::istream &is = *input_stream;
     
@@ -207,11 +205,11 @@ bool sendToSlave(Slave& slave, int batch_size)
         records_sent += batch_size;
     //}
 
-    std::cout << "Records sent: " << records_sent << std::endl;
+    std::cerr << "(distribute) Records sent: " << records_sent << std::endl;
 
     socket.close();
 
-    std::cout << "Finished" <<  std::endl;
+    std::cerr << "(distribute) Finished" <<  std::endl;
 
     return finished_input;
 }
@@ -222,7 +220,7 @@ bool sendToSlave(Slave& slave, int batch_size)
 void initScatter(Options& options, std::vector<Slave>& slaves)
 {
 
-    std::cout << "Initializing scattering..." << std::endl;
+    std::cerr << "(distribute) Initializing scattering..." << std::endl;
 
     //Read schema
     //std::cout << std::cin.rdbuf();
@@ -255,7 +253,7 @@ void initScatter(Options& options, std::vector<Slave>& slaves)
     }
 
 
-    std::cout << "Scattering finished" << std::endl;
+    std::cerr << "(distribute) Scattering finished" << std::endl;
 
 }
 
@@ -266,7 +264,7 @@ void initScatter(Options& options, std::vector<Slave>& slaves)
 void initGather(Options& options, std::vector<Slave>& slaves)
 {
 
-    std::cout << "Initializing gathering..." << std::endl;
+    std::cerr << "(distribute) Initializing gathering..." << std::endl;
 
     Master master(slaves);
     int current_port = options.query_port.getValue();
@@ -275,16 +273,16 @@ void initGather(Options& options, std::vector<Slave>& slaves)
     while (tentative < 100) {
         tentative++;
         try {
-            std::cout << "Starting MasterServer on port " << current_port << std::endl;
+            std::cerr << "(distribute) Starting MasterServer on port " << current_port << std::endl;
             master.start(options.no_mongoose_threads.getValue(), current_port);
         }
         catch (MasterException &e) {
-            std::cout << e.what() << std::endl;
+            std::cerr << e.what() << std::endl;
             current_port++;
         }
     }
 
-    std::cout << "Gathering finished" << std::endl;
+    std::cerr << "(distribute) Gathering finished" << std::endl;
 
 
 }
@@ -350,14 +348,14 @@ int parseHostFile(Options& options, std::vector<Slave>& slaves)
 
             slaves.push_back(newslave);
 
-            std::cout << "Node: " << type << ", " << address << ":" << port << ", Load: " << load << std::endl;
+            std::cerr << "(distribute) Node: " << type << ", " << address << ":" << port << ", Load: " << load << std::endl;
         }
 
         file.close();
     }
     else
     {
-        std::cout << "Unable to open file\n"; 
+        std::cerr << "(distribute) Unable to open file\n"; 
         return 0;
     }
 

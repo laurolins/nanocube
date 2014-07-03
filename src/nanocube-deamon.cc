@@ -93,7 +93,7 @@ pid_t initializeNcserve(std::string message, int input, int query)
         execlp("nanocube-leaf", "nanocube-leaf", "-s", "schema.tmp", "-q", charquery, "-i", charinput, (char *)NULL);
 
         // failed to execute program
-        printf("Could not open file\n");
+        printf("(deamon) Could not open file\n");
 
         exit(127); /* only if execv fails */
 
@@ -135,30 +135,30 @@ int main(int argc, char *argv[])
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     
     if (listenfd == -1) {
-        printf("Socket creation error.");
+        printf("(deamon) Socket creation error.");
         exit(1);
     }
 
     //ok to reuse ports
     int yes=1;
     if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
-        printf("setsockopt error");
+        printf("(deamon) setsockopt error");
         exit(1);
     }
 
     if(bind(listenfd, (struct sockaddr *)&local, sizeof(struct sockaddr)) == -1)
     {
-        printf("Bind error.\n");
+        printf("(deamon) Bind error.\n");
         exit(1);
     }
 
     if(listen(listenfd, 5) == -1)
     {
-        printf("Listen error.\n");
+        printf("(deamon) Listen error.\n");
         exit(1);
     }
 
-    printf("Waiting for connection on port %d...\n", port);
+    printf("(deamon) Waiting for connection on port %d...\n", port);
 
 
     // Seed with a real random value, if available
@@ -177,11 +177,11 @@ int main(int argc, char *argv[])
 
         if(connfd == -1)
         {
-            printf("Connection error.\n");
+            printf("(deamon) Connection error.\n");
             exit(1);
         }
 
-        printf("Connection accepted.\n");
+        printf("(deamon) Connection accepted.\n");
 
         int bytes_read = 0;
         char buf[1024];
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 
             if(result == 0)
             {
-                printf("Sending input port %d and query port %d to ncdistribute.\n", input, query);
+                printf("(deamon) Sending input port %d and query port %d to ncdistribute.\n", input, query);
 
                 //Send insert and query port to ncdistribute
                 connfd = accept(listenfd, (struct sockaddr*)&remote, &size);
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
                     if(bytes_sent >= length)
                         break;
                 }
-                printf("Closed\n");
+                printf("(deamon) Closed\n");
 
                 close(connfd);   
                 break;
