@@ -20,7 +20,7 @@ struct Options {
             "leaf, sliding, composite, distributed, or deamon.\n"
             "sliding: start a local nanocube, with sliding windows\n"
             "leaf: start a local nanocube\ncomposite: start nanocube from existing nanocubes\n"
-            "distributed: start distributed nanocubes on hosts with a deamon process\n"
+            "distribute: distribute nanocubes on hosts with a deamon process\n"
             "deamon: start nanocube deamon process", true, "", "command" };
 };
 
