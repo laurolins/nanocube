@@ -16,7 +16,8 @@ nanocube              \
 nanocube-leaf         \
 nanocube-distribute   \
 nanocube-deamon       \
-nanocube-sliding
+nanocube-sliding      \
+test-words
 
 #
 # nc_q25_u2_u4          \
@@ -81,6 +82,10 @@ maps.cc                       \
 mongoose/mongoose.c           \
 vector.cc
 
+test_words_SOURCES = \
+Heap.cc              \
+PartialSort.cc       \
+test_words.cc 
 
 nanocube_deamon_SOURCES =    \
 nanocube-deamon.cc           
