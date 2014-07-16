@@ -67,6 +67,13 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
     //flip y for nanocubes
     var ty = (ntiles-1)-tilePoint.y;
 
+    var tile = new Tile(tilePoint.x,ty,zoom);
+    tile.canvas = canvas;
+    tile.drill = drill;
+    this.tilelist.push(tile);
+
+
+    /**
     //query
     var tile = new Tile(tilePoint.x,ty,zoom);
     var that = this;
@@ -83,9 +90,11 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
         }
     });
     this.tileDrawn(canvas);
+     **/
 };
 
-L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,data){
+L.NanocubeLayer.prototype.renderTile = function(canvas, size, 
+                                                tilePoint,zoom,data){
     var ctx = canvas.getContext('2d');
     
     if (data == null){
@@ -114,7 +123,7 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
     var minv = that.min;
     var maxv = that.max;
     if (this.log){
-        minv = Math.log(minv);
+        minv = Math.log(minv+1);
         maxv = Math.log(maxv);
     }
 
@@ -206,10 +215,6 @@ L.NanocubeLayer.prototype.processData = function(bindata){
             continue;
         }
 
-        //if (this.log){
-        //    rv = Math.log(rv+1);
-        //}
-
         data[i] = {x:rx, y:ry, v: rv};
         maxv = Math.max(maxv,rv);
         minv = Math.min(minv,rv);
@@ -223,8 +228,32 @@ L.NanocubeLayer.prototype.processData = function(bindata){
 };
 
 
-L.NanocubeLayer.prototype._addTilesFromCenterOut = function (bounds){
-    this.max = -Infinity;
-    this.min = Infinity;
+L.NanocubeLayer.prototype._addTilesFromCenterOut = function(bounds){
+    this.tilelist = [];
     L.TileLayer.Canvas.prototype._addTilesFromCenterOut.call(this, bounds);  
+    var that = this;
+    var promises = this.tilelist.map(function(t){ 
+        return that.queryTile(t);
+    });
+    console.log('prom',promises);
+    if promises.length
+    
+
+    var comb = $.when(promises[0],promises[1]);
+    comb.done(function(){ console.log("done");});
+
+};
+
+L.NanocubeLayer.prototype.queryTile = function(tile){
+    var that = this;
+    return $.Deferred(function(dfd){
+        that.model.tileQuery(that.variable,tile,tile.drill, function(data){
+            var result = that.processData(data);
+            if(result !=null){
+                that.max = Math.max(that.max,result.max);
+                that.min = Math.min(that.min,result.min);
+            }
+            dfd.resolve();
+        });
+    }).promise();
 };
