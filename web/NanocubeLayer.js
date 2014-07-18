@@ -241,7 +241,7 @@ L.NanocubeLayer.prototype._addTilesFromCenterOut = function(bounds){
         tilelist.map(function(t){
             var size = Math.pow(2,t.drill);
             that.renderTile(t.canvas, size, t.tilePoint,
-                            t.z, minv,maxv,t.data);
+                            t.level, minv,maxv,t.data);
         });
     });
 };
