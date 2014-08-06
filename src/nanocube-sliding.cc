@@ -23,7 +23,7 @@
 struct Options {
     Options(std::vector<std::string>& args);
 
-    TCLAP::CmdLine cmd_line { "Nanocube Sliding Window", ' ', "2.3", false };
+    TCLAP::CmdLine cmd_line { "Nanocube Sliding Window", ' ', "2.3", true };
 
     // -q or --query
     TCLAP::ValueArg<int> query_port {  

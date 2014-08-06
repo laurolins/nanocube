@@ -87,7 +87,7 @@ struct NanoCubeSchema {
 struct Options {
     Options(std::vector<std::string>& args);
 
-    TCLAP::CmdLine cmd_line { "Nanocube Leaf - local process", ' ', "2.3", false };
+    TCLAP::CmdLine cmd_line { "Nanocube Leaf - local process", ' ', "2.3", true };
 
     // -s or --schema
     TCLAP::ValueArg<std::string> schema {  
@@ -119,6 +119,9 @@ int main(int argc, char **argv)
                     it+=2;
                 else
                     it = args.erase(it);
+            }
+            else if (it->compare("--help") == 0) {
+                it = it + 1;
             }
             else {
                 it = args.erase(it);

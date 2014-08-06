@@ -18,7 +18,31 @@
 #include <netinet/in.h>
 #include <time.h>
 
+#include "tclap/CmdLine.h"
+
 #define NUM_TENTATIVES 10
+
+struct Options {
+    Options(std::vector<std::string>& args);
+    
+    TCLAP::CmdLine cmd_line { "Nanocube Daemon", ' ', "2.3", true };
+    
+    // -q or --query
+    TCLAP::ValueArg<int> port {
+        "p",              // flag
+        "port", // name
+        "Port where to listen for nanocube related requests",    // description
+        false,      // required
+        50005,      // value
+        "port"      // type description
+    };
+    
+};
+
+Options::Options(std::vector<std::string>& args) {
+    cmd_line.add(port);
+    cmd_line.parse(args);
+}
 
 void deamonize()
 {
@@ -104,15 +128,12 @@ pid_t initializeNcserve(std::string message, int input, int query)
     return pid;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
-
-
-    int port = 29513;
-    if(argc == 2)
-    {
-        port = atoi(argv[1]);
-    }
+    std::vector<std::string> args(argv, argv + argc);
+    Options options(args);
+    
+    int port = options.port.getValue();
 
     //Links:
     //http://ubuntuforums.org/showthread.php?t=2045538

@@ -2,7 +2,7 @@
 import random
 import sys
 
-max_words = 10
+max_words = 1000000
 max_rep = max([1, max_words * 0.05])
 word_file = '/usr/share/dict/words'
 words = open(word_file).read().splitlines()

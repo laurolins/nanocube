@@ -45,7 +45,7 @@ struct Options {
 
     Options(std::vector<std::string>& args);
 
-    TCLAP::CmdLine cmd_line { "Nanocube Leaf - local process", ' ', "2.3" };
+    TCLAP::CmdLine cmd_line { "Nanocube Leaf - local process", ' ', "2.3", true };
 
     // -s or --schema
     TCLAP::ValueArg<std::string> schema {  
@@ -254,14 +254,14 @@ typedef typename NanoCube::entry_type Entry;
 typedef typename NanoCube::address_type Address;
 
 //------------------------------------------------------------------------------
-// NanoCubeServer
+// NanocubeServer
 //------------------------------------------------------------------------------
 
-struct NanoCubeServer {
+struct NanocubeServer {
 
 public: // Constructor
 
-    NanoCubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream);
+    NanocubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream);
 
 private: // Private Methods
 
@@ -315,12 +315,12 @@ public: // Data Members
 
 };
 
-void NanoCubeServer::addMessage(std::string s) {
+void NanocubeServer::addMessage(std::string s) {
     std::lock_guard<std::mutex> lock(messages_mutex);
     messages.push_back(s);
 }
 
-void NanoCubeServer::printMessages() {
+void NanocubeServer::printMessages() {
     std::lock_guard<std::mutex> lock(messages_mutex);
     for (auto &s: messages) {
         std::cerr << s;
@@ -329,10 +329,10 @@ void NanoCubeServer::printMessages() {
 }
 
 //------------------------------------------------------------------------------
-// NanoCubeServer Impl.
+// NanocubeServer Impl.
 //------------------------------------------------------------------------------
 
-NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream):
+NanocubeServer::NanocubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream):
     nanocube(nanocube),
     options(options),
     input_stream(input_stream)
@@ -344,10 +344,10 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     addMessage(ss.str());
     
     // start thread to insert records coming from stdin
-    std::thread insert_from_stdin_thread(&NanoCubeServer::insert_from_stdin, this);
+    std::thread insert_from_stdin_thread(&NanocubeServer::insert_from_stdin, this);
     
     // start thread to insert records coming from tcp port (if one was defined)
-    std::thread insert_from_tcp_thread(&NanoCubeServer::insert_from_tcp, this);
+    std::thread insert_from_tcp_thread(&NanocubeServer::insert_from_tcp, this);
     
     // start threads for serving queries (uses mongoose)
     initializeQueryServer();
@@ -368,12 +368,12 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     insert_from_tcp_thread.join();
 }
 
-void NanoCubeServer::stopQueryServer()
+void NanocubeServer::stopQueryServer()
 {
     server.stop();
 }
 
-void NanoCubeServer::initializeQueryServer()
+void NanocubeServer::initializeQueryServer()
 {
     // initialize query server
     server.port = options.query_port.getValue();
@@ -383,37 +383,37 @@ void NanoCubeServer::initializeQueryServer()
     bool compression = true;
     bool plain       = false;
     
-    auto json_query_handler    = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, json,       plain);
-    auto binary_query_handler  = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, binary,     plain);
+    auto json_query_handler    = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, json,       plain);
+    auto binary_query_handler  = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, binary,     plain);
     
-    auto json_tquery_handler   = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, json,   plain);
-    auto binary_tquery_handler = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, binary, plain);
+    auto json_tquery_handler   = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, json,   plain);
+    auto binary_tquery_handler = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, binary, plain);
     
-    // auto json_query_comp_handler    = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, json,       compression);
-    // auto json_tquery_comp_handler   = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, json,   compression);
+    // auto json_query_comp_handler    = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, json,       compression);
+    // auto json_tquery_comp_handler   = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, json,   compression);
     
-    auto binary_query_comp_handler  = std::bind(&NanoCubeServer::serveQuery, this, std::placeholders::_1, binary,     compression);
-    auto binary_tquery_comp_handler = std::bind(&NanoCubeServer::serveTimeQuery, this, std::placeholders::_1, binary, compression);
+    auto binary_query_comp_handler  = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, binary,     compression);
+    auto binary_tquery_comp_handler = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, binary, compression);
     
-    auto stats_handler         = std::bind(&NanoCubeServer::serveStats, this, std::placeholders::_1);
+    auto stats_handler         = std::bind(&NanocubeServer::serveStats, this, std::placeholders::_1);
     
-    auto binary_schema_handler = std::bind(&NanoCubeServer::serveSchema,     this, std::placeholders::_1, binary);
+    auto binary_schema_handler = std::bind(&NanocubeServer::serveSchema,     this, std::placeholders::_1, binary);
     
-    auto schema_handler        = std::bind(&NanoCubeServer::serveSchema,     this, std::placeholders::_1, json);
+    auto schema_handler        = std::bind(&NanocubeServer::serveSchema,     this, std::placeholders::_1, json);
     
-    auto valname_handler       = std::bind(&NanoCubeServer::serveSetValname, this, std::placeholders::_1);
+    auto valname_handler       = std::bind(&NanocubeServer::serveSetValname, this, std::placeholders::_1);
     
-    auto version_handler       = std::bind(&NanoCubeServer::serveVersion,    this, std::placeholders::_1);
+    auto version_handler       = std::bind(&NanocubeServer::serveVersion,    this, std::placeholders::_1);
     
-    auto tbin_handler          = std::bind(&NanoCubeServer::serveTBin, this, std::placeholders::_1);
+    auto tbin_handler          = std::bind(&NanocubeServer::serveTBin, this, std::placeholders::_1);
     
-    auto summary_handler       = std::bind(&NanoCubeServer::serveSummary, this, std::placeholders::_1);
+    auto summary_handler       = std::bind(&NanocubeServer::serveSummary, this, std::placeholders::_1);
     
-    auto graphviz_handler      = std::bind(&NanoCubeServer::serveGraphViz, this, std::placeholders::_1);
+    auto graphviz_handler      = std::bind(&NanocubeServer::serveGraphViz, this, std::placeholders::_1);
     
-    auto timing_handler        = std::bind(&NanoCubeServer::serveTiming, this, std::placeholders::_1);
+    auto timing_handler        = std::bind(&NanocubeServer::serveTiming, this, std::placeholders::_1);
     
-    auto tile_handler         = std::bind(&NanoCubeServer::serveTile, this, std::placeholders::_1);
+    auto tile_handler         = std::bind(&NanocubeServer::serveTile, this, std::placeholders::_1);
     
     
     // register service
@@ -448,7 +448,7 @@ void NanoCubeServer::initializeQueryServer()
 }
 
 
-void NanoCubeServer::insert_from_stdin()
+void NanocubeServer::insert_from_stdin()
 {
     uint64_t batch_size = options.batch_size.getValue(); // add 10k points before
 
@@ -569,7 +569,7 @@ void NanoCubeServer::insert_from_stdin()
 }
 
 
-void NanoCubeServer::insert_from_tcp()
+void NanocubeServer::insert_from_tcp()
 {
     using Socket   = boost::asio::ip::tcp::socket;
     using Acceptor = boost::asio::ip::tcp::acceptor;
@@ -843,7 +843,7 @@ void NanoCubeServer::insert_from_tcp()
 }
 
 
-void NanoCubeServer::parse(std::string              query_st,
+void NanocubeServer::parse(std::string              query_st,
                            ::nanocube::Schema        &schema,
                            ::query::QueryDescription &query_description)
 {
@@ -887,7 +887,7 @@ void NanoCubeServer::parse(std::string              query_st,
     }
 }
 
-void NanoCubeServer::serveQuery(Request &request, bool json, bool compression)
+void NanocubeServer::serveQuery(Request &request, bool json, bool compression)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
@@ -1015,7 +1015,7 @@ void NanoCubeServer::serveQuery(Request &request, bool json, bool compression)
     }
 }
 
-void NanoCubeServer::serveTile(Request &request)
+void NanocubeServer::serveTile(Request &request)
 {
     //
     // assuming the query result is a list of quadtree addresses
@@ -1142,7 +1142,7 @@ void NanoCubeServer::serveTile(Request &request)
     }
 }
 
-void NanoCubeServer::serveTimeQuery(Request &request, bool json, bool compression)
+void NanocubeServer::serveTimeQuery(Request &request, bool json, bool compression)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
@@ -1250,7 +1250,7 @@ void NanoCubeServer::serveTimeQuery(Request &request, bool json, bool compressio
     }
 }
 
-void NanoCubeServer::serveStats(Request &request)
+void NanocubeServer::serveStats(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
@@ -1264,7 +1264,7 @@ void NanoCubeServer::serveStats(Request &request)
     request.respondJson(ss.str());
 }
 
-void NanoCubeServer::serveGraphViz(Request &request)
+void NanocubeServer::serveGraphViz(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
@@ -1275,7 +1275,7 @@ void NanoCubeServer::serveGraphViz(Request &request)
     request.respondJson(ss.str());
 }
 
-void NanoCubeServer::serveTiming(Request &request)
+void NanocubeServer::serveTiming(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
@@ -1283,13 +1283,13 @@ void NanoCubeServer::serveTiming(Request &request)
     request.respondJson(server.isTiming() ? "Timing is On" : "Timing is Off");
 }
 
-void NanoCubeServer::serveVersion(Request &request)
+void NanocubeServer::serveVersion(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
     request.respondJson(NANOCUBE_VERSION);
 }
 
-void NanoCubeServer::serveSetValname(Request &request)
+void NanocubeServer::serveSetValname(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
     
@@ -1332,7 +1332,7 @@ void NanoCubeServer::serveSetValname(Request &request)
     }
 }
 
-void NanoCubeServer::serveSchema(Request &request, bool json)
+void NanocubeServer::serveSchema(Request &request, bool json)
 {
     auto &dump_file = nanocube.schema.dump_file_description;
     
@@ -1398,7 +1398,7 @@ void NanoCubeServer::serveSchema(Request &request, bool json)
 }
 
 
-void NanoCubeServer::serveTBin(Request &request)
+void NanocubeServer::serveTBin(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
@@ -1410,7 +1410,7 @@ void NanoCubeServer::serveTBin(Request &request)
     }
 }
 
-void NanoCubeServer::serveSummary(Request &request)
+void NanocubeServer::serveSummary(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
 
@@ -1524,7 +1524,7 @@ int main(int argc, char *argv[]) {
         NanoCube nanocube(nanocube_schema);
         
         // start nanocube http server
-        NanoCubeServer nanocube_server(nanocube, options, is);
+        NanocubeServer nanocube_server(nanocube, options, is);
     };
     
     if (options.schema.getValue().size()) {

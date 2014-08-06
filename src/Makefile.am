@@ -15,7 +15,7 @@ nc_q25_c1_u2_u4       \
 nanocube              \
 nanocube-leaf         \
 nanocube-distribute   \
-nanocube-deamon       \
+nanocube-daemon       \
 nanocube-sliding      \
 test-words
 
@@ -87,8 +87,8 @@ Heap.cc              \
 PartialSort.cc       \
 test_words.cc 
 
-nanocube_deamon_SOURCES =    \
-nanocube-deamon.cc           
+nanocube_daemon_SOURCES =    \
+nanocube-daemon.cc           
 
 ncserve_SOURCES =     \
 ncserve.cc            \

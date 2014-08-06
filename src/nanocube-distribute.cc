@@ -18,7 +18,7 @@
 struct Options {
     Options(std::vector<std::string>& args);
 
-    TCLAP::CmdLine cmd_line { "Nanocube Distribute - distribute process", ' ', "2.3", false };
+    TCLAP::CmdLine cmd_line { "Nanocube Distribute - distribute process", ' ', "2.3", true };
 
     // -h or --hosts
     TCLAP::ValueArg<std::string> hosts_file {  
