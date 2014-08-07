@@ -9,11 +9,11 @@ class NanocubeInput:
         self.name=args.InputFile[0]
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
-        self.spname=args.spname
-        self.catcol=args.catcol
-        self.timecol=args.timecol
-        self.latcol=args.latcol
-        self.loncol=args.loncol
+        self.spname=args.spname.split(',')
+        self.catcol=args.catcol.split(',')
+        self.timecol=args.timecol.split(',')
+        self.latcol=args.latcol.split(',')
+        self.loncol=args.loncol.split(',')
         self.countcol = args.countcol
         self.sep = args.sep
 
@@ -297,16 +297,17 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('InputFile',type=str, nargs='+')
     parser.add_argument('--timebinsize',type=str, default='1h')
-    parser.add_argument('--timecol', type=str,nargs='+',default=['Date'])
+    parser.add_argument('--timecol', type=str,default='Date')
     parser.add_argument('--datefmt', type=str, default=None)
-    parser.add_argument('--spname', type=str,nargs='+',default=['src'])
+    parser.add_argument('--spname', type=str,default='src')
     parser.add_argument('--levels', type=int, default=25)
-    parser.add_argument('--latcol', type=str,nargs='+',default=['Latitude'])
-    parser.add_argument('--loncol', type=str,nargs='+',default=['Longitude'])
-    parser.add_argument('--catcol', type=str,nargs='+',default=[])
+    parser.add_argument('--latcol', type=str,default='Latitude')
+    parser.add_argument('--loncol', type=str,default='Longitude')
+    parser.add_argument('--catcol', type=str,)
     parser.add_argument('--countcol', type=str, default=None)
     parser.add_argument('--sep', type=str, default=',')
     args = parser.parse_args()
+    
 
     if 'NANOCUBE_WEB' not in os.environ:
         os.environ['NANOCUBE_WEB'] = '../web'
