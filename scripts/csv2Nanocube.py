@@ -1,4 +1,4 @@
-import sys,dateutil,datetime,argparse,re,subprocess,os,json,socket
+import sys,dateutil.parser,datetime,argparse,re,subprocess,os,json,socket
 
 import cStringIO as StringIO
 import pandas as pd
@@ -8,7 +8,6 @@ class NanocubeInput:
     def __init__(self, args):
         self.name=args.InputFile[0]
                     
-
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
         self.spname=args.spname.split(',')
@@ -21,15 +20,27 @@ class NanocubeInput:
         except:
             self.catcol = []
 
+        try:
+            self.header = "".join(open(args.header).readlines())
+            self.header = self.header.strip()+"\n\n"
+        except:
+            self.header = None
+        
+        try:
+            self.offset = dateutil.parser.parse(args.offset)
+        except:
+            self.offset = None
+
+
         self.countcol = args.countcol
         self.sep = args.sep
+
 
         self.datefmt=args.datefmt
         self.levels = args.levels
 
         self.field=[]
         self.valname={}
-        self.offset=None
         
         self.minlatlon={}
         self.maxlatlon={}
@@ -94,7 +105,7 @@ class NanocubeInput:
                                   'background-color':'#555', 
                                   'opacity': 0.8,
                                   'z-index':1}
-            top +=height+10
+            top += (height+10)
 
         #other info
         config['div']['info'] = {'position': 'absolute',
@@ -131,19 +142,18 @@ class NanocubeInput:
             if f == '-':
                 f=sys.stdin
 
-            reader = pd.read_csv(f,usecols=coi,
-                                 chunksize=100000,
-                                 error_bad_lines=False,
-                                 sep=self.sep,                                
+            reader = pd.read_csv(f,usecols=coi,chunksize=100000,
+                                 error_bad_lines=False,sep=self.sep,
                                  compression=comp)
-
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
-
                 data = self.processData(data)
+
                 if start:
-                    sys.stdout.write(self.header(data))
+                    if self.header is None:
+                        self.header = self.createHeader(data)
+                    sys.stdout.write(self.header)
                     start = False
                 
                 self.writeRawData(data)
@@ -233,7 +243,8 @@ class NanocubeInput:
 
         if self.offset is None: #compute offset
             year = data[self.timecol].min().min().year
-            self.offset = datetime.datetime(year=year,month=1,day=1)
+            month = data[self.timecol].min().min().month
+            self.offset = datetime.datetime(year=year,month=month,day=1)
 
         for i,d in enumerate(self.timecol):
             data[d] -= self.offset
@@ -280,7 +291,7 @@ class NanocubeInput:
         td = np.timedelta64(num,unit)
         return np.timedelta64(td,'s')
 
-    def header(self,data):
+    def createHeader(self,data):
         h = ''
         h += 'name: %s\n'%(self.name.replace(' ',"_"))
         h += 'encoding: binary\n'
@@ -308,7 +319,7 @@ class NanocubeInput:
 def main(argv):
     #parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('InputFile',type=str, nargs='+')
+    parser.add_argument('InputFile',type=str, nargs='+',help="use - for stdin")
     parser.add_argument('--timebinsize',type=str, default='1h')
     parser.add_argument('--timecol', type=str,default='Date')
     parser.add_argument('--datefmt', type=str, default=None)
@@ -319,9 +330,10 @@ def main(argv):
     parser.add_argument('--catcol', type=str,default=None)
     parser.add_argument('--countcol', type=str, default=None)
     parser.add_argument('--sep', type=str, default=',')
+    parser.add_argument('--header', type=str, default=None)
+    parser.add_argument('--offset', type=str, default=None)
     args = parser.parse_args()
     
-
     if 'NANOCUBE_WEB' not in os.environ:
         os.environ['NANOCUBE_WEB'] = '../web'
 
