@@ -3,7 +3,9 @@ function Constraint(dim){ this.dim = dim;}
 Constraint.prototype.add = function(q){};
 
 //Categorical Variable
-function CatConstraint(dim){
+function CatConstraint(dim,bytesize){
+    this.bytesize = (typeof bytesize != "undefined") ? bytesize:8;
+
     this.selection=[];
     Constraint.call(this,dim);
 }
@@ -28,7 +30,8 @@ CatConstraint.prototype.toggle = function(addr){
 };
 
 CatConstraint.prototype.addSelf = function(q){
-    return q.drilldown().dim(this.dim).findAndDive(255,1);
+    var maxidx = Math.pow(2,this.bytesize*8)-1;
+    return q.drilldown().dim(this.dim).findAndDive(maxidx,1);
 };
 
 

@@ -1,10 +1,10 @@
 //Categorical Variable
-function CatVar(dim, valnames){
+function CatVar(dim, valnames, bytesize){
     this.dim = dim;
 
     //setup constraint
     this.constraints = {};
-    this.constraints[0] = new CatConstraint(dim);
+    this.constraints[0] = new CatConstraint(dim,bytesize);
 
     //setup categorical variable
     this.keyaddr = valnames;

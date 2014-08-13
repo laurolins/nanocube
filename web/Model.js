@@ -64,7 +64,7 @@ Model.prototype.initVars = function(){
                 return;
             }
 
-            vref  = new CatVar(v.name,v.valnames);
+            vref  = new CatVar(v.name,v.valnames,+t[2]);
 
             //init the gui component (move it elsewhere?)
             vref.widget = new GroupedBarChart('#'+v.name);
@@ -269,7 +269,7 @@ Model.prototype.createMap = function(spvar,cm){
 
     var maptile = L.tileLayer(this.options.tilesurl,{
         noWrap:true,
-        opacity:0.4 });
+        opacity:0.7 });
 
     var heatmap = new L.NanocubeLayer({
         opacity: 0.6,
