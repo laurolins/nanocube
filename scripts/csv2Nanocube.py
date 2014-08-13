@@ -7,19 +7,26 @@ import numpy as np
 class NanocubeInput:
     def __init__(self, args):
         self.name=args.InputFile[0]
+                    
+
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
         self.spname=args.spname.split(',')
-        self.catcol=args.catcol.split(',')
         self.timecol=args.timecol.split(',')
         self.latcol=args.latcol.split(',')
         self.loncol=args.loncol.split(',')
+        
+        try:
+            self.catcol = args.catcol.split(',')
+        except:
+            self.catcol = []
+
         self.countcol = args.countcol
         self.sep = args.sep
 
         self.datefmt=args.datefmt
         self.levels = args.levels
-        
+
         self.field=[]
         self.valname={}
         self.offset=None
@@ -115,15 +122,21 @@ class NanocubeInput:
         if self.countcol is not None:
             coi += [self.countcol]
         start = True
+
         for f in files:
             comp = None
             if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
+
+            if f == '-':
+                f=sys.stdin
+
             reader = pd.read_csv(f,usecols=coi,
                                  chunksize=100000,
                                  error_bad_lines=False,
                                  sep=self.sep,                                
                                  compression=comp)
+
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
@@ -303,7 +316,7 @@ def main(argv):
     parser.add_argument('--levels', type=int, default=25)
     parser.add_argument('--latcol', type=str,default='Latitude')
     parser.add_argument('--loncol', type=str,default='Longitude')
-    parser.add_argument('--catcol', type=str,)
+    parser.add_argument('--catcol', type=str,default=None)
     parser.add_argument('--countcol', type=str, default=None)
     parser.add_argument('--sep', type=str, default=',')
     args = parser.parse_args()
