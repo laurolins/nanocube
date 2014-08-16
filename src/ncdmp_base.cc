@@ -493,12 +493,14 @@ std::ostream &operator<<(std::ostream& os, const FD_DimDMQ &fd) {
 FD_DimTBin::FD_DimTBin(std::string name,
                        std::string time_field_name,
                        std::string tbin_spec,
-                       int num_bytes):
+                       int num_bytes,
+                       bool binary_tree_variation):
     FieldDescription(name, FD_DIM_TBIN),
     time_field_name(time_field_name),
     time_field(nullptr),
     tbin_function(tbin_spec),
-    num_bytes(num_bytes)
+    num_bytes(num_bytes),
+    binary_tree_variation(binary_tree_variation)
 {}
 
 FD_DimTBin *FD_DimTBin::asDimTBin() { return this; }
@@ -524,7 +526,11 @@ void FD_DimTBin::cacheFields(const dumpfile::DumpFileDescription &f) {
 void FD_DimTBin::append(dumpfile::DumpFileDescription &output_file_descritpion)
 {
     output_file_descritpion.metadata["tbin"] = tbin_function.getSpecificationString();
+    
     std::string field_type_name = "nc_dim_time_" + std::to_string(num_bytes);
+    if (binary_tree_variation)
+        field_type_name = "nc_dim_bintree_" + std::to_string(8 * num_bytes);
+    
     const dumpfile::FieldType &field_type = dumpfile::FieldTypesList::getFieldType(field_type_name);
     output_file_descritpion.addField(name, field_type);
 }

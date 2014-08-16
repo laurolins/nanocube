@@ -108,6 +108,27 @@ int main(int argc, char **argv) {
 
         }
 
+        else if (tokens[0].compare("dim-tbin2") == 0) {
+            
+            std::vector<std::string> params;
+            split(tokens.at(1),',',params);
+            
+            if (params.size() != 4) {
+                std::cerr << "(ERROR) field mapping dim-tbin needs 4 input parameters, but "
+                << params.size() << " provided on: " << argv[i] << std::endl;
+                throw std::exception();
+            }
+            
+            std::string name            = params.at(0);
+            std::string time_field_name = params.at(1);
+            std::string tbin_spec       = params.at(2);
+            int num_bytes               = std::stoi(params.at(3));
+            
+            bool binary_tree_variation = true;
+            mapping_scheme.addFieldMap(new FD_DimTBin(name, time_field_name, tbin_spec, num_bytes, binary_tree_variation));
+            
+        }
+
         else if (tokens[0].compare("dim-cat") == 0) {
 
             std::vector<std::string> params;
@@ -209,7 +230,7 @@ int main(int argc, char **argv) {
     
     
 #if 0
-    std::ifstream istream("/Users/llins/att/data/utah-cdrs/utah.dmp");
+    std::ifstream istream("/Users/llins/att/data/lolla/lolla.dmp");
 #else
     auto &istream = std::cin;
 #endif
