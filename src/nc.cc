@@ -57,6 +57,16 @@ struct Options {
             "schema-filename" // type description
             };
 
+    // -d or --data
+    TCLAP::ValueArg<std::string> data {
+        "d",              // flag
+        "data",         // name
+        "Data coming from a file (if schema read header from schema)", // description
+        false,            // required
+        "",               // value
+        "data-filename" // type description
+    };
+
     TCLAP::ValueArg<int> query_port {
             "q",              // flag
             "query-port",     // name
@@ -155,6 +165,7 @@ struct Options {
 Options::Options(std::vector<std::string>& args) 
 {
     cmd_line.add(schema); // add command option
+    cmd_line.add(data);
     cmd_line.add(query_port);
     cmd_line.add(insert_port);
     cmd_line.add(no_mongoose_threads);
@@ -352,11 +363,13 @@ NanocubeServer::NanocubeServer(NanoCube &nanocube, Options &options, std::istrea
     // start threads for serving queries (uses mongoose)
     initializeQueryServer();
     
-    
     while (!finish) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         printMessages();
     }
+
+    printMessages();
+
     
     // TODO: move this somewhere else
     io_service.stop();
@@ -1533,14 +1546,30 @@ int main(int argc, char *argv[]) {
         std::ifstream ifs(options.schema.getValue());
         ifs >> input_file_description;
 
-        run(std::cin, input_file_description);
+        if (options.data.getValue().size()) {
+            std::ifstream ifs2(options.data.getValue());
+            run(ifs2, input_file_description);
+        }
+        else {
+            run(std::cin, input_file_description);
+        }
     }
     else {
-        // read schema form input
-        dumpfile::DumpFileDescription input_file_description;
-        std::cin >> input_file_description;
+        if (options.data.getValue().size()) {
+            std::ifstream ifs2(options.data.getValue());
 
-        run(std::cin, input_file_description);
+            // read schema form input
+            dumpfile::DumpFileDescription input_file_description;
+            ifs2 >> input_file_description;
+
+            run(ifs2, input_file_description);
+        }
+        else {
+            dumpfile::DumpFileDescription input_file_description;
+            std::cin >> input_file_description;
+
+            run(std::cin, input_file_description);
+        }
     }
     
     // join write thread

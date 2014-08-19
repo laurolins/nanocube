@@ -361,7 +361,8 @@ void FlatTree<N, Content>::prepareProperOutdatedPath(FlatTree*                pa
     // child nodes.
 
     // needs to be a complete path
-    assert(address.getPathSize() == 1);
+    if (address.getPathSize() != 1)
+        throw std::runtime_error("Invalid Path Size");
 
     // to get to this point at least the root needs
     // to be updated, otherwise it would have been

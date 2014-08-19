@@ -35,7 +35,8 @@ Schema &operator<<(Schema &schema, flattree::FlatTree<Content> &)
             serialization::retrieveOrCreateCustomType<FTree>(schema, getTypeName<FTree>());
 
     // assert it is an empty custom type
-    assert(type->getNumFields() == 0);
+    if (!(type->getNumFields() == 0))
+        throw std::runtime_error("Invalid Path Size");
 
     { // tagged pointer
         type->addField(serialization::FieldType(CoreSchema::ID_tagged_pointer, FieldType::TAGGED_POINTER), "content");
