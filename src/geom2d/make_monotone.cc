@@ -106,7 +106,9 @@ bool Vertex::isBelow(const Vertex &v) const {
 }
 
 auto Vertex::getType() const -> VertexType {
-    assert (next != nullptr && prev != nullptr);
+
+    if (next == nullptr || prev == nullptr)
+        throw std::runtime_error("Invalid Polygon");
 
 //    {
 //        // using namespace geom2d::io;
@@ -713,6 +715,9 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
             std::cout << "   END_VERTEX" << std::endl;
 #endif
 
+            if (!vi->prev)
+                throw std::runtime_error("ooops");
+            
             if (vi->prev->helper->getType() == MERGE_VERTEX) {
                 add_diagonal(vi,vi->prev->helper);
             }
@@ -748,6 +753,10 @@ std::vector<geom2d::Polygon> geom2d::makeMonotone(const geom2d::Polygon &poly)
             bool interior_on_the_right = vi->isAbove(*vi->next);
 
             if (interior_on_the_right) {
+                
+                if (!vi->prev || !vi->prev->helper)
+                    throw std::runtime_error("ooops");
+                
                 if (vi->prev->helper->getType() == MERGE_VERTEX) {
                     add_diagonal(vi,vi->prev->helper);
                 }
