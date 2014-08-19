@@ -112,8 +112,25 @@ SpatialConstraint.prototype.add = function(q){
     if (this.boundary.length < 3){
         return q;
     }
+
+    //check for 0 area
+    var bbox = this.boundary.reduce(function(p,c){
+        var b = p;
+        b.minx = Math.min(b.minx,c.x); 
+        b.maxx = Math.max(b.maxx,c.x); 
+        b.miny = Math.min(b.miny,c.y); 
+        b.maxy = Math.max(b.maxy,c.y); 
+        return b;
+    }, {minx:1e9,maxx:-1e9,miny:1e9,maxy:-1e9});
+    
+    //reject queries with empty bbox
+    if ((bbox.maxx-bbox.minx) < 2 || (bbox.maxy-bbox.miny) < 2){
+        return q;
+    }
+
     return q.dim(this.dim).sequence(this.boundary.map(function(t){
-        return t.raw();}));    
+        return t.raw();
+    }));    
 };
 
 SpatialConstraint.prototype.addSelf = function(q){
