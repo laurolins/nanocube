@@ -1,6 +1,6 @@
 # Nanocubes: an in-memory data structure for spatiotemporal data cubes
 
-Nanocubes are a fast datastructure for in-memory data cubes developed
+Nanocubes are a fast data structure for in-memory data cubes developed
 at the
 [Information Visualization department](http://www.research.att.com/infovis)
 at [AT&T Labs – Research](http://www.research.att.com). Visualizations
