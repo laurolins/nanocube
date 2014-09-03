@@ -18,11 +18,25 @@ modern-day laptop.
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
 
-## Compiling latest release
+## Compiling the latest release
 
-**Prerequisites** The nanocubes server is written in C++ 11 (gcc >=4.7.2). You'll need a
-recent version of [boost](http://www.boost.org) (>=1.48) and the
-[GNU build system](http://www.gnu.org/software/autoconf/).
+**Prerequisites**
+
+1. The nanocubes server is 64-bit only.  There is NO support on 32-bit operating systems.
+2. The nanocubes server is written in C++ 11.  You must use a recent version of gcc (>= 4.7.2).
+3. The nanocubes server uses [Boost](http://www.boost.org).  You must use version 1.48 or later.
+4. To build the nanocubes server, you must have the [GNU build system](http://www.gnu.org/software/autoconf/) installed.
+
+On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but you may have to install the following packages:
+
+    $ sudo apt-get install automake
+    $ sudo apt-get install libtool
+    $ sudo apt-get install zlib1g-dev
+    $ sudo apt-get install zlib1g-dev
+    $ sudo apt-get install libboost-dev
+    $ sudo apt-get install libboost-test-dev
+    $ sudo apt-get install libboost-system-dev
+    $ sudo apt-get install libboost-thread-dev
 
 Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
 with valid release numbers (e.g. 2.1.1, 2.1, 2.0).
