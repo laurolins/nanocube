@@ -32,7 +32,6 @@ On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but y
     $ sudo apt-get install automake
     $ sudo apt-get install libtool
     $ sudo apt-get install zlib1g-dev
-    $ sudo apt-get install zlib1g-dev
     $ sudo apt-get install libboost-dev
     $ sudo apt-get install libboost-test-dev
     $ sudo apt-get install libboost-system-dev
