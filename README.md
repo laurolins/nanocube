@@ -37,6 +37,11 @@ On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but y
     $ sudo apt-get install libboost-system-dev
     $ sudo apt-get install libboost-thread-dev
 
+For compiling python packages, you will need the following packages:
+
+    $ sudo apt-get install python-dev
+    $ sudo apt-get install gfortran
+
 Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
 with valid release numbers (e.g. 2.1.1, 2.1, 2.0).
 
