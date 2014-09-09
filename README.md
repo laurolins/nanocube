@@ -64,9 +64,8 @@ This procedure assumes your machine is not running anything on ports
 
 1. For compiling our python helper code, you will need the following packages:
 
-    $ sudo apt-get install python-dev
-
-    $ sudo apt-get install gfortran
+        $ sudo apt-get install python-dev
+        $ sudo apt-get install gfortran
 
 2. Installing Pandas in a separate python env (Optional)
 
