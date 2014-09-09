@@ -37,14 +37,6 @@ On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but y
     $ sudo apt-get install libboost-system-dev
     $ sudo apt-get install libboost-thread-dev
 
-For compiling python packages, you will need the following packages:
-
-    $ sudo apt-get install python-dev
-
-For NumPy, you may need additional Fortran packages, such as:
-
-    $ sudo apt-get install gfortran
-
 Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
 with valid release numbers (e.g. 2.1.1, 2.1, 2.0).
 
@@ -70,7 +62,12 @@ For example
 This procedure assumes your machine is not running anything on ports
 8000 and 29512
 
-1. Installing Pandas in a separate python env (Optional)
+1. For compiling our python helper code, you will need the following packages:
+
+    $ sudo apt-get install python-dev
+    $ sudo apt-get install gfortran
+
+2. Installing Pandas in a separate python env (Optional)
 
         $ wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.4.tar.gz
         $ tar xfz virtualenv-1.11.4.tar.gz
@@ -80,12 +77,12 @@ This procedure assumes your machine is not running anything on ports
         $ source myPy/bin/activate
         $ pip install argparse numpy pandas
 
-2. Start a web server in the "web" directory and send it to background
+3. Start a web server in the "web" directory and send it to background
 
         $ cd web
         $ python -m SimpleHTTPServer &
 
-3. Run the script and pipe it to the nanocubes server using the
+4. Run the script and pipe it to the nanocubes server using the
    included example dataset
    ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2))
 
