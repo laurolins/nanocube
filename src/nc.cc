@@ -213,6 +213,7 @@ public: // Public Methods
     void serveGraphViz  (Request &request);
     void serveTiming    (Request &request);
     void serveVersion   (Request &request);
+    void serveShutdown  (Request &request);
 
 public:
 
@@ -293,6 +294,8 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
 
     auto tile_handler         = std::bind(&NanoCubeServer::serveTile, this, std::placeholders::_1);
 
+    auto shutdown_handler     = std::bind(&NanoCubeServer::serveShutdown, this, std::placeholders::_1);
+
     
     // register service
 
@@ -314,20 +317,23 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     server.registerHandler("graphviz",  graphviz_handler);
 
     server.registerHandler("version",  version_handler);
+    server.registerHandler("shutdown", shutdown_handler);
 
     server.registerHandler("timing",  timing_handler);
 
     server.registerHandler("start",  graphviz_handler);
 
     int tentative=0;
-    while (tentative < 100) {
+    while (tentative < 1) {
         tentative++;
         try {
             std::cout << "Starting NanoCubeServer on port " << server.port << std::endl;
             server.start(options.no_mongoose_threads);
+            tentative = 100;
         }
         catch (ServerException &e) {
             std::cout << e.what() << std::endl;
+            std::cout << "Is the port " << server.port << " already in use???" << std::endl;
             server.port++;
         }
     }
@@ -780,6 +786,17 @@ void NanoCubeServer::serveVersion(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
     request.respondJson(VERSION);
+}
+
+void NanoCubeServer::serveShutdown(Request &request)
+{
+    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+
+    std::stringstream ss;
+    ss << "Going to shutdown nanocube in 3 seconds";
+    request.respondJson(ss.str());
+    sleep(3);
+    server.stop();
 }
 
 void NanoCubeServer::serveSetValname(Request &request)

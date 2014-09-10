@@ -54,6 +54,7 @@ class NanocubeInput:
 
         self.datefmt=args.datefmt
         self.levels = args.levels
+	self.port = args.port
 
 
         for s in self.spname:
@@ -132,7 +133,7 @@ class NanocubeInput:
         config['latlonbox'] = { 'min':self.minlatlon,
                                 'max':self.maxlatlon }
         
-        config['url'] = 'http://%s:29512'%(socket.getfqdn())
+        config['url'] = 'http://%s:%s'%(socket.getfqdn(),self.port)
         config['title'] = self.name
         config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
 
@@ -365,6 +366,7 @@ def main(argv):
     parser.add_argument('--ncheader', type=str, default=None)
     parser.add_argument('--header', type=str, default=None)
     parser.add_argument('--offset', type=str, default=None)
+    parser.add_argument('--port', type=str, default='29512')
     args = parser.parse_args()
     
     if 'NANOCUBE_WEB' not in os.environ:

@@ -83,10 +83,12 @@ on your system, please choose another port.
 4. Run the script and pipe it to the nanocubes server using the
    included example dataset
    ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2)).  If port 29512 is already
-   being used on your system, please choose another port.
+   being used on your system, please choose another port.  Note that the port is specified for both the python script and for
+   the nanocubes server (ncserve). If these are not the same, you'll run into problems.  29512 is the default value, so if you
+   don't specify the port at all, it will try to use the default.
 
         $ cd ../scripts
-        $ python csv2Nanocube.py --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100 --port=29512
+        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100 --port=29512
 
 
 
@@ -107,7 +109,8 @@ on your system, please choose another port.
         --loncol='Column names of longitude'
         --countcol='Column names of the count'
         --timecol='Column names of the time variable'
-        --timebinsize='time bin size in seconds(s) minutes(m) hours(h) days(D)
+        --timebinsize='time bin size in seconds(s) minutes(m) hours(h) days(D)'
+        --port='Port of the nanocubes server'
         --sep='Delimiter of Columns'
         e.g. 1D/30m/60s'
 
