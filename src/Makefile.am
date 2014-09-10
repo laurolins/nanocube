@@ -34,7 +34,7 @@ test-words
 
 AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/src/mongoose
 AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS) -DHAVE_SSTREAM
-AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_MPI_LDFLAGS)
+AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_SYSTEM_LDFLAGS) $(BOOST_MPI_LDFLAGS)
 
 #AM_CPPFLAGS = -I$(top_srcdir)/src
 #AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS)
@@ -44,7 +44,8 @@ AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_MPI_LDFLAGS)
 LIBS += $(BOOST_THREAD_LIBS)
 LIBS += $(BOOST_ASIO_LIBS)
 
-#LIBS += $(BOOST_MPI_LIBS)
+LIBS += $(BOOST_MPI_LIBS)
+LIBS += $(BOOST_SYSTEM_LIBS)
 #LIBS += $(BOOST_SERIALIZATION_LIBS)
 
 nanocube_SOURCES =    \
@@ -215,12 +216,8 @@ geom2d/polygon.hh	  \
 geom2d/tile.cc		  \
 geom2d/tile.hh 
 
-
 NANOCUBE_VERSION = $(shell cat $(top_srcdir)/VERSION)
 AM_CXXFLAGS += -DNANOCUBE_VERSION=\"$(NANOCUBE_VERSION)\"
-
-# NC_LIBS = -ldl -lpthread -lboost_thread -lboost_system
-#NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
 
 nc_q25_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
 nc_q25_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
