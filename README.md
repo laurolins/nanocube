@@ -61,10 +61,8 @@ For example
 
 1. For compiling our python helper code, you will need the following packages:
 
-```
         $ sudo apt-get install python-dev
         $ sudo apt-get install gfortran
-```
 
 2. Install the python data analysis library (pandas) in a separate python environment (Recommended)
 
@@ -149,7 +147,7 @@ on your system, please choose another port.
         count:      49186 mem. res:         49MB.  time(s):          0
         Number of points inserted 49186
 
-5. That's it.  Point your browser (firefox, chrome) to http://localhost:8000 for the viewer.
+5. That's it.  Point your browser (Firefox, Chrome) to http://localhost:8000 for the viewer.
 
 6. When finished, terminate the nanocube (e.g. Control-C) and then type 'deactivate' on the command-line to shut the virtual python environment down.
 
