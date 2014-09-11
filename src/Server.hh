@@ -24,7 +24,7 @@ struct Request {
 
     enum Type { JSON_OBJECT=0, OCTET_STREAM=1};
 
-    Request(mg_connection *conn, const std::vector<std::string> &params);
+    Request(mg_connection *conn, const std::string& request_string);
 
     void respondJson(std::string msg_content);
 
@@ -38,7 +38,7 @@ private:
 
 public:
 
-    const std::vector<std::string> &params;
+    const std::string request_string;
 
     int response_size;
 
@@ -66,25 +66,34 @@ public:
 
 struct Server {
 
-    Server();
-
-    void registerHandler(std::string name, const RequestHandler &handler);
+    Server() = default;
 
     void start(int mongoose_threads);
+    
     void stop();
+    
     bool toggleTiming(bool b);
+    
     bool isTiming() const;
+    
     const std::string currentDateTime();
+    
+    void setHandler(const RequestHandler& request_handler);
 
-    void *mg_callback(mg_event event, mg_connection *conn);
-
+public:
+    
     int port { 29512 };
+
     int mongoose_threads { 10 };
-private:
 
-    std::unordered_map<std::string, RequestHandler> handlers;
+    RequestHandler handler;
 
-    struct mg_context *ctx { nullptr };
+private:   
+
     bool is_timing { false };
+    
+    bool keep_running { true };
+    
     std::ofstream timing_of;
+
 };

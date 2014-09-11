@@ -15,14 +15,14 @@
 
 #include "mongoose.h"
 
-#include "Server.hh"
+#include "server.hh"
 
 //-------------------------------------------------------------------------
 // Request Impl.
 //-------------------------------------------------------------------------
 
-Request::Request(mg_connection *conn, const std::vector<std::string> &params):
-    conn(conn), params(params), response_size(0)
+Request::Request(mg_connection *conn, const std::string &request_string):
+    conn(conn), request_string(request_string), response_size(0)
 {}
 
 
@@ -100,122 +100,155 @@ ServerException::ServerException(const std::string &message):
 // Server
 //-------------------------------------------------------------------------
 
-Server::Server()
-{}
-
-void Server::registerHandler(std::string name, const RequestHandler &handler)
+void Server::setHandler(const RequestHandler& rh)
 {
-//    std::cout << "Registering handler: " << name << std::endl;
-    handlers[name] = handler;
+    handler = rh;
 }
 
-void* Server::mg_callback(mg_event event, mg_connection *conn)
-{ // blocks current thread
+//void* Server::mg_callback(struct mg_connection *conn, enum mg_event event)
+//{ // blocks current thread
+//    
+//    
+//    //    if (ev == MG_AUTH) {
+//    //        return MG_TRUE;   // Authorize all requests
+//    //    } else if (ev == MG_REQUEST && !strcmp(conn->uri, "/hello")) {
+//    //        mg_printf_data(conn, "%s", "Hello world");
+//    //        return MG_TRUE;   // Mark as processed
+//    //    } else {
+//    //        return MG_FALSE;  // Rest of the events are not processed
+//    //    }
+//    
+//
+//    if (event == MG_NEW_REQUEST && handler) {
+//
+//        std::chrono::time_point<std::chrono::high_resolution_clock> t0;
+//        if (is_timing) {
+//            t0 = std::chrono::high_resolution_clock::now();
+//        }
+//
+//        const struct mg_request_info *request_info = mg_get_request_info(conn);
+//
+//        std::string uri(request_info->uri  + 1);
+//        //std::cout << "Request URI: " << uri << std::endl;
+//
+//        // tokenize on slahses: first should be the address,
+//        // second the requested function name, and from
+//        // third on parameters to the functions
+////        std::vector<std::string> tokens;
+////        boost::split(tokens, uri, boost::is_any_of("/"));
+//
+//        Request request(conn, uri);
+//
+////        if (tokens.size() == 0) {
+////            // std::cout << "Request URI: " << uri << std::endl;
+////            std::stringstream ss;
+////            ss << "bad URL: " << uri;
+////            request.respondJson(ss.str());
+////            return  (void*) ""; // mark as processed
+////        }
+////        else if (tokens.size() == 1) {
+////            // std::cout << "Request URI: " << uri << std::endl;
+////            std::stringstream ss;
+////            ss << "no handler name was provided on " << uri;
+////            request.respondJson(ss.str());
+////            return (void*) ""; // mark as processed
+////        }
+//
+////        std::string handler_name = tokens[1];
+//        //std::cout << "Searching handler: " << handler_name << std::endl;
+//
+////        if (handlers.find(handler_name) == handlers.end()) {
+////            // std::cout << "Request URI: " << uri << std::endl;
+////            std::stringstream ss;
+////            ss << "no handler found for " << uri << " (request key: " << handler_name << ")";
+////            request.respondJson(ss.str());
+////            return (void*) ""; // mark as processed
+////        }
+//
+//        if (is_timing) {
+//            handler(request);
+//            auto t1 = std::chrono::high_resolution_clock::now();
+//            uint64_t elapsed_nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
+//            timing_of << currentDateTime() << " " << uri
+//                      << " " << elapsed_nanoseconds << " ns"
+//                      << " input " << uri.length()
+//                      << " output " << request.response_size
+//                      << std::endl;
+//            // std::cout << "Request URI: " << uri << std::endl;
+//        } else {
+//            // std::cout << "Request URI: " << uri << std::endl;
+//            handler(request);
+//        }
+//
+//        return (void*) "";
+//    }
+//    return 0;
+//}
+//    typedef int (*mg_handler_t)(struct mg_connection *, enum mg_event);
 
-    if (event == MG_NEW_REQUEST) {
+static Server *__server { nullptr };
 
-        std::chrono::time_point<std::chrono::high_resolution_clock> t0;
-        if (is_timing) {
-            t0 = std::chrono::high_resolution_clock::now();
-        }
-
-        const struct mg_request_info *request_info = mg_get_request_info(conn);
-
-        std::string uri(request_info->uri);
-
-        //std::cout << "Request URI: " << uri << std::endl;
-
-        // tokenize on slahses: first should be the address,
-        // second the requested function name, and from
-        // third on parameters to the functions
-        std::vector<std::string> tokens;
-        boost::split(tokens, uri, boost::is_any_of("/"));
-
-        Request request(conn, tokens);
-
-        if (tokens.size() == 0) {
-            // std::cout << "Request URI: " << uri << std::endl;
-            std::stringstream ss;
-            ss << "bad URL: " << uri;
-            request.respondJson(ss.str());
-            return  (void*) ""; // mark as processed
-        }
-        else if (tokens.size() == 1) {
-            // std::cout << "Request URI: " << uri << std::endl;
-            std::stringstream ss;
-            ss << "no handler name was provided on " << uri;
-            request.respondJson(ss.str());
-            return (void*) ""; // mark as processed
-        }
-
-        std::string handler_name = tokens[1];
-        //std::cout << "Searching handler: " << handler_name << std::endl;
-
-        if (handlers.find(handler_name) == handlers.end()) {
-            // std::cout << "Request URI: " << uri << std::endl;
-            std::stringstream ss;
-            ss << "no handler found for " << uri << " (request key: " << handler_name << ")";
-            request.respondJson(ss.str());
-            return (void*) ""; // mark as processed
-        }
-
-        if (is_timing) {
-            handlers[handler_name](request);
-            auto t1 = std::chrono::high_resolution_clock::now();
-            uint64_t elapsed_nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
-            timing_of << currentDateTime() << " " << uri
-                      << " " << elapsed_nanoseconds << " ns"
-                      << " input " << uri.length()
-                      << " output " << request.response_size
-                      << std::endl;
-            // std::cout << "Request URI: " << uri << std::endl;
-        } else {
-            // std::cout << "Request URI: " << uri << std::endl;
-            handlers[handler_name](request);
-        }
-
-        return (void*) "";
+int __mg_callback(struct mg_connection* c, enum mg_event e)
+{
+    if (e == MG_AUTH) {
+        return MG_TRUE;   // Authorize all requests
+    } else if (e == MG_REQUEST) {
+        std::string uri(c->uri + 1);
+        Request request(c, uri);
+        __server->handler(request);
+        return MG_TRUE;   // Mark as processed
+        
+    } else {
+        return MG_FALSE;  // Rest of the events are not processed
     }
-    return 0;
-}
+};
 
-static Server *_server;
-void* __mg_callback(mg_event event, mg_connection *conn)
-{
-    return _server->mg_callback(event, conn);
-}
 
 void Server::start(int mongoose_threads) // blocks current thread
 {
     
-    char p[256];
-    sprintf(p,"%d",port);
-    std::string port_st = p;
-    this->mongoose_threads = mongoose_threads;
-
-    // port_st.c_str();
-    _server = this; // single Server
-    // auto callback = std::bind(&Server::mg_callback, this, std::placeholders::_1, std::placeholders::_2);
-
-    std::string mongoose_string = std::to_string(mongoose_threads);
-    // struct mg_context *ctx;
-    const char *options[] = {"listening_ports", port_st.c_str(), "num_threads", mongoose_string.c_str(), NULL};
+    __server = this;
     
-    ctx = mg_start(&__mg_callback, NULL, options);
+//    std::function<int(struct mg_connection*, enum mg_event)> mg_handler = [&that](struct mg_connection* c,
+//                                                                                  enum mg_event e) {
+//        if (e == MG_AUTH) {
+//            return MG_TRUE;   // Authorize all requests
+//        } else if (e == MG_REQUEST) {
+//            std::string uri(c->uri + 1);
+//            Request request(c, uri);
+//            that.handler(request);
+//            return MG_TRUE;   // Mark as processed
+//        
+//        } else {
+//            return MG_FALSE;  // Rest of the events are not processed
+//        }
+//    };
     
-    if (ctx == nullptr)
-    {
-        throw ServerException("Couldn't create mongoose context... exiting!");
+    //
+    // typedef int (*mg_handler_t)(struct mg_connection *, enum mg_event);
+    // typedef void* function_t( void* ) ;
+    // function_t** ptr_ptr_fun = func.target<function_t*>() ;
+    //
+
+    // typedef int (*mg_handler_t)(struct mg_connection *, enum mg_event);
+//    typedef int (mg_handler_type)(struct mg_connection *, enum mg_event);
+//    mg_handler_type** f = mg_handler.target<mg_handler_type*>();
+    // std::cout << "target type: " << mg_handler. << std::endl;
+    
+    mg_server *srv = mg_create_server(NULL, __mg_callback);
+    mg_set_option(srv, "num_threads", std::to_string(mongoose_threads).c_str());      // Serve current directory
+    mg_set_option(srv, "listening_port", std::to_string(port).c_str());  // Open port 8080
+
+    // add some flag for a clean shutdown of mongoose server
+    for (;keep_running;) {
+        mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop
     }
-
+    mg_destroy_server(&srv);
 }
 
 void Server::stop() // blocks current thread
 {
-    if (ctx) {
-        mg_stop(ctx);
-        ctx = nullptr;
-    }
+    keep_running = false;
 }
 
 //void Server::stop()
@@ -266,5 +299,21 @@ const std::string Server::currentDateTime() {
 
     return buf;
 }
+
+
+
+//            if (is_timing) {
+//                that.handler(request);
+//                auto t1 = std::chrono::high_resolution_clock::now();
+//                uint64_t elapsed_nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
+//                timing_of << that.currentDateTime() << " " << uri
+//                << " " << elapsed_nanoseconds << " ns"
+//                << " input " << uri.length()
+//                << " output " << request.response_size
+//                << std::endl;
+//                // std::cout << "Request URI: " << uri << std::endl;
+//            } else {
+// std::cout << "Request URI: " << uri << std::endl;
+//            }
 
 

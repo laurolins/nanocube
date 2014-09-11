@@ -10,14 +10,17 @@ AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS =        \
 ncdmp                 \
-ncserve               \
-nc_q25_c1_u2_u4       \
-nanocube              \
 nanocube-leaf         \
-nanocube-distribute   \
-nanocube-daemon       \
-nanocube-sliding      \
-test-words
+nc_q25_c1_u2_u4
+
+# \
+# ncserve               \
+# nanocube              \
+# nanocube-leaf         \
+# nanocube-distribute   \
+# nanocube-daemon       \
+# nanocube-sliding      \
+# test-words
 
 #
 # nc_q25_u2_u4          \
@@ -47,8 +50,8 @@ LIBS += $(BOOST_ASIO_LIBS)
 #LIBS += $(BOOST_MPI_LIBS)
 #LIBS += $(BOOST_SERIALIZATION_LIBS)
 
-nanocube_SOURCES =    \
-nanocube.cc
+# nanocube_SOURCES =    \
+# nanocube.cc
 
 nanocube_leaf_SOURCES = \
 nanocube-leaf.cc        \
@@ -65,49 +68,49 @@ DumpFile.hh           \
 MercatorProjection.cc \
 MercatorProjection.hh
 
-nanocube_distribute_SOURCES = \
-nanocube-distribute.cc        \
-NanoCubeSchema.cc             \
-NanoCubeSchema.hh             \
-DumpFile.cc                   \
-DumpFile.hh                   \
-Master.cc                     \
-Master.hh                     \
-NanoCubeQueryResult.cc        \
-Query.cc                      \
-QueryParser.cc                \
-geometry.cc                   \
-json.cc                       \
-maps.cc                       \
-mongoose/mongoose.c           \
-vector.cc
+# nanocube_distribute_SOURCES = \
+# nanocube-distribute.cc        \
+# NanoCubeSchema.cc             \
+# NanoCubeSchema.hh             \
+# DumpFile.cc                   \
+# DumpFile.hh                   \
+# Master.cc                     \
+# Master.hh                     \
+# NanoCubeQueryResult.cc        \
+# Query.cc                      \
+# QueryParser.cc                \
+# geometry.cc                   \
+# json.cc                       \
+# maps.cc                       \
+# mongoose/mongoose.c           \
+# vector.cc
 
-test_words_SOURCES = \
-Heap.cc              \
-PartialSort.cc       \
-test_words.cc 
+# test_words_SOURCES = \
+# Heap.cc              \
+# PartialSort.cc       \
+# test_words.cc 
 
-nanocube_daemon_SOURCES =    \
-nanocube-daemon.cc           
+# nanocube_daemon_SOURCES =    \
+# nanocube-daemon.cc           
 
-ncserve_SOURCES =     \
-ncserve.cc            \
-DumpFile.cc           \
-mongoose/mongoose.c
+# ncserve_SOURCES =     \
+# ncserve.cc            \
+# DumpFile.cc           \
+# mongoose/mongoose.c
 
-nanocube_sliding_SOURCES = \
-nanocube-sliding.cc        \
-DumpFile.cc                \
-NanoCubeSchema.cc          \
-NanoCubeQueryResult.cc     \
-Master.cc                  \
-Query.cc                   \
-QueryParser.cc             \
-geometry.cc                \
-json.cc                    \
-maps.cc                    \
-mongoose/mongoose.c        \
-vector.cc
+# nanocube_sliding_SOURCES = \
+# nanocube-sliding.cc        \
+# DumpFile.cc                \
+# NanoCubeSchema.cc          \
+# NanoCubeQueryResult.cc     \
+# Master.cc                  \
+# Query.cc                   \
+# QueryParser.cc             \
+# geometry.cc                \
+# json.cc                    \
+# maps.cc                    \
+# mongoose/mongoose.c        \
+# vector.cc
 
 
 
@@ -169,6 +172,8 @@ Report.cc                 \
 Report.hh                 \
 json.cc                   \
 json.hh                   \
+nanocube_language.cc      \
+nanocube_language.hh      \
 maps.cc                   \
 maps.hh                   \
 geometry.cc               \
@@ -194,6 +199,10 @@ nc.cc                     \
 small_vector.hh           \
 qtfilter.hh               \
 qtfilter.cc               \
+tile.cc                   \
+tile.hh                   \
+address.cc                \
+address.hh                \
 util/tokenizer.cc         \
 util/tokenizer.hh         \
 util/timer.cc             \
