@@ -150,7 +150,7 @@ on your system, please choose another port.
         count:      49186 mem. res:         49MB.  time(s):          0
         Number of points inserted 49186
 
-5. That's it.  Point your browser (Firefox, Chrome) to http://localhost:8000 for the viewer.
+5. That's it.  Point your browser (Firefox, Chrome) to http://localhost:8000 for the viewer. If you needed to change the port number in Step 3 above, make sure that you specify the same number here.
 
 6. When finished, terminate the nanocube (e.g. Control-C) and then type 'deactivate' on the command-line to shut the virtual python environment down.
 
@@ -167,7 +167,7 @@ Running this example again later, you do not need to reinstall the linux or pyth
         $ cd web
         $ python -m SimpleHTTPServer 8000 &
         $ cd ../scripts
-        $ python csv2Nanocube.py --catcol='Primary Type' crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100 --port=29512
+        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100 --port=29512
 
 
 ## Further Details
