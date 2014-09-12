@@ -163,13 +163,15 @@ struct Eval<query_type, true> {
             for (uint32_t i=0;i<count;i++) {
                 uint32_t b = a + width;
                 uint64_t value = content.template getWindowTotal<1>(a,b);
-                if (anchored) {
-                    ::query::RawAddress addr = ((uint64_t) a << 32) + b;
-                    result.push(addr);
-                }
-                result.store(value, ::query::result::ADD);
-                if (anchored) {
-                    result.pop();
+                if (value != 0) {
+                    if (anchored) {
+                        ::query::RawAddress addr = ((uint64_t) a << 32) + b;
+                        result.push(addr);
+                    }
+                    result.store(value, ::query::result::ADD);
+                    if (anchored) {
+                        result.pop();
+                    }
                 }
                 a = b;
             }

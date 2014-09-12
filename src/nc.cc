@@ -1020,7 +1020,7 @@ public:
     int dimSize(int dimension_index) const;
     
     ::nanocube::DimAddress convertRawAddress(int dimension_index, std::size_t raw_address);
-    std::uint64_t convertPathAddress(int dimension_index, DimAddress &path);
+    std::size_t convertPathAddress(int dimension_index, DimAddress &path);
 
 public:
     Schema& schema;
@@ -1098,7 +1098,7 @@ int AnnotatedSchema::dimSize(int dimension_index) const {
 
 }
 
-std::uint64_t AnnotatedSchema::convertPathAddress(int dimension_index, DimAddress &path) {
+std::size_t AnnotatedSchema::convertPathAddress(int dimension_index, DimAddress &path) {
     auto dimension_type = dimension_types.at(dimension_index);
     auto dimension_size = dimension_sizes.at(dimension_index);
     
@@ -1139,18 +1139,39 @@ std::uint64_t AnnotatedSchema::convertPathAddress(int dimension_index, DimAddres
 
 enum OutputEncoding { JSON, BINARY, TEXT };
 
+struct BranchTargetOnTime {
+public:
+    BranchTargetOnTime() = default;
+    BranchTargetOnTime(int base, int width, int count):
+        active(true),
+        base(base),
+        width(width),
+        count(count)
+    {}
+public:
+    bool active { false };
+    int base  { 0 };
+    int width { 0 };
+    int count { 0 };
+};
+
 void parse_program_into_query(const ::nanocube::lang::Program &program,
                               AnnotatedSchema           &annotated_schema,
                               ::query::QueryDescription &query_description,
-                              OutputEncoding &output_encoding)
+                              OutputEncoding &output_encoding,
+                              BranchTargetOnTime &branch_target_on_time)
 {
+    // default values
+    output_encoding       = JSON;
+    branch_target_on_time.active = false;
     
-    using Node = ::nanocube::lang::Node;
+    //
+    using Node   = ::nanocube::lang::Node;
     using Number = ::nanocube::lang::Number;
     using String = ::nanocube::lang::String;
-    using Call = ::nanocube::lang::Call;
+    using Call   = ::nanocube::lang::Call;
+    using List   = ::nanocube::lang::List;
     // using Program = ::nanocube::lang::Program;
-    using List = ::nanocube::lang::List;
     
     const auto NUMBER = ::nanocube::lang::NUMBER;
     const auto STRING = ::nanocube::lang::STRING;
@@ -1259,11 +1280,13 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
                 query_description.setFindAndDiveTarget(dimension_index, raw_addr, depth);
             }
             else if (call.name.compare("range2d") == 0) {
-//                if (call.params.size() != 2)
-//                    throw std::runtime_error("invalid number of parameters for range2d");
-//                auto addr1  = get_address(call.params[0]);
-//                auto addr2  = get_address(call.params[1]);
-//                return nanocube::Target::range2d(addr1, addr2);
+                if (call.params.size() != 2)
+                    throw std::runtime_error("invalid number of parameters for range2d");
+                auto addr1  = get_address(call.params[0]);
+                auto addr2  = get_address(call.params[1]);
+                auto raw_addr1 = annotated_schema.convertPathAddress(dimension_index, addr1);
+                auto raw_addr2 = annotated_schema.convertPathAddress(dimension_index, addr2);
+                query_description.setRangeTarget(dimension_index, raw_addr1, raw_addr2);
             }
             else if (call.name.compare("range1d") == 0) {
 //                if (call.params.size() != 2)
@@ -1273,19 +1296,30 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
 //                return nanocube::Target::range1d(addr1, addr2);
             }
             else if (call.name.compare("interval") == 0) {
-//                if (call.params.size() != 2)
-//                    throw std::runtime_error("invalid number of parameters for range2d");
-//                auto a  = get_number(call.params[0]);
-//                auto b  = get_number(call.params[1]);
-//                return nanocube::Target::interval(a, b);
+                //
+                // binary trees and time dimension: since there is no binary tree
+                // here, assume only time dimension
+                //
+                if (annotated_schema.dimType(dimension_index) != AnnotatedSchema::TIME)
+                    throw std::runtime_error("Interval only works in the time dimension");
+                if (call.params.size() != 2)
+                    throw std::runtime_error("invalid number of parameters for interval");
+                auto a  = get_number(call.params[0]);
+                auto b  = get_number(call.params[1]);
+                query_description.setBaseWidthCountTarget(dimension_index, a, b-a+1, 1);
             }
-            else if (call.name.compare("interval_sequence") == 0) {
-//                if (call.params.size() != 3)
-//                    throw std::runtime_error("invalid number of parameters for range2d");
-//                auto base   = get_number(call.params[0]);
-//                auto width  = get_number(call.params[1]);
-//                auto count  = get_number(call.params[2]);
-//                return nanocube::Target::multi_interval(base, width, count);
+            else if (call.name.compare("bt_interval_sequence") == 0 || call.name.compare("bt_intseq") == 0) {
+                if (annotated_schema.dimType(dimension_index) != AnnotatedSchema::TIME)
+                    throw std::runtime_error("Interval only works in the time dimension");
+                if (call.params.size() != 3)
+                    throw std::runtime_error("invalid number of parameters for interval");
+                auto base   = get_number(call.params[0]);
+                auto width  = get_number(call.params[1]);
+                auto count  = get_number(call.params[2]);
+                
+                query_description.setBaseWidthCountTarget(dimension_index, base, width, count);
+                
+                branch_target_on_time = BranchTargetOnTime(base, width, count); // this is a branch target!
             }
             else {
                 throw std::runtime_error("cannot decode call: " + call.name);
@@ -1322,9 +1356,14 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
             // param 0 should be the dimension (if string convert from name)
             auto dim    = get_dimension_number(call.params[0]); // 0: dim
             set_target(dim, call.params[1]); // 1: target
+
             
+            bool anchor    = true;
             bool no_anchor = false;
-            query_description.setAnchor(dim, no_anchor);
+            if (branch_target_on_time.active)
+                query_description.setAnchor(dim, anchor);
+            else
+                query_description.setAnchor(dim, no_anchor);
         }
         else if (call.name.compare("text") == 0) {
             output_encoding = TEXT;
@@ -1436,7 +1475,9 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         OutputEncoding output_encoding = JSON;
         
-        parse_program_into_query( program, annotated_schema, query_description, output_encoding );
+        BranchTargetOnTime branch_target_on_time_dimension;
+        
+        parse_program_into_query( program, annotated_schema, query_description, output_encoding, branch_target_on_time_dimension);
         
         //
         // it will be tricky to translate the multi_target aspect of the query
@@ -1456,17 +1497,11 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
             }
         }
         
-        ::query::result::Vector result_vector(num_anchored_dimensions);
+        // big hack
         
-        // set dimension names
-        int level=0;
-        int i=0;
-        for (auto flag: query_description.anchors) {
-            if (flag) {
-                result_vector.setLevelName(level++, nanocube.schema.getDimensionName(i));
-            }
-            i++;
-        }
+        
+        
+        ::query::result::Vector result_vector(num_anchored_dimensions);
         
         ::query::result::Result result(result_vector);
         
@@ -1481,7 +1516,12 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         using TreeStoreResult = tree_store::TreeStore<SimpleConfig>;
         using TreeStoreResultBuilder = tree_store::TreeStoreBuilder<TreeStoreResult>;
         
-        TreeStoreResult treestore_result(num_anchored_dimensions);
+        auto adj_num_anchored_dimensions = num_anchored_dimensions;
+        //+
+        //    (branch_target_on_time_dimension.active ? 1 : 0);
+        
+        TreeStoreResult        treestore_result(adj_num_anchored_dimensions);
+
         TreeStoreResultBuilder treestore_result_builder(treestore_result);
         
         vector::InstructionIterator it(result.vector);
@@ -1494,14 +1534,44 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
                 treestore_result_builder.pop();
             }
             else if (instruction.type == vector::Instruction::PUSH) {
-                auto dim_index = anchored_dimensions.at(depth);
-                DimAddress labelPath = annotated_schema.convertRawAddress(dim_index, instruction.label);
-                treestore_result_builder.push(labelPath);
-                ++depth;
+                if (depth == adj_num_anchored_dimensions-1) {
+                    auto label64 = instruction.label;
+                    int interval_start = (int) (label64 >> 32); // might generate problems with large numbers
+                    int bucket_index = (interval_start-branch_target_on_time_dimension.base)/branch_target_on_time_dimension.width;
+                    DimAddress path { bucket_index };
+                    treestore_result_builder.push(path);
+                    ++depth;
+                }
+                else {
+                    auto dim_index = anchored_dimensions.at(depth);
+                    DimAddress labelPath = annotated_schema.convertRawAddress(dim_index, instruction.label);
+                    treestore_result_builder.push(labelPath);
+                    ++depth;
+                }
             }
             else if (instruction.type == vector::Instruction::STORE) {
                 treestore_result_builder.store(instruction.value);
             }
+        }
+        
+        
+        // set level names
+        int level=0;
+        int i=0;
+        for (auto flag: query_description.anchors) {
+            if (flag) {
+                if (annotated_schema.dimType(i) == AnnotatedSchema::TIME) {
+                    if (branch_target_on_time_dimension.active)
+                        treestore_result.setLevelName(level, std::string("bt:") + nanocube.schema.getDimensionName(i));
+                    else
+                        throw std::runtime_error("Cannot anchor on time dimension");
+                }
+                else {
+                    treestore_result.setLevelName(level, std::string(":") + nanocube.schema.getDimensionName(i));
+                }
+                ++level;
+            }
+            i++;
         }
         
         std::stringstream ss;
@@ -1524,33 +1594,11 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
     try {
         process();
     } catch (std::runtime_error &e) {
-        request.respondJson(e.what());
+        request.respondText(e.what());
+    } catch (...) {
+        request.respondText("ooops");
     }
 
-//    if (json) { // json query
-//
-//        ::nanocube::QueryResult query_result(result_vector, nanocube.schema);
-//        std::stringstream ss;
-//        query_result.json(ss);
-//        // ss << result;
-//        request.respondJson(ss.str());
-//
-//    }
-//    else { // binary query
-//
-//        std::ostringstream os;
-//        ::query::result::serialize(result_vector,os);
-//        const std::string st = os.str();
-//
-//        // compress data
-//        if (compression) {
-//            auto compressed_data = zlib_compress(st.c_str(), st.size());
-//            request.respondOctetStream(&compressed_data[0], compressed_data.size());
-//        }
-//        else {
-//             request.respondOctetStream(st.c_str(), st.size());
-//        }
-//    }
 }
 
 void NanocubeServer::serveTile(Request &request)

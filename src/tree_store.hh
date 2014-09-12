@@ -1454,9 +1454,26 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
     void json(const TreeStore<C> &tree_store, std::ostream &os, const P& parameter) {
         
         using namespace json;
+
+        using Guard     = ContextGuard;
         
         // empty result
         if (!tree_store.root) {
+            
+            JsonWriter writer(os);
+            Guard g = writer.dict();
+            {
+                {
+                    Guard g2 = writer.list("levels");
+                    for (std::string level_name: tree_store.level_names) {
+                        writer << std::string("\"" + level_name + "\"");
+                    }
+                }
+                {
+                    Guard g2 = writer.dict("root");
+                }
+            }
+
             return;
         }
         
@@ -1467,8 +1484,6 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
         
         
         enum Op {BEGIN, END};
-        
-        using Guard     = ContextGuard;
         
         using treestore_type    = TreeStore<C>;
         using config_type       = typename treestore_type::config_type;
@@ -1495,7 +1510,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
             else if (node->isLeafNode()) {
                 leafnode_type *leaf = node->asLeafNode();
                 std::stringstream ss;
-                ss << "\"value\":";
+                ss << "\"val\":";
                 config.print_value(ss, leaf->value, parameter);
                 writer << ss.str();
             }
@@ -1544,7 +1559,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                     }
                     
                     std::stringstream ss;
-                    ss << "\"addr\":";
+                    ss << "\"path\":";
                     config.print_label(ss, label);
                     writer << ss.str();
                     process(node);

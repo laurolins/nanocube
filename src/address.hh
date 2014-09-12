@@ -9,7 +9,7 @@ namespace nanocube {
 // Label
 //-----------------------------------------------------------------------------
 
-using Label = int16_t; // Label (or SmallLabel will be 15-bits long)
+using Label = int; // Label (or SmallLabel will be 15-bits long)
 
 const Label NO_LABEL = -1;
 
