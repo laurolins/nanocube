@@ -40,6 +40,10 @@ namespace nanocube {
         public:
             Program(std::string name);
             Program& setFirstCall(Call *call);
+            
+            
+            Call* findCallByName(std::string call);
+            
         public:
             std::string name;
             Call* first_call { nullptr };

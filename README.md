@@ -1,3 +1,9 @@
+# Development Version to update the Nanocube's API
+
+Here is a still messy document towards the API documentation
+
+[API](https://raw.githubusercontent.com/laurolins/nanocube/api3/COPYRIGHT)
+
 # Nanocubes: an in-memory data structure for spatiotemporal data cubes
 
 Nanocubes are a fast datastructure for in-memory data cubes developed

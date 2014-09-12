@@ -415,7 +415,10 @@ void NanocubeServer::initializeQueryServer()
     
     // schema handler
     handlers["schema"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
-        // nc_server.serveSchema(request);
+        bool json = true;
+        if (program.findCallByName("text"))
+            json = false;
+        nc_server.serveSchema(request, json);
     };
     
     // topk handler

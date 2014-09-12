@@ -25,6 +25,16 @@ namespace nanocube {
             return *this;
         }
         
+        Call* Program::findCallByName(std::string call) {
+            auto v = this->first_call;
+            while (v != nullptr) {
+                if (v->name.compare(call) == 0)
+                    return v;
+                v = v->next_call;
+            }
+            return nullptr;
+        }
+        
         // String
         
         String::String(std::string st):
