@@ -2,7 +2,7 @@
 
 Here is a still messy document towards the API documentation
 
-[API](https://raw.githubusercontent.com/laurolins/nanocube/api3/COPYRIGHT)
+[API](https://raw.githubusercontent.com/laurolins/nanocube/api3/API.md)
 
 # Nanocubes: an in-memory data structure for spatiotemporal data cubes
 
