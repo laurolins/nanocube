@@ -152,7 +152,9 @@ on your system, please choose another port.
 
 5. That's it.  Point your browser (Firefox, Chrome) to http://localhost:8000 for the viewer. If you needed to change the port number in Step 3 above, make sure that you specify the same number here.
 
-6. When finished, terminate the nanocube (e.g. Control-C) and then type 'deactivate' on the command-line to shut the virtual python environment down.
+6. If you believe there may be a problem, try running 'nctest.sh' in the scripts subdirectory.  It will make some queries of the nanocube (change the script if you are not using port 29512) and compare the results to known results that we gathered ourselves.  If the results match, it will report 'SUCCESS'.
+
+7. When finished, terminate the nanocube (e.g. Control-C) and then type 'deactivate' on the command-line to shut the virtual python environment down.
 
 For this example we assume you are running everything on your
 localhost. Modify `config.json` accordingly in the `web` folder for
