@@ -8,34 +8,42 @@ example, let's consider a table like the Chicago crime one:
 How many records in my geo-location table fall into a certain spatial
 bin? Or fall
 
-# Address
+# Paths
 
-Address can be interpreted as the "name" of a "bin" in a "dimension"
-of a nanocube. This bin can be either an aggregate one or a finest
+A *path* is the identifier of a *bin* in a *dimension* of a
+nanocube. This *bin* can be either an aggregate one or a finest
 resolution one. For example, if we have a dimension for a categorical
 variable "device" represented as a two level tree where the root is
 
 # Target
 
-Specifies a set of potential bins we want to visit in a certain
-traversal of a nanocube for a cetain dimension. If we have a
-geo-spatial dimension we might want to restrict our query only to bins
-that are inside a certain regions (e.g. a zip-code area, or a state).
+A *target* for a dimension restricts the set of records of interest to
+the ones that are in a particular set of *bins* in that dimension. For
+example, if we have a categorical dimension with US States as *bins*,
+we can think of `{NY, LA, UT}` as a *target* for that dimension. More
+formally, a *target* for dimension *d* specifies a set of *paths* that
+should be visited every time the execution engine that is solving a
+query needs to traverse a *binning hierarchy* on dimensions *d*. If a
+certain *path* in the *target* is not present for a particular *bin
+hierarchy* instance, then, obviously, this path won't be visited.
 
-# Branching Target
+
+## Multi-Target
 
 Sometimes we want to have multiple targets on a single dimension. For
 example, we might want to query multiple sequential intervals from a
 binary tree representation for time.
 
-## branch target
-
 Here is an example
 
-    http://localhost:12321/volume.a("src",dive([2],4)).r("time",bt_interval_sequence(19780,10,10))
-    http://localhost:12321/volume.r("src",range2d(tile2d(2,2,2),tile2d(2,3,2))).r("time",bt_interval_sequence(19780,1,101))
+    http://localhost:29510/volume.a("location",dive([2,1,2],8))
+    { "layers":[ "anchor:location" ], "root":{ "path":[], "children":[ { "path":[2,1,2,0,0,0,0,1,3,2,2], "val":5350 }, { "path":[2,1,2,0,0,0,0,1,3,0,3], "val":12191 }, { "path":[2,1,2,0,0,0,0,1,3,1,2], "val":215 }, { "path":[2,1,2,0,0,0,0,1,3,2,3], "val":7360 }, { "path":[2,1,2,0,0,0,0,1,2,3,3], "val":250 }, { "path":[2,1,2,0,0,0,0,1,3,2,1], "val":16614 }, { "path":[2,1,2,0,0,0,0,1,3,2,0], "val":6795 }, { "path":[2,1,2,0,0,0,0,1,3,0,2], "val":411 } ] } }
 
-    bt_intseq(0,24,10) # branch target
+    http://localhost:29510/volume.r("time",mt_interval_sequence(480,24,10))
+    { "layers":[ "multi-target:time" ], "root":{ "path":[], "children":[ { "path":[0], "val":625 }, { "path":[1], "val":723 }, { "path":[2], "val":663 }, { "path":[3], "val":518 }, { "path":[4], "val":411 }, { "path":[5], "val":588 }, { "path":[6], "val":717 }, { "path":[7], "val":715 }, { "path":[8], "val":703 }, { "path":[9], "val":618 } ] } }
+
+    http://localhost:29510/volume.a("location",dive([2,1,2],8)).r("time",mt_interval_sequence(480,24,10))
+    { "layers":[ "anchor:location", "multi-target:time" ], "root":{ "path":[], "children":[ { "path":[2,1,2,0,0,0,0,1,3,2,2], "children":[ { "path":[0], "val":82 }, { "path":[1], "val":77 }, { "path":[2], "val":65 }, { "path":[3], "val":53 }, { "path":[4], "val":62 }, { "path":[5], "val":72 }, { "path":[6], "val":88 }, { "path":[7], "val":79 }, { "path":[8], "val":76 }, { "path":[9], "val":58 } ] }, { "path":[2,1,2,0,0,0,0,1,3,0,3], "children":[ { "path":[0], "val":143 }, { "path":[1], "val":194 }, { "path":[2], "val":147 }, { "path":[3], "val":135 }, { "path":[4], "val":90 }, { "path":[5], "val":151 }, { "path":[6], "val":183 }, { "path":[7], "val":162 }, { "path":[8], "val":163 }, { "path":[9], "val":161 } ] }, { "path":[2,1,2,0,0,0,0,1,3,1,2], "children":[ { "path":[0], "val":1 }, { "path":[1], "val":1 }, { "path":[2], "val":2 }, { "path":[3], "val":1 }, { "path":[4], "val":5 }, { "path":[5], "val":2 }, { "path":[6], "val":3 }, { "path":[7], "val":5 }, { "path":[8], "val":3 }, { "path":[9], "val":1 } ] }, { "path":[2,1,2,0,0,0,0,1,3,2,3], "children":[ { "path":[0], "val":80 }, { "path":[1], "val":119 }, { "path":[2], "val":101 }, { "path":[3], "val":95 }, { "path":[4], "val":59 }, { "path":[5], "val":70 }, { "path":[6], "val":89 }, { "path":[7], "val":107 }, { "path":[8], "val":102 }, { "path":[9], "val":84 } ] }, { "path":[2,1,2,0,0,0,0,1,2,3,3], "children":[ { "path":[0], "val":2 }, { "path":[1], "val":6 }, { "path":[2], "val":6 }, { "path":[3], "val":5 }, { "path":[4], "val":3 }, { "path":[5], "val":5 }, { "path":[6], "val":4 }, { "path":[7], "val":5 }, { "path":[8], "val":6 }, { "path":[9], "val":1 } ] }, { "path":[2,1,2,0,0,0,0,1,3,2,1], "children":[ { "path":[0], "val":227 }, { "path":[1], "val":227 }, { "path":[2], "val":250 }, { "path":[3], "val":162 }, { "path":[4], "val":119 }, { "path":[5], "val":175 }, { "path":[6], "val":233 }, { "path":[7], "val":235 }, { "path":[8], "val":259 }, { "path":[9], "val":216 } ] }, { "path":[2,1,2,0,0,0,0,1,3,2,0], "children":[ { "path":[0], "val":85 }, { "path":[1], "val":93 }, { "path":[2], "val":87 }, { "path":[3], "val":61 }, { "path":[4], "val":72 }, { "path":[5], "val":106 }, { "path":[6], "val":107 }, { "path":[7], "val":117 }, { "path":[8], "val":86 }, { "path":[9], "val":93 } ] }, { "path":[2,1,2,0,0,0,0,1,3,0,2], "children":[ { "path":[0], "val":5 }, { "path":[1], "val":6 }, { "path":[2], "val":5 }, { "path":[3], "val":6 }, { "path":[4], "val":1 }, { "path":[5], "val":7 }, { "path":[6], "val":10 }, { "path":[7], "val":5 }, { "path":[8], "val":8 }, { "path":[9], "val":4 } ] } ] } }
 
 # Services
 
@@ -78,7 +86,16 @@ three functions are avaiable on the queries: `.json()`, `.text()`,
 ## .id
 
 
+wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.4.tar.gz
+tar xfz virtualenv-1.11.4.tar.gz
+python virtualenv-1.11.4/virtualenv.py  myPy
+source myPy/bin/activate
+pip install argparse numpy pandas
 
+
+# ToDo
+
+- Access of Multiple Variables
 
 
 

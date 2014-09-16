@@ -1311,7 +1311,7 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
                 auto b  = get_number(call.params[1]);
                 query_description.setBaseWidthCountTarget(dimension_index, a, b-a+1, 1);
             }
-            else if (call.name.compare("bt_interval_sequence") == 0 || call.name.compare("bt_intseq") == 0) {
+            else if (call.name.compare("mt_interval_sequence") == 0 || call.name.compare("mt_intseq") == 0) {
                 if (annotated_schema.dimType(dimension_index) != AnnotatedSchema::TIME)
                     throw std::runtime_error("Interval only works in the time dimension");
                 if (call.params.size() != 3)
@@ -1537,7 +1537,7 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
                 treestore_result_builder.pop();
             }
             else if (instruction.type == vector::Instruction::PUSH) {
-                if (depth == adj_num_anchored_dimensions-1) {
+                if (branch_target_on_time_dimension.active && depth == adj_num_anchored_dimensions-1) {
                     auto label64 = instruction.label;
                     int interval_start = (int) (label64 >> 32); // might generate problems with large numbers
                     int bucket_index = (interval_start-branch_target_on_time_dimension.base)/branch_target_on_time_dimension.width;
@@ -1565,12 +1565,12 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
             if (flag) {
                 if (annotated_schema.dimType(i) == AnnotatedSchema::TIME) {
                     if (branch_target_on_time_dimension.active)
-                        treestore_result.setLevelName(level, std::string("bt:") + nanocube.schema.getDimensionName(i));
+                        treestore_result.setLevelName(level, std::string("multi-target:") + nanocube.schema.getDimensionName(i));
                     else
                         throw std::runtime_error("Cannot anchor on time dimension");
                 }
                 else {
-                    treestore_result.setLevelName(level, std::string(":") + nanocube.schema.getDimensionName(i));
+                    treestore_result.setLevelName(level, std::string("anchor:") + nanocube.schema.getDimensionName(i));
                 }
                 ++level;
             }

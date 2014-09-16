@@ -1,4 +1,4 @@
-import sys,dateutil,datetime,argparse,re,subprocess,os,json,socket
+import sys,dateutil.parser,datetime,argparse,re,subprocess,os,json,socket
 
 import cStringIO as StringIO
 import pandas as pd
@@ -6,26 +6,56 @@ import numpy as np
 
 class NanocubeInput:
     def __init__(self, args):
-        self.name=args.InputFile[0]
-        self.timebinsize=self.parseTimeBin(args.timebinsize)
 
-        self.spname=args.spname
-        self.catcol=args.catcol
-        self.timecol=args.timecol
-        self.latcol=args.latcol
-        self.loncol=args.loncol
-        self.countcol = args.countcol
-        self.sep = args.sep
-
-        self.datefmt=args.datefmt
-        self.levels = args.levels
-        
         self.field=[]
         self.valname={}
-        self.offset=None
         
         self.minlatlon={}
         self.maxlatlon={}
+
+        self.name=args.InputFile[0]
+                    
+        self.timebinsize=self.parseTimeBin(args.timebinsize)
+
+        self.spname=args.spname.split(',')
+        self.timecol=args.timecol.split(',')
+        self.latcol=args.latcol.split(',')
+        self.loncol=args.loncol.split(',')
+        
+        try:
+            self.catcol = args.catcol.split(',')
+        except:
+            self.catcol = []
+
+        try:
+            self.ncheader = open(args.ncheader,'r').readlines()
+
+            #read the header
+            self.valname = self.readNCHeader(self.ncheader)
+
+            #make this header printable
+            self.ncheader = "".join(self.ncheader).strip()+"\n\n"    
+        except:
+            self.ncheader = None
+
+        try:
+            self.offset = dateutil.parser.parse(args.offset)
+        except:
+            self.offset = None
+
+        try:
+            self.header=args.header.split(',')
+        except:
+            self.header=None
+
+        self.countcol = args.countcol
+        self.sep = args.sep
+
+
+        self.datefmt=args.datefmt
+        self.levels = args.levels
+	self.port = args.port
+
 
         for s in self.spname:
             self.minlatlon[s] = [float("inf"),float("inf")]
@@ -87,7 +117,7 @@ class NanocubeInput:
                                   'background-color':'#555', 
                                   'opacity': 0.8,
                                   'z-index':1}
-            top +=height+10
+            top += (height+10)
 
         #other info
         config['div']['info'] = {'position': 'absolute',
@@ -103,7 +133,7 @@ class NanocubeInput:
         config['latlonbox'] = { 'min':self.minlatlon,
                                 'max':self.maxlatlon }
         
-        config['url'] = 'http://%s:29512'%("localhost")
+        config['url'] = 'http://%s:%s'%(socket.getfqdn(),self.port)
         config['title'] = self.name
         config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
 
@@ -115,26 +145,50 @@ class NanocubeInput:
         if self.countcol is not None:
             coi += [self.countcol]
         start = True
+
         for f in files:
             comp = None
             if f.split('.')[-1] == 'gz':
                 comp = 'gzip'
-            reader = pd.read_csv(f,usecols=coi,
-                                 chunksize=100000,
-                                 error_bad_lines=False,
-                                 sep=self.sep,                                
-                                 compression=comp)
+
+            if f == '-':
+                f=sys.stdin
+
+            reader = pd.read_csv(f,chunksize=100000,
+                                 error_bad_lines=False,sep=self.sep,
+                                 compression=comp,names=self.header,
+                                 usecols=coi)
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
-
                 data = self.processData(data)
+
                 if start:
-                    sys.stdout.write(self.header(data))
+                    if self.ncheader is None:
+                        self.ncheader = self.createHeader(data)
+                    sys.stdout.write(self.ncheader)
                     start = False
                 
                 self.writeRawData(data)
                         
+    def readNCHeader(self,header):
+        valname = {}
+        for line in header:
+            try:
+                s = line.strip().split(':')
+                if s[0]=='valname':
+                    ss = s[1].strip().split()
+                    attr = ss[0].replace(' ','_')
+                    val = int(ss[1])
+                    name = ss[2].replace(' ','_')
+                    if attr not in valname:
+                        valname[attr] = {}
+                    valname[attr][name]=val
+
+            except:
+                continue
+        return valname
+
     def processData(self, data):
         if self.countcol is None:
             self.countcol = 'count'
@@ -177,7 +231,7 @@ class NanocubeInput:
 
         rec = data.to_records(index=False)
         rec.tofile(sys.stdout)
-            
+
     def processLatLon(self,data):
         for i,spname in enumerate(self.spname):
             lat = self.latcol[i]
@@ -207,9 +261,11 @@ class NanocubeInput:
         return data.dropna()
             
     def processDate(self, data):         
-        for i,d in enumerate(self.timecol): 
-            #convert strings to dates
-            data[d] = pd.to_datetime(data[d].apply(str),
+        for i,d in enumerate(self.timecol):
+            if data[d].dtype == 'int64':
+                data[d] *= 1e9
+ 
+            data[d] = pd.to_datetime(data[d],
                                      infer_datetime_format=True,
                                      format=self.datefmt)
             #if the strings are crazy coerce will fix it 
@@ -220,7 +276,8 @@ class NanocubeInput:
 
         if self.offset is None: #compute offset
             year = data[self.timecol].min().min().year
-            self.offset = datetime.datetime(year=year,month=1,day=1)
+            month = data[self.timecol].min().min().month
+            self.offset = datetime.datetime(year=year,month=month,day=1)
 
         for i,d in enumerate(self.timecol):
             data[d] -= self.offset
@@ -267,7 +324,7 @@ class NanocubeInput:
         td = np.timedelta64(num,unit)
         return np.timedelta64(td,'s')
 
-    def header(self,data):
+    def createHeader(self,data):
         h = ''
         h += 'name: %s\n'%(self.name.replace(' ',"_"))
         h += 'encoding: binary\n'
@@ -295,19 +352,23 @@ class NanocubeInput:
 def main(argv):
     #parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('InputFile',type=str, nargs='+')
-    parser.add_argument('--timebinsize',type=str, default='1h')
-    parser.add_argument('--timecol', type=str,nargs='+',default=['Date'])
-    parser.add_argument('--datefmt', type=str, default=None)
-    parser.add_argument('--spname', type=str,nargs='+',default=['src'])
-    parser.add_argument('--levels', type=int, default=25)
-    parser.add_argument('--latcol', type=str,nargs='+',default=['Latitude'])
-    parser.add_argument('--loncol', type=str,nargs='+',default=['Longitude'])
-    parser.add_argument('--catcol', type=str,nargs='+',default=[])
-    parser.add_argument('--countcol', type=str, default=None)
-    parser.add_argument('--sep', type=str, default=',')
+    parser.add_argument('InputFile',     type=str, nargs='+',help="use - for stdin")
+    parser.add_argument('--timebinsize', type=str, default='1h')
+    parser.add_argument('--timecol',     type=str, default='time')
+    parser.add_argument('--datefmt',     type=str, default=None)
+    parser.add_argument('--spname',      type=str, default='location')
+    parser.add_argument('--levels',      type=int, default=25)
+    parser.add_argument('--latcol',      type=str, default='Latitude')
+    parser.add_argument('--loncol',      type=str, default='Longitude')
+    parser.add_argument('--catcol',      type=str, default=None)
+    parser.add_argument('--countcol',    type=str, default=None)
+    parser.add_argument('--sep',         type=str, default=',')
+    parser.add_argument('--ncheader',    type=str, default=None)
+    parser.add_argument('--header',      type=str, default=None)
+    parser.add_argument('--offset',      type=str, default=None)
+    parser.add_argument('--port',        type=str, default='29512')
     args = parser.parse_args()
-
+    
     if 'NANOCUBE_WEB' not in os.environ:
         os.environ['NANOCUBE_WEB'] = '../web'
 

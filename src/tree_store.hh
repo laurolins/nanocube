@@ -1464,7 +1464,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
             Guard g = writer.dict();
             {
                 {
-                    Guard g2 = writer.list("levels");
+                    Guard g2 = writer.list("layers");
                     for (std::string level_name: tree_store.level_names) {
                         writer << std::string("\"" + level_name + "\"");
                     }
@@ -1528,7 +1528,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
         
         Guard g = writer.dict();
         {
-            Guard g2 = writer.list("levels");
+            Guard g2 = writer.list("layers");
             for (std::string level_name: tree_store.level_names) {
                 writer << std::string("\"" + level_name + "\"");
             }

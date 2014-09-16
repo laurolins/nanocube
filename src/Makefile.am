@@ -199,6 +199,8 @@ nc.cc                     \
 small_vector.hh           \
 qtfilter.hh               \
 qtfilter.cc               \
+tree_store.hh             \
+tree_store.cc             \
 tile.cc                   \
 tile.hh                   \
 address.cc                \
