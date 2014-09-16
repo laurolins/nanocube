@@ -13,7 +13,8 @@ modern-day laptop.
 
 | Number | Description |
 |:------:|-------------|
-| 2.1.1 | fixed csv2Nanocube.py to work with pandas 0.14.0 |
+| 2.1.2 | Minor fixes, better documentation, shutdown service |
+| 2.1.1 | Fixed csv2Nanocube.py to work with pandas 0.14.0 |
 | 2.1 | Javascript front-end, CSV Loading, Bug Fixes  |
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
@@ -183,6 +184,12 @@ the most efficient way to go.
 
 ## Asking for help
 
-IRC: #nanocubes channel on irc.freenode.net
+Our mailing list is the best and fastest way to ask questions and make suggestions related to nanocubes.
+If you are having a problem, please search the archives before creating new topics to see if
+your question has already been answered.  If you have other ideas for how we can improve
+nanocubes, please let us know.
 
-mailing list: http://mailman.nanocubes.net/mailman/listinfo/nanocubes-discuss_mailman.nanocubes.net
+A nice front-end for our mailing list is now being served through [Nabble](http://nanocubes-discuss.64146.x6.nabble.com).
+You should be able to post messages, search the archives, and even register as a new user from here.
+
+The actual mailing list can be found [here](http://mailman.nanocubes.net/mailman/listinfo/nanocubes-discuss_mailman.nanocubes.net).
