@@ -28,7 +28,7 @@ The `csv2Nanocube.py` script attempts to parse the csv file by reading the first
 
 For streaming data, rather than reading from files, the script takes the `-` parameter to read from `stdin`.  Therefore you can pipe the csv style output of a program to nanocubes.  For example:
 
-      $StreamingDataProgram | python csv2Nanocube.py --latcol=latitude --loncol=longitude --timecol=time --catcol=device,make example.csv | ncserve ...
+      $StreamingDataProgram | python csv2Nanocube.py --latcol=latitude --loncol=longitude --timecol=time --catcol=device,make - | ncserve ...
 
 
 ##  Web client configuration
