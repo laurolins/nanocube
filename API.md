@@ -34,13 +34,21 @@ Sometimes we want to have multiple targets on a single dimension. For
 example, we might want to query multiple consecutive intervals from a
 binary tree representation for time.
 
-# Example API Usage
+# Services
+
+## `.schema`
+
+Describes the Nanocube schema.
 
     # Schema
     http://localhost:29510/schema
     { "fields":[ { "name":"location", "type":"nc_dim_quadtree_25", "valnames":{  } }, { "name":"crime", "type":"nc_dim_cat_1", "valnames":{ "CRIM_SEXUAL_ASSAULT":7, "WEAPONS_VIOLATION":30, "KIDNAPPING":13, "OFFENSE_INVOLVING_CHILDREN":19, "CONCEALED_CARRY_LICENSE_VIOLATION":4, "SEX_OFFENSE":27, "INTIMIDATION":12, "PROSTITUTION":23, "ARSON":0, "BURGLARY":3, "ROBBERY":26, "OTHER_OFFENSE_":22, "CRIMINAL_TRESPASS":6, "THEFT":29, "HOMICIDE":10, "OBSCENITY":18, "OTHER_NARCOTIC_VIOLATION":20, "MOTOR_VEHICLE_THEFT":15, "GAMBLING":9, "OTHER_OFFENSE":21, "DECEPTIVE_PRACTICE":8, "NARCOTICS":16, "STALKING":28, "CRIMINAL_DAMAGE":5, "NON-CRIMINAL_(SUBJECT_SPECIFIED)":17, "PUBLIC_PEACE_VIOLATION":25, "BATTERY":2, "ASSAULT":1, "PUBLIC_INDECENCY":24, "LIQUOR_LAW_VIOLATION":14, "INTERFERENCE_WITH_PUBLIC_OFFICER":11 } }, { "name":"time", "type":"nc_dim_time_2", "valnames":{  } }, { "name":"count", "type":"nc_var_uint_4", "valnames":{  } } ], "metadata":[ { "key":"tbin", "value":"2013-12-01_00:00:00_3600s" }, { "key":"location__origin", "value":"degrees_mercator_quadtree25" }, { "key":"name", "value":"crime50k.csv" } ] }
-    
-    # Querying...
+
+## `.volume`
+
+Sum of values in a certain product bin.
+
+Pairs of queries and results:
 
     ## No constraints example
     http://localhost:29510/volume
@@ -65,33 +73,6 @@ binary tree representation for time.
     ## branch on the "crime" type
     http://localhost:29510/volume.a("crime",dive([],1))
     { "layers":[ "anchor:crime" ], "root":{ "path":[], "children":[ { "path":[0], "val":66 }, { "path":[1], "val":2718 }, { "path":[2], "val":8946 }, { "path":[3], "val":2675 }, { "path":[4], "val":1 }, { "path":[5], "val":4621 }, { "path":[6], "val":1486 }, { "path":[7], "val":181 }, { "path":[8], "val":2281 }, { "path":[9], "val":3 }, { "path":[10], "val":63 }, { "path":[11], "val":225 }, { "path":[12], "val":21 }, { "path":[13], "val":52 }, { "path":[14], "val":69 }, { "path":[15], "val":2080 }, { "path":[16], "val":5940 }, { "path":[17], "val":1 }, { "path":[18], "val":4 }, { "path":[19], "val":453 }, { "path":[20], "val":2 }, { "path":[21], "val":3295 }, { "path":[22], "val":1 }, { "path":[23], "val":216 }, { "path":[24], "val":2 }, { "path":[25], "val":446 }, { "path":[26], "val":1896 }, { "path":[27], "val":125 }, { "path":[28], "val":22 }, { "path":[29], "val":10837 }, { "path":[30], "val":458 } ] } }
-
-# Services
-
-## `.schema`
-
-Describes the schema of 
-
-## `.volume`
-
-Sum of values in a certain product bin.
-
-Pairs of queries and results:
-
-    http://localhost:29512/volume.json()
-    { "levels":[  ], "root":{ "addr":[], "value":{"volume_count":1000000} } }
-
-    http://localhost:29512/volume.r(0,[2])
-    { "levels":[  ], "root":{ "addr":[], "value":{"volume_count":999985} } }
-
-    http://localhost:29512/volume.r("space",[2])
-    { "levels":[  ], "root":{ "addr":[], "value":{"volume_count":999985} } }
-
-    http://localhost:29512/volume.a("space",[])
-    { "levels":[ "L0" ], "root":{ "addr":[], "children":[ { "addr":[], "value":{"volume_count":1000000} } ] } }
-
-    http://localhost:29512/volume.a("space",[2])
-    { "levels":[ "L0" ], "root":{ "addr":[], "children":[ { "addr":[2], "value":{"volume_count":999985} } ] } }
 
 
 ### Output Encoding
