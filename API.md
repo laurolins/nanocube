@@ -31,10 +31,10 @@ hierarchy* instance, then, obviously, this path won't be visited.
 ## Multi-Target
 
 Sometimes we want to have multiple targets on a single dimension. For
-example, we might want to query multiple sequential intervals from a
+example, we might want to query multiple consecutive intervals from a
 binary tree representation for time.
 
-Here is an example
+# Example API Usage
 
     # Schema
     http://localhost:29510/schema
