@@ -1552,16 +1552,18 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                 if (op == BEGIN) {
                     if (first) {
                         writer.dict("root"); // pushes dict context
-                        first = false;
                     }
                     else {
                         writer.dict();
                     }
-                    
-                    std::stringstream ss;
-                    ss << "\"path\":";
-                    config.print_label(ss, label);
-                    writer << ss.str();
+
+                    if (!first) {
+                        std::stringstream ss;
+                        ss << "\"path\":";
+                        config.print_label(ss, label);
+                        writer << ss.str();
+                    }
+                    first = false;
                     process(node);
                 }
                 else if (op == END) {
