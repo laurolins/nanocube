@@ -432,7 +432,7 @@ void NanocubeServer::initializeQueryServer()
     };
     
     // topk handler
-    handlers["volume"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
+    handlers["count"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
         nc_server.serveQuery(request, program);
     };
     
