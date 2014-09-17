@@ -38,6 +38,22 @@ On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but y
     $ sudo apt-get install libboost-system-dev
     $ sudo apt-get install libboost-thread-dev
 
+Example installation on Mac OS 10.9 Maverick with a local homebrew:
+
+	$git clone https://github.com/mxcl/homebrew.git
+
+Set your path to use this local homebrew				
+
+	$export PATH=${PWD}/homebrew/bin:${PATH}
+
+Install the packages (This assumed your g++ has been installed by [XCode](https://developer.apple.com/xcode/))
+
+	brew install boost libtool autoconf automake
+
+Set path to the boost directory
+
+	export BOOST_ROOT=${PWD}/homebrew
+
 Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
 with valid release numbers (e.g. 2.1.1, 2.1, 2.0).
 
