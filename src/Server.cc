@@ -15,7 +15,7 @@
 
 #include "mongoose.h"
 
-#include "server.hh"
+#include "Server.hh"
 
 //-------------------------------------------------------------------------
 // Request Impl.
