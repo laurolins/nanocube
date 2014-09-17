@@ -1158,11 +1158,18 @@ public:
     int count { 0 };
 };
 
+struct FormatOption {
+    enum Type { NORMAL, RELATIVE_IMAGE };
+    Type       type { NORMAL };
+    DimAddress base_address;
+};
+
 void parse_program_into_query(const ::nanocube::lang::Program &program,
                               AnnotatedSchema           &annotated_schema,
                               ::query::QueryDescription &query_description,
                               OutputEncoding &output_encoding,
-                              BranchTargetOnTime &branch_target_on_time)
+                              BranchTargetOnTime &branch_target_on_time,
+                              std::vector<FormatOption> &format_options)
 {
     // default values
     output_encoding       = JSON;
@@ -1211,6 +1218,16 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
         }
         else {
             throw std::runtime_error("cannot decode dimension from ast node");
+        }
+    };
+
+    auto get_string = [&](Node *node) -> std::string {
+        if (node->type == STRING) {
+            auto st_node = reinterpret_cast<String*>(node);
+            return st_node->st;
+        }
+        else {
+            throw std::runtime_error("cannot decode address");
         }
     };
     
@@ -1281,6 +1298,7 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
                 auto depth = get_number(call.params[1]);
                 auto raw_addr = annotated_schema.convertPathAddress(dimension_index, addr);
                 query_description.setFindAndDiveTarget(dimension_index, raw_addr, depth);
+                format_options[dimension_index].base_address = addr;
             }
             else if (call.name.compare("range2d") == 0) {
                 if (call.params.size() != 2)
@@ -1341,12 +1359,19 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
         if (call.name.compare("a") == 0) {
             
             // get three parameters
-            if (call.params.size() != 2)
+            if (call.params.size() < 2)
                 throw std::runtime_error("invalid number of parameters");
             
             // param 0 should be the dimension (if string convert from name)
             auto dim    = get_dimension_number(call.params[0]); // 0: dim
             set_target(dim, call.params[1]); // 1: target
+            
+            if (call.params.size() > 2) {
+                std::string hint = get_string(call.params[2]);
+                if (hint.compare("img") == 0) {
+                    format_options[dim].type = FormatOption::RELATIVE_IMAGE;
+                }
+            }
             
             bool anchor = true;
             query_description.setAnchor(dim, anchor);
@@ -1480,7 +1505,14 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         BranchTargetOnTime branch_target_on_time_dimension;
         
-        parse_program_into_query( program, annotated_schema, query_description, output_encoding, branch_target_on_time_dimension);
+        std::vector<FormatOption> format_options(::query::QueryDescription::MAX_DIMENSIONS);
+        
+        parse_program_into_query( program,
+                                  annotated_schema,
+                                  query_description,
+                                  output_encoding,
+                                  branch_target_on_time_dimension,
+                                  format_options );
         
         //
         // it will be tricky to translate the multi_target aspect of the query
@@ -1579,9 +1611,37 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         std::stringstream ss;
         SimpleConfig::parameter_type parameter;
-
+        using Writer    = ::tree_store::Writer<SimpleConfig, typename SimpleConfig::parameter_type>;
+        using LabelType = typename SimpleConfig::label_type;
+        
         if (output_encoding == JSON) {
-            ::tree_store::json(treestore_result, ss, parameter);
+            Writer writer;
+            
+            int layer = 0;
+            int dim   = 0;
+            for (auto &format_option: format_options) {
+                if (query_description.anchors[dim])
+                    ++layer;
+                
+                if (format_option.type == FormatOption::RELATIVE_IMAGE) {
+                    using fmt_func = typename Writer::format_label_func;
+                    fmt_func f = [&format_option](const LabelType& lbl) {
+                        std::stringstream ss;
+                        auto n = format_option.base_address.size();
+                        auto suffix = LabelType(lbl.begin()+n,lbl.end());
+                        ::nanocube::Tile tile(suffix);
+                        ss << "\"x\":" << tile.x << ", " << "\"y\":" << tile.y;
+                        return ss.str();
+                    };
+                    writer.setFormatLabelFunction(layer, f);
+                }
+                ++dim;
+            }
+            
+            
+            writer.json(treestore_result, ss, parameter);
+            
+//            ::tree_store::json(treestore_result, ss, parameter);
             request.respondJson(ss.str());
         }
         else if (output_encoding == TEXT) {

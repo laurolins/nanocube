@@ -70,6 +70,10 @@ Pairs of queries and results:
     http://localhost:29510/count.a("location",dive(tile2d(1,2,2),8))
     { "layers":[ "anchor:location" ], "root":{ "children":[ { "path":[2,1,2,0,0,0,0,1,3,2], "val":36119 }, { "path":[2,1,2,0,0,0,0,1,3,1], "val":215 }, { "path":[2,1,2,0,0,0,0,1,2,3], "val":250 }, { "path":[2,1,2,0,0,0,0,1,3,0], "val":12602 } ] } }
 
+    ## same as above, but passing the "img" formatting hint for bidimensional image addresses (relative address to tile(1,2,2))
+    http://localhost:29510/count.a("location",dive(tile2d(1,2,2),8),"img")
+    { "layers":[ "anchor:location" ], "root":{ "children":[ { "x":6, "y":131, "val":36119 }, { "x":7, "y":130, "val":215 }, { "x":5, "y":131, "val":250 }, { "x":6, "y":130, "val":12602 } ] } }
+
     ## branch on the "crime" type
     http://localhost:29510/count.a("crime",dive([],1))
     { "layers":[ "anchor:crime" ], "root":{ "children":[ { "path":[0], "val":66 }, { "path":[1], "val":2718 }, { "path":[2], "val":8946 }, { "path":[3], "val":2675 }, { "path":[4], "val":1 }, { "path":[5], "val":4621 }, { "path":[6], "val":1486 }, { "path":[7], "val":181 }, { "path":[8], "val":2281 }, { "path":[9], "val":3 }, { "path":[10], "val":63 }, { "path":[11], "val":225 }, { "path":[12], "val":21 }, { "path":[13], "val":52 }, { "path":[14], "val":69 }, { "path":[15], "val":2080 }, { "path":[16], "val":5940 }, { "path":[17], "val":1 }, { "path":[18], "val":4 }, { "path":[19], "val":453 }, { "path":[20], "val":2 }, { "path":[21], "val":3295 }, { "path":[22], "val":1 }, { "path":[23], "val":216 }, { "path":[24], "val":2 }, { "path":[25], "val":446 }, { "path":[26], "val":1896 }, { "path":[27], "val":125 }, { "path":[28], "val":22 }, { "path":[29], "val":10837 }, { "path":[30], "val":458 } ] } }
@@ -86,14 +90,6 @@ three functions are avaiable on the queries: `.json()`, `.text()`,
 ## .topk
 ## .unique
 ## .id
-
-
-wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.4.tar.gz
-tar xfz virtualenv-1.11.4.tar.gz
-python virtualenv-1.11.4/virtualenv.py  myPy
-source myPy/bin/activate
-pip install argparse numpy pandas
-
 
 # ToDo
 

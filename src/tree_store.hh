@@ -12,6 +12,7 @@
 #include <sstream>
 #include <tuple>
 #include <cmath>
+#include <functional>
 
 // TODO: remove this dependency from here
 #include "json.hh"
@@ -1451,7 +1452,62 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
     //---------------
     
     template <typename C, typename P>
-    void json(const TreeStore<C> &tree_store, std::ostream &os, const P& parameter) {
+    struct Writer {
+        using treestore_type    = TreeStore<C>;
+        using config_type       = typename treestore_type::config_type;
+        using label_type        = typename treestore_type::label_type;
+        using leafnode_type     = typename treestore_type::leafnode_type;
+        using internalnode_type = typename treestore_type::internalnode_type;
+        using node_type         = typename treestore_type::node_type;
+        using edge_type         = typename treestore_type::edge_type;
+        using parameter_type    = P;
+        using format_label_func = std::function<std::string(const label_type&)>;
+        
+    public:
+
+        void setFormatLabelFunction(int result_layer, format_label_func f);
+        
+        format_label_func getLabelFormatFunction(int result_layer);
+
+    public:
+        
+        void json(const TreeStore<C> &tree_store, std::ostream &os, const parameter_type& parameter);
+
+    public:
+        std::vector<format_label_func> fmt_label_functions;
+    };
+
+    
+    
+    template <typename C, typename P>
+    void Writer<C,P>::setFormatLabelFunction(int result_layer, format_label_func f) {
+        if (fmt_label_functions.size() <= result_layer)
+            fmt_label_functions.resize(result_layer+1);
+        fmt_label_functions[result_layer] = f;
+    }
+    
+    template <typename C, typename P>
+    auto Writer<C,P>::getLabelFormatFunction(int result_layer) -> format_label_func {
+        format_label_func default_func = [](const label_type& label) {
+            config_type config; // we need to send some parameters to this guy
+            std::stringstream ss;
+            ss << "\"path\":";
+            config.print_label(ss, label);
+            return ss.str();
+        };
+        
+        format_label_func result;
+        if (fmt_label_functions.size() >= result_layer)
+            result = fmt_label_functions[result_layer];
+        
+        if (result)
+            return result;
+        else
+            return default_func;
+    }
+    
+    template <typename C, typename P>
+    void Writer<C,P>::json(const TreeStore<C> &tree_store, std::ostream &os, const parameter_type& parameter) {
         
         using namespace json;
 
@@ -1495,7 +1551,21 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
         using edge_type         = typename treestore_type::edge_type;
         // using labelhash_type    = typename treestore_type::labelhash_type;
         
-        using Item      = std::tuple<node_type*, label_type, Op>;
+//        using Item      = std::tuple<node_type*, label_type, Op>;
+        
+        struct Item {
+            Item() = default;
+            
+            Item(node_type *node, label_type label, Op op, int layer):
+                node(node), label(label), op(op), layer(layer)
+            {}
+            
+            node_type  *node { nullptr };
+            label_type  label;
+            Op          op;
+            int         layer { 0 };
+        };
+        
         
         JsonWriter writer(os);
         
@@ -1503,7 +1573,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
         
         config_type config; // we need to send some parameters to this guy
         
-        auto process = [&writer, &stack, &config, &parameter] (node_type *node) {
+        auto process = [&writer, &stack, &config, &parameter] (node_type *node, int layer) {
             if (!node)
                 return;
             
@@ -1519,8 +1589,8 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                 writer.list("children");
                 for (auto it: internal->children) {
                     edge_type &e = it.second;
-                    stack.push(Item(e.node, e.label, END));
-                    stack.push(Item(e.node, e.label, BEGIN));
+                    stack.push(Item(e.node, e.label, END, layer+1));
+                    stack.push(Item(e.node, e.label, BEGIN, layer+1));
                 }
             }
         };
@@ -1537,17 +1607,17 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
         bool first = true;
         
         {
-            stack.push(Item(tree_store.root.get(), label_type(), END));
-            stack.push(Item(tree_store.root.get(), label_type(), BEGIN));
+            stack.push(Item(tree_store.root.get(), label_type(), END, 0));
+            stack.push(Item(tree_store.root.get(), label_type(), BEGIN, 0));
             
             while (!stack.empty()) {
                 
                 Item item = std::move(stack.top());
                 stack.pop();
                 
-                node_type* node  = std::get<0>(item);
-                label_type label = std::get<1>(item);
-                Op    op    = std::get<2>(item);
+                node_type* node  = item.node;
+                label_type label = item.label;
+                Op         op    = item.op;
                 
                 if (op == BEGIN) {
                     if (first) {
@@ -1558,13 +1628,16 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                     }
 
                     if (!first) {
-                        std::stringstream ss;
-                        ss << "\"path\":";
-                        config.print_label(ss, label);
-                        writer << ss.str();
+                        auto f = getLabelFormatFunction(item.layer);
+                        writer << f(label);
+                        
+//                        std::stringstream ss;
+//                        ss << "\"path\":";
+//                        config.print_label(ss, label);
+//                        writer << ss.str();
                     }
                     first = false;
-                    process(node);
+                    process(node, item.layer);
                 }
                 else if (op == END) {
                     if (node->isInternalNode())

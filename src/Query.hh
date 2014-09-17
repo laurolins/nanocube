@@ -179,7 +179,7 @@ public: // data memebers
 
 struct QueryDescription {
 public: // subtypes
-
+    
     static const int MAX_DIMENSIONS = 30;
 
     //    typedef NanoCube nanocube_type;
