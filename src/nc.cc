@@ -28,7 +28,7 @@
 // query API 3
 #include "address.hh"
 #include "tile.hh"
-#include "server.hh"
+#include "Server.hh"
 #include "nanocube_language.hh"
 #include "tree_store.hh"
 
