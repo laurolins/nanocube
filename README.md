@@ -89,7 +89,7 @@ on your system, please choose another port.
    don't specify the port at all, it will try to use the default.
 
         $ cd ../scripts
-        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100 --port=29512
+        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
 
 
 
@@ -170,7 +170,7 @@ Running this example again later, you do not need to reinstall the linux or pyth
         $ cd web
         $ python -m SimpleHTTPServer 8000 &
         $ cd ../scripts
-        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=100000 --threads=100 --port=29512
+        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
 
 
 ## Further Details
