@@ -119,7 +119,7 @@ on your system, please choose another port.
         9435159,HW579015,12/21/2013 04:30:00 AM,049XX S KEDZIE AVE,1305,CRIMINAL DAMAGE,CRIMINAL DEFACEMENT,CTA PLATFORM,true,false,0821,008,14,63,14,1155836,1871729,2013,12/23/2013 12:39:51 AM,41.80381553747461,-87.7039986610427,"(41.80381553747461, -87.7039986610427)"
 
 
-   The parameters for csv2Nanocube.py are listed below.  Note that when we called the script above, we only specified the categorical dimension (Primary Type), but not the Date, Latitude, or Longitude.  The script is smart enough to identify these columns automatically if they have these names.  If they were named differently (e.g. date, lat, long), we would have to use the other parameters for the script (--timecol, --latcol, --loncol) to identify them for the script.  If your data is also separated by a character other than a comma, you can indicate this when you run the script using the '--sep' parameter.
+   The parameters for csv2Nanocube.py are listed below.  Note that when we called the script above, we specified the categorical dimension (Primary Type) and the time dimension (Date), as well as Latitude, or Longitude.  However, the script is smart enough to identify the Latitude and Longitude columns automatically if they have these names.  If they were named differently (e.g. lat, long), we would have to use the other parameters for the script (--latcol, --loncol) to identify them for the script.  If your data is also separated by a character other than a comma, you can indicate this when you run the script using the '--sep' parameter.
 
         --catcol='Column names of categorical variable'
         --latcol='Column names of latitude'
