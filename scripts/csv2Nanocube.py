@@ -18,7 +18,7 @@ class NanocubeInput:
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
         self.spname=args.spname.split(',')
-        self.timecol=args.timecol.split(',')
+
         self.latcol=args.latcol.split(',')
         self.loncol=args.loncol.split(',')
         
@@ -26,6 +26,10 @@ class NanocubeInput:
             self.catcol = args.catcol.split(',')
         except:
             self.catcol = []
+        try:
+            self.timecol = args.catcol.split(',')
+        except:
+            self.timecol = []
 
         try:
             self.ncheader = open(args.ncheader,'r').readlines()
@@ -211,8 +215,13 @@ class NanocubeInput:
         #process data
         data = self.processLatLon(data)
         data = self.processCat(data)
-        data = self.processDate(data)
-                                
+        if len(self.timecol) > 0:
+            data = self.processDate(data)
+        else:
+            self.offset = datetime.datetime.now()
+            self.timecol = ['defaulttime']
+            data['defaulttime'] = 0
+            
         return data
     
     def writeRawData(self,data):
@@ -360,7 +369,7 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('InputFile',type=str, nargs='+',help="use - for stdin")
     parser.add_argument('--timebinsize',type=str, default='1h')
-    parser.add_argument('--timecol', type=str,default='Date')
+    parser.add_argument('--timecol', type=str,default=None)
     parser.add_argument('--datefmt', type=str, default=None)
     parser.add_argument('--spname', type=str,default='src')
     parser.add_argument('--levels', type=int, default=25)

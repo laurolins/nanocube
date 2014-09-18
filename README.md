@@ -105,7 +105,7 @@ on your system, please choose another port.
    don't specify the port at all, it will try to use the default.
 
         $ cd ../scripts
-        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
+        $ python csv2Nanocube.py --timecol='Date' --latcol='Latitude' --loncol='Longitude' --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
 
 
 
