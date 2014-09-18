@@ -51,6 +51,12 @@ class NanocubeInput:
         self.countcol = args.countcol
         self.sep = args.sep
 
+        #esc char fixes
+        self.sep = self.sep.replace('\\t','\t')
+        self.sep = self.sep.replace('\\n','\n')
+        self.sep = self.sep.replace('\\r','\r')
+        
+        
 
         self.datefmt=args.datefmt
         self.levels = args.levels
