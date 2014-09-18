@@ -27,7 +27,7 @@ class NanocubeInput:
         except:
             self.catcol = []
         try:
-            self.timecol = args.catcol.split(',')
+            self.timecol = args.timecol.split(',')
         except:
             self.timecol = []
 
@@ -171,6 +171,7 @@ class NanocubeInput:
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
+                
                 data = self.processData(data)
 
                 if start:
@@ -215,6 +216,8 @@ class NanocubeInput:
         #process data
         data = self.processLatLon(data)
         data = self.processCat(data)
+
+        
         if len(self.timecol) > 0:
             data = self.processDate(data)
         else:
@@ -303,7 +306,7 @@ class NanocubeInput:
         for i,c in enumerate(self.catcol):            
             #fix the spaces
             data[c] = data[c].apply(lambda x : str(x).replace(' ','_'))
-
+            
             if c not in self.valname:
                 self.valname[c] = {}
             labels = np.unique(data[c])
