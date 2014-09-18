@@ -99,6 +99,9 @@ class NanocubeInput:
 
         #time
         for i,div in enumerate(self.timecol):
+            if div is 'defaulttime':
+                continue
+
             div = div.replace(" ", "_");
             config['div'][div] = {'position': 'absolute',
                                   'font': '10pt sans-serif',
