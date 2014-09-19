@@ -146,7 +146,7 @@ class NanocubeInput:
         config['latlonbox'] = { 'min':self.minlatlon,
                                 'max':self.maxlatlon }
         
-        config['url'] = 'http://%s:%s'%(socket.getfqdn(),self.port)
+        config['url'] = 'http://%s:%s'%('localhost',self.port)
         config['title'] = self.name
         config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
 
@@ -220,13 +220,15 @@ class NanocubeInput:
         data = self.processLatLon(data)
         data = self.processCat(data)
 
-        
-        if len(self.timecol) > 0:
-            data = self.processDate(data)
-        else:
+
+        if len(self.timecol) < 1: #use default time
             self.offset = datetime.datetime.now()
             self.timecol = ['defaulttime']
-            data['defaulttime'] = 0
+
+        if ['defaulttime'] == self.timecol:
+            data['defaulttime'] = 0 # add default time
+        else:
+            data = self.processDate(data) # process real time
             
         return data
     
