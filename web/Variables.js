@@ -107,7 +107,7 @@ TimeVar.prototype.update=function(json,id,color){
     var data = that.jsonToList(json);
     
     //update the gui element and redraw()
-    if ('widget' in that){
+    if ('widget' in that){	
         that.widget.setData({data: data, color: color},id);
         that.widget.redraw();
     }

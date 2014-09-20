@@ -94,11 +94,17 @@ Model.prototype.initVars = function(){
             var nbins = tinfo.end-tinfo.start+1;
 
             //init gui
+	    if (v.name=='defaulttime'){
+		that.temporal_vars[v.name] = vref;
+		break; //no need to init widget
+	    }
+
             vref.widget = new Timeseries('#'+v.name);
             vref.widget.brush_callback = function(start,end){
                 vref.constraints[0].setSelection(start,end,vref.date_offset);
                 that.redraw(vref);
             };
+
 
             vref.widget.update_display_callback=function(start,end){
                 vref.constraints[0].setRange(start,end,vref.date_offset);
@@ -112,7 +118,9 @@ Model.prototype.initVars = function(){
 
             that.setTimeBinSize(tinfo.bin_to_hour,vref);
             that.temporal_vars[v.name] = vref;
+
             break;
+
         default:
             break;
         }

@@ -9,19 +9,19 @@ class NanocubeInput:
 
         self.field=[]
         self.valname={}
-        
+
         self.minlatlon={}
         self.maxlatlon={}
 
         self.name=args.InputFile[0]
-                    
+
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
         self.spname=args.spname.split(',')
 
         self.latcol=args.latcol.split(',')
         self.loncol=args.loncol.split(',')
-        
+
         try:
             self.catcol = args.catcol.split(',')
         except:
@@ -38,7 +38,7 @@ class NanocubeInput:
             self.valname = self.readNCHeader(self.ncheader)
 
             #make this header printable
-            self.ncheader = "".join(self.ncheader).strip()+"\n\n"    
+            self.ncheader = "".join(self.ncheader).strip()+"\n\n"
         except:
             self.ncheader = None
 
@@ -59,8 +59,8 @@ class NanocubeInput:
         self.sep = self.sep.replace('\\t','\t')
         self.sep = self.sep.replace('\\n','\n')
         self.sep = self.sep.replace('\\r','\r')
-        
-        
+
+
 
         self.datefmt=args.datefmt
         self.levels = args.levels
@@ -83,7 +83,7 @@ class NanocubeInput:
 
         self.readcsv(args.InputFile)
         self.writeConfigFile()
-        
+
     def writeConfigFile(self):
         config = {}
         config['div'] = {}
@@ -92,7 +92,7 @@ class NanocubeInput:
             div = v.replace(" ", "_");
             config['div'][v] = {'height':'100%',
                                   'width':'%d%%'%(100/len(self.spname)),
-                                  'padding':0, 'margin': 0, 
+                                  'padding':0, 'margin': 0,
                                   'float' :'left',
                                   'z-index':0}
             config['heatmapmaxlevel'] = self.levels
@@ -100,6 +100,7 @@ class NanocubeInput:
         #time
         for i,div in enumerate(self.timecol):
             if div is 'defaulttime':
+                config['div'][div] = {'position': 'absolute'}
                 continue
 
             div = div.replace(" ", "_");
@@ -109,10 +110,10 @@ class NanocubeInput:
                                   'width': '960px',
                                   'bottom': '%dpx'%(i*(100+10)+10),
                                   'left': '10px',
-                                  'background-color':'#555', 
+                                  'background-color':'#555',
                                   'opacity': 0.8,
                                   'z-index':1}
-                                  
+
         #cat
         top = 30
         for i,div in enumerate(self.catcol):
@@ -127,7 +128,7 @@ class NanocubeInput:
                                   'width': '%dpx'%(200+lmargin),
                                   'top': '%dpx'%(top),
                                   'right': '10px',
-                                  'background-color':'#555', 
+                                  'background-color':'#555',
                                   'opacity': 0.8,
                                   'z-index':1}
             top += (height+10)
@@ -145,8 +146,8 @@ class NanocubeInput:
 
         config['latlonbox'] = { 'min':self.minlatlon,
                                 'max':self.maxlatlon }
-        
-        config['url'] = 'http://%s:%s'%('localhost',self.port)
+
+        config['url'] = 'http://%s:%s'%(socket.getfqdn(),self.port)
         config['title'] = self.name
         config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
 
@@ -174,7 +175,6 @@ class NanocubeInput:
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
-                
                 data = self.processData(data)
 
                 if start:
@@ -182,9 +182,9 @@ class NanocubeInput:
                         self.ncheader = self.createHeader(data)
                     sys.stdout.write(self.ncheader)
                     start = False
-                
+
                 self.writeRawData(data)
-                        
+
     def readNCHeader(self,header):
         valname = {}
         for line in header:
@@ -229,23 +229,22 @@ class NanocubeInput:
             data['defaulttime'] = 0 # add default time
         else:
             data = self.processDate(data) # process real time
-            
         return data
-    
+
     def writeRawData(self,data):
         columns = []
         for i,spname in enumerate(self.spname):
             columns += [self.loncol[i],self.latcol[i]]
-            data[self.loncol[i]] = data[self.loncol[i]].astype('<u4'); 
-            data[self.latcol[i]] = data[self.latcol[i]].astype('<u4'); 
-            
-        for i,c in enumerate(self.catcol):                
-            columns += [c]
-            data[c] = data[c].astype('<u1'); 
+            data[self.loncol[i]] = data[self.loncol[i]].astype('<u4');
+            data[self.latcol[i]] = data[self.latcol[i]].astype('<u4');
 
-        for i,d in enumerate(self.timecol):                
+        for i,c in enumerate(self.catcol):
+            columns += [c]
+            data[c] = data[c].astype('<u1');
+
+        for i,d in enumerate(self.timecol):
             columns += [d]
-            data[d] = data[d].astype('<u2'); 
+            data[d] = data[d].astype('<u2');
 
         columns += [self.countcol]
         data[self.countcol] = data[self.countcol].astype('<u4')
@@ -282,18 +281,18 @@ class NanocubeInput:
             data[lon] = self.lonToTileX(data[lon],lvl)
             data[lat] = self.latToTileY(data[lat],lvl)
         return data.dropna()
-            
-    def processDate(self, data):         
+
+    def processDate(self, data):
         for i,d in enumerate(self.timecol):
             if data[d].dtype == 'int64':
                 data[d] *= 1e9
- 
+
             data[d] = pd.to_datetime(data[d],
                                      infer_datetime_format=True,
                                      format=self.datefmt)
-            #if the strings are crazy coerce will fix it 
+            #if the strings are crazy coerce will fix it
             data[d] = pd.to_datetime(data[d],coerce=True)
-            
+
         #drop NaT
         data=data.dropna()
 
@@ -306,12 +305,12 @@ class NanocubeInput:
             data[d] -= self.offset
             data[d] = data[d] / self.timebinsize
         return data.sort(self.timecol)
-        
+
     def processCat(self,data):
-        for i,c in enumerate(self.catcol):            
+        for i,c in enumerate(self.catcol):
             #fix the spaces
             data[c] = data[c].apply(lambda x : str(x).replace(' ','_'))
-            
+
             if c not in self.valname:
                 self.valname[c] = {}
             labels = np.unique(data[c])
@@ -319,17 +318,17 @@ class NanocubeInput:
             updateValname = False
             for l in labels:
                 if l not in self.valname[c]:
-                    updateValname = True                    
+                    updateValname = True
                     newid = len(self.valname[c])
                     self.valname[c][l] = newid
-                    
+
             data[c] = data[c].apply(lambda x : self.valname[c][x])
         return data.dropna()
-            
+
     def latToTileY(self,lat_deg,zoom):
         lat_deg = np.maximum(-85.0511,lat_deg)
         lat_deg = np.minimum(85.0511,lat_deg)
-        lat_rad = lat_deg / 180 * np.pi 
+        lat_rad = lat_deg / 180 * np.pi
         n = 2 ** zoom
         ytile = n*(1-(np.log(np.tan(lat_rad)+1.0/np.cos(lat_rad))/np.pi))/2.0
         return (n-1-ytile) #flip
@@ -354,15 +353,15 @@ class NanocubeInput:
         for sp in self.spname:
             h += 'metadata: %s__origin degrees_mercator_quadtree%d\n'%(
                 sp,self.levels)
-            h += 'field: %s nc_dim_quadtree_%d\n'%(sp.replace(' ',"_"), 
+            h += 'field: %s nc_dim_quadtree_%d\n'%(sp.replace(' ',"_"),
                                                    self.levels)
-            
+
         for c in self.catcol:
             h += 'field: %s nc_dim_cat_1\n'%(c.replace(' ',"_"))
             for k in self.valname[c]:
                 h+='valname: %s %d %s\n'%(c.replace(' ',"_"),
                                           self.valname[c][k],k)
-                        
+
         for d in self.timecol:
             h += "metadata: tbin %s_%s_%ds\n"%(self.offset.date(),
                                                self.offset.time(),
@@ -391,15 +390,15 @@ def main(argv):
     parser.add_argument('--offset', type=str, default=None)
     parser.add_argument('--port', type=str, default='29512')
     args = parser.parse_args()
-    
+
     if 'NANOCUBE_WEB' not in os.environ:
         os.environ['NANOCUBE_WEB'] = '../web'
 
     if 'NANOCUBE_BIN' not in os.environ:
         os.environ['NANOCUBE_BIN'] = '../src'
 
-    ncinput = NanocubeInput(args)    
+    ncinput = NanocubeInput(args)
 
-    
+
 if __name__ == '__main__':
     main(sys.argv)

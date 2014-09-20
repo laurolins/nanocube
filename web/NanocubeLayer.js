@@ -72,7 +72,6 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
     tile.drill = drill;
     tile.tilePoint = tilePoint;
     this.tilelist.push(tile);
-    console.log('t',this.tilelist);
 };
 
 L.NanocubeLayer.prototype.renderTile = function(canvas, size,tilePoint,zoom,
@@ -199,9 +198,7 @@ L.NanocubeLayer.prototype.processData = function(bindata){
 
 L.NanocubeLayer.prototype._addTilesFromCenterOut = function(bounds){
     this.tilelist = []; //empty the list
-    console.log('clear');
     L.TileLayer.Canvas.prototype._addTilesFromCenterOut.call(this, bounds);  
-    console.log('d',this.tilelist);
 
     if (this.tilelist.length < 1){
         return;
