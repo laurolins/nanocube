@@ -27,12 +27,13 @@ query needs to traverse a *binning hierarchy* on dimensions *d*. If a
 certain *path* in the *target* is not present for a particular *bin
 hierarchy* instance, then, obviously, this path won't be visited.
 
-
 ## Multi-Target
 
 Sometimes we want to have multiple targets on a single dimension. For
 example, we might want to query multiple consecutive intervals from a
-binary tree representation for time.
+binary tree representation for time. Each interval data can be
+"solved" by visiting a (minimal) set of time bins that is cover
+for it (the interval).
 
 # Services
 
@@ -58,6 +59,10 @@ Pairs of queries and results:
     http://localhost:29510/count.a("location",dive([2,1,2],8))
     { "layers":[ "anchor:location" ], "root":{ "children":[ { "path":[2,1,2,0,0,0,0,1,3,2,2], "val":5350 }, { "path":[2,1,2,0,0,0,0,1,3,0,3], "val":12191 }, { "path":[2,1,2,0,0,0,0,1,3,1,2], "val":215 }, { "path":[2,1,2,0,0,0,0,1,3,2,3], "val":7360 }, { "path":[2,1,2,0,0,0,0,1,2,3,3], "val":250 }, { "path":[2,1,2,0,0,0,0,1,3,2,1], "val":16614 }, { "path":[2,1,2,0,0,0,0,1,3,2,0], "val":6795 }, { "path":[2,1,2,0,0,0,0,1,3,0,2], "val":411 } ] } }
 
+    ## restrict to a rectangular area (see figure below)
+    http://localhost:29510/count.r("location",range2d(tile2d(1049,2571,12),tile2d(1050,2572,12)))
+    { "layers":[  ], "root":{ "val":11044 } }
+
     ## split on time base time bin = 480, bucket has 24 bins, get 10 buckets (if they exist)
     http://localhost:29510/count.r("time",mt_interval_sequence(480,24,10))
     { "layers":[ "multi-target:time" ], "root":{ "children":[ { "path":[0], "val":625 }, { "path":[1], "val":723 }, { "path":[2], "val":663 }, { "path":[3], "val":518 }, { "path":[4], "val":411 }, { "path":[5], "val":588 }, { "path":[6], "val":717 }, { "path":[7], "val":715 }, { "path":[8], "val":703 }, { "path":[9], "val":618 } ] } }
@@ -78,6 +83,9 @@ Pairs of queries and results:
     http://localhost:29510/count.a("crime",dive([],1))
     { "layers":[ "anchor:crime" ], "root":{ "children":[ { "path":[0], "val":66 }, { "path":[1], "val":2718 }, { "path":[2], "val":8946 }, { "path":[3], "val":2675 }, { "path":[4], "val":1 }, { "path":[5], "val":4621 }, { "path":[6], "val":1486 }, { "path":[7], "val":181 }, { "path":[8], "val":2281 }, { "path":[9], "val":3 }, { "path":[10], "val":63 }, { "path":[11], "val":225 }, { "path":[12], "val":21 }, { "path":[13], "val":52 }, { "path":[14], "val":69 }, { "path":[15], "val":2080 }, { "path":[16], "val":5940 }, { "path":[17], "val":1 }, { "path":[18], "val":4 }, { "path":[19], "val":453 }, { "path":[20], "val":2 }, { "path":[21], "val":3295 }, { "path":[22], "val":1 }, { "path":[23], "val":216 }, { "path":[24], "val":2 }, { "path":[25], "val":446 }, { "path":[26], "val":1896 }, { "path":[27], "val":125 }, { "path":[28], "val":22 }, { "path":[29], "val":10837 }, { "path":[30], "val":458 } ] } }
 
+### Range example illustration:
+
+![image](https://github.com/laurolins/nanocube/blob/api3/img/range-example.png?raw=true)
 
 ### Output Encoding
 
@@ -86,7 +94,6 @@ binary. To activate these methods (the last activated will be used)
 three functions are avaiable on the queries: `.json()`, `.text()`,
 `.bin()`.
 
-## .range
 ## .topk
 ## .unique
 ## .id
