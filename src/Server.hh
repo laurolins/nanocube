@@ -66,6 +66,7 @@ struct Server {
     Server();
 
     void registerHandler(std::string name, const RequestHandler &handler);
+    std::string getRegisteredHandles();
 
     void start(int mongoose_threads);
     void stop();

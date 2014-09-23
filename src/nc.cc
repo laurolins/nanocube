@@ -200,6 +200,8 @@ private: // Private Methods
                ::nanocube::Schema        &schema,
                ::query::QueryDescription &query_description);
 
+    std::string reportSchema();
+
 public: // Public Methods
 
     void serveQuery     (Request &request, bool json, bool compression);
@@ -214,6 +216,7 @@ public: // Public Methods
     void serveTiming    (Request &request);
     void serveVersion   (Request &request);
     void serveShutdown  (Request &request);
+    void serveStatus    (Request &request);
 
 public:
 
@@ -228,6 +231,7 @@ public: // Data Members
 
     Server server;
 
+    std::vector<std::string>  insertion_status;
     boost::shared_mutex       shared_mutex; // one writer multiple readers
 
 };
@@ -295,6 +299,7 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     auto tile_handler         = std::bind(&NanoCubeServer::serveTile, this, std::placeholders::_1);
 
     auto shutdown_handler     = std::bind(&NanoCubeServer::serveShutdown, this, std::placeholders::_1);
+    auto status_handler       = std::bind(&NanoCubeServer::serveStatus, this, std::placeholders::_1);
 
     
     // register service
@@ -318,6 +323,7 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
 
     server.registerHandler("version",  version_handler);
     server.registerHandler("shutdown", shutdown_handler);
+    server.registerHandler("status",   status_handler);
 
     server.registerHandler("timing",  timing_handler);
 
@@ -842,14 +848,13 @@ void NanoCubeServer::serveSetValname(Request &request)
     }
 }
 
-void NanoCubeServer::serveSchema(Request &request)
+std::string NanoCubeServer::reportSchema()
 {
     auto &dump_file = nanocube.schema.dump_file_description;
-    
-    
+
     std::stringstream ss;
     json::JsonWriter writer(ss);
-    
+
     // everything is a big dictionary
     {
         json::ContextGuard g = writer.dict();
@@ -883,21 +888,30 @@ void NanoCubeServer::serveSchema(Request &request)
             }
         }
     }
-    
-    //    {
-    //        json::ContextGuard metadata = writer.list("metadata");
-    //        for (auto it: std::string level_name: result.level_names) {
-    //            json::ContextGuard g3;
-    //            writer.dict()
-    //                  .dict_entry("name", f->name)
-    //                  .dict_entry("type", f->field_type.name);
-    //        }
-    //    }
-    //    dump_file.fields
-    // report::Report report(nanocube.DIMENSION + 1);
-    // nanocube.mountReport(report);
-    //    std::stringstream ss;
-    //    ss << nanocube.schema.dump_file_description;
+    return ss.str();
+}
+
+void NanoCubeServer::serveSchema(Request &request)
+{
+    request.respondJson(reportSchema());
+}
+
+void NanoCubeServer::serveStatus(Request &request)
+{
+    std::stringstream ss;
+
+    ss << std::endl << "Nanocube Schema" << std::endl << std::endl;
+    ss << reportSchema() << std::endl << std::endl;
+
+    ss << "Registered API Calls" << std::endl << std::endl;
+    ss << server.getRegisteredHandles();
+    ss << std::endl;
+
+    ss << "Insertion Statistics" << std::endl << std::endl;
+    for (std::string s: insertion_status) {
+        ss << s;
+    }
+
     request.respondJson(ss.str());
 }
 
@@ -917,7 +931,6 @@ void NanoCubeServer::serveTBin(Request &request)
 void NanoCubeServer::serveSummary(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-
 
     nanocube::Summary summary = mountSummary(this->nanocube);
     std::stringstream ss;
@@ -985,7 +998,11 @@ void NanoCubeServer::write()
 
         // make sure report frequency is a multiple of batch size
         if (count % options.report_frequency == 0) {
-            std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+            std::stringstream tss;
+            tss << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
+            
+            std::cout << tss.str();
+            insertion_status.push_back(tss.str());
         }
 
         // std::this_thread::sleep_for(std::mill)
@@ -1011,12 +1028,18 @@ void NanoCubeServer::write()
 
     } // loop to insert objects into the nanocube
 
-    std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
+    std::stringstream tss;
+    tss << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
+    std::cout << tss.str();
+    insertion_status.push_back(tss.str());
     // std::cout << "count: " << count << " mem. res: " << memory_util::MemInfo::get().res_MB() << "MB." << std::endl;
 
     // test query using query language
-    std::cout << "Number of points inserted " << count << std::endl;
-
+    tss.str("");
+    tss.clear();
+    tss << std::endl << "Number of points inserted " << count << std::endl;
+    std::cout << tss.str();
+    insertion_status.push_back(tss.str());
 }
 
 

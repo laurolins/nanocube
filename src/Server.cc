@@ -95,6 +95,15 @@ void Server::registerHandler(std::string name, const RequestHandler &handler)
     handlers[name] = handler;
 }
 
+std::string Server::getRegisteredHandles()
+{
+    std::stringstream ss;
+    for (auto it = handlers.begin(); it != handlers.end(); ++it) {
+        ss << it->first << std::endl;
+    }
+    return ss.str();
+}
+
 void* Server::mg_callback(mg_event event, mg_connection *conn)
 { // blocks current thread
 
