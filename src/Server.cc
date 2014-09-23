@@ -97,9 +97,15 @@ void Server::registerHandler(std::string name, const RequestHandler &handler)
 
 std::string Server::getRegisteredHandles()
 {
-    std::stringstream ss;
+    std::vector<std::string> rh;
     for (auto it = handlers.begin(); it != handlers.end(); ++it) {
-        ss << it->first << std::endl;
+        rh.push_back(it->first);
+    }
+    std::sort(rh.begin(), rh.end());
+
+    std::stringstream ss;
+    for (auto it = rh.begin(); it != rh.end(); ++it) {
+        ss << *it << std::endl;
     }
     return ss.str();
 }
