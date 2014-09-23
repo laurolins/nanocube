@@ -314,12 +314,12 @@ NanoCubeServer::NanoCubeServer(NanoCube &nanocube, Options &options, std::istrea
     server.registerHandler("bintquery",  binary_tquery_handler);
     server.registerHandler("bintqueryz", binary_tquery_comp_handler);
 
-    server.registerHandler("stats",     stats_handler);
+    //server.registerHandler("stats",     stats_handler);
     server.registerHandler("schema",    schema_handler);
     server.registerHandler("valname",   valname_handler);
     server.registerHandler("tbin",      tbin_handler);
     server.registerHandler("summary",   summary_handler);
-    server.registerHandler("graphviz",  graphviz_handler);
+    //server.registerHandler("graphviz",  graphviz_handler);
 
     server.registerHandler("version",  version_handler);
     server.registerHandler("shutdown", shutdown_handler);
