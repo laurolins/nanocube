@@ -1246,7 +1246,7 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
             }
             return addr;
         }
-        if (node->type == CALL) {
+        else if (node->type == CALL) {
             auto &call = reinterpret_cast<Call&>(*node);
             if (call.name.compare("tile") == 0 || call.name.compare("tile2d") == 0) {
                 if (call.params.size() != 3)
@@ -1271,6 +1271,12 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
                 throw std::runtime_error("cannot decode address");
             }
         }
+        else if (node->type == NUMBER) {
+            DimAddress addr;
+            auto number = reinterpret_cast<Number*>(node);
+            addr.push_back((int)number->number);
+            return addr;
+        }
         else {
             throw std::runtime_error("cannot decode dimension from ast node");
         }
@@ -1291,7 +1297,16 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
         }
         else if (node->type == CALL){
             auto &call = reinterpret_cast<Call&>(*node);
-            if (call.name.compare("dive") == 0) {
+            if (call.name.compare("set") == 0) {
+                std::vector<::query::RawAddress> raw_addresses;
+                for (auto *param: call.params) {
+                    auto addr  = get_address(param);
+                    auto raw_addr = annotated_schema.convertPathAddress(dimension_index, addr);
+                    raw_addresses.push_back(raw_addr);
+                }
+                query_description.setSequenceTarget(dimension_index, raw_addresses);
+            }
+            else if (call.name.compare("dive") == 0) {
                 if (call.params.size() != 2)
                     throw std::runtime_error("invalid number of parameters for dive");
                 auto addr  = get_address(call.params[0]);
