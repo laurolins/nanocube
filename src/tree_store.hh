@@ -1497,7 +1497,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
         };
         
         format_label_func result;
-        if (fmt_label_functions.size() >= result_layer)
+        if (fmt_label_functions.size() > result_layer)
             result = fmt_label_functions[result_layer];
         
         if (result)

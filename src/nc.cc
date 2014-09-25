@@ -1634,10 +1634,11 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
             
             int layer = 0;
             int dim   = 0;
-            for (auto &format_option: format_options) {
+            for (auto &format_option: format_options)
+            {
                 if (query_description.anchors[dim])
                     ++layer;
-                
+
                 if (format_option.type == FormatOption::RELATIVE_IMAGE) {
                     using fmt_func = typename Writer::format_label_func;
                     fmt_func f = [&format_option](const LabelType& lbl) {
