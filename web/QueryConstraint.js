@@ -14,7 +14,7 @@ CatConstraint.prototype.add = function(q){
     if (this.selection.length < 1 ){
         return q;
     }
-    return q.dim(this.dim).sequence(this.selection);    
+    return q.dim(this.dim).findAndDive(this.selection);    
 };
 
 CatConstraint.prototype.toggle = function(addr){
@@ -28,7 +28,7 @@ CatConstraint.prototype.toggle = function(addr){
 };
 
 CatConstraint.prototype.addSelf = function(q){
-    return q.drilldown().dim(this.dim).findAndDive(255,1);
+    return q.drilldown().dim(this.dim).findAndDive();
 };
 
 
@@ -109,8 +109,21 @@ SpatialConstraint.prototype.add = function(q){
     if (this.boundary.length < 3){
         return q;
     }
-    return q.dim(this.dim).sequence(this.boundary.map(function(t){
-        return t.raw();}));    
+    
+    //grab a bounding box
+    var that = this;
+    var topleft = this.boundary.reduce(function(prev,curr) { 
+	return new Tile(Math.min(prev.x, curr.x),
+			Math.min(prev.y, curr.y),
+			Math.min(prev.level, curr.level), that.boundary[0]);
+    })
+    var bottomright = this.boundary.reduce(function(prev,curr) { 
+	return new Tile(Math.max(prev.x, curr.x),
+			Math.max(prev.y, curr.y),
+			Math.max(prev.level, curr.level), that.boundary[0]);
+    })
+    
+    return q.dim(this.dim).rectQuery(topleft,bottomright);
 };
 
 SpatialConstraint.prototype.addSelf = function(q){

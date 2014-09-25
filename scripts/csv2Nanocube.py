@@ -104,7 +104,7 @@ class NanocubeInput:
         top = 30
         for i,div in enumerate(self.catcol):
             nval = len(self.valname[div])
-            height = 20*nval+50 #50 is the default margin size
+            height = 20*10  +50 #50 is the default margin size, show top 10 only
             lmargin = max(30,10*max([len(k) for k in self.valname[div]]))
             div = div.replace(" ", "_");
             config['div'][div] = {'position': 'absolute',

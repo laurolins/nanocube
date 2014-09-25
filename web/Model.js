@@ -172,19 +172,22 @@ Model.prototype.tileQuery = function(vref,tile,drill,callback){
         }
     });
 
-    q = q.drilldown().dim(vref.dim).findAndDive(tile.raw(),drill);
+    //q = q.drilldown().dim(vref.dim).findAndDive(tile.raw(),drill);
 
-    var qstr = q.toString('tile');
+    q = q.drilldown().dim(vref.dim).findTile(tile,drill);
+
+    var qstr = q.toString('count');
     var data = this.getCache(qstr);
 
     if (data != null){ //cached
         callback(data);
     }
     else{
-        q.run_tile(function(data){
-            callback(data);
-            that.setCache(qstr,data);
-        });
+        q.run_query()
+	    .done(function(data){
+		callback(data);
+		that.setCache(qstr,data);
+            });
     }
 };
 
@@ -219,16 +222,16 @@ Model.prototype.jsonQuery = function(v){
 
     keys.forEach(function(k){
         var q = queries[k];
-        var qstr = q.toString('query');
+        var qstr = q.toString('count');
         var json = that.getCache(qstr);
         var color = that.selcolors[k];
 
         if (json != null){ //cached
-            v.update(json,k,color);
+            v.update(json,k,color,q);
         }
         else{
-            q.run_query(function(json){
-                v.update(json,k,color);
+            q.run_query().done(function(json){
+                v.update(json,k,color,q);
                 that.setCache(qstr,json);
             });
         }
@@ -250,19 +253,6 @@ Model.prototype.removeObsolete= function(k){
 
 //Setup maps
 Model.prototype.createMap = function(spvar,cm){
-    /*var w = $('#' + spvar.dim).width();
-    var h = $('#' + spvar.dim).height();
-
-    //$('#' + spvar.dim).width(Math.max(w,100));
-    //$('#' + spvar.dim).height(Math.max(h,100));
-    if(w < 100){
-        $('#' + spvar.dim).width(Math.max(w,100));
-    }
-    if(h < 100){
-        $('#' + spvar.dim).height(Math.max(h,100));
-    }
-     */
-
     var map=L.map(spvar.dim,{
         maxZoom: Math.min(18,spvar.maxlevel+1)
     });
@@ -323,10 +313,12 @@ Model.prototype.addDraw = function(map,spvar){
 
     map.editControl = new L.Control.Draw({
         draw: {
+	    rectangle: true,
+	    polygon: false,
             polyline: false,
             circle: false,
             marker: false,
-            polygon: { allowIntersection: false }
+            //polygon: { allowIntersection: false }
         },
         edit: {
             featureGroup: map.drawnItems
@@ -334,9 +326,9 @@ Model.prototype.addDraw = function(map,spvar){
     });
     map.editControl.setDrawingOptions({
         rectangle:{shapeOptions:{color: this.nextColor(), weight: 2,
-                                 opacity:.9}},
-        polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
-                               opacity:.9}}
+                                 opacity:.9}}
+	//polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
+	//                       opacity:.9}}
     });
 
     map.editControl.addTo(map);

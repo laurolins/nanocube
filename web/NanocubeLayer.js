@@ -70,8 +70,9 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
     //query
     var tile = new Tile(tilePoint.x,ty,zoom);
     var that = this;
-    this.model.tileQuery(this.variable, tile, drill, function(data){
-        var result = that.processData(data);
+    this.model.tileQuery(this.variable, tile, drill, function(json){
+        //var result = that.processData(data);
+        var result = that.processJSON(json);
 
         if(result !=null){
             that.max = Math.max(that.max, result.max);
@@ -180,6 +181,25 @@ L.NanocubeLayer.prototype.drawGridCount = function(ctx,tilePoint,zoom,data){
     ctx.fillText(totalstr,10,20);
     
 };
+
+
+L.NanocubeLayer.prototype.processJSON = function(json){
+    if (json.root.children == null){
+	return null;
+    }
+    
+    var data = json.root.children.map(function(d){ 
+	return { x: d.x, y: d.y, v: d.val };
+    });
+    
+    var minv = data.reduce(function(prev,curr){ 
+	return Math.min(prev,curr.v) }, Infinity);
+    var maxv = data.reduce(function(prev,curr){ 
+	return Math.max(prev,curr.v) }, -Infinity);
+    
+    return {min:minv,max:maxv,data:data};
+};
+
 
 L.NanocubeLayer.prototype.processData = function(bindata){
     if(bindata == null){
