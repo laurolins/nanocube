@@ -46,7 +46,7 @@ with the specfic recent version of gcc in your system. For example
 If your system has tcmalloc installed, we suggest linking nanocubes with it.
 For example
 
-    $ CXX=g++-4.8 ./configure LIBS=<path-to-tcmalloc>/libtcmalloc_minimal.a
+    $ CXX=g++-4.8 ./configure --with-tcmalloc
 
 ## Loading a CSV file into a nanocube
 
