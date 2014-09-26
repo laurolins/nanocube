@@ -403,20 +403,21 @@ Model.prototype.drawCreated = function(e,spvar){
 //draw count on the polygon
 Model.prototype.updatePolygonCount = function(layer, spvar){
     var q = this.totalcount_query(spvar.constraints[layer._leaflet_id]);
-    q.run_query(function(json){
+    q.run_query().done(function(json){
         var countstr ="Count: 0";
+	debugger;
         if (json != null){
             var count = json.root.value;
             countstr ="Count: ";
             countstr += count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
         }
-
+	
         var geojson = layer.toGeoJSON();
         var bbox = bboxGeoJSON(geojson);
         var bboxstr = "Bbox: ";
         bboxstr += "(("+bbox[0][0].toFixed(3)+","+bbox[0][1].toFixed(3)+"),";
         bboxstr += "("+bbox[1][0].toFixed(3)+","+bbox[1][1].toFixed(3)+"))";
-
+	
         layer.bindPopup(countstr+"<br />" +bboxstr);
     });
 };
@@ -703,7 +704,7 @@ Model.prototype.updateInfo = function(){
     var that = this;
     var q = this.totalcount_query();
 
-    q.run_query(function(json){
+    q.run_query().done(function(json){
         if (json == null){
             return;
         }
@@ -724,7 +725,7 @@ Model.prototype.updateInfo = function(){
         var enddate = new Date(startdate);
         enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
-        var count = json.root.value;
+        var count = json.root.val;
         var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
         $('#info').text(startdate.toLocaleString() + ' - '
