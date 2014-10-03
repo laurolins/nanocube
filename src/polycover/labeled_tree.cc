@@ -739,15 +739,19 @@ bool Parser::run(std::istream& is, std::size_t max) {
                     break;
                 case '0':
                     engine.advance(0);
+                    engine.consolidate();
                     break;
                 case '1':
                     engine.advance(1);
+                    engine.consolidate();
                     break;
                 case '2':
                     engine.advance(2);
+                    engine.consolidate();
                     break;
                 case '3':
                     engine.advance(3);
+                    engine.consolidate();
                     break;
                 default:
                     throw std::runtime_error("ooops");
