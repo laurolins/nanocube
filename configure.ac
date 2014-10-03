@@ -49,6 +49,7 @@ BOOST_ASIO
 #BOOST_SERIALIZATION
 #BOOST_MPI
 
+TS_CHECK_TCMALLOC
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h])
