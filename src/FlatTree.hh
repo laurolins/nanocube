@@ -6,6 +6,7 @@
 #include <iostream>
 #include <stack>
 #include <cstdint>
+#include <stdexcept>
 
 #ifndef FLATTREE_VECTOR
 #include "small_vector.hh"
@@ -14,6 +15,7 @@
 #include "ContentHolder.hh"
 
 #include "cache.hh"
+#include "polycover/labeled_tree.hh"
 
 //
 // Needed Mechanisms
@@ -27,6 +29,8 @@
 
 namespace flattree
 {
+    
+    using Mask = polycover::labeled_tree::Node;
     
         using Cache = nanocube::Cache;
 
@@ -213,6 +217,8 @@ public:
     template <typename Visitor>
     void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache);
 
+    template <typename Visitor>
+    void visitExistingTreeLeaves(const Mask* mask, Visitor &visitor);
 
     FlatTree();
     ~FlatTree();
@@ -698,6 +704,11 @@ void FlatTree<Content>::visitSequence(const std::vector<RawAddress> &seq, Visito
     }
 }
 
+    template<typename Content>
+    template <typename Visitor>
+    void FlatTree<Content>::visitExistingTreeLeaves(const Mask* mask, Visitor &visitor) {
+        throw std::runtime_error("not available");
+    }
 
 //
 // Node Implementation

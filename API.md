@@ -98,7 +98,14 @@ Pairs of queries and results:
     ## a time series of images (time series for each pixel)
     http://localhost:29510/count.r("time",mt_interval_sequence(484,1,5)).a("location",dive(tile2d(262,643,10),1),"img")
     { "layers":[ "anchor:location", "multi-target:time" ], "root":{ "children":[ { "x":1, "y":1, "children":[ { "path":[0], "val":4 }, { "path":[1], "val":2 }, { "path":[2], "val":1 }, { "path":[4], "val":1 } ] }, { "x":0, "y":1, "children":[ { "path":[0], "val":1 }, { "path":[1], "val":3 }, { "path":[2], "val":1 }, { "path":[3], "val":3 }, { "path":[4], "val":1 } ] }, { "x":1, "y":0, "children":[ { "path":[0], "val":1 }, { "path":[1], "val":3 }, { "path":[2], "val":6 }, { "path":[3], "val":4 }, { "path":[4], "val":11 } ] }, { "x":0, "y":0, "children":[ { "path":[0], "val":2 }, { "path":[1], "val":1 }, { "path":[3], "val":3 }, { "path":[4], "val":2 } ] } ] } }
-    
+
+    ## 2d masks
+    http://localhost:29510/count.a("location",mask("012<<12<<<",10))
+    http://localhost:29510/count.a("location",predefined_mask("us_states/newyork",10))   // search directory
+    http://localhost:29510/count.a("location",mercator_mask([x0,y0,x1,y1,...,xn,yn],10))
+    http://localhost:29510/count.a("location",degrees_mask([x0,y0,x1,y1,...,xn,yn],10))
+
+
 ### Range example illustration:
 
 ![image](https://github.com/laurolins/nanocube/blob/api3/img/range-example.png?raw=true)

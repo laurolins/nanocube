@@ -4,12 +4,17 @@
 #include <stack>
 #include <stdint.h>
 
+#include "polycover/labeled_tree.hh"
+
 namespace query {
 
-typedef uint64_t RawAddress;
+using RawAddress = uint64_t;
+    
+using Mask = polycover::labeled_tree::Node;
 
 struct ListTarget;
 struct RangeTarget;
+struct MaskTarget;
 struct SequenceTarget;
 struct FindAndDiveTarget;
 struct BaseWidthCountTarget;
@@ -21,7 +26,7 @@ struct BaseWidthCountTarget;
 struct Target {
 public: // subtypes
 
-    enum Type { ROOT, LIST, FIND_AND_DIVE, RANGE, BASE_WIDTH_COUNT, SEQUENCE };
+    enum Type { ROOT, LIST, FIND_AND_DIVE, RANGE, BASE_WIDTH_COUNT, SEQUENCE, MASK };
 
 public:
 
@@ -41,9 +46,9 @@ public: // data members
     virtual SequenceTarget*       asSequenceTarget();
     virtual FindAndDiveTarget*    asFindAndDiveTarget();
     virtual BaseWidthCountTarget* asBaseWidthCountTarget();
+    virtual MaskTarget*           asMaskTarget();
 
     virtual void replace(RawAddress addr_old, RawAddress add_new);
-
     
 public: // data memebrs
 
@@ -101,7 +106,6 @@ public: // data memebers
 
 };
 
-
 //-----------------------------------------------------------------------------
 // BaseWidthCountTarget
 //-----------------------------------------------------------------------------
@@ -123,8 +127,6 @@ public: // data memebers
     int        width;
     int        count;
 };
-
-
 
 //-----------------------------------------------------------------------------
 // RangeTarget
@@ -172,7 +174,28 @@ public: // data memebers
 
 };
 
-
+    //-----------------------------------------------------------------------------
+    // MaskTarget
+    //-----------------------------------------------------------------------------
+    
+    struct MaskTarget: public Target {
+        
+    public: // constructors
+        
+        MaskTarget(const Mask* root);
+        
+    public: // methods
+        
+        MaskTarget* asMaskTarget();
+        
+        void replace(RawAddress addr_old, RawAddress addr_new);
+        
+    public: // data memebers
+        
+        const Mask* root;
+        
+    };
+    
 //-----------------------------------------------------------------------------
 // Query Description
 //-----------------------------------------------------------------------------
@@ -221,6 +244,7 @@ public: // Methods
     void setFindAndDiveTarget(int dimension, RawAddress base_address, int dive_depth);
     void setRangeTarget(int dimension, RawAddress min_address, RawAddress max_address);
     void setSequenceTarget(int dimension, const std::vector<RawAddress> addresses);
+    void setMaskTarget(int dimension, const Mask *mask);
 
     // this is used for the time dimension which is special
     void setBaseWidthCountTarget(int dimension, RawAddress base_address, int width, int count);

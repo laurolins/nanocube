@@ -1324,13 +1324,22 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
                 auto raw_addr2 = annotated_schema.convertPathAddress(dimension_index, addr2);
                 query_description.setRangeTarget(dimension_index, raw_addr1, raw_addr2);
             }
-            else if (call.name.compare("range1d") == 0) {
+            else if (call.name.compare("mask") == 0) {
+                if (call.params.size() < 1)
+                    throw std::runtime_error("invalid number of parameters for mask");
+                auto code = get_string(call.params[0]);
+                // TODO: memory leak here!
+                ::polycover::labeled_tree::Parser parser;
+                auto mask = ::polycover::labeled_tree::load_from_code(code);
+                query_description.setMaskTarget(dimension_index, mask);
+            }
+//            else if (call.name.compare("range1d") == 0) {
 //                if (call.params.size() != 2)
 //                    throw std::runtime_error("invalid number of parameters for range2d");
 //                auto addr1  = get_address(call.params[0]);
 //                auto addr2  = get_address(call.params[1]);
 //                return nanocube::Target::range1d(addr1, addr2);
-            }
+//            }
             else if (call.name.compare("interval") == 0) {
                 //
                 // binary trees and time dimension: since there is no binary tree

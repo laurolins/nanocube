@@ -8,12 +8,15 @@
 
 #include "cache.hh"
 
+#include "polycover/labeled_tree.hh"
 
 //-----------------------------------------------------------------------------
 // DECLARATIONS
 //-----------------------------------------------------------------------------
 
 namespace flattree_n {
+    
+    using Mask = polycover::labeled_tree::Node;
     
     using Cache = nanocube::Cache;
 
@@ -205,6 +208,10 @@ public: // methods
     // polygon visit (cache first preprocessing)
     template <typename Visitor>
     void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache);
+    
+    template <typename Visitor>
+    void visitExistingTreeLeaves(const Mask* mask, Visitor &visitor);
+
 
     std::vector<LinkType> links; // TODO: replace with something more space efficient (3 pointers in here)
 
@@ -474,6 +481,14 @@ void FlatTree<N, Content>::visitSequence(const std::vector<RawAddress> &seq, Vis
     }
     // throw std::runtime_error("visitSequence not supported");
 }
+    
+    
+    template<NumBytes N, typename Content>
+    template <typename Visitor>
+    void FlatTree<N,Content>::visitExistingTreeLeaves(const Mask* mask, Visitor &visitor) {
+        throw std::runtime_error("not available");
+    }
+
 
 template<NumBytes N, typename Content>
 auto FlatTree<N, Content>::getLink(RawAddress raw_address, bool create_if_not_found) -> LinkType*

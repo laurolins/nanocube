@@ -225,7 +225,23 @@ geom2d/point.hh		  \
 geom2d/polygon.cc         \
 geom2d/polygon.hh	  \
 geom2d/tile.cc		  \
-geom2d/tile.hh 
+geom2d/tile.hh            \
+polycover/area.cc              \
+polycover/area.hh		  \
+polycover/geometry.cc	  \
+polycover/geometry.hh	  \
+polycover/infix_iterator.hh	  \
+polycover/labeled_tree.cc	  \
+polycover/labeled_tree.hh	  \
+polycover/maps.cc		  \
+polycover/maps.hh		  \
+polycover/mipmap.cc		  \
+polycover/mipmap.hh		  \
+polycover/polycover.cc	  \
+polycover/polycover.hh	  \
+polycover/signal.hh		  \
+polycover/tokenizer.cc	  \
+polycover/tokenizer.hh
 
 
 NANOCUBE_VERSION = $(shell cat $(top_srcdir)/VERSION)

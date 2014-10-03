@@ -20,11 +20,14 @@
 #include "geom2d/point.hh"
 #include "geom2d/polygon.hh"
 
+#include "polycover/labeled_tree.hh"
 
 namespace quadtree
 {
+    
+    using Mask = polycover::labeled_tree::Node;
 
-        using Cache = nanocube::Cache;
+    using Cache = nanocube::Cache;
 
 //-----------------------------------------------------------------------------
 // typedefs
@@ -168,6 +171,14 @@ public:
     // polygon visit (cache first preprocessing)
     template <typename Visitor>
     void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache);
+
+    // polygon visit (cache first preprocessing)
+    template <typename Visitor>
+    void visitExistingTreeLeaves(const Mask* mask, Visitor &visitor);
+
+//    // mask querying
+//    // template <typename Visitor>
+//    void visitExistingTreeLeaves(<#const Mask *mask#>); // Visitor &visitor); //
 
     // visit all nodes following only proper parent-child relations
     template <typename Visitor>
@@ -491,6 +502,64 @@ Node<Content>* QuadTree<N,Content>::getRoot()
 {
     return root;
 }
+    
+    
+    template<BitSize N, typename Content>
+    template <typename Visitor>
+    void QuadTree<N,Content>::visitExistingTreeLeaves(const Mask* mask, Visitor &visitor)
+    {
+        using StackItem = StackItemTemplate<N, Content, QuadTree<N, Content>>;
+        
+        std::stack< StackItem > stack;
+        stack.push( StackItem(this->root, AddressType()) );
+        
+        // stack and mask go in sync
+        std::vector<const Mask*> mask_stack;
+        mask_stack.push_back(mask);
+        
+        while (!stack.empty())
+        {
+            StackItemTemplate<N, Content, QuadTree<N, Content>> &topItem = stack.top();
+            NodeType*   node = topItem.node;
+            AddressType addr = topItem.address;
+            stack.pop();
+            
+            //
+            auto mask_node = mask_stack.back();
+            mask_stack.pop_back();
+            
+            if (mask_node->getNumChildren() == 0) {
+                visitor.visit(node, addr);
+            }
+            else { // schedule next visit
+                
+                NumChildren num_children = node->getNumChildren();
+                const ChildName *actual_indices = childEntryIndexToName[node->key()];
+                NodePointer<Content>*  children = node->getChildrenArray();
+                
+                for (int i=0;i<num_children;i++)
+                {
+                    const NodePointer<Content>& ci        = children[i];
+                    NodeType*                   childNode = ci.getNode();
+                    // NodeType*   childNode = const_cast<NodeType*>(children[i]);
+                    
+                    auto actual_child_index = actual_indices[i];
+                    
+                    auto mask_child_node = mask_node->children[actual_child_index].get();
+                    
+                    if (mask_child_node != nullptr) {
+                        
+                        AddressType childAddr = addr.childAddress(actual_indices[i]);
+                        
+                        stack.push(StackItemTemplate<N, Content, QuadTree<N, Content>>(childNode, childAddr));
+                        mask_stack.push_back(mask_child_node);
+                        
+                    }
+                }
+            }
+        }
+    } // visitExistingTreeLeaves
+    
 
 template<BitSize N, typename Content>
 Node<Content>*
@@ -1246,23 +1315,18 @@ void QuadTree<N,Content>::visitSequence(const std::vector<RawAddress> &seq,
 
                 }
             }
-        }
-    }
 
-//    if (targetLevel < 0 || addr.level == targetLevel)
-//        visitor.visit(node, addr);
+        } // internal node
+        
+    } // stack is emtpy?
+    
+} // visit sequence
 
-//    if (targetLevel < 0 || addr.level < targetLevel)
-//    {
+    
+    
+    
 
-
-}
-
-
-
-
-
-
+    
 // visit all subnodes of a certain node in the
 // requested target level.
 template<BitSize N, typename Content>
