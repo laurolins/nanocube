@@ -64,6 +64,8 @@ public:
     void deleteChild(ChildLabel child_label);
 
     void deleteAllChildren();
+    
+    void trim(int layers_to_go);
         
     bool split();
 

@@ -43,6 +43,8 @@
 #include "geometry.hh"
 #include "maps.hh"
 
+#include "polycover/polycover.hh"
+
 using namespace nanocube;
 
 //------------------------------------------------------------------------------
@@ -1329,10 +1331,114 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
                     throw std::runtime_error("invalid number of parameters for mask");
                 auto code = get_string(call.params[0]);
                 // TODO: memory leak here!
-                ::polycover::labeled_tree::Parser parser;
                 auto mask = ::polycover::labeled_tree::load_from_code(code);
+
+                int level = 0;
+                if (call.params.size() >= 2) {
+                    level = (int) get_number(call.params[1]);
+                }
+                if (level > 0) {
+                    mask->trim(level);
+                }
+                
                 query_description.setMaskTarget(dimension_index, mask);
             }
+            else if (call.name.compare("degrees_mask") == 0 || call.name.compare("mercator_mask") == 0) {
+                
+                bool degrees = call.name.compare("degrees_mask") == 0;
+
+                if (call.params.size() < 2)
+                    throw std::runtime_error("invalid number of parameters for mask");
+                
+                auto points_st = get_string(call.params[0]);
+                auto level     = get_number(call.params[1]);
+                
+                // split on the commas x0,y0,x1,y1,x2,y2;x0,y0,x1,y1,x2,y2;
+                std::stringstream ss(points_st);
+                std::string contour_st;
+
+                // polygons
+                std::vector<polycover::Polygon> polygons;
+                
+                // sstd::vector<polycover::
+                while (std::getline(ss,contour_st,';')) {
+                    std::stringstream ss2(contour_st);
+                    std::string coord_st;
+                    polygons.push_back(polycover::Polygon());
+                    auto &poly = polygons.back();
+                    double x,y;
+                    int parity = 0;
+                    while (std::getline(ss2,coord_st,',')) {
+                        if (parity == 0) {
+                            parity = 1;
+                            x = std::stof(coord_st);
+                        }
+                        else {
+                            parity = 0;
+                            y = std::stof(coord_st);
+                            
+                            // convert to mercator
+                            if (degrees) {
+                                x = x / 180.0;
+                                auto lat_rad = (y * M_PI/180.0);
+                                y = std::log(std::tan(lat_rad/2.0 + M_PI/4.0)) / M_PI;
+                            }
+
+                            poly.points.push_back({x,y});
+                        }
+                    }
+                }
+                
+                // TODO: caching and memory release of masks...
+                auto mask = ::polycover::TileCoverEngine(level,8).computeCover(polygons);
+                query_description.setMaskTarget(dimension_index, mask);
+                
+            }
+            else if (call.name.compare("region") == 0) {
+                
+                if (call.params.size() < 1)
+                    throw std::runtime_error("invalid number of parameters for mask");
+                
+                auto region_path = get_string(call.params[0]);
+
+                int level = 0;
+                if (call.params.size() >= 2) {
+                    level = (int) get_number(call.params[1]);
+                }
+                
+                // TODO: get environment variable NANOCUBE_REGIONS
+                std::string nanocube_regions_path(std::getenv("NANOCUBE_REGIONS"));
+                // std::string nanocube_regions_path("/Users/llins/tests/polycover/data/geofences");
+                
+                // append .ttt.gz and check if file exists
+                std::string path = nanocube_regions_path + region_path + ".ttt";
+                std::ifstream f(path);
+                
+                if (!f.good()) {
+                    throw std::runtime_error("could not find region " + region_path);
+                }
+                
+                ::query::Mask *mask = nullptr;
+            
+                // TODO: make it more efficient
+                
+                polycover::labeled_tree::Parser parser;
+                parser.signal.connect([&mask, &level](const std::string& name, const polycover::labeled_tree::Node &node) {
+                    std::stringstream ss;
+                    ss << node;
+                    mask = polycover::labeled_tree::load_from_code(ss.str());
+                    if (level > 0) {
+                        mask->trim(level);
+                    }
+                });
+                parser.run(f,1);
+                
+                query_description.setMaskTarget(dimension_index, mask);
+
+            }
+            
+
+            
 //            else if (call.name.compare("range1d") == 0) {
 //                if (call.params.size() != 2)
 //                    throw std::runtime_error("invalid number of parameters for range2d");

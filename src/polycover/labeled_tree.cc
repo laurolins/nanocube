@@ -230,6 +230,25 @@ Path Node::path() const {
     return node_path;
 }
     
+    void Node::trim(int layers_to_go) {
+        if (layers_to_go <= 0)
+            throw std::runtime_error("Cannot trim to 0 layers");
+        
+        if (layers_to_go == 1) { // this will be the last layer
+            children[0].reset();
+            children[1].reset();
+            children[2].reset();
+            children[3].reset();
+        }
+        else {
+            for (int i=0;i<4;++i) {
+                if (children[i].get()) {
+                    children[i].get()->trim(layers_to_go-1);
+                }
+            }
+        }
+    }
+    
 Node *Node::advance(ChildLabel child_label)
 {
     if (child_label == 1 && path().equalTo(Path({1,2})))

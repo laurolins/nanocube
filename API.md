@@ -99,12 +99,15 @@ Pairs of queries and results:
     http://localhost:29510/count.r("time",mt_interval_sequence(484,1,5)).a("location",dive(tile2d(262,643,10),1),"img")
     { "layers":[ "anchor:location", "multi-target:time" ], "root":{ "children":[ { "x":1, "y":1, "children":[ { "path":[0], "val":4 }, { "path":[1], "val":2 }, { "path":[2], "val":1 }, { "path":[4], "val":1 } ] }, { "x":0, "y":1, "children":[ { "path":[0], "val":1 }, { "path":[1], "val":3 }, { "path":[2], "val":1 }, { "path":[3], "val":3 }, { "path":[4], "val":1 } ] }, { "x":1, "y":0, "children":[ { "path":[0], "val":1 }, { "path":[1], "val":3 }, { "path":[2], "val":6 }, { "path":[3], "val":4 }, { "path":[4], "val":11 } ] }, { "x":0, "y":0, "children":[ { "path":[0], "val":2 }, { "path":[1], "val":1 }, { "path":[3], "val":3 }, { "path":[4], "val":2 } ] } ] } }
 
+    ## degrees_mask (longitude,latitude) single contour
+    http://localhost:29510/count.r("location",degrees_mask("-87.6512,41.8637,-87.6512,41.9009,-87.6026,41.9009,-87.6026,41.8637",25))
+    { "layers":[  ], "root":{ "val":3259 } }
+
     ## 2d masks
     http://localhost:29510/count.a("location",mask("012<<12<<<",10))
-    http://localhost:29510/count.a("location",predefined_mask("us_states/newyork",10))   // search directory
-    http://localhost:29510/count.a("location",mercator_mask([x0,y0,x1,y1,...,xn,yn],10))
-    http://localhost:29510/count.a("location",degrees_mask([x0,y0,x1,y1,...,xn,yn],10))
-
+    http://localhost:29510/count.a("location",region("us_states/newyork",10))   // search directory
+    http://localhost:29510/count.a("location",mercator_mask("x0,y0,x1,y1,...,xn,yn;x0,y0,x1,y1,x2,y2",10))
+    http://localhost:29510/count.a("location",degrees_mask("x0,y0,x1,y1,...,xn,yn;x0,y0,x1,y1,x2,y2",10))
 
 ### Range example illustration:
 
