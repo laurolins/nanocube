@@ -69,10 +69,20 @@ with the specfic recent version of gcc in your system. For example
 
     $ CXX=g++-4.8 ./configure
 
-If your system has tcmalloc installed, we suggest linking nanocubes with it.
-For example
+**Tcmalloc**
 
-    $ CXX=g++-4.8 ./configure LIBS=<path-to-tcmalloc>/libtcmalloc_minimal.a
+We strongly suggest linking nanocubes with [Thread-Caching Malloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html), or tcmalloc for short.
+It is faster than the default system malloc, and in some cases, we found that the amount of memory used by nanocubes was reduced
+by over 50% when using libtcmalloc.  To install on a Ubuntu 14.04 machine:
+
+    $ sudo apt-get install libtcmalloc-minimal4
+
+You must then re-run the configure script pointing to the libtcmalloc shared library, and re-compile the nanocubes source.
+
+    $ ./configure LIBS=/usr/lib/libtcmalloc_minimal.so.4
+    $ make clean
+    $ make
+
 
 ## Loading a CSV file into a nanocube
 
