@@ -43,6 +43,8 @@
 #include "geometry.hh"
 #include "maps.hh"
 
+#include "cache2.hh"
+
 #include "polycover/polycover.hh"
 
 using namespace nanocube;
@@ -146,6 +148,17 @@ struct Options {
             };
 
 
+    // -d or --data
+    TCLAP::ValueArg<int> mask_cache_budget {
+        "M",              // flag
+        "mask-cache-budget",         // name
+        "Number of masks that are kept in the cache. Every time we have 20% more masks in the cache we reduce it to the budget. Default 1000.", // description
+        false,            // required
+        1000,             // value
+        "data-filename"   // type description
+    };
+
+    
     // TCLAP::ValueArg<std::uint64_t> logmem_delay {  
     //         "d",                 // flag
     //         "logmem-delay",      // name
@@ -183,6 +196,7 @@ Options::Options(std::vector<std::string>& args)
     cmd_line.add(report_frequency);
     cmd_line.add(batch_size);
     cmd_line.add(sleep_for_ns);
+    cmd_line.add(mask_cache_budget);
     cmd_line.parse(args);
 }
 
@@ -270,9 +284,239 @@ typedef nanocube::NanoCubeTemplate<
     boost::mpl::vector<LIST_DIMENSION_NAMES>,
     boost::mpl::vector<LIST_VARIABLE_TYPES>> NanoCube;
 
-typedef typename NanoCube::entry_type Entry;
+using Entry   = typename NanoCube::entry_type;
+using Address = typename NanoCube::address_type;
 
-typedef typename NanoCube::address_type Address;
+using MaskCache = cache2::Cache<std::string, ::query::Mask>;
+
+
+//-----------------------------------------------------------------
+// AnnotatedSchema
+//-----------------------------------------------------------------
+
+struct AnnotatedSchema {
+public:
+    enum DimensionType { QUADTREE, CATEGORICAL, TIME };
+    AnnotatedSchema(Schema &schema);
+    
+    
+    DimensionType dimType(int dimension_index) const;
+    int dimSize(int dimension_index) const;
+    
+    ::nanocube::DimAddress convertRawAddress(int dimension_index, std::size_t raw_address);
+    std::size_t convertPathAddress(int dimension_index, DimAddress &path);
+    
+public:
+    Schema& schema;
+    std::vector<DimensionType> dimension_types;
+    std::vector<int>           dimension_sizes; // interpretation depends on type
+};
+
+//-----------------------------------------------------------------
+// AnnotatedSchema Impl.
+//-----------------------------------------------------------------
+
+AnnotatedSchema::AnnotatedSchema(Schema &schema):
+schema(schema)
+{
+    for (auto field: schema.dump_file_description.fields) {
+        auto type_name = field->field_type.name;
+        if (type_name.find("nc_dim_quadtree") != std::string::npos) {
+            dimension_types.push_back(QUADTREE);
+            auto st = type_name.substr(std::string("nc_dim_quadtree_").size());
+            dimension_sizes.push_back(std::stoi(st)); // num levels
+        }
+        else if (type_name.find("nc_dim_cat") != std::string::npos) {
+            dimension_types.push_back(CATEGORICAL);
+            auto st = field->field_type.name.substr(std::string("nc_dim_cat_").size());
+            dimension_sizes.push_back(std::stoi(st)); // num bytes
+        }
+        else if (type_name.find("nc_dim_time") != std::string::npos) {
+            dimension_types.push_back(TIME);
+            auto st = field->field_type.name.substr(std::string("nc_dim_time_").size());
+            dimension_sizes.push_back(std::stoi(st)); // num bytes
+        }
+        else if (type_name.find("nc_var") != std::string::npos) {
+            break;
+        }
+        else throw std::runtime_error("oooops");
+    }
+}
+
+auto AnnotatedSchema::dimType(int dimension_index) const -> DimensionType {
+    return dimension_types.at(dimension_index);
+}
+
+int AnnotatedSchema::dimSize(int dimension_index) const {
+    return dimension_sizes.at(dimension_index);
+}
+
+::nanocube::DimAddress AnnotatedSchema::convertRawAddress(int dimension_index, std::size_t raw_address) {
+    
+    auto dimension_type = dimension_types.at(dimension_index);
+    auto dimension_size = dimension_sizes.at(dimension_index);
+    
+    DimAddress result;
+    
+    if (dimension_type == QUADTREE) {
+        uint64_t level = ( raw_address             ) >> (64-6);
+        uint64_t y     = ( raw_address << 6        ) >> (64-29);
+        uint64_t x     = ( raw_address << (6 + 29) ) >> (64-29);
+        nanocube::Tile tile((int) x, (int) y, (int) level);
+        result = tile.toAddress();
+    }
+    else if (dimension_type == AnnotatedSchema::CATEGORICAL) {
+        auto root_address = (1ULL << (dimension_size * 8)) - 1;
+        if (raw_address == root_address) {
+            result = DimAddress(); // empty path (root!)
+        }
+        else {
+            result = { (Label) raw_address }; // empty path (root!)
+        }
+    }
+    else if (dimension_type == AnnotatedSchema::TIME) {
+        // binary representation of the raw address using dimension_size bytes (8 bits, 16 bits)
+    }
+    
+    return result;
+    
+}
+
+std::size_t AnnotatedSchema::convertPathAddress(int dimension_index, DimAddress &path) {
+    auto dimension_type = dimension_types.at(dimension_index);
+    auto dimension_size = dimension_sizes.at(dimension_index);
+    
+    uint64_t result = 0;
+    
+    if (dimension_type == AnnotatedSchema::QUADTREE) {
+        nanocube::Tile tile(path);
+        uint64_t x = tile.x;
+        uint64_t y = tile.y;
+        uint64_t z = tile.level;
+        result = (z << 58) | (y << 29) | x;
+    }
+    else if (dimension_type == AnnotatedSchema::CATEGORICAL) {
+        if (path.size() == 0) {
+            result = (1ULL << (dimension_size * 8)) - 1;
+        }
+        else if (path.size() == 1) {
+            result = path[0];
+        }
+        else {
+            throw std::runtime_error("invalid address for categorical dimension");
+        }
+    }
+    return result;
+}
+
+//
+// API_3
+//
+
+enum OutputEncoding { JSON, BINARY, TEXT };
+
+struct BranchTargetOnTime {
+public:
+    BranchTargetOnTime() = default;
+    BranchTargetOnTime(int base, int width, int count):
+    active(true),
+    base(base),
+    width(width),
+    count(count)
+    {}
+public:
+    bool active { false };
+    int base  { 0 };
+    int width { 0 };
+    int count { 0 };
+};
+
+struct FormatOption {
+    enum Type { NORMAL, RELATIVE_IMAGE };
+    Type       type { NORMAL };
+    DimAddress base_address;
+};
+
+
+//-----------------------------------------------------------------
+// SimpleConfig
+//-----------------------------------------------------------------
+
+struct SimpleConfig {
+    
+    using label_type       = ::nanocube::DimAddress;
+    using label_item_type  = typename label_type::value_type;
+    using value_type       = double;
+    using parameter_type   = int; // dummy parameter
+    
+    static const double default_value;
+    
+    std::size_t operator()(const label_type &label) const;
+    
+    std::ostream& print_label(std::ostream& os, const label_type &label) const;
+    
+    std::ostream& print_value(std::ostream& os, const value_type &value, const parameter_type& parameter) const;
+    
+    std::ostream& serialize_label(std::ostream& os, const label_type &label);
+    
+    std::istream& deserialize_label(std::istream& is, label_type &label);
+    
+    std::ostream& serialize_value(std::ostream& os, const value_type &value);
+    
+    std::istream& deserialize_value(std::istream& is, value_type &value);
+    
+};
+
+//-----------------------------------------------------------------
+// SimpleConfig Impl.
+//-----------------------------------------------------------------
+
+const double SimpleConfig::default_value = 0.0f;
+
+std::size_t SimpleConfig::operator()(const label_type &label) const {
+    std::size_t hash_value = 0;
+    std::for_each(label.begin(), label.end(), [&hash_value](label_item_type v) {
+        std::size_t vv = (std::size_t) v;
+        hash_value ^= vv + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+    });
+    return hash_value;
+}
+
+std::ostream& SimpleConfig::print_label(std::ostream& os, const label_type &label) const {
+    os << "[";
+    bool first = true;
+    for (auto l: label) {
+        if (!first)
+            os << ",";
+        os << l;
+        first = false;
+    }
+    os << "]";
+    return os;
+}
+
+std::ostream& SimpleConfig::print_value(std::ostream& os, const value_type &value, const parameter_type& parameter) const {
+    os << value;
+    return os;
+}
+
+std::ostream& SimpleConfig::serialize_label(std::ostream& os, const label_type &label) {
+    throw std::runtime_error("this treestore does not support serialization");
+}
+
+std::istream& SimpleConfig::deserialize_label(std::istream& is, label_type &label) {
+    throw std::runtime_error("this treestore does not support serialization");
+}
+
+std::ostream& SimpleConfig::serialize_value(std::ostream& os, const value_type &value) {
+    throw std::runtime_error("this treestore does not support serialization");
+}
+
+std::istream& SimpleConfig::deserialize_value(std::istream& is, value_type &value) {
+    throw std::runtime_error("this treestore does not support serialization");
+}
+
+
 
 //------------------------------------------------------------------------------
 // NanocubeServer
@@ -316,6 +560,18 @@ public:
     
     void addMessage(std::string s);
     void printMessages();
+    
+    void cacheMask(const std::string& key, ::query::Mask* mask);
+    
+private:
+    
+    void parse_program_into_query(const ::nanocube::lang::Program &program,
+                                  AnnotatedSchema           &annotated_schema,
+                                  ::query::QueryDescription &query_description,
+                                  OutputEncoding &output_encoding,
+                                  BranchTargetOnTime &branch_target_on_time,
+                                  std::vector<FormatOption> &format_options);
+
 
 public: // Data Members
 
@@ -335,6 +591,9 @@ public: // Data Members
     bool          finish { false };
     
     boost::shared_mutex       shared_mutex; // one writer multiple readers
+    
+    MaskCache mask_cache;
+    
 
 };
 
@@ -1008,174 +1267,26 @@ void NanocubeServer::parse(std::string              query_st,
 // void NanocubeServer::serveQuery(Request &request, bool json, bool compression)
 
 
-
-
-
-//-----------------------------------------------------------------
-// AnnotatedSchema
-//-----------------------------------------------------------------
-
-struct AnnotatedSchema {
-public:
-    enum DimensionType { QUADTREE, CATEGORICAL, TIME };
-    AnnotatedSchema(Schema &schema);
-    
-
-    DimensionType dimType(int dimension_index) const;
-    int dimSize(int dimension_index) const;
-    
-    ::nanocube::DimAddress convertRawAddress(int dimension_index, std::size_t raw_address);
-    std::size_t convertPathAddress(int dimension_index, DimAddress &path);
-
-public:
-    Schema& schema;
-    std::vector<DimensionType> dimension_types;
-    std::vector<int>           dimension_sizes; // interpretation depends on type
-};
-
-//-----------------------------------------------------------------
-// AnnotatedSchema Impl.
-//-----------------------------------------------------------------
-
-AnnotatedSchema::AnnotatedSchema(Schema &schema):
-schema(schema)
+void NanocubeServer::cacheMask(const std::string& key, ::query::Mask* mask)
 {
-    for (auto field: schema.dump_file_description.fields) {
-        auto type_name = field->field_type.name;
-        if (type_name.find("nc_dim_quadtree") != std::string::npos) {
-            dimension_types.push_back(QUADTREE);
-            auto st = type_name.substr(std::string("nc_dim_quadtree_").size());
-            dimension_sizes.push_back(std::stoi(st)); // num levels
-        }
-        else if (type_name.find("nc_dim_cat") != std::string::npos) {
-            dimension_types.push_back(CATEGORICAL);
-            auto st = field->field_type.name.substr(std::string("nc_dim_cat_").size());
-            dimension_sizes.push_back(std::stoi(st)); // num bytes
-        }
-        else if (type_name.find("nc_dim_time") != std::string::npos) {
-            dimension_types.push_back(TIME);
-            auto st = field->field_type.name.substr(std::string("nc_dim_time_").size());
-            dimension_sizes.push_back(std::stoi(st)); // num bytes
-        }
-        else if (type_name.find("nc_var") != std::string::npos) {
-            break;
-        }
-        else throw std::runtime_error("oooops");
+    this->mask_cache.insert(key,mask);
+    if (mask_cache.size() > (std::size_t)(1.2 * options.mask_cache_budget.getValue())) {
+        mask_cache.enforce_budget();
     }
 }
 
-auto AnnotatedSchema::dimType(int dimension_index) const -> DimensionType {
-    return dimension_types.at(dimension_index);
-}
-
-int AnnotatedSchema::dimSize(int dimension_index) const {
-    return dimension_sizes.at(dimension_index);
-}
-
-::nanocube::DimAddress AnnotatedSchema::convertRawAddress(int dimension_index, std::size_t raw_address) {
-    
-    auto dimension_type = dimension_types.at(dimension_index);
-    auto dimension_size = dimension_sizes.at(dimension_index);
-    
-    DimAddress result;
-    
-    if (dimension_type == QUADTREE) {
-        uint64_t level = ( raw_address             ) >> (64-6);
-        uint64_t y     = ( raw_address << 6        ) >> (64-29);
-        uint64_t x     = ( raw_address << (6 + 29) ) >> (64-29);
-        nanocube::Tile tile((int) x, (int) y, (int) level);
-        result = tile.toAddress();
-    }
-    else if (dimension_type == AnnotatedSchema::CATEGORICAL) {
-        auto root_address = (1ULL << (dimension_size * 8)) - 1;
-        if (raw_address == root_address) {
-            result = DimAddress(); // empty path (root!)
-        }
-        else {
-            result = { (Label) raw_address }; // empty path (root!)
-        }
-    }
-    else if (dimension_type == AnnotatedSchema::TIME) {
-        // binary representation of the raw address using dimension_size bytes (8 bits, 16 bits)
-    }
-    
-    return result;
-
-}
-
-std::size_t AnnotatedSchema::convertPathAddress(int dimension_index, DimAddress &path) {
-    auto dimension_type = dimension_types.at(dimension_index);
-    auto dimension_size = dimension_sizes.at(dimension_index);
-    
-    uint64_t result = 0;
-
-    if (dimension_type == AnnotatedSchema::QUADTREE) {
-        nanocube::Tile tile(path);
-        uint64_t x = tile.x;
-        uint64_t y = tile.y;
-        uint64_t z = tile.level;
-        result = (z << 58) | (y << 29) | x;
-    }
-    else if (dimension_type == AnnotatedSchema::CATEGORICAL) {
-        if (path.size() == 0) {
-            result = (1ULL << (dimension_size * 8)) - 1;
-        }
-        else if (path.size() == 1) {
-            result = path[0];
-        }
-        else {
-            throw std::runtime_error("invalid address for categorical dimension");
-        }
-    }
-    return result;
-}
-
-
-
-
-
-
-
-
-
-//
-// API_3
-//
-
-enum OutputEncoding { JSON, BINARY, TEXT };
-
-struct BranchTargetOnTime {
-public:
-    BranchTargetOnTime() = default;
-    BranchTargetOnTime(int base, int width, int count):
-        active(true),
-        base(base),
-        width(width),
-        count(count)
-    {}
-public:
-    bool active { false };
-    int base  { 0 };
-    int width { 0 };
-    int count { 0 };
-};
-
-struct FormatOption {
-    enum Type { NORMAL, RELATIVE_IMAGE };
-    Type       type { NORMAL };
-    DimAddress base_address;
-};
-
-void parse_program_into_query(const ::nanocube::lang::Program &program,
-                              AnnotatedSchema           &annotated_schema,
-                              ::query::QueryDescription &query_description,
-                              OutputEncoding &output_encoding,
-                              BranchTargetOnTime &branch_target_on_time,
-                              std::vector<FormatOption> &format_options)
+void NanocubeServer::parse_program_into_query(const ::nanocube::lang::Program &program,
+                                              AnnotatedSchema           &annotated_schema,
+                                              ::query::QueryDescription &query_description,
+                                              OutputEncoding &output_encoding,
+                                              BranchTargetOnTime &branch_target_on_time,
+                                              std::vector<FormatOption> &format_options)
 {
     // default values
     output_encoding       = JSON;
     branch_target_on_time.active = false;
+    
+    auto &that = *this;
     
     //
     using Node   = ::nanocube::lang::Node;
@@ -1222,7 +1333,7 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
             throw std::runtime_error("cannot decode dimension from ast node");
         }
     };
-
+    
     auto get_string = [&](Node *node) -> std::string {
         if (node->type == STRING) {
             auto st_node = reinterpret_cast<String*>(node);
@@ -1329,16 +1440,23 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
             else if (call.name.compare("mask") == 0) {
                 if (call.params.size() < 1)
                     throw std::runtime_error("invalid number of parameters for mask");
+                
                 auto code = get_string(call.params[0]);
-                // TODO: memory leak here!
-                auto mask = ::polycover::labeled_tree::load_from_code(code);
-
-                int level = 0;
+                auto level = 0;
                 if (call.params.size() >= 2) {
                     level = (int) get_number(call.params[1]);
                 }
-                if (level > 0) {
-                    mask->trim(level);
+
+                std::string key = std::string("mask_level") + std::to_string(level) + std::string("_") + code;
+
+                auto mask = mask_cache[key];
+                if (!mask) {
+                    auto mask = ::polycover::labeled_tree::load_from_code(code);
+                    if (level > 0)
+                        mask->trim(level);
+
+                    
+                    that.cacheMask(key, mask);
                 }
                 
                 query_description.setMaskTarget(dimension_index, mask);
@@ -1346,51 +1464,62 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
             else if (call.name.compare("degrees_mask") == 0 || call.name.compare("mercator_mask") == 0) {
                 
                 bool degrees = call.name.compare("degrees_mask") == 0;
-
+                
                 if (call.params.size() < 2)
                     throw std::runtime_error("invalid number of parameters for mask");
                 
                 auto points_st = get_string(call.params[0]);
                 auto level     = get_number(call.params[1]);
                 
-                // split on the commas x0,y0,x1,y1,x2,y2;x0,y0,x1,y1,x2,y2;
-                std::stringstream ss(points_st);
-                std::string contour_st;
-
-                // polygons
-                std::vector<polycover::Polygon> polygons;
+                std::string prefix = degrees ? std::string("degrees_mask") : std::string("mercator_mask");
+                std::string key = prefix + std::string("_level") + std::to_string(level) + std::string("_") + points_st;
                 
-                // sstd::vector<polycover::
-                while (std::getline(ss,contour_st,';')) {
-                    std::stringstream ss2(contour_st);
-                    std::string coord_st;
-                    polygons.push_back(polycover::Polygon());
-                    auto &poly = polygons.back();
-                    double x,y;
-                    int parity = 0;
-                    while (std::getline(ss2,coord_st,',')) {
-                        if (parity == 0) {
-                            parity = 1;
-                            x = std::stof(coord_st);
-                        }
-                        else {
-                            parity = 0;
-                            y = std::stof(coord_st);
-                            
-                            // convert to mercator
-                            if (degrees) {
-                                x = x / 180.0;
-                                auto lat_rad = (y * M_PI/180.0);
-                                y = std::log(std::tan(lat_rad/2.0 + M_PI/4.0)) / M_PI;
+                auto mask = mask_cache[key];
+                if (!mask) {
+                    
+                    // split on the commas x0,y0,x1,y1,x2,y2;x0,y0,x1,y1,x2,y2;
+                    std::stringstream ss(points_st);
+                    std::string contour_st;
+                    
+                    // polygons
+                    std::vector<polycover::Polygon> polygons;
+                    
+                    // sstd::vector<polycover::
+                    while (std::getline(ss,contour_st,';')) {
+                        std::stringstream ss2(contour_st);
+                        std::string coord_st;
+                        polygons.push_back(polycover::Polygon());
+                        auto &poly = polygons.back();
+                        double x,y;
+                        int parity = 0;
+                        while (std::getline(ss2,coord_st,',')) {
+                            if (parity == 0) {
+                                parity = 1;
+                                x = std::stof(coord_st);
                             }
-
-                            poly.points.push_back({x,y});
+                            else {
+                                parity = 0;
+                                y = std::stof(coord_st);
+                                
+                                // convert to mercator
+                                if (degrees) {
+                                    x = x / 180.0;
+                                    auto lat_rad = (y * M_PI/180.0);
+                                    y = std::log(std::tan(lat_rad/2.0 + M_PI/4.0)) / M_PI;
+                                }
+                                
+                                poly.points.push_back({x,y});
+                            }
                         }
                     }
+                    
+                    // TODO: caching and memory release of masks...
+                    auto mask = ::polycover::TileCoverEngine(level,8).computeCover(polygons);
+                    
+                    // insert on the cache
+                    that.cacheMask(key, mask);
                 }
-                
-                // TODO: caching and memory release of masks...
-                auto mask = ::polycover::TileCoverEngine(level,8).computeCover(polygons);
+
                 query_description.setMaskTarget(dimension_index, mask);
                 
             }
@@ -1400,52 +1529,61 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
                     throw std::runtime_error("invalid number of parameters for mask");
                 
                 auto region_path = get_string(call.params[0]);
-
+                
                 int level = 0;
                 if (call.params.size() >= 2) {
                     level = (int) get_number(call.params[1]);
                 }
                 
-                // TODO: get environment variable NANOCUBE_REGIONS
-                std::string nanocube_regions_path(std::getenv("NANOCUBE_REGIONS"));
-                // std::string nanocube_regions_path("/Users/llins/tests/polycover/data/geofences");
+                std::string key = std::string("region") + std::string("_level") + std::to_string(level) + std::string("_") + region_path;
                 
-                // append .ttt.gz and check if file exists
-                std::string path = nanocube_regions_path + region_path + ".ttt";
-                std::ifstream f(path);
-                
-                if (!f.good()) {
-                    throw std::runtime_error("could not find region " + region_path);
+                auto mask = mask_cache["key"];
+
+                if (!mask) {
+
+                    // TODO: get environment variable NANOCUBE_REGIONS
+                    std::string nanocube_regions_path(std::getenv("NANOCUBE_REGIONS"));
+                    // std::string nanocube_regions_path("/Users/llins/tests/polycover/data/geofences");
+                    
+                    // append .ttt.gz and check if file exists
+                    std::string path = nanocube_regions_path + region_path + ".ttt";
+                    std::ifstream f(path);
+                    
+                    if (!f.good()) {
+                        throw std::runtime_error("could not find region " + region_path);
+                    }
+
+                    // TODO: make it more efficient
+                    
+                    polycover::labeled_tree::Parser parser;
+                    parser.signal.connect([&mask, &level](const std::string& name, const polycover::labeled_tree::Node &node) {
+                        std::stringstream ss;
+                        ss << node;
+                        mask = polycover::labeled_tree::load_from_code(ss.str());
+                        if (level > 0) {
+                            mask->trim(level);
+                        }
+                    });
+                    parser.run(f,1);
+                    
+                    // insert on the cache
+                    that.cacheMask(key, mask);
+                    
                 }
                 
-                ::query::Mask *mask = nullptr;
-            
-                // TODO: make it more efficient
-                
-                polycover::labeled_tree::Parser parser;
-                parser.signal.connect([&mask, &level](const std::string& name, const polycover::labeled_tree::Node &node) {
-                    std::stringstream ss;
-                    ss << node;
-                    mask = polycover::labeled_tree::load_from_code(ss.str());
-                    if (level > 0) {
-                        mask->trim(level);
-                    }
-                });
-                parser.run(f,1);
-                
                 query_description.setMaskTarget(dimension_index, mask);
-
+                
             }
             
-
             
-//            else if (call.name.compare("range1d") == 0) {
-//                if (call.params.size() != 2)
-//                    throw std::runtime_error("invalid number of parameters for range2d");
-//                auto addr1  = get_address(call.params[0]);
-//                auto addr2  = get_address(call.params[1]);
-//                return nanocube::Target::range1d(addr1, addr2);
-//            }
+            
+            //            else if (call.name.compare("range1d") == 0) {
+            //                if (call.params.size() != 2)
+            //                    throw std::runtime_error("invalid number of parameters for range2d");
+            //                auto addr1  = get_address(call.params[0]);
+            //                auto addr2  = get_address(call.params[1]);
+            //                return nanocube::Target::range1d(addr1, addr2);
+            //            }
             else if (call.name.compare("interval") == 0) {
                 //
                 // binary trees and time dimension: since there is no binary tree
@@ -1514,7 +1652,7 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
             // param 0 should be the dimension (if string convert from name)
             auto dim    = get_dimension_number(call.params[0]); // 0: dim
             set_target(dim, call.params[1]); // 1: target
-
+            
             
             bool anchor    = true;
             bool no_anchor = false;
@@ -1535,85 +1673,6 @@ void parse_program_into_query(const ::nanocube::lang::Program &program,
         call_p = call_p->next_call;
     }
 }
-
-//-----------------------------------------------------------------
-// SimpleConfig
-//-----------------------------------------------------------------
-
-struct SimpleConfig {
-    
-    using label_type       = ::nanocube::DimAddress;
-    using label_item_type  = typename label_type::value_type;
-    using value_type       = double;
-    using parameter_type   = int; // dummy parameter
-    
-    static const double default_value;
-    
-    std::size_t operator()(const label_type &label) const;
-    
-    std::ostream& print_label(std::ostream& os, const label_type &label) const;
-    
-    std::ostream& print_value(std::ostream& os, const value_type &value, const parameter_type& parameter) const;
-    
-    std::ostream& serialize_label(std::ostream& os, const label_type &label);
-    
-    std::istream& deserialize_label(std::istream& is, label_type &label);
-    
-    std::ostream& serialize_value(std::ostream& os, const value_type &value);
-    
-    std::istream& deserialize_value(std::istream& is, value_type &value);
-    
-};
-
-//-----------------------------------------------------------------
-// SimpleConfig Impl.
-//-----------------------------------------------------------------
-
-const double SimpleConfig::default_value = 0.0f;
-
-std::size_t SimpleConfig::operator()(const label_type &label) const {
-    std::size_t hash_value = 0;
-    std::for_each(label.begin(), label.end(), [&hash_value](label_item_type v) {
-        std::size_t vv = (std::size_t) v;
-        hash_value ^= vv + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
-    });
-    return hash_value;
-}
-
-std::ostream& SimpleConfig::print_label(std::ostream& os, const label_type &label) const {
-    os << "[";
-    bool first = true;
-    for (auto l: label) {
-        if (!first)
-            os << ",";
-        os << l;
-        first = false;
-    }
-    os << "]";
-    return os;
-}
-
-std::ostream& SimpleConfig::print_value(std::ostream& os, const value_type &value, const parameter_type& parameter) const {
-    os << value;
-    return os;
-}
-
-std::ostream& SimpleConfig::serialize_label(std::ostream& os, const label_type &label) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
-std::istream& SimpleConfig::deserialize_label(std::istream& is, label_type &label) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
-std::ostream& SimpleConfig::serialize_value(std::ostream& os, const value_type &value) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
-std::istream& SimpleConfig::deserialize_value(std::istream& is, value_type &value) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
 
 
 
