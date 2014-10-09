@@ -755,12 +755,15 @@ auto InternalNode<T>::asInternalNode() -> InternalNode* {
 
     template <typename T>
     void InternalNode<T>::relabelPathToChildren(func_relabel_type function) {
+
+        using value_type = typename children_repository_type::value_type;
+
         children_repository_type new_map;
         new_map.reserve(children.size());
         for (auto &it: children) {
             auto &e = it.second;
             auto new_label = std::move(function(it.first));
-            new_map[new_label] = { e.node, new_label };
+            auto status = new_map.emplace( value_type ( new_label, edge_type( e.node, new_label ) ) );
         }
         this->children.swap(new_map);
     }
