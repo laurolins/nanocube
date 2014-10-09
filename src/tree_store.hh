@@ -685,21 +685,41 @@ auto InternalNode<T>::getChild(label_type label) const -> node_type* {
 template <typename T>
 auto InternalNode<T>::getOrCreateChild(label_type label, bool leaf_child, bool &created) -> node_type*
 {
-    auto it = children.find(label);
-    if (it == children.end()) {
+    using value_type = typename children_repository_type::value_type;
+    
+    edge_type e;
+    
+    auto status = children.emplace( value_type(label, e) );
+    if (status.second) {
         node_type* child;
         if (leaf_child) {
             child = new leafnode_type();
         } else {
             child = new internalnode_type();
         }
-        children[label] = edge_type(child,label);
-        created = true;
+        status.first->second.node  = child;
+        status.first->second.label = label;
         return child;
     }
     else {
-        return it->second.node;
+        return status.first->second.node;
     }
+//    pair<iterator, bool> emplace ( Args&&... args );
+//    auto it = children.find(label);
+//    if (it == children.end()) {
+//        node_type* child;
+//        if (leaf_child) {
+//            child = new leafnode_type();
+//        } else {
+//            child = new internalnode_type();
+//        }
+//        children[label] = edge_type(child,label);
+//        created = true;
+//        return child;
+//    }
+//    else {
+//        return it->second.node;
+//    }
 }
 
 template <typename T>
