@@ -193,8 +193,6 @@ TimeSeriesEntryType.hh    \
 Tuple.hh                  \
 Util.cc                   \
 Util.hh                   \
-vector.cc                 \
-vector.hh                 \
 tile.hh                   \
 cache2.hh                 \
 mongoose/mongoose.c       \
