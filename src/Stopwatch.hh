@@ -8,7 +8,8 @@ namespace stopwatch {
 // Stopwatch
 //
 
-typedef int Milliseconds;
+using Milliseconds = int;
+    
 struct Stopwatch
 {
     Stopwatch();

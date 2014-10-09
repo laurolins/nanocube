@@ -195,6 +195,8 @@ Util.cc                   \
 Util.hh                   \
 vector.cc                 \
 vector.hh                 \
+tile.hh                   \
+cache2.hh                 \
 mongoose/mongoose.c       \
 nc.cc                     \
 small_vector.hh           \
@@ -202,6 +204,8 @@ qtfilter.hh               \
 qtfilter.cc               \
 tree_store.hh             \
 tree_store.cc             \
+tree_store_nanocube.hh    \
+tree_store_nanocube.cc    \
 tile.cc                   \
 tile.hh                   \
 address.cc                \

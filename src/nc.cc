@@ -30,7 +30,8 @@
 #include "tile.hh"
 #include "Server.hh"
 #include "nanocube_language.hh"
-#include "tree_store.hh"
+
+#include "tree_store_nanocube.hh"
 
 #include "vector.hh"
 
@@ -436,87 +437,6 @@ struct FormatOption {
     Type       type { NORMAL };
     DimAddress base_address;
 };
-
-
-//-----------------------------------------------------------------
-// SimpleConfig
-//-----------------------------------------------------------------
-
-struct SimpleConfig {
-    
-    using label_type       = ::nanocube::DimAddress;
-    using label_item_type  = typename label_type::value_type;
-    using value_type       = double;
-    using parameter_type   = int; // dummy parameter
-    
-    static const double default_value;
-    
-    std::size_t operator()(const label_type &label) const;
-    
-    std::ostream& print_label(std::ostream& os, const label_type &label) const;
-    
-    std::ostream& print_value(std::ostream& os, const value_type &value, const parameter_type& parameter) const;
-    
-    std::ostream& serialize_label(std::ostream& os, const label_type &label);
-    
-    std::istream& deserialize_label(std::istream& is, label_type &label);
-    
-    std::ostream& serialize_value(std::ostream& os, const value_type &value);
-    
-    std::istream& deserialize_value(std::istream& is, value_type &value);
-    
-};
-
-//-----------------------------------------------------------------
-// SimpleConfig Impl.
-//-----------------------------------------------------------------
-
-const double SimpleConfig::default_value = 0.0f;
-
-std::size_t SimpleConfig::operator()(const label_type &label) const {
-    std::size_t hash_value = 0;
-    std::for_each(label.begin(), label.end(), [&hash_value](label_item_type v) {
-        std::size_t vv = (std::size_t) v;
-        hash_value ^= vv + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
-    });
-    return hash_value;
-}
-
-std::ostream& SimpleConfig::print_label(std::ostream& os, const label_type &label) const {
-    os << "[";
-    bool first = true;
-    for (auto l: label) {
-        if (!first)
-            os << ",";
-        os << l;
-        first = false;
-    }
-    os << "]";
-    return os;
-}
-
-std::ostream& SimpleConfig::print_value(std::ostream& os, const value_type &value, const parameter_type& parameter) const {
-    os << value;
-    return os;
-}
-
-std::ostream& SimpleConfig::serialize_label(std::ostream& os, const label_type &label) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
-std::istream& SimpleConfig::deserialize_label(std::istream& is, label_type &label) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
-std::ostream& SimpleConfig::serialize_value(std::ostream& os, const value_type &value) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
-std::istream& SimpleConfig::deserialize_value(std::istream& is, value_type &value) {
-    throw std::runtime_error("this treestore does not support serialization");
-}
-
-
 
 //------------------------------------------------------------------------------
 // NanocubeServer
@@ -1723,8 +1643,6 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         // big hack
         
-        
-        
         ::query::result::Vector result_vector(num_anchored_dimensions);
         
         ::query::result::Result result(result_vector);
@@ -1736,9 +1654,6 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         //
         // from 64-bit addresses to paths
         //
-        
-        using TreeStoreResult = tree_store::TreeStore<SimpleConfig>;
-        using TreeStoreResultBuilder = tree_store::TreeStoreBuilder<TreeStoreResult>;
         
         auto adj_num_anchored_dimensions = num_anchored_dimensions;
         //+
@@ -1839,7 +1754,9 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
             request.respondText(ss.str());
         }
         else if (output_encoding == BINARY) {
-            throw std::runtime_error("Binary encoding not avaiable yet");
+            ::tree_store::serialize(treestore_result, ss);
+            const auto &text = ss.str();
+            request.respondOctetStream(text.c_str(), text.size());
         }
         
     };

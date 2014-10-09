@@ -1,3 +1,7 @@
+// disable warning
+#pragma warning( push )
+#pragma warning( disable : WarningCode)
+
 // Copyright (c) 2004-2013 Sergey Lyubka <valenok@gmail.com>
 // Copyright (c) 2013-2014 Cesanta Software Limited
 // All rights reserved
@@ -5055,3 +5059,7 @@ struct mg_server *mg_create_server(void *server_data, mg_handler_t handler) {
   server->event_handler = handler;
   return server;
 }
+
+// code with warning
+#pragma warning( pop )
+

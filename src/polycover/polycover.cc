@@ -1574,7 +1574,9 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
     
     using ProcessPolyType = std::function<void(const std::vector<Polygon>&, const RealBox&, int)>;
     
+#ifdef LOG_COMPUTE_TREE_DECOMPOSITION
     int COUNT = -1;
+#endif
     
     struct CountIteration {
         CountIteration(labeled_tree::CoverTreeEngine &engine):

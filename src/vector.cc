@@ -384,7 +384,7 @@ void vector::Vector::clear() {
 
 int vector::Vector::getNumLevels() const
 {
-    return this->level_names.size();
+    return static_cast<int>(this->level_names.size());
 }
 
 void vector::Vector::setLevelName(int level, std::string name)

@@ -30,7 +30,7 @@ struct Request {
 
     void respondText(std::string msg_content);
 
-    void respondOctetStream(const void *ptr, int size);
+    void respondOctetStream(const void *ptr, std::size_t size);
 
 private:
 

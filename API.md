@@ -32,7 +32,7 @@ hierarchy* instance, then, obviously, this path won't be visited.
 Sometimes we want to have multiple targets on a single dimension. For
 example, we might want to query multiple consecutive intervals from a
 binary tree representation for time. Each interval data can be
-"solved" by visiting a (minimal) set of time bins that is cover
+"solved" by visiting a (minimal) set of time bins that is a cover
 for it (the interval).
 
 # Services
@@ -103,7 +103,7 @@ Pairs of queries and results:
     http://localhost:29510/count.r("location",degrees_mask("-87.6512,41.8637,-87.6512,41.9009,-87.6026,41.9009,-87.6026,41.8637",25))
     { "layers":[  ], "root":{ "val":3259 } }
 
-    ## 2d masks
+    ## unsorted
     http://localhost:29510/count.a("location",mask("012<<12<<<",10))
     http://localhost:29510/count.a("location",region("us_states/newyork",10))   // search directory
     http://localhost:29510/count.a("location",mercator_mask("x0,y0,x1,y1,...,xn,yn;x0,y0,x1,y1,x2,y2",10))

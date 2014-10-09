@@ -66,7 +66,7 @@ void Request::respondJson(std::string msg_content)
     mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
 }
 
-void Request::respondOctetStream(const void *ptr, int size)
+void Request::respondOctetStream(const void *ptr, std::size_t size)
 {
     const std::string sep = "\r\n";
 
@@ -82,7 +82,7 @@ void Request::respondOctetStream(const void *ptr, int size)
 
 
     if (ptr) { // unsage access to nullptr
-        mg_write(conn, ptr, size);
+        mg_write(conn, ptr, (int) size);
         response_size += size;
     }
 }
