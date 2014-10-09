@@ -1,5 +1,5 @@
 var nc = new Nanocube({
-    url: 'http://localhost:29510',
+    url: 'http://localhost:29512',
     ready: function(nc){ 
 	var q = nc.query();
 	q = q.dim('location').rectQuery(new Tile(1049,2571,12), new Tile(1050,2572,12));

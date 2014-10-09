@@ -825,7 +825,7 @@ void NanocubeServer::insert_from_stdin()
         // make sure report frequency is a multiple of batch size
         if (inserted_points % options.report_frequency.getValue() == 0) {
             std::stringstream ss;
-            ss << "(stdin) count: " << std::setw(10) << inserted_points
+            ss << "(stdin     ) count: " << std::setw(10) << inserted_points
             << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
             << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
             addMessage(ss.str());

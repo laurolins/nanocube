@@ -108,6 +108,8 @@ Options::Options(std::vector<std::string>& args) {
 int main(int argc, char **argv)
 {
 
+    std::cout << std::endl << "VERSION: " << NANOCUBE_VERSION << std::endl;
+
     try {
 
         // only interested in --schema or -s to figure out the
