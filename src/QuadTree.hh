@@ -25,6 +25,8 @@
 namespace quadtree
 {
     
+    using DimensionPath = std::vector<int>; // matching tree_store_nanocube.hh
+    
     using Mask = polycover::labeled_tree::Node;
 
     using Cache = nanocube::Cache;
@@ -406,6 +408,8 @@ public: // methods
 
     bool read(std::istream &is);
 
+    DimensionPath getDimensionPath() const;
+    
     uint64_t raw() const;
 
     Address nextAddressTowards(const Address<N, Structure> &target) const;
@@ -445,7 +449,7 @@ public: // methods
     // new stuff (to enable composition on a nested LOD structure)
     PathElement operator[](PathIndex index) const;
     PathSize    getPathSize() const;
-
+    
 public:
 
     Coordinate x, y;
@@ -1392,6 +1396,23 @@ Address<N, Structure>::levelBitIndex(Level level) const
     return N - level;
 }
 
+    template<BitSize N, typename Structure>
+    DimensionPath Address<N, Structure>::getDimensionPath() const {
+        DimensionPath result;
+        result.reserve(this->level);
+        for (int i=0;i<this->level;++i) {
+
+            int xx = xbit(i+1) ? 1 : 0;
+            int yy = ybit(i+1) ? 1 : 0;
+            
+            int label = xx + 2 * yy;
+        
+            result.push_back(label);
+
+        }
+        return result;
+    }
+    
 template<BitSize N, typename Structure>
 inline Coordinate
 Address<N, Structure>::levelCoordinateMask(Level level) const

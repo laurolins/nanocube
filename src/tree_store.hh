@@ -735,6 +735,7 @@ auto InternalNode<T>::asInternalNode() -> InternalNode* {
     template <typename T>
     void InternalNode<T>::relabelPathToChildren(func_relabel_type function) {
         children_repository_type new_map;
+        new_map.reserve(children.size());
         for (auto &it: children) {
             auto &e = it.second;
             auto new_label = std::move(function(it.first));

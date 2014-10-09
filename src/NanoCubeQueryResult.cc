@@ -9,14 +9,14 @@ typedef ::quadtree::Address<29,int> QAddr;
 
 namespace nanocube {
 
-QueryResult::QueryResult(query::result::Vector &result, ::nanocube::Schema &schema):
+QueryResult::QueryResult(TreeValue &result, ::nanocube::Schema &schema):
     result(result),
     schema(schema)
 {}
 
 
 void QueryResult::json(std::ostream &os) {
-
+#if 0
     using namespace json;
 
     // empty result
@@ -118,7 +118,7 @@ void QueryResult::json(std::ostream &os) {
         }
 
     }
-
+#endif
 }
 
 } // nanocube namespace

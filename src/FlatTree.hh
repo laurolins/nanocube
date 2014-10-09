@@ -30,6 +30,8 @@
 namespace flattree
 {
     
+    using DimensionPath = std::vector<int>; // matching tree_store_nanocube.hh
+    
     using Mask = polycover::labeled_tree::Node;
     
         using Cache = nanocube::Cache;
@@ -98,6 +100,8 @@ public:  // methods
     bool operator==(const Address &addr) const;
 
     size_t hash() const;
+    
+    DimensionPath getDimensionPath() const;
 
 public:  // data members
 
@@ -377,6 +381,16 @@ template <typename Structure>
 uint64_t Address<Structure>::raw() const {
     return (uint64_t) singleton_path_element;
 }
+    
+    template<typename Structure>
+    DimensionPath Address<Structure>::getDimensionPath() const {
+        DimensionPath result;
+        if (singleton_path_element != EMPTY_PATH) {
+            result.push_back((int)singleton_path_element);
+        }
+        return result;
+    }
+
 
 template <typename Structure>
 bool Address<Structure>::read(std::istream &is)

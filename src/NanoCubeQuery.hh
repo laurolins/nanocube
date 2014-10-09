@@ -144,7 +144,7 @@ struct Eval<query_type, true> {
             }
 
             uint64_t last_value = content.entries.back().template get<1>();
-            result.store(last_value, ::query::result::ADD);
+            result.store(last_value, ::tree_store::ADD);
 
 
         }
@@ -156,6 +156,9 @@ struct Eval<query_type, true> {
 
             ::query::BaseWidthCountTarget &bwc_target = *target->asBaseWidthCountTarget();
 
+            
+            // TODO: check this please!!!
+            
             uint32_t base  = (uint32_t) bwc_target.base;
             uint32_t width = (uint32_t) bwc_target.width;
             uint32_t count = (uint32_t) bwc_target.count;
@@ -165,10 +168,11 @@ struct Eval<query_type, true> {
                 uint64_t value = content.template getWindowTotal<1>(a,b);
                 if (value != 0) {
                     if (anchored) {
-                        ::query::RawAddress addr = ((uint64_t) a << 32) + b;
-                        result.push(addr);
+                        // ::query::RawAddress addr = ((uint64_t) a << 32) + b;
+                        std::vector<int> path { (int) i };
+                        result.push(path);
                     }
-                    result.store(value, ::query::result::ADD);
+                    result.store(value, ::tree_store::ADD);
                     if (anchored) {
                         result.pop();
                     }
@@ -315,7 +319,7 @@ void Query<NanoCube, Index>::visit(dimension_node_type *node, const dimension_ad
             result.pop();
             pushed = false;
         }
-        result.push(address.raw());
+        result.push(address.getDimensionPath());
         pushed = true;
     }
 

@@ -33,8 +33,6 @@
 
 #include "tree_store_nanocube.hh"
 
-#include "vector.hh"
-
 //
 // geometry.hh and maps.hh
 // are used just for the serveTile routine
@@ -1643,12 +1641,14 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         // big hack
         
-        ::query::result::Vector result_vector(num_anchored_dimensions);
+        ::nanocube::TreeValue treestore_result(num_anchored_dimensions);
         
-        ::query::result::Result result(result_vector);
+        ::query::result::Result result(treestore_result);
         
         nanocube.query(query_description, result);
         
+        
+#if 0
         //
         // map result to tree_store taking into account the mapping mechanism:
         //
@@ -1693,6 +1693,7 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
             }
         }
         
+#endif
         
         // set level names
         int level=0;

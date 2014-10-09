@@ -7,7 +7,7 @@
 
 #include "Query.hh"
 
-#include "vector.hh"
+#include "tree_store_nanocube.hh"
 
 namespace query {
 
@@ -15,10 +15,10 @@ namespace result {
 
 //TODO Cleanup these names
 
-using Result        = vector::VectorBuilder;
-using ResultNode    = vector::Node;
+    using Result        = ::nanocube::TreeValueBuilder;
+    using ResultNode    = ::nanocube::TreeValue::node_type;
 
-using namespace vector;
+// using namespace vector;
 
 } // namespace result
 

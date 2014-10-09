@@ -138,7 +138,7 @@ struct Eval<query_type, true> {
         // it is an open interval [a,b)
         ::query::RawAddress addr = ((uint64_t) a << 32) + (b+1);
         result.push(addr);
-        result.store(count, ::query::result::ADD);
+        result.store(count, ::tree_store::ADD);
         result.pop();
     }
 };
