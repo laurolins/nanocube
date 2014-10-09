@@ -1,5 +1,7 @@
 #include "tree_store_nanocube.hh"
 
+#include <algorithm>
+
 namespace nanocube {
 
 //-----------------------------------------------------------------
