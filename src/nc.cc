@@ -1371,7 +1371,7 @@ void NanocubeServer::parse_program_into_query(const ::nanocube::lang::Program &p
 
                 auto mask = mask_cache[key];
                 if (!mask) {
-                    auto mask = ::polycover::labeled_tree::load_from_code(code);
+                    mask = ::polycover::labeled_tree::load_from_code(code);
                     if (level > 0)
                         mask->trim(level);
 
@@ -1434,7 +1434,7 @@ void NanocubeServer::parse_program_into_query(const ::nanocube::lang::Program &p
                     }
                     
                     // TODO: caching and memory release of masks...
-                    auto mask = ::polycover::TileCoverEngine(level,8).computeCover(polygons);
+                    mask = ::polycover::TileCoverEngine(level,8).computeCover(polygons);
                     
                     // insert on the cache
                     that.cacheMask(key, mask);
@@ -1576,7 +1576,7 @@ void NanocubeServer::parse_program_into_query(const ::nanocube::lang::Program &p
             
             bool anchor    = true;
             bool no_anchor = false;
-            if (branch_target_on_time.active)
+            if (branch_target_on_time.active && dim == annotated_schema.dimension_sizes.size()-1)
                 query_description.setAnchor(dim, anchor);
             else
                 query_description.setAnchor(dim, no_anchor);
