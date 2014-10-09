@@ -699,9 +699,11 @@ auto InternalNode<T>::getOrCreateChild(label_type label, bool leaf_child, bool &
         }
         status.first->second.node  = child;
         status.first->second.label = label;
+        created = true;
         return child;
     }
     else {
+        created = false;
         return status.first->second.node;
     }
 //    pair<iterator, bool> emplace ( Args&&... args );
@@ -751,7 +753,6 @@ auto InternalNode<T>::asInternalNode() -> InternalNode* {
     return this;
 }
 
-    
     template <typename T>
     void InternalNode<T>::relabelPathToChildren(func_relabel_type function) {
         children_repository_type new_map;
