@@ -110,7 +110,7 @@ public:
     using leafnode_type     = typename treestore_type::leafnode_type;
     using internalnode_type = typename treestore_type::internalnode_type;
     using node_type         = typename treestore_type::node_type;
-    using edge_type         = typename treestore_type::edge_type;
+    using edge_type         = Edge<TreeStore>;
     using labelhash_type    = typename treestore_type::labelhash_type;
 
 
@@ -118,6 +118,12 @@ public:
 
     Edge();
     Edge(node_type *node, label_type label);
+
+    Edge(const Edge& other) = default;
+    Edge& operator=(const Edge& other) = default;
+
+    Edge(Edge&& other);
+    Edge& operator=(Edge&& other);
 
     bool operator<(const Edge &e) const;
     bool operator==(const Edge &e) const;
@@ -145,6 +151,9 @@ public:
     using edge_type         = typename treestore_type::edge_type;
     using labelhash_type    = typename treestore_type::labelhash_type;
 
+    using children_repository_type = std::unordered_map< label_type, edge_type, labelhash_type >;
+    
+    using func_relabel_type = std::function<label_type(const label_type&)>;
 
 public:
 
@@ -167,12 +176,12 @@ public:
 
     virtual auto asInternalNode() const -> const InternalNode*;
     virtual auto asInternalNode()       ->       InternalNode*;
+    
+    void relabelPathToChildren(func_relabel_type function);
 
 public: // Value Members
 
-    std::unordered_map< label_type,
-                        edge_type,
-                        labelhash_type > children;  // Keep these in order
+    children_repository_type children;  // Keep these in order
 
 };
 
@@ -377,6 +386,94 @@ public:
     const treestore_type &tree_store;
     std::vector<instruction_type> stack;
 };
+
+//-----------------------------------------------------------------------------
+// TreeStoreIterator
+//-----------------------------------------------------------------------------
+    
+    template <typename TreeStore>
+    struct TreeStoreIterator {
+    public:
+        using treestore_type  = TreeStore;
+        using node_type       = typename treestore_type::node_type;
+        using edge_type       = typename treestore_type::edge_type;
+    public:
+        struct Item {
+            Item() = default;
+            Item(node_type *node, int layer);
+        public:
+            node_type *node { nullptr };
+            int layer { 0 };
+        };
+    public:
+        using item_type       = Item;
+        
+    public:
+        TreeStoreIterator(node_type *root);
+        TreeStoreIterator(treestore_type &treestore);
+        bool next();
+        item_type getCurrentItem() const;
+    public:
+        item_type current_item;
+        node_type *root;
+        std::vector<item_type> stack;
+    };
+
+    //-----------------------------------------------------------------------------
+    // TreeStoreIterator Impl.
+    //-----------------------------------------------------------------------------
+    
+    template <typename TreeStore>
+    TreeStoreIterator<TreeStore>::Item::Item(node_type *node, int layer):
+        node(node), layer(layer)
+    {}
+
+    template <typename TreeStore>
+    TreeStoreIterator<TreeStore>::TreeStoreIterator(node_type *root):
+        root(root)
+    {
+        if (!root)
+            throw std::runtime_error("TreeStoreIterator with null root is invalid");
+        stack.push_back({this->root, 0});
+    }
+    
+    template <typename TreeStore>
+    TreeStoreIterator<TreeStore>::TreeStoreIterator(treestore_type &treestore):
+        root(treestore.root.get())
+    {
+        if (!root)
+            throw std::runtime_error("TreeStoreIterator with null root is invalid");
+        stack.push_back({this->root, 0});
+    }
+    
+    template <typename TreeStore>
+    bool TreeStoreIterator<TreeStore>::next()
+    {
+        if (stack.size()) {
+            current_item = stack.back();
+            stack.pop_back();
+
+            if (current_item.node->isInternalNode()) {
+                auto current_internal_node = current_item.node->asInternalNode();
+                for (auto &it: current_internal_node->children)
+                {
+                    auto &e = it.second;
+                    stack.push_back( {e.node, current_item.layer + 1 } );
+                }
+            }
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+        
+    template <typename TreeStore>
+    auto TreeStoreIterator<TreeStore>::getCurrentItem() const -> item_type
+    {
+        return current_item;
+    }
+    
     
 //-----------------------------------------------------------------------------
 // io
@@ -476,6 +573,21 @@ Edge<T>::Edge(node_type *node, label_type label):
     label(label)
 {}
 
+    template <typename T>
+Edge<T>::Edge(Edge&& other) {
+    std::swap(node, other.node);
+    label.swap(other.label);
+}
+
+    template <typename T>
+    auto Edge<T>::operator=(Edge&& other) -> Edge& {
+        std::swap(node, other.node);
+        label.swap(other.label);
+        return *this;
+    }
+
+    
+    
 template <typename T>
 bool Edge<T>::operator<(const Edge &e) const {
     return label < e.label;
@@ -504,7 +616,7 @@ InternalNode<T>::~InternalNode() { // dtor
     std::cout << "InternalNode: destructor" << std::endl;
 #endif
 
-    for (auto it: children) {
+    for (auto &it: children) {
         delete it.second.node;
     }
 }
@@ -517,7 +629,7 @@ InternalNode<T>::InternalNode(const InternalNode &other): // copy ctor
     std::cout << "InternalNode: copy constructor" << std::endl;
 #endif
 
-    for (const auto it: other.children) {
+    for (const auto &it: other.children) {
         const edge_type &e = it.second;
         children[e.label] = edge_type(e.node->clone(), e.label);
     }
@@ -530,7 +642,7 @@ auto InternalNode<T>::operator=(const InternalNode &other) -> InternalNode& // c
     std::cout << "InternalNode: copy assignment" << std::endl;
 #endif
 
-    for (const auto it: other.children) {
+    for (const auto &it: other.children) {
         const edge_type &e = it.second;
         children[e.label] = edge_type(e.node->clone(), e.label);
     }
@@ -619,6 +731,19 @@ auto InternalNode<T>::asInternalNode() -> InternalNode* {
     return this;
 }
 
+    
+    template <typename T>
+    void InternalNode<T>::relabelPathToChildren(func_relabel_type function) {
+        children_repository_type new_map;
+        for (auto &it: children) {
+            auto &e = it.second;
+            auto new_label = std::move(function(it.first));
+            new_map[new_label] = { e.node, new_label };
+        }
+        this->children.swap(new_map);
+    }
+
+    
 //------------------------------------------------------------------------------
 // LeafNode Impl.
 //------------------------------------------------------------------------------
@@ -1240,7 +1365,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                     stack.push(Item(e.node, e.label, item.level+1));
                 }
 #else
-                for (const auto it: internal_node->children) {
+                for (const auto &it: internal_node->children) {
                     const auto &e = it.second;
                     stack.push(Item(e.node, e.label, item.level+1));
                 }
@@ -1345,7 +1470,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
             }
             else {
                 const auto inode = node->asInternalNode();
-                for (const auto it: inode->children) {
+                for (const auto &it: inode->children) {
                     const auto &e = it.second;
                     stack.push(Item(e.node, e.label, POP));
                     stack.push(Item(e.node, e.label, PUSH));
@@ -1587,7 +1712,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
             else if (node->isInternalNode()) {
                 internalnode_type *internal = node->asInternalNode();
                 writer.list("children");
-                for (auto it: internal->children) {
+                for (auto &it: internal->children) {
                     edge_type &e = it.second;
                     stack.push(Item(e.node, e.label, END, layer+1));
                     stack.push(Item(e.node, e.label, BEGIN, layer+1));

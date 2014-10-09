@@ -36,7 +36,10 @@ struct SimpleConfig {
     
 };
 
-using TreeStoreResult = tree_store::TreeStore<SimpleConfig>;
-using TreeStoreResultBuilder = tree_store::TreeStoreBuilder<TreeStoreResult>;
+using TreeValue = tree_store::TreeStore<SimpleConfig>;
+using TreeValueBuilder = tree_store::TreeStoreBuilder<TreeValue>;
 
+using TreeValueIterator = tree_store::TreeStoreIterator<TreeValue>;
+
+    
 }

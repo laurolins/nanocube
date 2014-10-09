@@ -1659,9 +1659,9 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         //+
         //    (branch_target_on_time_dimension.active ? 1 : 0);
         
-        TreeStoreResult        treestore_result(adj_num_anchored_dimensions);
+        TreeValue        treestore_result(adj_num_anchored_dimensions);
 
-        TreeStoreResultBuilder treestore_result_builder(treestore_result);
+        TreeValueBuilder treestore_result_builder(treestore_result);
         
         vector::InstructionIterator it(result.vector);
         
@@ -1754,6 +1754,55 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
             request.respondText(ss.str());
         }
         else if (output_encoding == BINARY) {
+
+
+            // if the img flag was used, treat long path
+            // as a 2 entry path: local x and local y
+            
+            std::vector<bool> dimensions_to_transform_to_img(treestore_result.getNumLevels());
+            std::vector<int>  base_address_sizes(treestore_result.getNumLevels());
+            
+            bool convert = false;
+            
+            int layer = 0;
+            int dim   = 0;
+            for (auto &format_option: format_options)
+            {
+                if (query_description.anchors[dim]) {
+                    dimensions_to_transform_to_img[layer] = format_option.type == FormatOption::RELATIVE_IMAGE;
+                    base_address_sizes[layer] = (int) format_option.base_address.size();
+                    convert |= dimensions_to_transform_to_img[layer];
+                    ++layer;
+                }
+                ++dim;
+            }
+            
+            if (convert && !treestore_result.empty()) {
+                TreeValueIterator it(treestore_result);
+                while (it.next()) {
+                    auto item = it.getCurrentItem();
+                    if (dimensions_to_transform_to_img[item.layer]) {
+                        
+                        auto node = item.node->asInternalNode();
+                        
+                        
+                        // std::unordered_map<
+                        int prefix_size = base_address_sizes[item.layer];
+                        
+                        auto convert_label = [prefix_size](const LabelType& lbl) {
+                            auto suffix = LabelType(lbl.begin()+prefix_size,lbl.end());
+                            ::nanocube::Tile tile(suffix);
+                            return LabelType { tile.x, tile.y };
+                        };
+                        
+                        // clear node->children and add all them back again
+                        // with a new label
+                        node->relabelPathToChildren(convert_label);
+                        
+                    }
+                }
+            }
+            
             ::tree_store::serialize(treestore_result, ss);
             const auto &text = ss.str();
             request.respondOctetStream(text.c_str(), text.size());
