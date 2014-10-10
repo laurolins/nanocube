@@ -148,6 +148,28 @@ Polygon::Polygon(const std::vector<RealPoint> &points)
         this->points.push_back(p);
     }
 }
+    
+void Polygon::makeItCW() {
+    double area = 0.0;
+    auto prev = points.back();
+    for (auto &current: points) {
+        area += (current.x - prev.x) * (current.y + prev.y); //signed  area of a bar from 0 to the average point between heights
+        prev = current;
+    }
+    if (area < 0) {
+        std::reverse(points.begin(), points.end());
+    }
+}
+
+double Polygon::area() {
+    double area_twice = 0.0;
+    auto prev = points.back();
+    for (auto &current: points) {
+        area_twice += (current.x - prev.x) * (current.y + prev.y); //signed  area of a bar from 0 to the average point between heights
+        prev = current;
+    }
+    return area_twice / 2.0;
+}
 
 Polygon::Polygon(const Polygon &other, std::function<RealPoint(const RealPoint&)> transform) {
     for (auto p: other.points) {
@@ -1456,6 +1478,7 @@ TileCoverEngine::TileCoverEngine(int max_level, int max_texture_level):
 }
 
 #define xLOG_COMPUTE_TREE_DECOMPOSITION
+#define LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY 0
 
 labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &mercator_polygons) {
 
@@ -1554,6 +1577,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
     labeled_tree::CoverTreeEngine engine;
 
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>1
     {
         std::cerr << "-------------------------------------------" << std::endl;
         std::cerr << "TREE_DECOMPOSITION" << std::endl;
@@ -1562,6 +1586,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
         std::cerr << ss.str() << std::endl;
         std::cerr << "-------------------------------------------" << std::endl;
     }
+#endif
 #endif
 
     
@@ -1688,13 +1713,13 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
         std::vector<Polygon> grid_polygons;
         for (auto &p: polygons) {
             grid_polygons.push_back(Polygon(p, transform));
-
+            auto &poly = grid_polygons.back();
             //
             // TODO: analysis of problems this can generate
             //
             // simplify grid_polygon by moving every cooridante that is
             // within EPSILON distance to a grid coord to the grid coord
-            for (auto &p: grid_polygons.back().points) {
+            for (auto &p: poly.points) {
                 double grid_coord_x = std::floor(p.x + 0.5);
                 double grid_coord_y = std::floor(p.y + 0.5);
                 if (fabs(p.x - grid_coord_x) < 1e-7) {
@@ -1705,8 +1730,18 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
                 }
             }
             // TODO: check if we still have a simple polygon
+
+            // TODO: a polygon tiny area on grid coords won't be
+            // considered
+            if (poly.area() < 1e-8) {
+                grid_polygons.pop_back();
+            }
         }
-        
+
+        // only tiny or empty polygons, no updates to the cover tree
+        if (grid_polygons.size() == 0) {
+            return;
+        }
         
         // simplify grid polygon
         
@@ -1879,7 +1914,9 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
             engine.goTo(labeled_tree::Path(item.tile));
 
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>0
             std::cerr << prefix << "processing grid_cell: " << item.tile << "  path: " << ::labeled_tree::Path(item.tile) << "  iteration: " << engine.iteration_tag << std::endl;
+#endif
 #endif
 
             
@@ -1889,14 +1926,18 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
             if (state == MipMap::FULL) {
 
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>0
                 std::cerr << prefix << p << "full: " << item.tile  << " iteration: " << engine.iteration_tag << std::endl;
+#endif
 #endif
 
                 engine.consolidate();
             }
             else if (state == MipMap::PARTIAL) {
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>0
                 std::cerr << prefix << p << "partial: " << item.tile << " iteration: " << engine.iteration_tag << std::endl;
+#endif
 #endif
                 auto x = item.x << 1;
                 auto y = item.y << 1;
@@ -1914,6 +1955,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
         
         
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>1
         {
             std::cerr << "-------------------------------------------" << std::endl;
             std::cerr << "TREE_DECOMPOSITION" << std::endl;
@@ -1923,10 +1965,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
             std::cerr << "-------------------------------------------" << std::endl;
         }
 #endif
-
-        
-        
-        
+#endif
         
         
         // assume no recursion for now
@@ -1966,6 +2005,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
 
                 
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>0
                 static int count_refinements = 0;
 
                 std::cerr << prefix << "Refining tile " << tile_id << "    refinement index: " << count_refinements++ << std::endl;
@@ -1979,6 +2019,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
                     std::cerr << "-------------------------------------------" << std::endl;
                 }
 #endif
+#endif
                 
                 // make sure tile_id is an individual tile
                 engine.goTo(tile_id);
@@ -1986,6 +2027,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
                                               // fixed and has no children. if it is not fixed, nothing is done
 
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>0
                 {
                     std::cerr << "-------------------------------------------" << std::endl;
                     std::cerr << "AFTER SPLIT" << std::endl;
@@ -1994,6 +2036,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
                     std::cerr << ss.str() << std::endl;
                     std::cerr << "-------------------------------------------" << std::endl;
                 }
+#endif
 #endif
                 //---- END -----
                 
@@ -2013,6 +2056,8 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
                                   bbox.add(cell_intersection_mercator_polygons.back().getBoundingBox());
                               });
                 
+                
+
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
                 std::cerr << prefix << "recurse on grid polygons:" << std::endl;
                 for (auto &p: cell_intersection_grid_polygons) {
@@ -2023,6 +2068,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
                 process(cell_intersection_mercator_polygons, bbox, recursion_level + 1);
 
 #ifdef LOG_COMPUTE_TREE_DECOMPOSITION
+#if LOG_COMPUTE_TREE_DECOMPOSITION_VERBOSITY>0
                 {
                     std::cerr << "-------------------------------------------" << std::endl;
                     std::cerr << "AFTER REFINEMENT" << std::endl;
@@ -2032,6 +2078,7 @@ labeled_tree::Node* TileCoverEngine::computeCover(const std::vector<Polygon> &me
                     std::cerr << ss.str() << std::endl;
                     std::cerr << "-------------------------------------------" << std::endl;
                 }
+#endif
 #endif
             }
             

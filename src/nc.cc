@@ -1429,6 +1429,7 @@ void NanocubeServer::parse_program_into_query(const ::nanocube::lang::Program &p
                                 poly.points.push_back({x,y});
                             }
                         }
+                        poly.makeItCW(); // make sure it is clock-wise before running the compute cover
                     }
                     
                     // TODO: caching and memory release of masks...

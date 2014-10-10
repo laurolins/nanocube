@@ -169,6 +169,9 @@ public:
     std::vector<Chain> chains() const;
     
     void normalizeToBox(RealBox box);
+    
+    void makeItCW();
+    double area();
 
 public:
     
