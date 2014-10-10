@@ -118,8 +118,7 @@ on your system, please choose another port.
    included example dataset
    ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2)).  If port 29512 is already
    being used on your system, please choose another port.  Note that the port is specified for both the python script and for
-   the nanocubes server (nanocube-leaf). If these are not the same, you'll run into problems.  29512 is the default value, so if you
-   don't specify the port at all, it will try to use the default.
+   the nanocubes server (nanocube-leaf). If these are not the same, you'll run into problems.
 
         $ cd ../scripts
         $ python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
