@@ -398,7 +398,7 @@ Node<Content>::hasChildSlot(ChildName index) const
 
 template <typename Content>
 NodeKey
-Node<Content>::key() const
+inline Node<Content>::key() const
 {
     return this->getUserData();
 }

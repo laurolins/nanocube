@@ -614,6 +614,11 @@ void NanocubeServer::initializeQueryServer()
     handlers["count"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
         nc_server.serveQuery(request, program);
     };
+
+    // topk handler
+    handlers["timing"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
+        nc_server.serveTiming(request);
+    };
     
     // topk handler
     handlers["words"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
@@ -2092,9 +2097,8 @@ void NanocubeServer::serveGraphViz(Request &request)
 void NanocubeServer::serveTiming(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-
     server.toggleTiming(!server.isTiming());
-    request.respondJson(server.isTiming() ? "Timing is On" : "Timing is Off");
+    request.respondJson(server.isTiming() ? "\"Timing is On\"" : "\"Timing is Off\"");
 }
 
 void NanocubeServer::serveVersion(Request &request)

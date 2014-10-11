@@ -12,7 +12,7 @@
 #include <exception>
 #include <stdexcept>
 #include <functional>
-
+#include <mutex>
 
 #include "mongoose.h"
 
@@ -80,6 +80,8 @@ struct Server {
     
     void setHandler(const RequestHandler& request_handler);
 
+    void handle_request(Request &request);
+    
 public:
     
     int port { 29512 };
@@ -88,12 +90,14 @@ public:
 
     RequestHandler handler;
 
-private:   
+public:
 
     bool is_timing { false };
     
     bool keep_running { true };
     
     std::ofstream timing_of;
+    
+    std::mutex mutex; // mutual exclusion for writing into the timing file
 
 };
