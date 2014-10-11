@@ -143,7 +143,7 @@ void Server::handle_request(Request &request) {
             << elapsed_nanoseconds << "|"
             << request.response_size << "|"
             << request.request_string.size() << "|"
-            << "\"" << request.request_string << "\"" << std::endl;
+            << "'" << request.request_string << "'" << std::endl;
         }
     }
 }
@@ -177,14 +177,14 @@ bool Server::toggleTiming(bool b)
             // already open, do nothing
         } else {
             // record requests and times in a file
-            std::string filename = "nanocube-query-timing-" + currentDateTime() + ".psv";
+            std::string filename = "nanocube-query-timing-" + currentDateTime2() + ".psv";
             timing_of.open(filename);
             if (!timing_of.is_open()) {
                 std::cout << "[WARNING]: Could not record requests and times" << std::endl;
                 is_timing = false;
                 return false;
             }
-            timing_of << "finish_time,latency_ns,output_bytes,input_bytes,query_string" << std::endl;
+            timing_of << "finish_time|latency_ns|output_bytes|input_bytes|query_string" << std::endl;
         }
     } else {
         if (timing_of.is_open()) {
@@ -208,6 +208,18 @@ const std::string Server::currentDateTime() {
     // Visit http://www.cplusplus.com/reference/clibrary/ctime/strftime/
     // for more information about date/time format
     strftime(buf, sizeof(buf), "%Y-%m-%d_%X", &tstruct);
+    return buf;
+}
 
+
+// Get current date/time, format is YYYYMMDDHHmmss
+const std::string Server::currentDateTime2() {
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    // Visit http://www.cplusplus.com/reference/clibrary/ctime/strftime/
+    // for more information about date/time format
+    strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", &tstruct);
     return buf;
 }

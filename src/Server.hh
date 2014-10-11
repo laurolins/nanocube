@@ -77,6 +77,7 @@ struct Server {
     bool isTiming() const;
     
     const std::string currentDateTime();
+    const std::string currentDateTime2();
     
     void setHandler(const RequestHandler& request_handler);
 
