@@ -1562,6 +1562,7 @@ void NanocubeServer::parse_program_into_query(const ::nanocube::lang::Program &p
                 std::string hint = get_string(call.params[2]);
                 if (hint.compare("img") == 0) {
                     format_options[dim].type = FormatOption::RELATIVE_IMAGE;
+                    query_description.setImgHint(dim, true);
                 }
             }
             
@@ -1653,54 +1654,6 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         nanocube.query(query_description, result);
         
-        
-#if 0
-        //
-        // map result to tree_store taking into account the mapping mechanism:
-        //
-        // from 64-bit addresses to paths
-        //
-        
-        auto adj_num_anchored_dimensions = num_anchored_dimensions;
-        //+
-        //    (branch_target_on_time_dimension.active ? 1 : 0);
-        
-        TreeValue        treestore_result(adj_num_anchored_dimensions);
-
-        TreeValueBuilder treestore_result_builder(treestore_result);
-        
-        vector::InstructionIterator it(result.vector);
-        
-        int depth = 0;
-        while (it.next()) {
-            auto instruction = it.getInstruction();
-            if (instruction.type == vector::Instruction::POP) {
-                --depth;
-                treestore_result_builder.pop();
-            }
-            else if (instruction.type == vector::Instruction::PUSH) {
-                if (branch_target_on_time_dimension.active && depth == adj_num_anchored_dimensions-1) {
-                    auto label64 = instruction.label;
-                    int interval_start = (int) (label64 >> 32); // might generate problems with large numbers
-                    int bucket_index = (interval_start-branch_target_on_time_dimension.base)/branch_target_on_time_dimension.width;
-                    DimAddress path { bucket_index };
-                    treestore_result_builder.push(path);
-                    ++depth;
-                }
-                else {
-                    auto dim_index = anchored_dimensions.at(depth);
-                    DimAddress labelPath = annotated_schema.convertRawAddress(dim_index, instruction.label);
-                    treestore_result_builder.push(labelPath);
-                    ++depth;
-                }
-            }
-            else if (instruction.type == vector::Instruction::STORE) {
-                treestore_result_builder.store(instruction.value);
-            }
-        }
-        
-#endif
-        
         // set level names
         int level=0;
         int i=0;
@@ -1739,10 +1692,13 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
                     using fmt_func = typename Writer::format_label_func;
                     fmt_func f = [&format_option](const LabelType& lbl) {
                         std::stringstream ss;
-                        auto n = format_option.base_address.size();
-                        auto suffix = LabelType(lbl.begin()+n,lbl.end());
-                        ::nanocube::Tile tile(suffix);
-                        ss << "\"x\":" << tile.x << ", " << "\"y\":" << tile.y;
+                        auto x = lbl.at(0);
+                        auto y = lbl.at(1);
+//                        auto n = format_option.base_address.size();
+//                        auto suffix = LabelType(lbl.begin()+n,lbl.end());
+//                        ::nanocube::Tile tile(suffix);
+//                        ss << "\"x\":" << tile.x << ", " << "\"y\":" << tile.y;
+                        ss << "\"x\":" << x << ", " << "\"y\":" << y;
                         return ss.str();
                     };
                     writer.setFormatLabelFunction(layer, f);
@@ -1762,53 +1718,52 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         }
         else if (output_encoding == BINARY) {
 
-
             // if the img flag was used, treat long path
             // as a 2 entry path: local x and local y
             
-            std::vector<bool> dimensions_to_transform_to_img(treestore_result.getNumLevels());
-            std::vector<int>  base_address_sizes(treestore_result.getNumLevels());
-            
-            bool convert = false;
-            
-            int layer = 0;
-            int dim   = 0;
-            for (auto &format_option: format_options)
-            {
-                if (query_description.anchors[dim]) {
-                    dimensions_to_transform_to_img[layer] = format_option.type == FormatOption::RELATIVE_IMAGE;
-                    base_address_sizes[layer] = (int) format_option.base_address.size();
-                    convert |= dimensions_to_transform_to_img[layer];
-                    ++layer;
-                }
-                ++dim;
-            }
-            
-            if (convert && !treestore_result.empty()) {
-                TreeValueIterator it(treestore_result);
-                while (it.next()) {
-                    auto item = it.getCurrentItem();
-                    if (dimensions_to_transform_to_img[item.layer]) {
-                        
-                        auto node = item.node->asInternalNode();
-                        
-                        
-                        // std::unordered_map<
-                        int prefix_size = base_address_sizes[item.layer];
-                        
-                        auto convert_label = [prefix_size](const LabelType& lbl) {
-                            auto suffix = LabelType(lbl.begin()+prefix_size,lbl.end());
-                            ::nanocube::Tile tile(suffix);
-                            return LabelType { tile.x, tile.y };
-                        };
-                        
-                        // clear node->children and add all them back again
-                        // with a new label
-                        node->relabelPathToChildren(convert_label);
-                        
-                    }
-                }
-            }
+//            std::vector<bool> dimensions_to_transform_to_img(treestore_result.getNumLevels());
+//            std::vector<int>  base_address_sizes(treestore_result.getNumLevels());
+//            
+//            bool convert = false;
+//            
+//            int layer = 0;
+//            int dim   = 0;
+//            for (auto &format_option: format_options)
+//            {
+//                if (query_description.anchors[dim]) {
+//                    dimensions_to_transform_to_img[layer] = format_option.type == FormatOption::RELATIVE_IMAGE;
+//                    base_address_sizes[layer] = (int) format_option.base_address.size();
+//                    convert |= dimensions_to_transform_to_img[layer];
+//                    ++layer;
+//                }
+//                ++dim;
+//            }
+//            
+//            if (convert && !treestore_result.empty()) {
+//                TreeValueIterator it(treestore_result);
+//                while (it.next()) {
+//                    auto item = it.getCurrentItem();
+//                    if (dimensions_to_transform_to_img[item.layer]) {
+//                        
+//                        auto node = item.node->asInternalNode();
+//                        
+//                        
+//                        // std::unordered_map<
+//                        int prefix_size = base_address_sizes[item.layer];
+//                        
+//                        auto convert_label = [prefix_size](const LabelType& lbl) {
+//                            auto suffix = LabelType(lbl.begin()+prefix_size,lbl.end());
+//                            ::nanocube::Tile tile(suffix);
+//                            return LabelType { tile.x, tile.y };
+//                        };
+//                        
+//                        // clear node->children and add all them back again
+//                        // with a new label
+//                        node->relabelPathToChildren(convert_label);
+//                        
+//                    }
+//                }
+//            }
             
             ::tree_store::serialize(treestore_result, ss);
             const auto &text = ss.str();

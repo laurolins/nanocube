@@ -240,6 +240,7 @@ public: // Constructor
 
 public: // Methods
 
+    void setImgHint(int dimension, bool flag);
     void setAnchor(int dimension, bool flag);
     void setFindAndDiveTarget(int dimension, RawAddress base_address, int dive_depth);
     void setRangeTarget(int dimension, RawAddress min_address, RawAddress max_address);
@@ -255,6 +256,7 @@ public: // Data Members
     // time range description first/size/count
     std::vector<bool>    anchors;
     std::vector<Target*> targets;
+    std::vector<bool>    img_hint;
 };
 
 } // query namespace

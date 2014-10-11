@@ -20,11 +20,14 @@
 
 #include "cache.hh"
 
+#include "maps.hh"
+
 #include <vector>
 #include <stack>
 #include <stdint.h>
 
 #include <unordered_map>
+#include <stdexcept>
 
 namespace nanocube {
 
@@ -319,7 +322,29 @@ void Query<NanoCube, Index>::visit(dimension_node_type *node, const dimension_ad
             result.pop();
             pushed = false;
         }
-        result.push(address.getDimensionPath());
+        
+        // address conversion
+        if (query_description.img_hint[Index]) {
+            // assume it is a dive target
+            auto target = query_description.targets[Index];
+            auto dive_target = target->asFindAndDiveTarget();
+            if (dive_target) {
+                auto raw_base  = dive_target->base;
+                auto raw_child = address.raw();
+                
+                // assume these are quadtree addresses
+                auto base_tile = ::maps::Tile(raw_base);
+                auto child_tile = ::maps::Tile(raw_child);
+                auto relative_tile = base_tile.relativeTile(child_tile);
+                result.push(std::vector<int> { relative_tile.x.quantity, relative_tile.y.quantity });
+            }
+            else {
+                throw std::runtime_error("\"img\" hint is only supported with a \"dive\" target");
+            }
+        }
+        else {
+            result.push(address.getDimensionPath());
+        }
         pushed = true;
     }
 

@@ -24,32 +24,32 @@ Target::~Target()
 
 const ListTarget* Target::asListTarget()
 {
-    throw std::exception();
+    return nullptr;
 }
 
 RangeTarget* Target::asRangeTarget()
 {
-    throw std::exception();
+    return nullptr;
 }
 
 SequenceTarget* Target::asSequenceTarget()
 {
-    throw std::exception();
+    return nullptr;
 }
 
 FindAndDiveTarget* Target::asFindAndDiveTarget()
 {
-    throw std::exception();
+    return nullptr;
 }
 
 BaseWidthCountTarget* Target::asBaseWidthCountTarget()
 {
-    throw std::exception();
+    return nullptr;
 }
 
 MaskTarget* Target::asMaskTarget()
 {
-    throw std::exception();
+    return nullptr;
 }
 
 void Target::replace(RawAddress , RawAddress )
@@ -199,13 +199,18 @@ void BaseWidthCountTarget::replace(RawAddress addr_old, RawAddress addr_new)
 
 QueryDescription::QueryDescription():
     anchors(MAX_DIMENSIONS, false),
-    targets(MAX_DIMENSIONS, Target::root)
+    targets(MAX_DIMENSIONS, Target::root),
+    img_hint(MAX_DIMENSIONS, false)
 {}
 
 void QueryDescription::setAnchor(int dimension, bool flag) {
     anchors[dimension] = flag;
 }
 
+void QueryDescription::setImgHint(int dimension, bool flag) {
+    img_hint[dimension] = flag;
+}
+    
 void QueryDescription::setFindAndDiveTarget(int dimension, RawAddress base_address, int dive_depth) {
     if (targets[dimension]->type != Target::ROOT) {
         delete targets[dimension];

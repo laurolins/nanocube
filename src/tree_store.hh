@@ -1440,7 +1440,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
             Item(Item&& other) = default;
             Item& operator=(Item&& other) = default;
 
-            Item(node_type *n, const label_type &l, Instruction i):
+            Item(node_type *n, const label_type *l, Instruction i):
                 node(n),
                 label(l),
                 instruction(i)
@@ -1456,7 +1456,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                 os << "---- print ----" << (void*) this->node << std::endl;
                 os << "node:        " << (void*) this->node << std::endl;
                 os << "label:       " << (void*) &this->label << std::endl;
-                os << "label size:  " << this->label.size() << std::endl;
+                os << "label size:  " << this->label->size() << std::endl;
                 os << "instruction: " << (int) this->instruction << std::endl;
             }
             
@@ -1465,7 +1465,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                 instruction(ROOT)
             {}
             const node_type  *node   { nullptr };
-            const label_type label;
+            const label_type *label  { nullptr };
             Instruction instruction;
         };
         
@@ -1497,8 +1497,8 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                 const auto inode = node->asInternalNode();
                 for (const auto &it: inode->children) {
                     const auto &e = it.second;
-                    stack.push(Item(e.node, e.label, POP));
-                    stack.push(Item(e.node, e.label, PUSH));
+                    stack.push(Item(e.node, &e.label, POP));
+                    stack.push(Item(e.node, &e.label, PUSH));
                 }
             }
         };
@@ -1518,7 +1518,7 @@ auto TreeStore<C>::operator =(TreeStore &&other) -> TreeStore&// move assign
                     break;
                 case PUSH:
                     os.write(&PUSH_COMMAND, sizeof(PUSH_COMMAND));
-                    config.serialize_label(os, item.label);
+                    config.serialize_label(os, *item.label);
                     process(item.node);
                     break;
                 case POP:
