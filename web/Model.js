@@ -406,7 +406,7 @@ Model.prototype.updatePolygonCount = function(layer, spvar){
     q.run_query().done(function(json){
         var countstr ="Count: 0";
         if (json != null){
-            var count = json.root.value;
+            var count = json.root.val;
             countstr ="Count: ";
             countstr += count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
         }
