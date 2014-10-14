@@ -258,7 +258,7 @@ Query.prototype.tseries = function(base, bucket, count) {
     }
     else{
 	constraint = 'r(\"'+varname+'\",interval('
-	    +base+','+base+bucket+'))';
+	    +base+','+(base+bucket)+'))';
     }
 
     this.query_elements[this.dimension.name] = constraint;
