@@ -33,13 +33,13 @@ modern-day laptop.
 
 On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but you may have to install the following packages:
 
-    $ sudo apt-get install automake
-    $ sudo apt-get install libtool
-    $ sudo apt-get install zlib1g-dev
-    $ sudo apt-get install libboost-dev
-    $ sudo apt-get install libboost-test-dev
-    $ sudo apt-get install libboost-system-dev
-    $ sudo apt-get install libboost-thread-dev
+    sudo apt-get install automake
+    sudo apt-get install libtool
+    sudo apt-get install zlib1g-dev
+    sudo apt-get install libboost-dev
+    sudo apt-get install libboost-test-dev
+    sudo apt-get install libboost-system-dev
+    sudo apt-get install libboost-thread-dev
 
 **Mac OS X (10.9)**
 
@@ -64,17 +64,17 @@ Set path to the boost directory
 Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
 with valid release numbers (e.g. 2.1.1, 2.1, 2.0).
 
-    $ wget https://github.com/laurolins/nanocube/archive/X.X.X.zip
-    $ unzip X.X.X.zip
-    $ cd nanocube-X.X.X
-    $ ./bootstrap
-    $ ./configure
-    $ make
+    wget https://github.com/laurolins/nanocube/archive/X.X.X.zip
+    unzip X.X.X.zip
+    cd nanocube-X.X.X
+    ./bootstrap
+    ./configure
+    make
 
 If a recent version of gcc is not the default, you can run `configure`
 with the specfic recent version of gcc in your system. For example
 
-    $ CXX=g++-4.8 ./configure
+    CXX=g++-4.8 ./configure
 
 **Tcmalloc**
 
@@ -82,37 +82,41 @@ We strongly suggest linking nanocubes with [Thread-Caching Malloc](http://goog-p
 It is faster than the default system malloc, and in some cases, we found that the amount of memory used by nanocubes was reduced
 by over 50% when using libtcmalloc.  To install on a Ubuntu 14.04 machine, install the following package and all of its dependencies.
 
-    $ sudo apt-get install libgoogle-perftools-dev
+    sudo apt-get install libgoogle-perftools-dev
 
 You must then re-run the configure script, indicating support for tcmalloc.
 
-    $ ./configure --with-tcmalloc
-    $ make clean
-    $ make
+    ./configure --with-tcmalloc
+    make clean
+    make
 
 
 ## Loading a CSV file into a nanocube
 
 1. For compiling our python helper code, you will need the following packages:
 
-        $ sudo apt-get install python-dev
-        $ sudo apt-get install gfortran
+        sudo apt-get install python-dev
+        sudo apt-get install gfortran
 
 2. Install the python data analysis library (pandas) in a separate python environment (Recommended)
 
-        $ wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.4.tar.gz
-        $ tar xfz virtualenv-1.11.4.tar.gz
-        $ python virtualenv-1.11.4/virtualenv.py  myPy
+        wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.6.tar.gz
+        tar xfz virtualenv-1.11.6.tar.gz
+        python virtualenv-1.11.6/virtualenv.py  myPy
+        
+        # Make sure PYTHONHOME and PYTHONPATH are unset
+        unset PYTHONHOME
+        unset PYTHONPATH
         
         # activate the virtualenv, type "deactivate" to disable the env when done
-        $ source myPy/bin/activate
-        $ pip install argparse numpy pandas
+        source myPy/bin/activate
+        pip install argparse numpy pandas
 
 3. Start a web server in the "web" directory and send it to background.  If port 8000 is already being used
 on your system, please choose another port.
 
-        $ cd web
-        $ python -m SimpleHTTPServer 8000 &
+        cd web
+        python -m SimpleHTTPServer 8000 &
 
 4. Run the script and pipe it to the nanocubes server using the
    included example dataset
@@ -120,8 +124,8 @@ on your system, please choose another port.
    being used on your system, please choose another port.  Note that the port is specified for both the python script and for
    the nanocubes server (nanocube-leaf). If these are not the same, you'll run into problems.
 
-        $ cd ../scripts
-        $ python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
+        cd ../scripts
+        python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
 
 
    Please note: We modified the original dataset slightly in this example by changing the names of two columns in the header.  In previous versions,
@@ -178,12 +182,12 @@ different setups.
 
 Running this example again later, you do not need to reinstall the linux or python packages.
 
-        $ cd nanocube-X.X.X
-        $ source myPy/bin/activate
-        $ cd web
-        $ python -m SimpleHTTPServer 8000 &
-        $ cd ../scripts
-        $ python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
+        cd nanocube-X.X.X
+        source myPy/bin/activate
+        cd web
+        python -m SimpleHTTPServer 8000 &
+        cd ../scripts
+        python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
 
 
 ## Further Details

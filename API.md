@@ -113,16 +113,16 @@ Pairs of queries and results:
 
 ![image](https://github.com/laurolins/nanocube/blob/api3/img/range-example.png?raw=true)
 
+## `.timing`
+
+Timing
+
 ### Output Encoding
 
 There are three kinds of encodings: json (default), text, and
 binary. To activate these methods (the last activated will be used)
 three functions are avaiable on the queries: `.json()`, `.text()`,
 `.bin()`.
-
-## .topk
-## .unique
-## .id
 
 # ToDo
 
