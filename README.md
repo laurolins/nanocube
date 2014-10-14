@@ -13,6 +13,7 @@ modern-day laptop.
 
 | Number | Description |
 |:------:|-------------|
+| 2.1.3 | Minor fixes, improved csv2Nanocube.py script  |
 | 2.1.2 | Minor fixes, better documentation, shutdown service |
 | 2.1.1 | Fixed csv2Nanocube.py to work with pandas 0.14.0 |
 | 2.1 | Javascript front-end, CSV Loading, Bug Fixes  |
@@ -32,23 +33,23 @@ modern-day laptop.
 
 On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but you may have to install the following packages:
 
-    $ sudo apt-get install automake
-    $ sudo apt-get install libtool
-    $ sudo apt-get install zlib1g-dev
-    $ sudo apt-get install libboost-dev
-    $ sudo apt-get install libboost-test-dev
-    $ sudo apt-get install libboost-system-dev
-    $ sudo apt-get install libboost-thread-dev
+    sudo apt-get install automake
+    sudo apt-get install libtool
+    sudo apt-get install zlib1g-dev
+    sudo apt-get install libboost-dev
+    sudo apt-get install libboost-test-dev
+    sudo apt-get install libboost-system-dev
+    sudo apt-get install libboost-thread-dev
 
 **Mac OS X (10.9)**
 
 Example installation on Mac OS 10.9 Maverick with a local homebrew:
 
-	$git clone https://github.com/mxcl/homebrew.git
+	git clone https://github.com/mxcl/homebrew.git
 
 Set your path to use this local homebrew				
 
-	$export PATH=${PWD}/homebrew/bin:${PATH}
+	export PATH=${PWD}/homebrew/bin:${PATH}
 
 Install the packages (This assumes your g++ has been installed by [XCode](https://developer.apple.com/xcode/))
 
@@ -61,19 +62,19 @@ Set path to the boost directory
 **General Instructions**
 
 Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
-with valid release numbers (e.g. 2.1.1, 2.1, 2.0).
+with valid release numbers (e.g. 2.1.3, 2.1, 2.0).
 
-    $ wget https://github.com/laurolins/nanocube/archive/X.X.X.zip
-    $ unzip X.X.X.zip
-    $ cd nanocube-X.X.X
-    $ ./bootstrap
-    $ ./configure
-    $ make
+    wget https://github.com/laurolins/nanocube/archive/X.X.X.zip
+    unzip X.X.X.zip
+    cd nanocube-X.X.X
+    ./bootstrap
+    ./configure
+    make
 
 If a recent version of gcc is not the default, you can run `configure`
 with the specfic recent version of gcc in your system. For example
 
-    $ CXX=g++-4.8 ./configure
+    CXX=g++-4.8 ./configure
 
 **Tcmalloc**
 
@@ -81,37 +82,41 @@ We strongly suggest linking nanocubes with [Thread-Caching Malloc](http://goog-p
 It is faster than the default system malloc, and in some cases, we found that the amount of memory used by nanocubes was reduced
 by over 50% when using libtcmalloc.  To install on a Ubuntu 14.04 machine:
 
-    $ sudo apt-get install libtcmalloc-minimal4
+    sudo apt-get install libtcmalloc-minimal4
 
 You must then re-run the configure script pointing to the libtcmalloc shared library, and re-compile the nanocubes source.
 
-    $ ./configure LIBS=/usr/lib/libtcmalloc_minimal.so.4
-    $ make clean
-    $ make
+    ./configure LIBS=/usr/lib/libtcmalloc_minimal.so.4
+    make clean
+    make
 
 
 ## Loading a CSV file into a nanocube
 
 1. For compiling our python helper code, you will need the following packages:
 
-        $ sudo apt-get install python-dev
-        $ sudo apt-get install gfortran
+        sudo apt-get install python-dev
+        sudo apt-get install gfortran
 
 2. Install the python data analysis library (pandas) in a separate python environment (Recommended)
 
-        $ wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.4.tar.gz
-        $ tar xfz virtualenv-1.11.4.tar.gz
-        $ python virtualenv-1.11.4/virtualenv.py  myPy
+        wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.6.tar.gz
+        tar xfz virtualenv-1.11.6.tar.gz
+        python virtualenv-1.11.6/virtualenv.py  myPy
         
+        # Make sure PYTHONHOME and PYTHONPATH are unset
+        unset PYTHONHOME
+        unset PYTHONPATH
+
         # activate the virtualenv, type "deactivate" to disable the env when done
-        $ source myPy/bin/activate
-        $ pip install argparse numpy pandas
+        source myPy/bin/activate
+        pip install argparse numpy pandas
 
 3. Start a web server in the "web" directory and send it to background.  If port 8000 is already being used
 on your system, please choose another port.
 
-        $ cd web
-        $ python -m SimpleHTTPServer 8000 &
+        cd web
+        python -m SimpleHTTPServer 8000 &
 
 4. Run the script and pipe it to the nanocubes server using the
    included example dataset
@@ -120,8 +125,8 @@ on your system, please choose another port.
    the nanocubes server (ncserve). If these are not the same, you'll run into problems.  29512 is the default value, so if you
    don't specify the port at all, it will try to use the default.
 
-        $ cd ../scripts
-        $ python csv2Nanocube.py --timecol='Date' --latcol='Latitude' --loncol='Longitude' --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
+        cd ../scripts
+        python csv2Nanocube.py --timecol='Date' --latcol='Latitude' --loncol='Longitude' --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
 
 
 
@@ -197,12 +202,12 @@ different setups.
 
 Running this example again later, you do not need to reinstall the linux or python packages.
 
-        $ cd nanocube-X.X.X
-        $ source myPy/bin/activate
-        $ cd web
-        $ python -m SimpleHTTPServer 8000 &
-        $ cd ../scripts
-        $ python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
+        cd nanocube-X.X.X
+        source myPy/bin/activate
+        cd web
+        python -m SimpleHTTPServer 8000 &
+        cd ../scripts
+        python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
 
 
 ## Further Details
