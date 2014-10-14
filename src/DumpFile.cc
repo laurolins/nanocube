@@ -1,5 +1,6 @@
 #include "DumpFile.hh"
 
+#include <iostream>
 #include <sstream>
 #include <fstream>
 #include <exception>
