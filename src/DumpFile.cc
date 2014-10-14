@@ -341,16 +341,25 @@ std::istream &operator>>(std::istream &is, DumpFileDescription &dump_file) {
 
     char buffer[1000];
 
+    bool header_ok = true;
+    
     // read line
     while (1)
     {
         is.getline(buffer, 1000);
+        
+        if (!is) {
+            header_ok = false;
+            break;
+        }
+        
         std::string line(buffer);
 
         // std::cout << line << std::endl;
 
-        if (!line.size())
-            break;
+        if (!line.size()) {
+            break; // clean exit
+        }
 
         boost::char_separator<char> sep(", ");
         boost::tokenizer<boost::char_separator<char>> tokens(line, sep);
@@ -419,6 +428,10 @@ std::istream &operator>>(std::istream &is, DumpFileDescription &dump_file) {
                 throw e;
             }
         }
+    }
+
+    if (!header_ok) {
+        throw DumpFileException("Invalid header specification");
     }
 
     return is;

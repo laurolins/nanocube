@@ -105,10 +105,12 @@ Options::Options(std::vector<std::string>& args) {
     cmd_line.parse(args);
 }
 
+#define xDEBUG_NANOCUBE_LEAF_PROCESS
+
 int main(int argc, char **argv)
 {
 
-    std::cout << std::endl << "VERSION: " << NANOCUBE_VERSION << std::endl;
+    std::cout << "VERSION: " << NANOCUBE_VERSION << std::endl;
 
     try {
 
@@ -131,8 +133,6 @@ int main(int argc, char **argv)
         }
         
 
-
-        
         // read options
         // std::vector<std::string> args(argv, argv + argc);
         Options options(args);
@@ -164,20 +164,6 @@ int main(int argc, char **argv)
         //    (1) is there a single time column
         //    (2) are all field types starting with nc_ prefix
         //
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         // pipe
         int pipe_fds[2];
@@ -208,50 +194,83 @@ int main(int argc, char **argv)
                 ss << std::endl;
             }
             
-            auto redirect = [](std::string initial_content, int fd_write) {
+            bool finish_redirect = false;
+            bool redirect_error = false;
+            
+            auto redirect = [&finish_redirect,&redirect_error](std::string initial_content, int fd_write) {
 
-                std::cout << "started redirecting stdin content to write-channel of parent-child pipe" << std::endl;
-                
                 FILE *f = fdopen(fd_write, "w");
                 
                 if (initial_content.size() > 0) {
+
                     fwrite((void*) initial_content.c_str(), 1 , initial_content.size(), f);
+
+                    if (ferror(f)) {
+                        redirect_error = true;
+                        fclose(f);
+                        return; // problem writing to pipe
+                    }
+                    
                 }
                 
                 // write everything coming from stdin to child process
                 const int BUFFER_SIZE = 4095;
                 char buffer[BUFFER_SIZE + 1];
-                while (1) {
+                while (!finish_redirect) {
                     std::cin.read(buffer,BUFFER_SIZE);
                     if (!std::cin) {
                         auto gcount = std::cin.gcount();
                         if (gcount > 0) {
                             fwrite((void*) buffer, 1, gcount, f);
+
+                            if (ferror(f)) {
+                                redirect_error = true;
+                                fclose(f);
+                                return; // problem writing to pipe
+                            }
+                        
                         }
                         break;
                     }
                     else {
                         fwrite((void*) buffer, 1, BUFFER_SIZE, f);
+
+                        if (ferror(f)) {
+                            redirect_error = true;
+                            fclose(f);
+                            return; // problem writing to pipe
+                        }
+
                     }
                 }
                 
                 // clear
                 fflush(f);
                 fclose(f);
-            
+                
             };
             
             // start thread to redirect
             std::thread redirect_thread(redirect, ss.str(), pipe_write_file_descriptor);
             
-            std::cerr << "parent process is waiting..." << std::endl;
+#ifdef DEBUG_NANOCUBE_LEAF_PROCESS
+            std::cerr << "[nanocube-leaf] parent process is waiting for child process to finish..." << std::endl;
+#endif
 
             // std::this_thread::sleep_for(std::chrono::seconds(1));
-            
             waitpid(pid,0,0); /* wait for child to exit */
             
-            // redirect_thread.exit
-            // redirect_thread.join();
+#ifdef DEBUG_NANOCUBE_LEAF_PROCESS
+            std::cerr << "[nanocube-leaf] finishing the redirect procedure..." << std::endl;
+#endif
+
+            finish_redirect = true;
+            redirect_thread.join();
+            
+#ifdef DEBUG_NANOCUBE_LEAF_PROCESS
+            std::cerr << "[nanocube-leaf] parent process done..." << std::endl;
+#endif
+
             
         }
         else {
@@ -298,10 +317,12 @@ int main(int argc, char **argv)
         return 0;
 
 
-    } catch (TCLAP::ArgException &e) { 
-        std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; 
-    } catch (std::string &st) { 
-        std::cerr << st << std::endl; 
+    } catch (dumpfile::DumpFileException &e) {
+        std::cerr << "[Problem] A problem happened (possible cause: bad schema description on .dmp header)" << std::endl;
+    } catch (TCLAP::ArgException &e) {
+        std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+    } catch (std::string &st) {
+        std::cerr << st << std::endl;
     }
 
 }

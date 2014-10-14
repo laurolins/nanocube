@@ -105,7 +105,8 @@ void Server::setHandler(const RequestHandler& rh)
     handler = rh;
 }
 
-static Server *__server { nullptr };
+static Server    *__server { nullptr };
+static mg_server *__mongoose_server { nullptr };
 
 int __mg_callback(struct mg_connection* c, enum mg_event e)
 {
@@ -148,20 +149,35 @@ void Server::handle_request(Request &request) {
     }
 }
 
-void Server::start(int mongoose_threads) // blocks current thread
+void Server::init(int mongoose_threads) // blocks current thread
 {
     __server = this;
     
     mg_server *srv = mg_create_server(NULL, __mg_callback);
     mg_set_option(srv, "num_threads", std::to_string(mongoose_threads).c_str());      // Serve current directory
     mg_set_option(srv, "listening_port", std::to_string(port).c_str());  // Open port 8080
+    
+    __mongoose_server = srv;
+    
+    mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop
+    auto listening_socket = mg_get_listening_socket(srv);
+    if (listening_socket == -1) { // -1 is INVALID_SOCKET on mongoose
+        mg_destroy_server(&srv);
+        throw ServerException("Problem starting mongoose server");
+    }
+}
 
+void Server::run() {
+    
+    if (!__mongoose_server)
+        throw ServerException("No mongoose server initialized");
+    
     // add some flag for a clean shutdown of mongoose server
     for (;keep_running;) {
-        mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop
+        mg_poll_server(__mongoose_server, 1000);   // Infinite loop, Ctrl-C to stop
+        // std::cerr << "mg_poll_server result = " << code << std::endl;
     }
-    mg_destroy_server(&srv);
-
+    mg_destroy_server(&__mongoose_server);
 }
 
 void Server::stop() // blocks current thread

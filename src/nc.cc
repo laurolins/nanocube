@@ -453,6 +453,7 @@ private: // Private Methods
                ::query::QueryDescription &query_description);
     
     void initializeQueryServer();
+    void runQueryServer();
     void stopQueryServer();
 
 public: // Public Methods
@@ -535,44 +536,52 @@ void NanocubeServer::printMessages() {
 NanocubeServer::NanocubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream):
     nanocube(nanocube),
     options(options),
-    input_stream(input_stream)
+    input_stream(input_stream),
+    finish(false)
 {
-    // initial message
-    std::stringstream ss;
-    ss << "query-port:  " <<  options.query_port.getValue() << std::endl
-        << "insert-port: " <<  options.insert_port.getValue() << std::endl;
-    addMessage(ss.str());
-    
-    // start thread to insert records coming from stdin
-    std::thread insert_from_stdin_thread(&NanocubeServer::insert_from_stdin, this);
-    
-    // start thread to insert records coming from tcp port (if one was defined)
-    std::thread insert_from_tcp_thread(&NanocubeServer::insert_from_tcp, this);
-    
-    // start threads for serving queries (uses mongoose)
-    auto &that = *this;
-    std::thread http_server([&that]() {
-        that.initializeQueryServer();
-    });
-    
-    while (!finish) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        printMessages();
+    try {
+        initializeQueryServer();
+
+        // initial message
+        std::stringstream ss;
+        ss << "query-port: " << options.query_port.getValue() << std::endl;
+        // << "insert-port: " <<  options.insert_port.getValue() << std::endl; // disabled
+        addMessage(ss.str());
+    }
+    catch (ServerException &e) {
+        finish = true;
+        std::cerr << "[PROBLEM] Could not bind query-port:  " <<  server.port << std::endl;
     }
 
-    printMessages();
+    if (!finish) {
+        
+        // start threads for serving queries (uses mongoose)
+        std::thread http_server(&NanocubeServer::runQueryServer, this);
+        
+        // start thread to insert records coming from stdin
+        std::thread insert_from_stdin_thread(&NanocubeServer::insert_from_stdin, this);
+        
+        // start thread to insert records coming from tcp port (if one was defined)
+        std::thread insert_from_tcp_thread(&NanocubeServer::insert_from_tcp, this);
+        
+        while (!finish) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            printMessages();
+        }
+        
+        printMessages();
+        
+        // TODO: move this somewhere else
+        io_service.stop();
+        
+        insert_from_stdin_thread.join();
+        insert_from_tcp_thread.join();
+        
+        stopQueryServer();
+        http_server.join();
+        
+    }
 
-    stopQueryServer();
-    http_server.join();
-    
-    // TODO: move this somewhere else
-    io_service.stop();
-    
-    // close mongoose
-    stopQueryServer();
-
-    insert_from_stdin_thread.join();
-    insert_from_tcp_thread.join();
 }
 
 void NanocubeServer::stopQueryServer()
@@ -656,101 +665,48 @@ void NanocubeServer::initializeQueryServer()
     
     server.setHandler(handler);
     
-    try {
-        server.start(options.no_mongoose_threads.getValue());
-    }
-    catch (ServerException &e) {
-        std::stringstream ss;
-        ss << "[PROBLEM] Could not bind query-port:  " <<  server.port << std::endl;
-        addMessage(ss.str());
-        finish = true;
-    }
-
-    
-    
-    
-#if 0
-    
-    // initialize query server
-    server.port = options.query_port.getValue();
-    
-    bool json        = true;
-    bool binary      = false;
-    bool compression = true;
-    bool plain       = false;
-    
-    auto json_query_handler    = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, json,       plain);
-    auto binary_query_handler  = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, binary,     plain);
-    
-    auto json_tquery_handler   = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, json,   plain);
-    auto binary_tquery_handler = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, binary, plain);
-    
-    // auto json_query_comp_handler    = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, json,       compression);
-    // auto json_tquery_comp_handler   = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, json,   compression);
-    
-    auto binary_query_comp_handler  = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, binary,     compression);
-    auto binary_tquery_comp_handler = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, binary, compression);
-    
-    auto stats_handler         = std::bind(&NanocubeServer::serveStats, this, std::placeholders::_1);
-    
-    auto binary_schema_handler = std::bind(&NanocubeServer::serveSchema,     this, std::placeholders::_1, binary);
-    
-    auto schema_handler        = std::bind(&NanocubeServer::serveSchema,     this, std::placeholders::_1, json);
-    
-    auto valname_handler       = std::bind(&NanocubeServer::serveSetValname, this, std::placeholders::_1);
-    
-    auto version_handler       = std::bind(&NanocubeServer::serveVersion,    this, std::placeholders::_1);
-    
-    auto tbin_handler          = std::bind(&NanocubeServer::serveTBin, this, std::placeholders::_1);
-    
-    auto summary_handler       = std::bind(&NanocubeServer::serveSummary, this, std::placeholders::_1);
-    
-    auto graphviz_handler      = std::bind(&NanocubeServer::serveGraphViz, this, std::placeholders::_1);
-    
-    auto timing_handler        = std::bind(&NanocubeServer::serveTiming, this, std::placeholders::_1);
-    
-    auto tile_handler         = std::bind(&NanocubeServer::serveTile, this, std::placeholders::_1);
-    
-    
-    // register service
-    
-    server.registerHandler("query",      json_query_handler);
-    server.registerHandler("binquery",   binary_query_handler);
-    server.registerHandler("binqueryz",  binary_query_comp_handler);
-    server.registerHandler("tile",       tile_handler);
-    server.registerHandler("tquery",     json_tquery_handler);
-    server.registerHandler("bintquery",  binary_tquery_handler);
-    server.registerHandler("bintqueryz", binary_tquery_comp_handler);
-    server.registerHandler("stats",     stats_handler);
-    server.registerHandler("schema",    schema_handler);
-    server.registerHandler("binschema", binary_schema_handler);
-    server.registerHandler("valname",   valname_handler);
-    server.registerHandler("tbin",      tbin_handler);
-    server.registerHandler("summary",   summary_handler);
-    server.registerHandler("graphviz",  graphviz_handler);
-    server.registerHandler("version",   version_handler);
-    server.registerHandler("timing",    timing_handler);
-    server.registerHandler("start",     graphviz_handler);
-    
-    try {
-        server.start(options.no_mongoose_threads.getValue());
-    }
-    catch (ServerException &e) {
-        std::stringstream ss;
-        ss << "Problem binding query-port:  " <<  server.port << std::endl;
-        addMessage(ss.str());
-        finish = true;
-    }
-    
-    
-#endif
+    server.init(options.no_mongoose_threads.getValue());
 }
 
+void NanocubeServer::runQueryServer()
+{
+    server.run();
+}
 
 void NanocubeServer::insert_from_stdin()
 {
-    uint64_t batch_size = options.batch_size.getValue(); // add 10k points before
+    auto batch_size       = options.batch_size.getValue(); // add 10k points before
+    auto report_frequency = options.report_frequency.getValue();
+    auto maximum          = options.max_points.getValue();
+    
+    if (maximum  && batch_size > maximum) {
+        batch_size = maximum;
+        std::cerr << "[Warning] (stdin) Maximum records is less than the batch size." << std::endl
+        << "[Warning]         Reducing the batch size to match maximum records of "
+        << batch_size << std::endl;
+    }
+    
+    if (maximum  && report_frequency > maximum) {
+        report_frequency = maximum;
+        std::cerr << "[Warning] (stdin) Maximum records is less than the report frequency." << std::endl
+        << "[Warning]         Reducing the report frequency to match maximum records of "
+        << report_frequency << std::endl;
+    }
 
+    if (report_frequency && batch_size > report_frequency) {
+        batch_size = report_frequency;
+        std::cerr << "[Warning] (stdin) Report frequency less than the batch size." << std::endl
+                  << "[Warning]         Reducing the batch size to match report frequency of "
+            << batch_size << std::endl;
+    }
+
+    auto adjusted_report_frequency = (decltype(report_frequency)) (ceil(report_frequency / (1.0 * batch_size)) * batch_size);
+    if (adjusted_report_frequency != report_frequency) {
+        report_frequency = adjusted_report_frequency;
+        std::cerr << "[Warning] (stdin) Report frequency needs to be multiple of " << std::endl
+                  << "[Warning]         batch size. It was redefined as " << report_frequency << std::endl;
+    }
+    
     stopwatch::Stopwatch sw;
     sw.start();
 
@@ -812,7 +768,7 @@ void NanocubeServer::insert_from_stdin()
                 else {
                     // std::cout << "ok" << std::endl;
                     ++inserted_points;
-                    done = (options.max_points.getValue() > 0 && inserted_points == options.max_points.getValue());
+                    done = (maximum && inserted_points == maximum);
                 }
             }
         }
@@ -826,7 +782,7 @@ void NanocubeServer::insert_from_stdin()
         }
 
         // make sure report frequency is a multiple of batch size
-        if (inserted_points % options.report_frequency.getValue() == 0) {
+        if (inserted_points % report_frequency == 0) {
             std::stringstream ss;
             ss << "(stdin     ) count: " << std::setw(10) << inserted_points
             << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB."
@@ -2270,12 +2226,19 @@ void NanocubeServer::serveSummary(Request &request)
 // main
 //------------------------------------------------------------------------------
 
+#define xDEBUG_NC_PROCESS
+
 int main(int argc, char *argv[]) {
 
     std::vector<std::string> params(argv, argv+argc);
     Options options(params);
     
-#if 0    
+#ifdef DEBUG_NC_PROCESS
+    std::cerr << "starting nc_... child process start" << std::endl;
+#endif
+    
+    
+#if 0
     std::unique_ptr<std::ostream> ostream;
     std::unique_ptr<timer::Timer> timer_ptr;
     if (options.logmem.size() > 0) {
@@ -2291,108 +2254,67 @@ int main(int argc, char *argv[]) {
     
     auto run = [&options](std::istream& is, dumpfile::DumpFileDescription input_file_description) {
 
-
         // create nanocube_schema from input_file_description
         ::nanocube::Schema nanocube_schema(input_file_description);
         
         // create nanocube
         NanoCube nanocube(nanocube_schema);
         
+#ifdef DEBUG_NC_PROCESS
+        std::cerr << "starting nc_... child process " << std::endl;
+#endif
+        
         // start nanocube http server
         NanocubeServer nanocube_server(nanocube, options, is);
+
     };
     
-    if (options.schema.getValue().size()) {
-        // read schema from file
-        dumpfile::DumpFileDescription input_file_description;
-        std::ifstream ifs(options.schema.getValue());
-        ifs >> input_file_description;
-
-        if (options.data.getValue().size()) {
-            std::ifstream ifs2(options.data.getValue());
-            run(ifs2, input_file_description);
+    
+    try {
+        if (options.schema.getValue().size()) {
+            // read schema from file
+            dumpfile::DumpFileDescription input_file_description;
+            std::ifstream ifs(options.schema.getValue());
+            ifs >> input_file_description;
+            
+            if (options.data.getValue().size()) {
+                std::ifstream ifs2(options.data.getValue());
+                run(ifs2, input_file_description);
+            }
+            else {
+                run(std::cin, input_file_description);
+            }
         }
         else {
-            run(std::cin, input_file_description);
+            if (options.data.getValue().size()) {
+                std::ifstream ifs2(options.data.getValue());
+                
+                // read schema form input
+                dumpfile::DumpFileDescription input_file_description;
+                ifs2 >> input_file_description;
+                
+                run(ifs2, input_file_description);
+            }
+            else {
+                dumpfile::DumpFileDescription input_file_description;
+                std::cin >> input_file_description;
+                
+                run(std::cin, input_file_description);
+            }
         }
     }
-    else {
-        if (options.data.getValue().size()) {
-            std::ifstream ifs2(options.data.getValue());
-
-            // read schema form input
-            dumpfile::DumpFileDescription input_file_description;
-            ifs2 >> input_file_description;
-
-            run(ifs2, input_file_description);
-        }
-        else {
-            dumpfile::DumpFileDescription input_file_description;
-            std::cin >> input_file_description;
-
-            run(std::cin, input_file_description);
-        }
+    catch (...) {
+        std::cerr << "[Problem] A problem happened on nc_... (possible cause: bad schema description on .dmp header)" << std::endl;
+        return 1;
     }
+
+    
+    
+#ifdef DEBUG_NC_PROCESS
+    std::cerr << "finishing nc_... process" << std::endl;
+#endif
     
     // join write thread
     return 0;
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-//stopwatch::Stopwatch sw;
-//sw.start();
-
-//uint64_t count = 0;
-//std::cout << "reading data..." << std::endl;
-//while (1) {
-
-////        std::cout << "count: " << count << std::endl;
-
-//    if (options.max_points > 0 && count == options.max_points) {
-//        break;
-//    }
-
-//    bool ok = nanocube.add(std::cin);
-//    if (!ok) {
-//        // std::cout << "not ok" << std::endl;
-//        break;
-//    }
-
-////        { // generate pdf
-////            report::Report report(nanocube.DIMENSION + 1);
-////            nanocube.mountReport(report);
-////            std::string filename     = "/tmp/bug"+std::to_string(count)+".dot";
-////            std::string pdf_filename = "/tmp/bug"+std::to_string(count)+".pdf";
-////            std::ofstream of(filename);
-////            report::report_graphviz(of, report);
-////            of.close();
-////            system(("dot -Tpdf " + filename + " > " + pdf_filename).c_str());
-////        }
-
-//    // std::cout << "ok" << std::endl;
-//    count++;
-
-
-//    if (count % options.report_frequency == 0) {
-//        std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
-//    }
-
-
-//} // loop to insert objects into the nanocube
-
-//std::cout << "count: " << std::setw(10) << count << " mem. res: " << std::setw(10) << memory_util::MemInfo::get().res_MB() << "MB.  time(s): " << std::setw(10) << sw.timeInSeconds() << std::endl;
-//// std::cout << "count: " << count << " mem. res: " << memory_util::MemInfo::get().res_MB() << "MB." << std::endl;
-
-//// test query using query language
-//std::cout << "Number of points inserted " << count << std::endl;

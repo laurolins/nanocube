@@ -68,7 +68,8 @@ struct Server {
 
     Server() = default;
 
-    void start(int mongoose_threads);
+    void init(int mongoose_threads);
+    void run();
     
     void stop();
     

@@ -12,7 +12,8 @@ bin_PROGRAMS =        \
 ncdmp                 \
 nanocube-leaf         \
 nc_q25_c1_u2_u4       \
-nc_q25_q25_u2_u4
+nc_q25_q25_u2_u4      \
+nc_q22_q22_u2_u4
 
 # \
 # ncserve               \
@@ -275,6 +276,16 @@ nc_q25_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
 nc_q25_q25_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
+
+nc_q22_q22_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q22_q22_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q22,q22 \
+    -DLIST_VARIABLE_TYPES=u2,u4 \
+    -DVERSION=\"$(VERSION)\"
+nc_q22_q22_u2_u4_SOURCES =\
+    $(nc_SOURCES)
 
 
 # nc_q20_q20_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
