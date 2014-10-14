@@ -128,7 +128,8 @@ Nanocube.prototype.getTbinInfo = function() {
 	day = +res[1];
     }
 
-    return {date_offset:offset, bin_to_hour: day*24+hour+min/60.0+sec/3600.0};
+    return {date_offset:offset, 
+	    bin_to_hour: day*24+hour+min/60.0+sec/3600.0};
 };
 
 
@@ -228,6 +229,24 @@ Query.prototype.rectQuery = function(topLeft,bottomRight) {
     return this;
 };
 
+
+//Spatial Query
+Query.prototype.polygonQuery = function(pts) {
+    var varname = this.dimension.name;
+    var w = Math.pow(2,pts[0].level) ;
+    var constraint = "r(\""+varname+"\",mercator_mask(";
+
+    var coordstr = '\"'+ pts.map(function(d){
+	return (d.x/w*2-1) +','+ (d.y/w*2-1);
+    }).join(',')+'\"';
+
+    constraint =  constraint+coordstr+","+ pts[0].level +"))";
+
+    this.query_elements[varname] = constraint;
+    return this;
+};
+
+
 //Time Series Query
 Query.prototype.tseries = function(base, bucket, count) {
     var varname = this.dimension.name;
@@ -239,7 +258,7 @@ Query.prototype.tseries = function(base, bucket, count) {
     }
     else{
 	constraint = 'r(\"'+varname+'\",interval('
-	    +base+','+base+bucket+'))';
+	    +base+','+(base+bucket)+'))';
     }
 
     this.query_elements[this.dimension.name] = constraint;

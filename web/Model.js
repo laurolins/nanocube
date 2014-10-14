@@ -314,11 +314,11 @@ Model.prototype.addDraw = function(map,spvar){
     map.editControl = new L.Control.Draw({
         draw: {
 	    rectangle: true,
-	    polygon: false,
+	    //polygon: false,
             polyline: false,
             circle: false,
             marker: false,
-            //polygon: { allowIntersection: false }
+            polygon: { allowIntersection: false }
         },
         edit: {
             featureGroup: map.drawnItems
@@ -326,9 +326,9 @@ Model.prototype.addDraw = function(map,spvar){
     });
     map.editControl.setDrawingOptions({
         rectangle:{shapeOptions:{color: this.nextColor(), weight: 2,
-                                 opacity:.9}}
-	//polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
-	//                       opacity:.9}}
+                                 opacity:.9}},
+	polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
+	                       opacity:.9}}
     });
 
     map.editControl.addTo(map);
@@ -405,9 +405,8 @@ Model.prototype.updatePolygonCount = function(layer, spvar){
     var q = this.totalcount_query(spvar.constraints[layer._leaflet_id]);
     q.run_query().done(function(json){
         var countstr ="Count: 0";
-	debugger;
         if (json != null){
-            var count = json.root.value;
+            var count = json.root.val;
             countstr ="Count: ";
             countstr += count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
         }
