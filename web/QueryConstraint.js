@@ -111,6 +111,7 @@ SpatialConstraint.prototype.add = function(q){
     }
     
     //grab a bounding box
+    /*
     var that = this;
     var topleft = this.boundary.reduce(function(prev,curr) { 
 	return new Tile(Math.min(prev.x, curr.x),
@@ -124,6 +125,9 @@ SpatialConstraint.prototype.add = function(q){
     })
     
     return q.dim(this.dim).rectQuery(topleft,bottomright);
+    */
+    
+    return q.dim(this.dim).polygonQuery(this.boundary);
 };
 
 SpatialConstraint.prototype.addSelf = function(q){
