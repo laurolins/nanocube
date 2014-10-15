@@ -1,10 +1,10 @@
 //Categorical Variable
-function CatVar(dim, valnames, bytesize){
+function CatVar(dim, valnames){
     this.dim = dim;
 
     //setup constraint
     this.constraints = {};
-    this.constraints[0] = new CatConstraint(dim,bytesize);
+    this.constraints[0] = new CatConstraint(dim);
 
     //setup categorical variable
     this.keyaddr = valnames;
@@ -21,21 +21,21 @@ CatVar.prototype.jsonToList=function(json){
         return [];
     }
     var data = json.root.children.map(function(d){
-        var addr = d.addr.toString();
-        return { value: +d.value, addr: parseInt(addr,16) };
+        return { value: +d.val, addr: +d.path[0]  };
     });
 
-    return data.sort(function(a,b) {return a.addr-b.addr;});
+    data = data.sort(function(a,b) {return -(a.value-b.value);});
+    return data.slice(0,10);
 };
 
-CatVar.prototype.update=function(json,id,color){
+CatVar.prototype.update=function(json,id,color,q){
     var that = this;
     var data = that.jsonToList(json);
 
     //turn addr to keys
     data.forEach(function(d){d.cat=that.addrkey[d.addr];});
     
-    //1 the gui element and redraw()
+    //set the gui element and redraw()
     if ('widget' in that){
         that.widget.setData(data,id,color);
         that.widget.redraw();
@@ -68,28 +68,19 @@ TimeVar.prototype.binSizeHour=function(){
     return this.constraints[0].binsize*this.bin_to_hour;
 };
 
-TimeVar.prototype.jsonToList=function(json){
-    if (json == null){ //nothing to do
+TimeVar.prototype.jsonToList=function(json, bucketsize){
+    if (json.root.children == null){ //nothing to do
         return [];
     }
     var that = this;
     var data = json.root.children.map(function(d){
-        var addr = d.addr.toString();
-        var start = addr.substring(0, addr.length-8);
-        var end = addr.substring(addr.length-8, addr.length);
-       
-        start = parseInt(start,16);
-        end = parseInt(end,16);
-
-        if (isNaN(start)) start=0;
-        if (isNaN(end)) end=0;
-
+        var start = d.path[0]*bucketsize;
         var startdate = new Date(that.date_offset);
         
         //Set time in milliseconds from 1970
         startdate.setTime(startdate.getTime()+
                           start*that.bin_to_hour*3600*1000);
-        return {date:startdate,value: +d.value};
+        return {date:startdate, value: +d.val};
     });
     
     return data.sort(function(a,b) {return a.date-b.date;});
@@ -102,12 +93,12 @@ TimeVar.prototype.removeObsolete=function(k){
 };
 
 
-TimeVar.prototype.update=function(json,id,color){
+TimeVar.prototype.update=function(json,id,color,q){
     var that = this;
-    var data = that.jsonToList(json);
+    var data = that.jsonToList(json,q.timebucketsize);
     
     //update the gui element and redraw()
-    if ('widget' in that){	
+    if ('widget' in that){
         that.widget.setData({data: data, color: color},id);
         that.widget.redraw();
     }

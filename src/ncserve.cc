@@ -85,7 +85,7 @@ int main(int argc, char **argv)
     // get process id
     // pid_t my_pid = getpid();
     // std::cout << argv[0] << " process id: " << my_pid << std::endl;
-    std::cout << "VERSION: " << VERSION << std::endl;
+    std::cout << "VERSION: " << NANOCUBE_VERSION << std::endl;
 
     // read input file description
     dumpfile::DumpFileDescription input_file_description;
@@ -206,75 +206,4 @@ int main(int argc, char **argv)
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#if 0
-    int number;
-
-    try
-    {
-        if (argc < 2) throw std::exception();
-        number = std::stoi(argv[1]);
-    }
-    catch(std::exception &e)
-    {
-        message();
-        exit(0);
-    }
-
-    /*Spawn a child to run the program.*/
-    // pid_t pid=fork();
-    // if (pid==0) { /* child process */
-
-    std::string program_name;
-    {
-        std::stringstream ss;
-        ss << "/Users/lauro/tests/fork-exec/backend_" << number;
-        program_name = ss.str();
-    }
-
-    static char *other_argv[] = {"backend", NULL};
-
-    // child process will be replaced by this other process
-    // could we do thi in the main process? maybe
-    execv(program_name.c_str(), other_argv);
-
-    // failed to execute program
-    std::cout << "Could not find program: " << program_name << std::endl;
-
-    exit(127); /* only if execv fails */
-
-    // }
-    // else { /* pid!=0; parent process */
-    //     waitpid(pid,0,0); /* wait for child to exit */
-    // }
-    return 0;
-
-#endif
-
-
-/*<@>
-<@> ******** Program output: ********
-<@> Foo is my name.
-<@> */
 

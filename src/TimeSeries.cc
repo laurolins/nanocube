@@ -96,6 +96,9 @@ inline std::string str(const T& t)
 
 void TimeSeriesStatistics::dumpReport(std::ostream &os)
 {
+    throw std::runtime_error("removed");
+    
+#if 0
     char sep = '|';
 
 
@@ -136,6 +139,7 @@ void TimeSeriesStatistics::dumpReport(std::ostream &os)
             << fr(str(100.0 * (double)totalNumNodes/totalNumNodes)) << sep // num nodes in quad tree
             << fr(str(totalMemoryUsage/((double) (1 << 20)))) << sep //
             << fl(str(100.0 * (double)totalMemoryUsage/totalMemoryUsage)) << sep << std::endl;
+#endif
 
 }
 

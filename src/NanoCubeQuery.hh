@@ -20,11 +20,14 @@
 
 #include "cache.hh"
 
+#include "maps.hh"
+
 #include <vector>
 #include <stack>
 #include <stdint.h>
 
 #include <unordered_map>
+#include <stdexcept>
 
 namespace nanocube {
 
@@ -144,7 +147,7 @@ struct Eval<query_type, true> {
             }
 
             uint64_t last_value = content.entries.back().template get<1>();
-            result.store(last_value, ::query::result::ADD);
+            result.store(last_value, ::tree_store::ADD);
 
 
         }
@@ -156,6 +159,9 @@ struct Eval<query_type, true> {
 
             ::query::BaseWidthCountTarget &bwc_target = *target->asBaseWidthCountTarget();
 
+            
+            // TODO: check this please!!!
+            
             uint32_t base  = (uint32_t) bwc_target.base;
             uint32_t width = (uint32_t) bwc_target.width;
             uint32_t count = (uint32_t) bwc_target.count;
@@ -163,13 +169,16 @@ struct Eval<query_type, true> {
             for (uint32_t i=0;i<count;i++) {
                 uint32_t b = a + width;
                 uint64_t value = content.template getWindowTotal<1>(a,b);
-                if (anchored) {
-                    ::query::RawAddress addr = ((uint64_t) a << 32) + b;
-                    result.push(addr);
-                }
-                result.store(value, ::query::result::ADD);
-                if (anchored) {
-                    result.pop();
+                if (value != 0) {
+                    if (anchored) {
+                        // ::query::RawAddress addr = ((uint64_t) a << 32) + b;
+                        std::vector<int> path { (int) i };
+                        result.push(path);
+                    }
+                    result.store(value, ::tree_store::ADD);
+                    if (anchored) {
+                        result.pop();
+                    }
                 }
                 a = b;
             }
@@ -246,7 +255,6 @@ Query<NanoCube, Index>::Query(dimension_type             &tree,
         // convex shapes)
         //
 
-
         ::query::SequenceTarget &sequence_target = *target->asSequenceTarget();
 
 
@@ -265,7 +273,36 @@ Query<NanoCube, Index>::Query(dimension_type             &tree,
 //        // use the visitSubnodes interface
 //        tree.visitRange(min_address, max_address, query);
     }
-
+    else if (target->type == ::query::Target::MASK) {
+        
+//        //
+//        // There is a difference here compared to the other
+//        // cases. We need to pre-process the sequence into a
+//        // "mask" to guide the traversal (visit with guide).
+//        // This pre-processing should be done only once
+//        // (think about the partitioning of a polygon into
+//        // convex shapes)
+//        //
+//        
+//        
+        ::query::MaskTarget &mask_target = *target->asMaskTarget();
+//
+//        
+//        //        std::cout << "min_address: " << min_address << std::endl;
+//        //        std::cout << "max_address: " << max_address << std::endl;
+//        
+//        // use the visitSubnodes interface
+        tree.visitExistingTreeLeaves(mask_target.root, query);
+//        
+//        //        ::query::RangeTarget &range_target = *target->asRangeTarget();
+//        
+//        //        dimension_address_type min_address(range_target.min_address);
+//        //        dimension_address_type max_address(range_target.max_address);
+//        ////        std::cout << "min_address: " << min_address << std::endl;
+//        ////        std::cout << "max_address: " << max_address << std::endl;
+//        //        // use the visitSubnodes interface
+//        //        tree.visitRange(min_address, max_address, query);
+    }
 
     else {
         throw std::exception();
@@ -285,7 +322,29 @@ void Query<NanoCube, Index>::visit(dimension_node_type *node, const dimension_ad
             result.pop();
             pushed = false;
         }
-        result.push(address.raw());
+        
+        // address conversion
+        if (query_description.img_hint[Index]) {
+            // assume it is a dive target
+            auto target = query_description.targets[Index];
+            auto dive_target = target->asFindAndDiveTarget();
+            if (dive_target) {
+                auto raw_base  = dive_target->base;
+                auto raw_child = address.raw();
+                
+                // assume these are quadtree addresses
+                auto base_tile = ::maps::Tile(raw_base);
+                auto child_tile = ::maps::Tile(raw_child);
+                auto relative_tile = base_tile.relativeTile(child_tile);
+                result.push(std::vector<int> { relative_tile.x.quantity, relative_tile.y.quantity });
+            }
+            else {
+                throw std::runtime_error("\"img\" hint is only supported with a \"dive\" target");
+            }
+        }
+        else {
+            result.push(address.getDimensionPath());
+        }
         pushed = true;
     }
 

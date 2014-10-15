@@ -3,9 +3,7 @@ function Constraint(dim){ this.dim = dim;}
 Constraint.prototype.add = function(q){};
 
 //Categorical Variable
-function CatConstraint(dim,bytesize){
-    this.bytesize = (typeof bytesize != "undefined") ? bytesize:8;
-
+function CatConstraint(dim){
     this.selection=[];
     Constraint.call(this,dim);
 }
@@ -16,7 +14,7 @@ CatConstraint.prototype.add = function(q){
     if (this.selection.length < 1 ){
         return q;
     }
-    return q.dim(this.dim).sequence(this.selection);    
+    return q.dim(this.dim).findAndDive(this.selection);    
 };
 
 CatConstraint.prototype.toggle = function(addr){
@@ -30,8 +28,7 @@ CatConstraint.prototype.toggle = function(addr){
 };
 
 CatConstraint.prototype.addSelf = function(q){
-    var maxidx = Math.pow(2,this.bytesize*8)-1;
-    return q.drilldown().dim(this.dim).findAndDive(maxidx,1);
+    return q.drilldown().dim(this.dim).findAndDive();
 };
 
 
@@ -59,7 +56,7 @@ TemporalConstraint.prototype.add = function(q){
 };
 
 TemporalConstraint.prototype.addSelf = function(q){
-    var minbinsize = Math.ceil(this.nbins/$('#'+this.dim).width()*3);
+    var minbinsize = Math.ceil(this.nbins/$('#'+this.dim).width()*1.5);
     var binsize = Math.max(minbinsize,this.binsize);
 
     this.start = Math.max(this.start,0);
@@ -112,25 +109,25 @@ SpatialConstraint.prototype.add = function(q){
     if (this.boundary.length < 3){
         return q;
     }
-
-    //check for 0 area
-    var bbox = this.boundary.reduce(function(p,c){
-        var b = p;
-        b.minx = Math.min(b.minx,c.x); 
-        b.maxx = Math.max(b.maxx,c.x); 
-        b.miny = Math.min(b.miny,c.y); 
-        b.maxy = Math.max(b.maxy,c.y); 
-        return b;
-    }, {minx:1e9,maxx:-1e9,miny:1e9,maxy:-1e9});
     
-    //reject queries with empty bbox
-    if ((bbox.maxx-bbox.minx) < 2 || (bbox.maxy-bbox.miny) < 2){
-        return q;
-    }
-
-    return q.dim(this.dim).sequence(this.boundary.map(function(t){
-        return t.raw();
-    }));    
+    //grab a bounding box
+    /*
+    var that = this;
+    var topleft = this.boundary.reduce(function(prev,curr) { 
+	return new Tile(Math.min(prev.x, curr.x),
+			Math.min(prev.y, curr.y),
+			Math.min(prev.level, curr.level), that.boundary[0]);
+    })
+    var bottomright = this.boundary.reduce(function(prev,curr) { 
+	return new Tile(Math.max(prev.x, curr.x),
+			Math.max(prev.y, curr.y),
+			Math.max(prev.level, curr.level), that.boundary[0]);
+    })
+    
+    return q.dim(this.dim).rectQuery(topleft,bottomright);
+    */
+    
+    return q.dim(this.dim).polygonQuery(this.boundary);
 };
 
 SpatialConstraint.prototype.addSelf = function(q){

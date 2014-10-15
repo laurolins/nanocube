@@ -64,7 +64,7 @@ Model.prototype.initVars = function(){
                 return;
             }
 
-            vref  = new CatVar(v.name,v.valnames,+t[2]);
+            vref  = new CatVar(v.name,v.valnames);
 
             //init the gui component (move it elsewhere?)
             vref.widget = new GroupedBarChart('#'+v.name);
@@ -94,17 +94,11 @@ Model.prototype.initVars = function(){
             var nbins = tinfo.end-tinfo.start+1;
 
             //init gui
-	    if (v.name=='defaulttime'){
-		that.temporal_vars[v.name] = vref;
-		break; //no need to init widget
-	    }
-
             vref.widget = new Timeseries('#'+v.name);
             vref.widget.brush_callback = function(start,end){
                 vref.constraints[0].setSelection(start,end,vref.date_offset);
                 that.redraw(vref);
             };
-
 
             vref.widget.update_display_callback=function(start,end){
                 vref.constraints[0].setRange(start,end,vref.date_offset);
@@ -118,9 +112,7 @@ Model.prototype.initVars = function(){
 
             that.setTimeBinSize(tinfo.bin_to_hour,vref);
             that.temporal_vars[v.name] = vref;
-
             break;
-
         default:
             break;
         }
@@ -180,19 +172,22 @@ Model.prototype.tileQuery = function(vref,tile,drill,callback){
         }
     });
 
-    q = q.drilldown().dim(vref.dim).findAndDive(tile.raw(),drill);
+    //q = q.drilldown().dim(vref.dim).findAndDive(tile.raw(),drill);
 
-    var qstr = q.toString('tile');
+    q = q.drilldown().dim(vref.dim).findTile(tile,drill);
+
+    var qstr = q.toString('count');
     var data = this.getCache(qstr);
 
     if (data != null){ //cached
         callback(data);
     }
     else{
-        q.run_tile(function(data){
-            callback(data);
-            that.setCache(qstr,data);
-        });
+        q.run_query()
+	    .done(function(data){
+		callback(data);
+		that.setCache(qstr,data);
+            });
     }
 };
 
@@ -227,16 +222,16 @@ Model.prototype.jsonQuery = function(v){
 
     keys.forEach(function(k){
         var q = queries[k];
-        var qstr = q.toString('query');
+        var qstr = q.toString('count');
         var json = that.getCache(qstr);
         var color = that.selcolors[k];
 
         if (json != null){ //cached
-            v.update(json,k,color);
+            v.update(json,k,color,q);
         }
         else{
-            q.run_query(function(json){
-                v.update(json,k,color);
+            q.run_query().done(function(json){
+                v.update(json,k,color,q);
                 that.setCache(qstr,json);
             });
         }
@@ -258,26 +253,13 @@ Model.prototype.removeObsolete= function(k){
 
 //Setup maps
 Model.prototype.createMap = function(spvar,cm){
-    /*var w = $('#' + spvar.dim).width();
-    var h = $('#' + spvar.dim).height();
-
-    //$('#' + spvar.dim).width(Math.max(w,100));
-    //$('#' + spvar.dim).height(Math.max(h,100));
-    if(w < 100){
-        $('#' + spvar.dim).width(Math.max(w,100));
-    }
-    if(h < 100){
-        $('#' + spvar.dim).height(Math.max(h,100));
-    }
-     */
-
     var map=L.map(spvar.dim,{
         maxZoom: Math.min(18,spvar.maxlevel+1)
     });
 
     var maptile = L.tileLayer(this.options.tilesurl,{
         noWrap:true,
-        opacity:0.7 });
+        opacity:0.4 });
 
     var heatmap = new L.NanocubeLayer({
         opacity: 0.6,
@@ -331,6 +313,8 @@ Model.prototype.addDraw = function(map,spvar){
 
     map.editControl = new L.Control.Draw({
         draw: {
+	    rectangle: true,
+	    //polygon: false,
             polyline: false,
             circle: false,
             marker: false,
@@ -343,8 +327,8 @@ Model.prototype.addDraw = function(map,spvar){
     map.editControl.setDrawingOptions({
         rectangle:{shapeOptions:{color: this.nextColor(), weight: 2,
                                  opacity:.9}},
-        polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
-                               opacity:.9}}
+	polygon:{shapeOptions:{color: this.nextColor(), weight: 2,
+	                       opacity:.9}}
     });
 
     map.editControl.addTo(map);
@@ -419,20 +403,20 @@ Model.prototype.drawCreated = function(e,spvar){
 //draw count on the polygon
 Model.prototype.updatePolygonCount = function(layer, spvar){
     var q = this.totalcount_query(spvar.constraints[layer._leaflet_id]);
-    q.run_query(function(json){
+    q.run_query().done(function(json){
         var countstr ="Count: 0";
         if (json != null){
-            var count = json.root.value;
+            var count = json.root.val;
             countstr ="Count: ";
             countstr += count.toString().replace(/\B(?=(\d{3})+(?!\d))/g,",");
         }
-
+	
         var geojson = layer.toGeoJSON();
         var bbox = bboxGeoJSON(geojson);
         var bboxstr = "Bbox: ";
         bboxstr += "(("+bbox[0][0].toFixed(3)+","+bbox[0][1].toFixed(3)+"),";
         bboxstr += "("+bbox[1][0].toFixed(3)+","+bbox[1][1].toFixed(3)+"))";
-
+	
         layer.bindPopup(countstr+"<br />" +bboxstr);
     });
 };
@@ -719,7 +703,7 @@ Model.prototype.updateInfo = function(){
     var that = this;
     var q = this.totalcount_query();
 
-    q.run_query(function(json){
+    q.run_query().done(function(json){
         if (json == null){
             return;
         }
@@ -740,7 +724,7 @@ Model.prototype.updateInfo = function(){
         var enddate = new Date(startdate);
         enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
-        var count = json.root.value;
+        var count = json.root.val;
         var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
         $('#info').text(startdate.toLocaleString() + ' - '

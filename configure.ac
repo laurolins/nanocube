@@ -14,14 +14,14 @@ AC_PROG_CPP
 AC_PROG_LIBTOOL
 
 # Checks for programs.
-dnl host_os=`uname`
-dnl if test "$host_os" = "Darwin"; then
-dnl    AS_VAR_SET([cpp_compiler],[clang++])
-dnl    CXX="clang++ "
-dnl    CXXFLAGS+=" -stdlib=libc++ -mmacosx-version-min=10.7"
-dnl else
-dnl    AS_VAR_SET([cpp_compiler],[])
-dnl fi
+host_os=`uname`
+if test "$host_os" = "Darwin"; then
+   AS_VAR_SET([cpp_compiler],[clang++])
+   CXX="clang++ "
+   CXXFLAGS+=" -stdlib=libc++ -mmacosx-version-min=10.7"
+else
+   AS_VAR_SET([cpp_compiler],[])
+fi
 
 # echo "----------------> $CC"
 
@@ -41,6 +41,15 @@ AX_CHECK_ZLIB
 #check boost
 BOOST_REQUIRE([1.48])
 BOOST_THREADS
+BOOST_SYSTEM
+BOOST_ASIO
+
+#BOOST_REQUIRE([1.48])
+#BOOST_THREADS
+#BOOST_SERIALIZATION
+#BOOST_MPI
+
+TS_CHECK_TCMALLOC
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h])

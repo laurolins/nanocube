@@ -90,16 +90,16 @@ FieldTypesList::FieldTypesList():
         { "nc_dim_time_8", 8, 1 },
 
         // nc: quadtree dimension (uint but with the name maps to the nanocube semantic)
-        { "nc_dim_quadtree_0", 8, 2 },
-        { "nc_dim_quadtree_1", 8, 2 },
-        { "nc_dim_quadtree_2", 8, 2 },
-        { "nc_dim_quadtree_3", 8, 2 },
-        { "nc_dim_quadtree_4", 8, 2 },
-        { "nc_dim_quadtree_5", 8, 2 },
-        { "nc_dim_quadtree_6", 8, 2 },
-        { "nc_dim_quadtree_7", 8, 2 },
-        { "nc_dim_quadtree_8", 8, 2 },
-        { "nc_dim_quadtree_9", 8, 2 },
+        { "nc_dim_quadtree_0",  8, 2 },
+        { "nc_dim_quadtree_1",  8, 2 },
+        { "nc_dim_quadtree_2",  8, 2 },
+        { "nc_dim_quadtree_3",  8, 2 },
+        { "nc_dim_quadtree_4",  8, 2 },
+        { "nc_dim_quadtree_5",  8, 2 },
+        { "nc_dim_quadtree_6",  8, 2 },
+        { "nc_dim_quadtree_7",  8, 2 },
+        { "nc_dim_quadtree_8",  8, 2 },
+        { "nc_dim_quadtree_9",  8, 2 },
         { "nc_dim_quadtree_10", 8, 2 },
         { "nc_dim_quadtree_11", 8, 2 },
         { "nc_dim_quadtree_12", 8, 2 },
@@ -120,7 +120,42 @@ FieldTypesList::FieldTypesList():
         { "nc_dim_quadtree_27", 8, 2 },
         { "nc_dim_quadtree_28", 8, 2 },
         { "nc_dim_quadtree_29", 8, 2 },
-        { "nc_dim_quadtree_30", 8, 2 }
+        { "nc_dim_quadtree_30", 8, 2 },
+        
+        // nc: quadtree dimension (uint but with the name maps to the nanocube semantic)
+        { "nc_dim_bintree_0",  1, 1 },
+        { "nc_dim_bintree_1",  1, 1 },
+        { "nc_dim_bintree_2",  1, 1 },
+        { "nc_dim_bintree_3",  1, 1 },
+        { "nc_dim_bintree_4",  1, 1 },
+        { "nc_dim_bintree_5",  1, 1 },
+        { "nc_dim_bintree_6",  1, 1 },
+        { "nc_dim_bintree_7",  1, 1 },
+        { "nc_dim_bintree_8",  1, 1 },
+        { "nc_dim_bintree_9",  2, 1 },
+        { "nc_dim_bintree_10", 2, 1 },
+        { "nc_dim_bintree_11", 2, 1 },
+        { "nc_dim_bintree_12", 2, 1 },
+        { "nc_dim_bintree_13", 2, 1 },
+        { "nc_dim_bintree_14", 2, 1 },
+        { "nc_dim_bintree_15", 2, 1 },
+        { "nc_dim_bintree_16", 2, 1 },
+        { "nc_dim_bintree_17", 3, 1 },
+        { "nc_dim_bintree_18", 3, 1 },
+        { "nc_dim_bintree_19", 3, 1 },
+        { "nc_dim_bintree_20", 3, 1 },
+        { "nc_dim_bintree_21", 3, 1 },
+        { "nc_dim_bintree_22", 3, 1 },
+        { "nc_dim_bintree_23", 3, 1 },
+        { "nc_dim_bintree_24", 3, 1 },
+        { "nc_dim_bintree_25", 4, 1 },
+        { "nc_dim_bintree_26", 4, 1 },
+        { "nc_dim_bintree_27", 4, 1 },
+        { "nc_dim_bintree_28", 4, 1 },
+        { "nc_dim_bintree_29", 4, 1 },
+        { "nc_dim_bintree_30", 4, 1 },
+        { "nc_dim_bintree_31", 4, 1 },
+        { "nc_dim_bintree_32", 4, 1 }
         })
 {
     for (FieldType &ft: field_types) {
@@ -274,21 +309,58 @@ int DumpFileDescription::getNumFieldsByType(const FieldType &field_type) const {
     }
     return count;
 }
+    
+    
+    
+    
+void DumpFileDescription::writeRecordTextualDescription(std::ostream &os, char* data, int len) {
+    // assuming a binary record!
+    if (len < record_size) {
+        throw DumpFileException("Not enough bytes for a record");
+    }
+    
+    os << "{";
+    std::size_t offset = 0;
+    std::size_t value;
+    bool first = true;
+    for (auto &f: this->fields) {
+        auto num_bytes = f->getNumBytes();
+        value = 0;
+        std::copy(data + f->offset_inside_record,
+                  data + f->offset_inside_record + num_bytes,
+                  (char*) &value);
+        if (!first)
+            os << " ";
+        os << f->name << ":" << num_bytes << ":" << value;
+        first = false;
+        offset += num_bytes;
+    }
+    os << "}";
+}
 
 std::istream &operator>>(std::istream &is, DumpFileDescription &dump_file) {
 
     char buffer[1000];
 
+    bool header_ok = true;
+    
     // read line
     while (1)
-    {   
+    {
         is.getline(buffer, 1000);
+        
+        if (!is) {
+            header_ok = false;
+            break;
+        }
+        
         std::string line(buffer);
 
         // std::cout << line << std::endl;
 
-        if (!line.size())
-            break;
+        if (!line.size()) {
+            break; // clean exit
+        }
 
         boost::char_separator<char> sep(", ");
         boost::tokenizer<boost::char_separator<char>> tokens(line, sep);
@@ -357,6 +429,10 @@ std::istream &operator>>(std::istream &is, DumpFileDescription &dump_file) {
                 throw e;
             }
         }
+    }
+
+    if (!header_ok) {
+        throw DumpFileException("Invalid header specification");
     }
 
     return is;

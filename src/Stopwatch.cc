@@ -26,15 +26,15 @@ void Stopwatch::stop()
 Milliseconds Stopwatch::time()
 {
     std::chrono::time_point<std::chrono::system_clock> aux_t1 = started ? std::chrono::system_clock::now() : t1;
-    return std::chrono::duration_cast<std::chrono::milliseconds>
-            (aux_t1-t0).count();
+    return static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>
+            (aux_t1-t0).count());
 }
 
 int Stopwatch::timeInSeconds()
 {
     std::chrono::time_point<std::chrono::system_clock> aux_t1 = started ? std::chrono::system_clock::now() : t1;
-    return std::chrono::duration_cast<std::chrono::seconds>
-            (aux_t1-t0).count();
+    return static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>
+            (aux_t1-t0).count());
 }
 
 //-----------------------------------------------------------------------------

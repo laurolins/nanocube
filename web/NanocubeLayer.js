@@ -28,7 +28,7 @@ L.NanocubeLayer.prototype.toggleShowCount = function(){
 
 L.NanocubeLayer.prototype.redraw = function(){
     if (this._map) {
-	this._reset({hard: false});  //no hard resetting 
+	//this._reset({hard: false});  //no hard resetting 
 	this._update();
     }
     for (var i in this._tiles) {
@@ -67,15 +67,26 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
     //flip y for nanocubes
     var ty = (ntiles-1)-tilePoint.y;
 
+    //query
     var tile = new Tile(tilePoint.x,ty,zoom);
-    tile.canvas = canvas;
-    tile.drill = drill;
-    tile.tilePoint = tilePoint;
-    this.tilelist.push(tile);
+    var that = this;
+    this.model.tileQuery(this.variable, tile, drill, function(json){
+        //var result = that.processData(data);
+        var result = that.processJSON(json);
+
+        if(result !=null){
+            that.max = Math.max(that.max, result.max);
+            that.min = Math.min(that.min, result.min);
+            that.renderTile(canvas,size,tilePoint,zoom,result.data);
+        }        
+        else{
+            that.renderTile(canvas,size,tilePoint,zoom,null);
+        }
+    });
+    this.tileDrawn(canvas);
 };
 
-L.NanocubeLayer.prototype.renderTile = function(canvas, size,tilePoint,zoom,
-                                                minv,maxv,data){
+L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,data){
     var ctx = canvas.getContext('2d');
     
     if (data == null){
@@ -101,8 +112,10 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size,tilePoint,zoom,
 
     //set color
     var that = this;
+    var minv = that.min;
+    var maxv = that.max;
     if (this.log){
-        minv = Math.log(minv+1);
+        minv = Math.log(minv);
         maxv = Math.log(maxv);
     }
 
@@ -169,6 +182,25 @@ L.NanocubeLayer.prototype.drawGridCount = function(ctx,tilePoint,zoom,data){
     
 };
 
+
+L.NanocubeLayer.prototype.processJSON = function(json){
+    if (json.root.children == null){
+	return null;
+    }
+    
+    var data = json.root.children.map(function(d){ 
+	return { x: d.x, y: d.y, v: d.val };
+    });
+    
+    var minv = data.reduce(function(prev,curr){ 
+	return Math.min(prev,curr.v) }, Infinity);
+    var maxv = data.reduce(function(prev,curr){ 
+	return Math.max(prev,curr.v) }, -Infinity);
+    
+    return {min:minv,max:maxv,data:data};
+};
+
+
 L.NanocubeLayer.prototype.processData = function(bindata){
     if(bindata == null){
         return null;
@@ -182,6 +214,10 @@ L.NanocubeLayer.prototype.processData = function(bindata){
     }
     
     var data = [];
+    data.length = n_records;
+    var maxv = -Infinity;
+    var minv = Infinity;
+    
     for (var i=0; i<n_records; ++i) {
         var rx = view.getUint8( record_size*i+1 );
         var ry = view.getUint8( record_size*i   );
@@ -189,66 +225,26 @@ L.NanocubeLayer.prototype.processData = function(bindata){
         if (rv < 1e-6){ //skip zeros
             continue;
         }
-        data.push({x:rx, y:ry, v: rv});
+
+        //if (this.log){
+        //    rv = Math.log(rv+1);
+        //}
+
+        data[i] = {x:rx, y:ry, v: rv};
+        maxv = Math.max(maxv,rv);
+        minv = Math.min(minv,rv);
     }
 
-    return data;
+    if (maxv == -Infinity && minv == Infinity){ //zeros only
+        return null;
+    }
+    
+    return {min:minv,max:maxv,data:data};
 };
 
 
-L.NanocubeLayer.prototype._addTilesFromCenterOut = function(bounds){
-    this.tilelist = []; //empty the list
+L.NanocubeLayer.prototype._addTilesFromCenterOut = function (bounds){
+    this.max = -Infinity;
+    this.min = Infinity;
     L.TileLayer.Canvas.prototype._addTilesFromCenterOut.call(this, bounds);  
-
-    if (this.tilelist.length < 1){
-        return;
-    }
-    var tilelist=this.tilelist.slice(0); //copy the tilelit
-
-    var that = this;    
-    var promises = tilelist.map(function(t){ 
-        return that.queryTile(t);
-    });
-
-    //Process the tile
-    $.when.apply($,promises).then(function(){
-        //After querying
-        var value_arr = tilelist.map(function(t){
-            if (t.data==null){
-                return [];
-            }
-            else{
-                return t.data.map(function(d){ return d.v;});
-            }
-        });
-
-        //flatten the arrays
-        var min_arr = value_arr.reduce(function(a, b){
-            return a.concat(Math.min.apply(null,b));
-        });
-        var max_arr = value_arr.reduce(function(a, b){
-            return a.concat(Math.max.apply(null,b));
-        });
-
-        //find max and min
-        var minv = Math.min.apply(null,min_arr);
-        var maxv = Math.max.apply(null,max_arr);
-        
-        //render the tiles
-        tilelist.map(function(t){
-            var size = Math.pow(2,t.drill);
-            that.renderTile(t.canvas, size, t.tilePoint,
-                            t.level, minv,maxv,t.data);
-        });
-    });
-};
-
-L.NanocubeLayer.prototype.queryTile = function(tile){
-    var that = this;
-    var dfd = $.Deferred();
-    this.model.tileQuery(that.variable,tile,tile.drill, function(data){
-        tile.data = that.processData(data);
-        dfd.resolve();
-    });
-    return dfd.promise();
 };

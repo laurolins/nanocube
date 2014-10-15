@@ -12,6 +12,7 @@
 #include <exception>
 #include <stdexcept>
 #include <functional>
+#include <mutex>
 
 #include "mongoose.h"
 
@@ -23,11 +24,13 @@ struct Request {
 
     enum Type { JSON_OBJECT=0, OCTET_STREAM=1};
 
-    Request(mg_connection *conn, const std::vector<std::string> &params);
+    Request(mg_connection *conn, const std::string& request_string);
 
     void respondJson(std::string msg_content);
 
-    void respondOctetStream(const void *ptr, int size);
+    void respondText(std::string msg_content);
+
+    void respondOctetStream(const void *ptr, std::size_t size);
 
 private:
 
@@ -35,7 +38,7 @@ private:
 
 public:
 
-    const std::vector<std::string> &params;
+    const std::string request_string;
 
     int response_size;
 
@@ -63,27 +66,40 @@ public:
 
 struct Server {
 
-    Server();
+    Server() = default;
 
-    void registerHandler(std::string name, const RequestHandler &handler);
-    std::string getRegisteredHandles();
-
-    void start(int mongoose_threads);
+    void init(int mongoose_threads);
+    void run();
+    
     void stop();
+    
     bool toggleTiming(bool b);
+    
     bool isTiming() const;
+    
     const std::string currentDateTime();
+    const std::string currentDateTime2();
+    
+    void setHandler(const RequestHandler& request_handler);
 
-    void *mg_callback(mg_event event, mg_connection *conn);
+    void handle_request(Request &request);
+    
+public:
+    
+    int port { 29512 };
 
+    int mongoose_threads { 10 };
 
-    int port;
-    int mongoose_threads;
-private:
+    RequestHandler handler;
 
-    std::unordered_map<std::string, RequestHandler> handlers;
+public:
 
-    bool done;
-    bool is_timing;
+    bool is_timing { false };
+    
+    bool keep_running { true };
+    
     std::ofstream timing_of;
+    
+    std::mutex mutex; // mutual exclusion for writing into the timing file
+
 };

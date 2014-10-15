@@ -21,34 +21,52 @@
 // Request Impl.
 //-------------------------------------------------------------------------
 
-Request::Request(mg_connection *conn, const std::vector<std::string> &params):
-    conn(conn), params(params), response_size(0)
+Request::Request(mg_connection *conn, const std::string &request_string):
+    conn(conn), request_string(request_string), response_size(0)
 {}
 
 
 static std::string _content_type[] {
     std::string("application/json")         /* 0 */,
-    std::string("application/octet-stream") /* 1 */
+    std::string("application/octet-stream") /* 1 */,
+    std::string("text/plain")         /* 2 */
 };
 
-void Request::respondJson(std::string msg_content)
+void Request::respondText(std::string msg_content)
 {
     const std::string sep = "\r\n";
 
     std::stringstream ss;
     ss << "HTTP/1.1 200 OK"                << sep
-       << "Content-Type: application/json" << sep
+       << "Content-Type: text/plain"       << sep
        << "Access-Control-Allow-Origin: *" << sep
        << "Content-Length: %d"             << sep << sep
        << "%s";
 
-    // response_size = 106 + (int) msg_content.size();
-    response_size = 106 + (int) msg_content.size(); // banchmark data transfer
+    // response_size = 106 + (int) msg_content.size(); // banchmark data transfer
+    response_size = (int) msg_content.size();
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
 }
 
-void Request::respondOctetStream(const void *ptr, int size)
+void Request::respondJson(std::string msg_content)
+{
+    const std::string sep = "\r\n";
+    
+    std::stringstream ss;
+    ss << "HTTP/1.1 200 OK"             << sep
+    << "Content-Type: application/json" << sep
+    << "Access-Control-Allow-Origin: *" << sep
+    << "Content-Length: %d"             << sep << sep
+    << "%s";
+    
+    // response_size = 106 + (int) msg_content.size(); // banchmark data transfer
+    response_size = (int) msg_content.size();
+    // check how a binary stream would work here
+    mg_printf(conn, ss.str().c_str(), (int) msg_content.size(), msg_content.c_str());
+}
+
+void Request::respondOctetStream(const void *ptr, std::size_t size)
 {
     const std::string sep = "\r\n";
 
@@ -58,15 +76,15 @@ void Request::respondOctetStream(const void *ptr, int size)
        << "Access-Control-Allow-Origin: *"         << sep
        << "Content-Length: %d"                     << sep << sep;
 
-    response_size = 114;
+    response_size = 0; // 114;
     // check how a binary stream would work here
     mg_printf(conn, ss.str().c_str(), size);
 
-
     if (ptr) { // unsage access to nullptr
-        mg_write(conn, ptr, size);
+        mg_write(conn, ptr, (int) size);
         response_size += size;
     }
+    
 }
 
 
@@ -82,145 +100,89 @@ ServerException::ServerException(const std::string &message):
 // Server
 //-------------------------------------------------------------------------
 
-Server::Server():
-  port(29512),
-  mongoose_threads(10),
-  done(false),
-  is_timing(false)
-{}
-
-void Server::registerHandler(std::string name, const RequestHandler &handler)
+void Server::setHandler(const RequestHandler& rh)
 {
-    std::cout << "Registering handler: " << name << std::endl;
-    handlers[name] = handler;
+    handler = rh;
 }
 
-std::string Server::getRegisteredHandles()
+static Server    *__server { nullptr };
+static mg_server *__mongoose_server { nullptr };
+
+int __mg_callback(struct mg_connection* c, enum mg_event e)
 {
-    std::vector<std::string> rh;
-    for (auto it = handlers.begin(); it != handlers.end(); ++it) {
-        rh.push_back(it->first);
+    if (e == MG_AUTH) {
+        return MG_TRUE;   // Authorize all requests
+    } else if (e == MG_REQUEST) {
+        std::string uri(c->uri + 1);
+        Request request(c, uri);
+        __server->handle_request(request);
+        return MG_TRUE;   // Mark as processed
+        
+    } else {
+        return MG_FALSE;  // Rest of the events are not processed
     }
-    std::sort(rh.begin(), rh.end());
+};
 
-    std::stringstream ss;
-    for (auto it = rh.begin(); it != rh.end(); ++it) {
-        ss << *it << std::endl;
-    }
-    return ss.str();
-}
+void Server::handle_request(Request &request) {
+    std::chrono::time_point<std::chrono::high_resolution_clock> t0;
 
-void* Server::mg_callback(mg_event event, mg_connection *conn)
-{ // blocks current thread
-
-    if (event == MG_NEW_REQUEST) {
-
-        std::chrono::time_point<std::chrono::high_resolution_clock> t0;
-        if (is_timing) {
-            t0 = std::chrono::high_resolution_clock::now();
-        }
-
-        const struct mg_request_info *request_info = mg_get_request_info(conn);
-
-        std::string uri(request_info->uri);
-
-        //std::cout << "Request URI: " << uri << std::endl;
-
-        // tokenize on slahses: first should be the address,
-        // second the requested function name, and from
-        // third on parameters to the functions
-        std::vector<std::string> tokens;
-        boost::split(tokens, uri, boost::is_any_of("/"));
-
-        Request request(conn, tokens);
-
-        if (tokens.size() == 0) {
-            // std::cout << "Request URI: " << uri << std::endl;
-            std::stringstream ss;
-            ss << "bad URL: " << uri;
-            request.respondJson(ss.str());
-            return  (void*) ""; // mark as processed
-        }
-        else if (tokens.size() == 1) {
-            // std::cout << "Request URI: " << uri << std::endl;
-            std::stringstream ss;
-            ss << "no handler name was provided on " << uri;
-            request.respondJson(ss.str());
-            return (void*) ""; // mark as processed
-        }
-
-        std::string handler_name = tokens[1];
-        //std::cout << "Searching handler: " << handler_name << std::endl;
-
-        if (handlers.find(handler_name) == handlers.end()) {
-            // std::cout << "Request URI: " << uri << std::endl;
-            std::stringstream ss;
-            ss << "no handler found for " << uri << " (request key: " << handler_name << ")";
-            request.respondJson(ss.str());
-            return (void*) ""; // mark as processed
-        }
-
-        if (is_timing) {
-            handlers[handler_name](request);
-            auto t1 = std::chrono::high_resolution_clock::now();
-            uint64_t elapsed_nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
-            timing_of << currentDateTime() << " " << uri
-                      << " " << elapsed_nanoseconds << " ns"
-                      << " input " << uri.length()
-                      << " output " << request.response_size
-                      << std::endl;
-            // std::cout << "Request URI: " << uri << std::endl;
-        } else {
-            // std::cout << "Request URI: " << uri << std::endl;
-            handlers[handler_name](request);
-        }
-
-        return (void*) "";
-    }
-    return 0;
-}
-
-static Server *_server;
-void* __mg_callback(mg_event event, mg_connection *conn)
-{
-    return _server->mg_callback(event, conn);
-}
-
-void Server::start(int mongoose_threads) // blocks current thread
-{
-    char p[256];
-    sprintf(p,"%d",port);
-    std::string port_st = p;
-    this->mongoose_threads = mongoose_threads;
-
-    // port_st.c_str();
-    _server = this; // single Server
-    // auto callback = std::bind(&Server::mg_callback, this, std::placeholders::_1, std::placeholders::_2);
-
-    std::string mongoose_string = std::to_string(mongoose_threads);
-    struct mg_context *ctx;
-    const char *options[] = {"listening_ports", port_st.c_str(), "num_threads", mongoose_string.c_str(), NULL};
-    ctx = mg_start(&__mg_callback, NULL, options);
-
-    if (!ctx) {
-        throw ServerException("Couldn't create mongoose context... exiting!");
+    bool was_timing = is_timing;
+    if (is_timing) {
+        t0 = std::chrono::high_resolution_clock::now();
     }
 
-    // ctx = mg_start(&callback, NULL, options);
-
-    std::cout << "Server on port " << port << std::endl;
-    while (!done) // this thread will be blocked
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-
-    // sleep(1);
-
-    mg_stop(ctx);
+    handler(request);
+    
+    if (was_timing) {
+        // std::cout << "Request URI: " << uri << std::endl;
+        auto t1 = std::chrono::high_resolution_clock::now();
+        uint64_t elapsed_nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t1-t0).count();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            timing_of
+            << currentDateTime() << "|"
+            << elapsed_nanoseconds << "|"
+            << request.response_size << "|"
+            << request.request_string.size() << "|"
+            << "'" << request.request_string << "'" << std::endl;
+        }
+    }
 }
 
-void Server::stop()
+void Server::init(int mongoose_threads) // blocks current thread
 {
-  done = true;
-  handlers.clear();
+    __server = this;
+    
+    mg_server *srv = mg_create_server(NULL, __mg_callback);
+    mg_set_option(srv, "num_threads", std::to_string(mongoose_threads).c_str());      // Serve current directory
+    mg_set_option(srv, "listening_port", std::to_string(port).c_str());  // Open port 8080
+    
+    __mongoose_server = srv;
+    
+    mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop
+    auto listening_socket = mg_get_listening_socket(srv);
+    if (listening_socket == -1) { // -1 is INVALID_SOCKET on mongoose
+        mg_destroy_server(&srv);
+        throw ServerException("Problem starting mongoose server");
+    }
+}
+
+void Server::run() {
+    
+    if (!__mongoose_server)
+        throw ServerException("No mongoose server initialized");
+    
+    // add some flag for a clean shutdown of mongoose server
+    for (;keep_running;) {
+        mg_poll_server(__mongoose_server, 1000);   // Infinite loop, Ctrl-C to stop
+        // std::cerr << "mg_poll_server result = " << code << std::endl;
+    }
+    mg_destroy_server(&__mongoose_server);
+}
+
+void Server::stop() // blocks current thread
+{
+    keep_running = false;
 }
 
 bool Server::toggleTiming(bool b)
@@ -231,13 +193,14 @@ bool Server::toggleTiming(bool b)
             // already open, do nothing
         } else {
             // record requests and times in a file
-            std::string filename = "nanocube-query-timing.txt";
+            std::string filename = "nanocube-query-timing-" + currentDateTime2() + ".psv";
             timing_of.open(filename);
             if (!timing_of.is_open()) {
                 std::cout << "[WARNING]: Could not record requests and times" << std::endl;
                 is_timing = false;
                 return false;
             }
+            timing_of << "finish_time|latency_ns|output_bytes|input_bytes|query_string" << std::endl;
         }
     } else {
         if (timing_of.is_open()) {
@@ -252,7 +215,6 @@ bool Server::isTiming() const
     return is_timing;
 }
 
-
 // Get current date/time, format is YYYY-MM-DD.HH:mm:ss
 const std::string Server::currentDateTime() {
     time_t     now = time(0);
@@ -262,8 +224,18 @@ const std::string Server::currentDateTime() {
     // Visit http://www.cplusplus.com/reference/clibrary/ctime/strftime/
     // for more information about date/time format
     strftime(buf, sizeof(buf), "%Y-%m-%d_%X", &tstruct);
-
     return buf;
 }
 
 
+// Get current date/time, format is YYYYMMDDHHmmss
+const std::string Server::currentDateTime2() {
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    // Visit http://www.cplusplus.com/reference/clibrary/ctime/strftime/
+    // for more information about date/time format
+    strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", &tstruct);
+    return buf;
+}

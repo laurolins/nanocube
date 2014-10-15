@@ -164,7 +164,8 @@ struct FD_DimTBin : public FieldDescription {
     FD_DimTBin(std::string name,
                std::string time_field_name,
                std::string tbin_spec,
-               int num_bytes);
+               int num_bytes,
+               bool binary_tree_variation = false);
 
     virtual FD_DimTBin *asDimTBin();
 
@@ -182,6 +183,8 @@ struct FD_DimTBin : public FieldDescription {
 
     TimeBinFunction  tbin_function;
     int num_bytes;
+    
+    bool binary_tree_variation { false };
 };
 
 std::ostream &operator<<(std::ostream& os, const FD_DimTBin &fd);

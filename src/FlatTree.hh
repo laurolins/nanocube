@@ -6,6 +6,7 @@
 #include <iostream>
 #include <stack>
 #include <cstdint>
+#include <stdexcept>
 
 #ifndef FLATTREE_VECTOR
 #include "small_vector.hh"
@@ -14,6 +15,7 @@
 #include "ContentHolder.hh"
 
 #include "cache.hh"
+#include "polycover/labeled_tree.hh"
 
 //
 // Needed Mechanisms
@@ -27,6 +29,10 @@
 
 namespace flattree
 {
+    
+    using DimensionPath = std::vector<int>; // matching tree_store_nanocube.hh
+    
+    using Mask = polycover::labeled_tree::Node;
     
         using Cache = nanocube::Cache;
 
@@ -94,6 +100,8 @@ public:  // methods
     bool operator==(const Address &addr) const;
 
     size_t hash() const;
+    
+    DimensionPath getDimensionPath() const;
 
 public:  // data members
 
@@ -213,6 +221,8 @@ public:
     template <typename Visitor>
     void visitSequence(const std::vector<RawAddress> &seq, Visitor &visitor, Cache& cache);
 
+    template <typename Visitor>
+    void visitExistingTreeLeaves(const Mask* mask, Visitor &visitor);
 
     FlatTree();
     ~FlatTree();
@@ -371,6 +381,16 @@ template <typename Structure>
 uint64_t Address<Structure>::raw() const {
     return (uint64_t) singleton_path_element;
 }
+    
+    template<typename Structure>
+    DimensionPath Address<Structure>::getDimensionPath() const {
+        DimensionPath result;
+        if (singleton_path_element != EMPTY_PATH) {
+            result.push_back((int)singleton_path_element);
+        }
+        return result;
+    }
+
 
 template <typename Structure>
 bool Address<Structure>::read(std::istream &is)
@@ -698,6 +718,11 @@ void FlatTree<Content>::visitSequence(const std::vector<RawAddress> &seq, Visito
     }
 }
 
+    template<typename Content>
+    template <typename Visitor>
+    void FlatTree<Content>::visitExistingTreeLeaves(const Mask* mask, Visitor &visitor) {
+        throw std::runtime_error("not available");
+    }
 
 //
 // Node Implementation

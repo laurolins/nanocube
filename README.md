@@ -13,6 +13,7 @@ modern-day laptop.
 
 | Number | Description |
 |:------:|-------------|
+| 3.0 | [New API](https://github.com/laurolins/nanocube/blob/api3/API.md) to support more general nanocubes |
 | 2.1.3 | Minor fixes, improved csv2Nanocube.py script  |
 | 2.1.2 | Minor fixes, better documentation, shutdown service |
 | 2.1.1 | Fixed csv2Nanocube.py to work with pandas 0.14.0 |
@@ -62,7 +63,7 @@ Set path to the boost directory
 **General Instructions**
 
 Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
-with valid release numbers (e.g. 2.1.3, 2.1, 2.0).
+with valid release numbers (e.g. 3.0, 2.1.3, 2.1, 2.0).
 
     wget https://github.com/laurolins/nanocube/archive/X.X.X.zip
     unzip X.X.X.zip
@@ -80,13 +81,13 @@ with the specfic recent version of gcc in your system. For example
 
 We strongly suggest linking nanocubes with [Thread-Caching Malloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html), or tcmalloc for short.
 It is faster than the default system malloc, and in some cases, we found that the amount of memory used by nanocubes was reduced
-by over 50% when using libtcmalloc.  To install on a Ubuntu 14.04 machine:
+by over 50% when using libtcmalloc.  To install on a Ubuntu 14.04 machine, install the following package and all of its dependencies.
 
-    sudo apt-get install libtcmalloc-minimal4
+    sudo apt-get install libgoogle-perftools-dev
 
-You must then re-run the configure script pointing to the libtcmalloc shared library, and re-compile the nanocubes source.
+You must then re-run the configure script, indicating support for tcmalloc.
 
-    ./configure LIBS=/usr/lib/libtcmalloc_minimal.so.4
+    ./configure --with-tcmalloc
     make clean
     make
 
@@ -122,25 +123,26 @@ on your system, please choose another port.
    included example dataset
    ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2)).  If port 29512 is already
    being used on your system, please choose another port.  Note that the port is specified for both the python script and for
-   the nanocubes server (ncserve). If these are not the same, you'll run into problems.  29512 is the default value, so if you
-   don't specify the port at all, it will try to use the default.
+   the nanocubes server (nanocube-leaf). If these are not the same, you'll run into problems.
 
         cd ../scripts
-        python csv2Nanocube.py --timecol='Date' --latcol='Latitude' --loncol='Longitude' --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
+        python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
 
 
+   Please note: We modified the original dataset slightly in this example by changing the names of two columns in the header.  In previous versions,
+there were columns called 'Date' and 'Primary Type'.  We have renamed these 'time' and 'crime' to avoid any confusion and make the subsequent
+examples easier to read.
 
    The first few lines of the example dataset are shown below. The first line is a header, which describes each of the columns in this table of data.
-   You should notice that there are columns called: Date, Primary Type, Latitude, Longitude.  These are the columns used for this visualization.
+   You should notice that there are columns called: time, crime, Latitude, Longitude.  These are the columns used for this visualization.
 
-        ID,Case Number,Date,Block,IUCR,Primary Type,Description,Location Description,Arrest,Domestic,Beat,District,Ward,Community Area,FBI Code,X Coordinate,Y Coordinate,Year,Updated On,Latitude,Longitude,Location
-        9435145,HW579013,12/21/2013 04:05:00 AM,013XX S KILDARE AVE,0420,BATTERY,AGGRAVATED:KNIFE/CUTTING INSTR,RESIDENTIAL YARD (FRONT/BACK),false,false,1011,010,24,29,04B,1147977,1893242,2013,12/23/2013 12:39:51 AM,41.863004448921934,-87.7322698761511,"(41.863004448921934, -87.7322698761511)"
-        9435117,HW578998,12/21/2013 04:15:00 AM,005XX N LAWLER AVE,0486,BATTERY,DOMESTIC BATTERY SIMPLE,APARTMENT,false,true,1532,015,28,25,08B,1142638,1903220,2013,01/05/2014 12:39:48 AM,41.89048623626327,-87.75162080720938,"(41.89048623626327, -87.75162080720938)"
-        9457369,HW579005,12/21/2013 04:15:00 AM,077XX S ADA ST,0486,BATTERY,DOMESTIC BATTERY SIMPLE,RESIDENCE,false,true,0612,006,17,71,08B,1168828,1853330,2013,01/23/2014 12:40:19 AM,41.75305549754325,-87.65688114331137,"(41.75305549754325, -87.65688114331137)"
-        9435159,HW579015,12/21/2013 04:30:00 AM,049XX S KEDZIE AVE,1305,CRIMINAL DAMAGE,CRIMINAL DEFACEMENT,CTA PLATFORM,true,false,0821,008,14,63,14,1155836,1871729,2013,12/23/2013 12:39:51 AM,41.80381553747461,-87.7039986610427,"(41.80381553747461, -87.7039986610427)"
+        ID,Case Number,time,Block,IUCR,crime,Description,Location Description,Arrest,Domestic,Beat,District,Ward,Community Area,FBI Code,X Coordinate,Y Coordinate,Year,Updated On,Latitude,Longitude,Location
+        9418031,HW561348,12/06/2013 06:25:00 PM,040XX W WILCOX ST,2024,NARCOTICS,POSS: HEROIN(WHITE),SIDEWALK,true,false,1115,011,28,26,18,1149444,1899069,2013,12/11/2013 12:40:36 AM,41.8789661034259,-87.72673345412568,"(41.8789661034259, -87.72673345412568)"
+        9418090,HW561429,12/06/2013 06:26:00 PM,026XX W LITHUANIAN PLAZA CT,1310,CRIMINAL DAMAGE,TO PROPERTY,GROCERY FOOD STORE,false,false,0831,008,15,66,14,1160196,1858843,2013,12/10/2013 12:39:15 AM,41.76836587673295,-87.68836274472295,"(41.76836587673295, -87.68836277 4472295)"
+        9418107,HW561399,12/06/2013 06:29:00 PM,045XX S DAMEN AVE,0860,THEFT,RETAIL THEFT,DEPARTMENT STORE,true,false,0924,009,12,61,06,1163636,1874247,2013,12/10/2013 12:39:15 AM,41.810564946613454,-87.6753212816967,"(41.810564946613454, -87.6753212816967)"
+        9418222,HW561455,12/06/2013 06:30:00 PM,008XX W ALDINE AVE,0820,THEFT,$500 AND UNDER,RESIDENCE,true,false,1924,019,44,6,06,1169898,1922154,2013,12/14/2013 12:39:48 AM,41.94189139041086,-87.65095594008946,"(41.94189139041086, -87.65095594008946)"
 
-
-   The parameters for csv2Nanocube.py are listed below.  Note that when we called the script above, we specified the categorical dimension (Primary Type) and the time dimension (Date), as well as Latitude, or Longitude.  However, the script is smart enough to identify the Latitude and Longitude columns automatically if they have these names.  If they were named differently (e.g. lat, long), we would have to use the other parameters for the script (--latcol, --loncol) to identify them for the script.  If your data is also separated by a character other than a comma, you can indicate this when you run the script using the '--sep' parameter.
+   The parameters for csv2Nanocube.py are listed below.  Note that when we called the script above, we specified the categorical dimension (crime) and the time dimension (time), as well as Latitude and Longitude.  However, the script is smart enough to identify the Latitude and Longitude columns automatically if they have these names.  If they were named differently (e.g. lat, long), we would have to use the other parameters for the script (--latcol, --loncol) to identify them for the script.  If your data is also separated by a character other than a comma, you can indicate this when you run the script using the '--sep' parameter.
 
         --catcol='Column names of categorical variable'
         --latcol='Column names of latitude'
@@ -153,42 +155,21 @@ on your system, please choose another port.
         e.g. 1D/30m/60s'
 
    The output generated by running the csv2Nanocube.py script should look like the following.
-   You can see that 49,186 points were inserted into the nanocube, which is using 49MB of RAM.
+   You can see that 50,000 points were inserted into the nanocube, which is using 18MB of RAM.
 
-        VERSION: 2014.03.25_13:26
-        nc_dim_quadtree_25
-        quadtree dimension with 25 levels
-        nc_dim_cat_1
-        categorical dimension with 1 bytes
-        nc_dim_time_2
-        time dimension with 2 bytes
-        nc_var_uint_4
-        time dimension with 4 bytes
-        Dimensions: _q25_c1
-        Variables:  _u2_u4
-        Registering handler: query
-        Registering handler: binquery
-        Registering handler: binqueryz
-        Registering handler: tile
-        Registering handler: tquery
-        Registering handler: bintquery
-        Registering handler: bintqueryz
-        Registering handler: stats
-        Registering handler: schema
-        Registering handler: valname
-        Registering handler: tbin
-        Registering handler: summary
-        Registering handler: graphviz
-        Registering handler: version
-        Registering handler: timing
-        Registering handler: start
-        Starting NanoCubeServer on port 29512
-        Mongoose starting 100 threads
-        Server on port 29512
-        count:      49186 mem. res:         49MB.  time(s):          0
-        Number of points inserted 49186
+        VERSION: 2014.10.11_16:40
+        parent process is waiting...
+        started redirecting stdin content to write-channel of parent-child pipe
+        query-port:  29512
+        insert-port: 0
+        (stdin     ) count:      10000 mem. res:          6MB. time(s):          0
+        (stdin     ) count:      20000 mem. res:          9MB. time(s):          1
+        (stdin     ) count:      30000 mem. res:         12MB. time(s):          2
+        (stdin     ) count:      40000 mem. res:         15MB. time(s):          2
+        (stdin     ) count:      50000 mem. res:         18MB. time(s):          3
+        (stdin:done) count:      50000 mem. res:         18MB. time(s):          3
 
-5. That's it.  Point your browser (Firefox, Chrome) to http://localhost:8000 for the viewer. If you needed to change the port number in Step 3 above, make sure that you specify the same number here.
+5. That's it.  Point your browser (Firefox, Chrome, Safari) to http://localhost:8000 for the viewer. If you needed to change the port number in Step 3 above, make sure that you specify the same number here.
 
 6. If you believe there may be a problem, try running 'nctest.sh' in the scripts subdirectory.  It will make some queries of the nanocube (change the script if you are not using port 29512) and compare the results to known results that we gathered ourselves.  If the results match, it will report 'SUCCESS'.
 
@@ -207,7 +188,7 @@ Running this example again later, you do not need to reinstall the linux or pyth
         cd web
         python -m SimpleHTTPServer 8000 &
         cd ../scripts
-        python csv2Nanocube.py --catcol='Primary Type' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/ncserve --rf=10000 --threads=100 --port=29512
+        python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
 
 
 ## Further Details

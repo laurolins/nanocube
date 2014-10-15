@@ -105,6 +105,8 @@ struct DumpFileDescription {
     inline bool isBinary() const { return encoding == binary; }
 
     inline bool isText() const { return encoding == text; }
+    
+    void writeRecordTextualDescription(std::ostream &os, char* data, int len);
 
     std::string name;
 

@@ -55,4 +55,4 @@ function initNanocube(config){
             }
         }
     });
-}
+};

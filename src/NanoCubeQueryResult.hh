@@ -1,6 +1,9 @@
 #include "QueryResult.hh"
 #include "NanoCubeSchema.hh"
 
+#include "tree_store_nanocube.hh"
+
+
 #include <iostream>
 
 namespace nanocube {
@@ -9,7 +12,7 @@ struct QueryResult {
 
 public: // constructor
 
-    QueryResult(::query::result::Vector &result, Schema &schema);
+    QueryResult(::nanocube::TreeValue &result, Schema &schema);
 
 public: // Methods
 
@@ -17,7 +20,7 @@ public: // Methods
 
 public: // Data Members
 
-    ::query::result::Vector &result;
+    ::nanocube::TreeValue  &result;
     ::nanocube::Schema      &schema;
 
 };
