@@ -557,12 +557,17 @@ FlatTree<Content>::prepareProperOutdatedPath(FlatTree*                  parallel
                                              std::vector<void*>&        parallel_replaced_nodes,
                                              FlatTree::NodeStackType&   stack)
 {
+    //std::cout << "FlatTree<Content>::prepareProperOutdatedPath(...): address == " << address << std::endl;
+    
     // same implementation as trailProperPath
     // there is no gain on a flattree to share
     // child nodes.
 
     // needs to be a complete path
-    assert(address.getPathSize() == 1);
+    if (address.getPathSize() != 1)
+        throw std::runtime_error("Invalid Path Size");
+    
+    // std::cout << "FlatTree::prepareProperOutdatedPath(...): address == " << address << std::endl;
 
     // to get to this point at least the root needs
     // to be updated, otherwise it would have been

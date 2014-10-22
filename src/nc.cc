@@ -673,6 +673,23 @@ void NanocubeServer::runQueryServer()
     server.run();
 }
 
+//
+// http://stackoverflow.com/questions/13059091/creating-an-input-stream-from-constant-memory
+//
+struct membuf: std::streambuf {
+    membuf(char const* base, size_t size) {
+        char* p(const_cast<char*>(base));
+        this->setg(p, p, p + size);
+    }
+};
+
+struct imemstream: virtual membuf, std::istream {
+    imemstream(char const* base, size_t size)
+    : membuf(base, size)
+    , std::istream(static_cast<std::streambuf*>(this)) {
+    }
+};
+
 void NanocubeServer::insert_from_stdin()
 {
     auto batch_size       = options.batch_size.getValue(); // add 10k points before
@@ -740,18 +757,9 @@ void NanocubeServer::insert_from_stdin()
         auto read_bytes = input_stream.gcount();
         //std::cerr << " " << read_bytes << " were read" << std::endl;
 
-        // {
-        //     std::ofstream ofs("/tmp/verification.tmp", std::ofstream::out | std::ofstream::app);
-        //     std::for_each(&buffer[0], &buffer[0] + read_bytes, [&ofs](char ch) {
-        //             int value = 0;
-        //             std::copy(&ch, &ch + 1, (char*) &value);
-        //             ofs << std::hex << value << std::dec << " ";
-        //         });
-        //     ofs << std::endl;
-        // }
-        
-        ss.clear();
-        ss.write(buffer, read_bytes);
+        imemstream ss(buffer, read_bytes);
+//        ss.clear();
+//        ss.write(buffer, read_bytes); // TODO: it seems this is a big memory ineficient procedure!!!
 
         // write a batch of points
         if (read_bytes > 0)
@@ -883,6 +891,8 @@ void NanocubeServer::insert_from_tcp()
                         throw boost::system::system_error(error); // Some other error.
                     }
                     
+                    
+                    // TODO: copy m
                     ss.write(buf, len);
                     // ss.flush();
                     bytes_on_stream += len;

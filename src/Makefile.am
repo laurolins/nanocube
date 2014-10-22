@@ -8,11 +8,15 @@ install-exec-hook:
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-bin_PROGRAMS =        \
-ncdmp                 \
-nanocube-leaf         \
-nc_q25_c1_u2_u4       \
-nc_q25_q25_u2_u4      \
+bin_PROGRAMS =              \
+ncdmp                       \
+nanocube-leaf               \
+nc_c1_u2_u4                 \
+nc_q25_u2_u4                \
+nc_q25_c1_u2_u4             \
+nc_q25_c1_c1_c1_u2_u4       \
+nc_q25_q25_u2_u4            \
+nc_q25_q25_u2_u8            \
 nc_q22_q22_u2_u4
 
 # \
@@ -254,6 +258,27 @@ AM_CXXFLAGS += -DNANOCUBE_VERSION=\"$(NANOCUBE_VERSION)\"
 # NC_LIBS = -ldl -lpthread -lboost_thread -lboost_system
 #NC_LIBS = -ldl -lpthread -lboost_thread-mt -lboost_system-mt
 
+nc_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=c1 \
+    -DLIST_VARIABLE_TYPES=u2,u4 \
+    -DVERSION=\"$(VERSION)\"
+nc_c1_u2_u4_SOURCES =\
+    $(nc_SOURCES)
+
+
+nc_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25 \
+    -DLIST_VARIABLE_TYPES=u2,u4 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_u2_u4_SOURCES =\
+    $(nc_SOURCES)
+
 nc_q25_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
 nc_q25_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
@@ -264,6 +289,15 @@ nc_q25_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
 nc_q25_c1_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
+nc_q25_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25,c1,c1,c1 \
+    -DLIST_VARIABLE_TYPES=u2,u4 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_c1_c1_c1_u2_u4_SOURCES =\
+    $(nc_SOURCES)
 
 
 nc_q25_q25_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
@@ -274,6 +308,17 @@ nc_q25_q25_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -DLIST_VARIABLE_TYPES=u2,u4 \
     -DVERSION=\"$(VERSION)\"
 nc_q25_q25_u2_u4_SOURCES =\
+    $(nc_SOURCES)
+
+
+nc_q25_q25_u2_u8_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_q25_u2_u8_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25,q25 \
+    -DLIST_VARIABLE_TYPES=u2,u8 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_q25_u2_u8_SOURCES =\
     $(nc_SOURCES)
 
 
