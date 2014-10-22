@@ -747,23 +747,14 @@ void NanocubeServer::insert_from_stdin()
         //std::cerr << "reading " << num_bytes_per_batch << "...";
         input_stream.read(buffer,num_bytes_per_batch);
         
-        
-        if (!input_stream){
-            //std::cout << "break" << std::endl;
-            break;
-        }
-        
         //std::cerr << " gcout..." << std::endl;
         auto read_bytes = input_stream.gcount();
         //std::cerr << " " << read_bytes << " were read" << std::endl;
-
-        imemstream ss(buffer, read_bytes);
-//        ss.clear();
-//        ss.write(buffer, read_bytes); // TODO: it seems this is a big memory ineficient procedure!!!
-
+        
         // write a batch of points
         if (read_bytes > 0)
         {
+            imemstream ss(buffer, read_bytes);
             boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
             for (uint64_t i=0;i<batch_size && !done;++i)
             {
@@ -779,6 +770,9 @@ void NanocubeServer::insert_from_stdin()
                     done = (maximum && inserted_points == maximum);
                 }
             }
+        }
+        else if (read_bytes == 0) {
+            break;
         }
 
         // shared_mutex.
@@ -797,27 +791,6 @@ void NanocubeServer::insert_from_stdin()
             << " time(s): " <<  std::setw(10) << sw.timeInSeconds() << std::endl;
             addMessage(ss.str());
         }
-
-        // std::this_thread::sleep_for(std::mill)
-
-//        bool ok = nanocube.add(std::cin);
-//        if (!ok) {
-//            // std::cout << "not ok" << std::endl;
-//            break;
-//        }
-
-//        { // generate pdf
-//            report::Report report(nanocube.DIMENSION + 1);
-//            nanocube.mountReport(report);
-//            std::string filename     = "/tmp/bug"+std::to_string(count)+".dot";
-//            std::string pdf_filename = "/tmp/bug"+std::to_string(count)+".pdf";
-//            std::ofstream of(filename);
-//            report::report_graphviz(of, report);
-//            of.close();
-//            system(("dot -Tpdf " + filename + " > " + pdf_filename).c_str());
-//        }
-
-
 
     } // loop to insert objects into the nanocube
 
