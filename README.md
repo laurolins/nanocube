@@ -13,6 +13,7 @@ modern-day laptop.
 
 | Number | Description |
 |:------:|-------------|
+| 3.0.1 | Fixed a bug that was causing memory inneficiencies |
 | 3.0 | [New API](https://github.com/laurolins/nanocube/blob/api3/API.md) to support more general nanocubes |
 | 2.1.3 | Minor fixes, improved csv2Nanocube.py script  |
 | 2.1.2 | Minor fixes, better documentation, shutdown service |
@@ -62,12 +63,12 @@ Set path to the boost directory
 
 **General Instructions**
 
-Run the following commands to compile nanocubes on your linux/mac system. Replace `X.X.X`
-with valid release numbers (e.g. 3.0, 2.1.3, 2.1, 2.0).
+Run the following commands to compile nanocubes on your linux/mac system. Replace `3.0.1`
+with other valid release numbers (e.g. 3.0, 2.1.3, 2.1, 2.0).
 
-    wget https://github.com/laurolins/nanocube/archive/X.X.X.zip
-    unzip X.X.X.zip
-    cd nanocube-X.X.X
+    wget https://github.com/laurolins/nanocube/archive/3.0.1.zip
+    unzip 3.0.1.zip
+    cd nanocube-3.0.1
     ./bootstrap
     ./configure
     make
@@ -183,7 +184,7 @@ different setups.
 
 Running this example again later, you do not need to reinstall the linux or python packages.
 
-        cd nanocube-X.X.X
+        cd nanocube-3.0.1
         source myPy/bin/activate
         cd web
         python -m SimpleHTTPServer 8000 &
