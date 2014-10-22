@@ -27,7 +27,7 @@ modern-day laptop.
 **Prerequisites**
 
 1. The nanocubes server is 64-bit only.  There is NO support on 32-bit operating systems.
-2. The nanocubes server is written in C++ 11.  You must use a recent version of gcc (>= 4.7.2).
+2. The nanocubes server is written in C++ 11.  You must use a recent version of gcc (>= 4.8).
 3. The nanocubes server uses [Boost](http://www.boost.org).  You must use version 1.48 or later.
 4. To build the nanocubes server, you must have the [GNU build system](http://www.gnu.org/software/autoconf/) installed.
 
@@ -35,13 +35,12 @@ modern-day laptop.
 
 On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but you may have to install the following packages:
 
+    sudo apt-get install build-essential
     sudo apt-get install automake
     sudo apt-get install libtool
     sudo apt-get install zlib1g-dev
-    sudo apt-get install libboost-dev
-    sudo apt-get install libboost-test-dev
-    sudo apt-get install libboost-system-dev
-    sudo apt-get install libboost-thread-dev
+    sudo apt-get install libboost-all-dev
+
 
 **Mac OS X (10.9)**
 
@@ -98,7 +97,6 @@ You must then re-run the configure script, indicating support for tcmalloc.
 1. For compiling our python helper code, you will need the following packages:
 
         sudo apt-get install python-dev
-        sudo apt-get install gfortran
 
 2. Install the python data analysis library (pandas) in a separate python environment (Recommended)
 
@@ -112,7 +110,7 @@ You must then re-run the configure script, indicating support for tcmalloc.
 
         # activate the virtualenv, type "deactivate" to disable the env when done
         source myPy/bin/activate
-        pip install argparse numpy pandas
+        pip install pandas numpy argparse
 
 3. Start a web server in the "web" directory and send it to background.  If port 8000 is already being used
 on your system, please choose another port.
