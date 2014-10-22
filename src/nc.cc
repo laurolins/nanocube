@@ -735,7 +735,7 @@ void NanocubeServer::insert_from_stdin()
     auto num_bytes_per_batch = record_size * batch_size;
     
     std::stringstream ss;
-    char buffer[num_bytes_per_batch];
+    std::vector<char> buffer(num_bytes_per_batch);
 
     // {
     //     std::ofstream ofs("/tmp/verification.tmp", std::ofstream::out | std::ofstream::app);
@@ -745,7 +745,7 @@ void NanocubeServer::insert_from_stdin()
     while (!done) {
 
         //std::cerr << "reading " << num_bytes_per_batch << "...";
-        input_stream.read(buffer,num_bytes_per_batch);
+        input_stream.read(&buffer[0],num_bytes_per_batch);
         
         //std::cerr << " gcout..." << std::endl;
         auto read_bytes = input_stream.gcount();
@@ -754,7 +754,7 @@ void NanocubeServer::insert_from_stdin()
         // write a batch of points
         if (read_bytes > 0)
         {
-            imemstream ss(buffer, read_bytes);
+            imemstream ss(&buffer[0], read_bytes);
             boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
             for (uint64_t i=0;i<batch_size && !done;++i)
             {
