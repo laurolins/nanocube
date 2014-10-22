@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys,dateutil.parser,datetime,argparse,re,subprocess,os,json,socket
 
 import cStringIO as StringIO
