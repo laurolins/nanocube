@@ -1,6 +1,6 @@
-#EXTRA_DATA = extra
-#extradir = $(prefix)/bin
-#extra_DATA = ncbuild
+EXTRA_DATA = extra
+extradir = $(prefix)/bin
+extra_DATA = nanocube-dmpvu nanocube-benchmark
 
 install-exec-hook:
 	cp $(top_srcdir)/src/ncbuild $(prefix)/bin
