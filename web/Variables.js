@@ -25,7 +25,7 @@ CatVar.prototype.jsonToList=function(json){
     });
 
     data = data.sort(function(a,b) {return -(a.value-b.value);});
-    return data.slice(0,10);
+    return data.slice(0,25);
 };
 
 CatVar.prototype.update=function(json,id,color,q){

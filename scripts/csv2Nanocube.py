@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys,dateutil.parser,datetime,argparse,re,subprocess,os,json,socket
 
 import cStringIO as StringIO
@@ -118,7 +120,7 @@ class NanocubeInput:
         top = 30
         for i,div in enumerate(self.catcol):
             nval = len(self.valname[div])
-            height = 20* min(nval,10)+50 #50 is the default margin size
+            height = 20* min(nval,25)+50 #50 is the default margin size
             lmargin = max(30,15*max([len(k) for k in self.valname[div]]))
             div = div.replace(" ", "_");
             config['div'][div] = {'position': 'absolute',
