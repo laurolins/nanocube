@@ -1,0 +1,168 @@
+#!/usr/bin/python                                                               
+import time
+import sys
+import curses
+import argparse
+import sys
+import os
+import time
+import struct
+import math
+import numpy
+import threading
+import traceback
+import bisect
+
+from psh import sh
+
+
+parser = argparse.ArgumentParser(description="Viewer for .dmp files")
+parser.add_argument('-i', '--input', type=str, help='input file ppv file', required=True)
+
+args = parser.parse_args()
+
+# finish_time|latency_ns|output_bytes|input_bytes|query_string
+# 2014-10-24_09:48:15|3786458|11|103|'count.bin().r("time",interval(19773,40298)).r("src",range2d(tile2d(1621,4731,13),tile2d(2590,5200,13)))'
+# 2014-10-24_09:48:15|67004694|204863|81|'count.bin().r("time",interval(19773,40298)).a("src",dive(tile2d(7,20,5),8),"img")'
+# 2014-10-24_09:48:15|7140242|24051|81|'count.bin().r("time",interval(19773,40298)).a("src",dive(tile2d(6,18,5),8),"img")'
+
+class Record:
+    def __init__(self, st):
+        # assume it is a record
+        tokens = st.split('|')
+        self.finish_time  = time.strptime(tokens[0], "%Y-%m-%d_%H:%M:%S")
+        self.latency_ns   = int(tokens[1])
+        self.output_bytes = int(tokens[2])
+        self.input_bytes  = int(tokens[3])
+        self.query_string = tokens[4]
+
+    def __lt__(self, other):
+        return self.latency_ns < other.latency_ns
+
+class State:
+    def __init__(self, args):
+        self.args = args
+        self.records = []
+        self.per         = range(0,101,10) # percentile list
+
+    def insert(self, record):
+        bisect.insort_left(self.records, record)
+
+        # self.records.append(record)
+        # latency_ms = record.latency_ns/1000000.0
+        # output_size_kb = record.output_bytes //1024.0
+        # state.latency.append(latency_ms)
+        # state.output_size.append(output_size_kb)
+
+    def size(self):
+        return len(self.records)
+    
+    def percentiles(self):
+        return self.per
+
+    def var_percentiles(self, var):
+        if not len(self.records):
+            return [0.0] * len(self.per)
+        else:
+            exec("x = [float(r.%s) for r in self.records]" % var)
+            return numpy.percentile(x, self.per)
+
+    # def output_size_percentiles(self):
+    #     if 
+    #     if len(self.output_size) == 0:
+    #         return numpy.percentile([0.0], self.per)
+    #     return numpy.percentile(self.output_size, self.per)
+
+
+state = State(args)
+
+class Read(threading.Thread):
+    def run(self):
+        global state
+        try:
+            with sh.tail("-f","-n","1000000", state.args.input) as process:
+                self.process = process
+                for line in process:
+                    try:
+                        state.insert(Record(line.strip()))
+                    except:
+                        # traceback.print_exc()
+                        pass
+        except:
+            pass # process was killed
+
+    def stop(self):
+        self.process.kill()
+        
+read_thread = Read()
+read_thread.start()
+
+# stdscr = curses.initscr()
+# curses.noecho();
+    
+def mainloop(stdscr):
+
+    global state
+
+    k = 5
+
+    while True:
+
+        n = state.size()
+
+        curses.flushinp()
+        stdscr.clear()
+        stdscr.addstr("nanocube-monitor\n")
+        stdscr.addstr("\n")
+        stdscr.addstr("file: %s\n" % state.args.input)
+        stdscr.addstr("\n")
+        stdscr.addstr("number of queries: %d\n" % n)
+        stdscr.addstr("\n")
+        stdscr.addstr("latency distribution in milli-seconds\n")
+        stdscr.addstr(("%-9s"*11) % tuple([str(x)+"%" for x in state.percentiles()]))
+        stdscr.addstr("\n")
+        stdscr.addstr(("%-9.2f"*11) % tuple([x/1.0e6 for x in state.var_percentiles("latency_ns")]))
+        stdscr.addstr("\n")
+        stdscr.addstr("\n")
+        stdscr.addstr("result size distribution in kilo-bytes\n")
+        stdscr.addstr(("%-9s"*11) % tuple([str(x)+"%" for x in state.percentiles()]))
+        stdscr.addstr("\n")
+        stdscr.addstr(("%-9.2f"*11) % tuple([x/1024.0 for x in state.var_percentiles("output_bytes")]))
+        stdscr.addstr("\n")
+        stdscr.addstr("\n")
+        stdscr.addstr("slowest %d queries\n" % k)
+        
+        for i in xrange(min(n,k)):
+            r = state.records[n-1-i]
+            # stdscr.addstr(str(r))
+            # stdscr.addstr("%2d. %9.2f\n" % (i+1, r.latency_ns/1000000.0))
+            try:
+                stdscr.addstr("%2d. %9.2f %s\n" % (i+1, r.latency_ns/1000000.0, r.query_string))
+            except:
+                pass
+
+
+        # stdscr.addstr(str(percentiles));
+        # time.sleep(10)
+    
+        curses.halfdelay(1);
+        ch = stdscr.getch()
+
+        if ch == ord('q'):
+            break
+
+        # stdscr.nodelay(10)
+        # # read next instruction
+        # ch = stdscr.getch()
+        # # stdscr.addstr("read char\n")
+    
+        # if ch == ord('.') or ch == 39:
+        #     config.advance()
+        # elif ch == ord(',') or ch == 37:
+        #     config.rewind()
+        # elif ch == ord('q'):
+        #     break
+
+curses.wrapper(mainloop)
+read_thread.stop()
+read_thread.join()
