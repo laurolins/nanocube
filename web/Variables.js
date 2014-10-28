@@ -73,8 +73,9 @@ TimeVar.prototype.jsonToList=function(json, bucketsize){
         return [];
     }
     var that = this;
+    var globaloffset = that.constraints[0].start;
     var data = json.root.children.map(function(d){
-        var start = d.path[0]*bucketsize;
+	var start = d.path[0]*bucketsize + globaloffset;
         var startdate = new Date(that.date_offset);
         
         //Set time in milliseconds from 1970
