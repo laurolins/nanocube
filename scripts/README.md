@@ -20,17 +20,17 @@ and zoomable map to visualize a heatmap of counts of reports in
 the different regions and different times. We also want the user to
 filter these count reports by device.
 
-To load this csv file into a nanocube you can use the `csv2Nanocube.py` script.
+To load this csv file into a nanocube you can use the `nanocube-binning-csv` script.
 
-       $python csv2Nanocube.py --latcol=latitude --loncol=longitude --timecol=time --catcol=device,make example.csv | ncserve ...
+       nanocube-binning-csv --latcol=latitude --loncol=longitude --timecol=time --catcol=device,make example.csv | ncserve ...
 
-The `csv2Nanocube.py` script attempts to parse the csv file by reading the first 10000 lines of the csv file.  The script summarizes categorical variables and infer date formats, then convert the data into a binary format that is readable by the nanocube server.
+The `nanocube-binning-csv` script attempts to parse the csv file by reading the first 10000 lines of the csv file.  The script summarizes categorical variables and infer date formats, then convert the data into a binary format that is readable by the nanocube server.
 
 For streaming data, rather than reading from files, the script takes the `-` parameter to read from `stdin`.  Therefore you can pipe the csv style output of a program to nanocubes.  For example:
 
-      $StreamingDataProgram | python csv2Nanocube.py --latcol=latitude --loncol=longitude --timecol=time --catcol=device,make - | ncserve ...
+      $StreamingDataProgram | nanocube-binning-csv --latcol=latitude --loncol=longitude --timecol=time --catcol=device,make - | ncserve ...
 
 
 ##  Web client configuration
 
-The `csv2Nanocube.py` script will attempt to generate a configuration file `config.json` for the javascript web client.  If you move the Nanocubes server away from the localhost and port 29512, please modify `url` attribute of the configuration to reflect the changes.  The web client will load `config.json` by default, however the configuration file can also be passed as a &#35 label.  For example `http://localhost:29512/#dataset` will load the configuration from `http://localhost:29512/dataset.json`
+The `nanocube-binning-csv` script will attempt to generate a configuration file `config.json` for the javascript web client.  If you move the Nanocubes server away from the localhost and port 29512, please modify `url` attribute of the configuration to reflect the changes.  The web client will load `config.json` by default, however the configuration file can also be passed as a &#35 label.  For example `http://localhost:29512/#dataset` will load the configuration from `http://localhost:29512/dataset.json`

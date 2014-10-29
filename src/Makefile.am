@@ -2,7 +2,7 @@
 # extradir = $(prefix)/bin
 # extra_DATA = nanocube-dmpvu nanocube-benchmark nanocube-monitor
 
-dist_bin_SCRIPTS = nanocube-dmpvu nanocube-benchmark nanocube-monitor nanocube-csv
+# dist_bin_SCRIPTS = nanocube-dmpvu nanocube-benchmark nanocube-monitor nanocube-csv
 
 install-exec-hook:
 	cp $(top_srcdir)/src/ncbuild $(prefix)/bin
