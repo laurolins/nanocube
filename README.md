@@ -13,6 +13,7 @@ modern-day laptop.
 
 | Number | Description |
 |:------:|-------------|
+| 3.0.2 | Renamed existing tools, added new tools, standarized tool names, bug fixes |
 | 3.0.1 | Fixed a bug that was causing memory inneficiencies |
 | 3.0 | [New API](https://github.com/laurolins/nanocube/blob/api3/API.md) to support more general nanocubes |
 | 2.1.3 | Minor fixes, improved csv2Nanocube.py script  |
@@ -62,35 +63,64 @@ Set path to the boost directory
 
 **General Instructions**
 
-Run the following commands to compile nanocubes on your linux/mac system. Replace `3.0.1`
-with other valid release numbers (e.g. 3.0, 2.1.3, 2.1, 2.0).
+Run the following commands to compile nanocubes on your linux/mac system. Replace `3.0.2`
+with other valid release numbers (e.g. 3.0.1, 3.0, 2.1.3, 2.1, 2.0).
 
-    wget https://github.com/laurolins/nanocube/archive/3.0.1.zip
-    unzip 3.0.1.zip
-    cd nanocube-3.0.1
+    wget https://github.com/laurolins/nanocube/archive/3.0.2.zip
+    unzip 3.0.2.zip
+    cd nanocube-3.0.2
+    export NANOCUBE_ROOT=`pwd`
     ./bootstrap
-    ./configure
-    make
+    mkdir build
+    cd build
+    ../configure --prefix=`pwd`/..
+    make -j
+    make install
+
+After these commands you should have directory `nanocube-3.0.2/bin` with the
+nanocube toolkit inside. To make these tools available you can export them
+to environment variables
+
+    export NANOCUBE_BIN=$NANOCUBE_ROOT
+    export PATH=$NANOCUBE_BIN:$PATH
 
 If a recent version of gcc is not the default, you can run `configure`
 with the specfic recent version of gcc in your system. For example
+`CXX=g++-4.8 ../configure --prefix=$NANOCUBE_ROOT`.
 
-    CXX=g++-4.8 ./configure
+** Running a nanocube **
 
-**Tcmalloc**
+With the nanocube toolkit installed, we are ready to start a first
+nanocube with an example dataset file included in the distribution:
+`$NANOCUBE_ROOT/data/crime50k.dmp`. Here is the command:
 
-We strongly suggest linking nanocubes with [Thread-Caching Malloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html), or tcmalloc for short.
-It is faster than the default system malloc, and in some cases, we found that the amount of memory used by nanocubes was reduced
-by over 50% when using libtcmalloc.  To install on a Ubuntu 14.04 machine, install the following package and all of its dependencies.
+    cat $NANOCUBE_ROOT/data/crime50k.dmp | nanocube-leaf -q 29512
+
+and the output you get is
+
+
+
+
+
+
+***Tcmalloc***
+
+We strongly suggest linking nanocubes with
+[Thread-Caching Malloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html),
+or tcmalloc for short.  It is faster than the default system malloc,
+and in some cases, we found that the amount of memory used by
+nanocubes was reduced by over 50% when using libtcmalloc.  To install
+on a Ubuntu 14.04 machine, install the following package and all of
+its dependencies.
 
     sudo apt-get install libgoogle-perftools-dev
 
 You must then re-run the configure script, indicating support for tcmalloc.
 
-    ./configure --with-tcmalloc
+    ../configure --prefix=`pwd`/..
     make clean
     make
-
+    make install
 
 ## Loading a CSV file into a nanocube
 
@@ -120,20 +150,26 @@ on your system, please choose another port.
 
 4. Run the script and pipe it to the nanocubes server using the
    included example dataset
-   ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2)).  If port 29512 is already
-   being used on your system, please choose another port.  Note that the port is specified for both the python script and for
-   the nanocubes server (nanocube-leaf). If these are not the same, you'll run into problems.
+   ([Chicago Crime](https://data.cityofchicago.org/Public-Safety/Crimes-2001-to-present/ijzp-q8t2)).
+   If port 29512 is already being used on your system, please choose
+   another port.  Note that the port is specified for both the python
+   script and for the nanocubes server (nanocube-leaf). If these are
+   not the same, you'll run into problems.
 
         cd ../scripts
-        python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
+        nanocube-binning-csv --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | nanocube-leaf --query-port 29512 --report-frequency 10000 --threads 100
 
+   Please note: We modified the original dataset slightly in this
+   example by changing the names of two columns in the header.  In
+   previous versions, there were columns called 'Date' and 'Primary
+   Type'.  We have renamed these 'time' and 'crime' to avoid any
+   confusion and make the subsequent examples easier to read.
 
-   Please note: We modified the original dataset slightly in this example by changing the names of two columns in the header.  In previous versions,
-there were columns called 'Date' and 'Primary Type'.  We have renamed these 'time' and 'crime' to avoid any confusion and make the subsequent
-examples easier to read.
-
-   The first few lines of the example dataset are shown below. The first line is a header, which describes each of the columns in this table of data.
-   You should notice that there are columns called: time, crime, Latitude, Longitude.  These are the columns used for this visualization.
+   The first few lines of the example dataset are shown below. The
+   first line is a header, which describes each of the columns in this
+   table of data.  You should notice that there are columns called:
+   time, crime, Latitude, Longitude.  These are the columns used for
+   this visualization.
 
         ID,Case Number,time,Block,IUCR,crime,Description,Location Description,Arrest,Domestic,Beat,District,Ward,Community Area,FBI Code,X Coordinate,Y Coordinate,Year,Updated On,Latitude,Longitude,Location
         9418031,HW561348,12/06/2013 06:25:00 PM,040XX W WILCOX ST,2024,NARCOTICS,POSS: HEROIN(WHITE),SIDEWALK,true,false,1115,011,28,26,18,1149444,1899069,2013,12/11/2013 12:40:36 AM,41.8789661034259,-87.72673345412568,"(41.8789661034259, -87.72673345412568)"
@@ -141,7 +177,16 @@ examples easier to read.
         9418107,HW561399,12/06/2013 06:29:00 PM,045XX S DAMEN AVE,0860,THEFT,RETAIL THEFT,DEPARTMENT STORE,true,false,0924,009,12,61,06,1163636,1874247,2013,12/10/2013 12:39:15 AM,41.810564946613454,-87.6753212816967,"(41.810564946613454, -87.6753212816967)"
         9418222,HW561455,12/06/2013 06:30:00 PM,008XX W ALDINE AVE,0820,THEFT,$500 AND UNDER,RESIDENCE,true,false,1924,019,44,6,06,1169898,1922154,2013,12/14/2013 12:39:48 AM,41.94189139041086,-87.65095594008946,"(41.94189139041086, -87.65095594008946)"
 
-   The parameters for csv2Nanocube.py are listed below.  Note that when we called the script above, we specified the categorical dimension (crime) and the time dimension (time), as well as Latitude and Longitude.  However, the script is smart enough to identify the Latitude and Longitude columns automatically if they have these names.  If they were named differently (e.g. lat, long), we would have to use the other parameters for the script (--latcol, --loncol) to identify them for the script.  If your data is also separated by a character other than a comma, you can indicate this when you run the script using the '--sep' parameter.
+   The parameters for csv2Nanocube.py are listed below.  Note that
+   when we called the script above, we specified the categorical
+   dimension (crime) and the time dimension (time), as well as
+   Latitude and Longitude.  However, the script is smart enough to
+   identify the Latitude and Longitude columns automatically if they
+   have these names.  If they were named differently (e.g. lat, long),
+   we would have to use the other parameters for the script (--latcol,
+   --loncol) to identify them for the script.  If your data is also
+   separated by a character other than a comma, you can indicate this
+   when you run the script using the '--sep' parameter.
 
         --catcol='Column names of categorical variable'
         --latcol='Column names of latitude'
@@ -153,8 +198,9 @@ examples easier to read.
         --sep='Delimiter of Columns'
         e.g. 1D/30m/60s'
 
-   The output generated by running the csv2Nanocube.py script should look like the following.
-   You can see that 50,000 points were inserted into the nanocube, which is using 18MB of RAM.
+   The output generated by running the csv2Nanocube.py script should
+   look like the following.  You can see that 50,000 points were
+   inserted into the nanocube, which is using 18MB of RAM.
 
         VERSION: 2014.10.11_16:40
         parent process is waiting...
@@ -182,12 +228,12 @@ different setups.
 
 Running this example again later, you do not need to reinstall the linux or python packages.
 
-        cd nanocube-3.0.1
+        cd nanocube-3.0.2
         source myPy/bin/activate
         cd web
         python -m SimpleHTTPServer 8000 &
-        cd ../scripts
-        python csv2Nanocube.py --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | NANOCUBE_BIN=../src  ../src/nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
+        cd ../data
+        nanocube-binning-csv --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv | nanocube-leaf --batch-size 1 --query-port 29512 --report-frequency 10000 --threads 100
 
 
 ## Further Details
