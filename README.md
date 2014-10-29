@@ -1,4 +1,4 @@
-<span style="color:red; font-size:20pt">(master branch and this documentation is being modified towards release 3.0.2, visit https://github.com/laurolins/nanocube/tree/3.0.1 for a more consistent documentation)</span>
+<span style="color:red; font-size:20pt">(this branch is being modified towards release 3.0.2, visit https://github.com/laurolins/nanocube/tree/3.0.1 for a more consistent documentation)</span>
 
 # Nanocubes: an in-memory data structure for spatiotemporal data cubes
 
@@ -180,11 +180,18 @@ but for now, let's see how to go from a `.csv` file to a `.dmp` one
 that is nanocube-ready.
 
     cd $NANOCUBE_SRC/data
-    nanocube-binning-csv --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 $NANOCUBE/src/crime50k.csv > crime50k_from_csv.dmp
+    nanocube-binning-csv \
+    --sep=',' \
+    --timecol='time' \
+    --latcol='Latitude' \
+    --loncol='Longitude' \
+    --catcol='crime' \
+    --port=29512 \
+    crime50k.csv > crime50k_from_csv.dmp
 
-The file generated with the command above is the same file
-`$NANOCUBE_SRC/data/crime50k.dmp` that goes in the distribution of
-nanocubes.
+The file generated with the command above is equal to
+`$NANOCUBE_SRC/data/crime50k.dmp` from which we ran our
+first nanocube.
 
 ## (extra) `nc_web_viewer`, a nanocube viewer in js, d3, and html5
 
@@ -197,14 +204,14 @@ by running
     cd $NANOCUBE_SRC/extra/nc_web_viewer
     python -m SimpleHTTPServer 8000
 
-So by pointing a browser to the URL `http://localhost:8000` we can
-get to the `nc_web_viewer`, but there is one catch. How does the
-`nc_web_viewer` knows where a nanocube server sits? To specify where
-one or more nanocube processes are hosted we need to genereate
-one or more `nc_web_viewer` specific `.json` configuration files and
-copy those to the `$NANOCUBE_SRC/extra/nc_web_viewer` folder.
-To generate a valid `nc_web_viewer` configuration you can run the
-command
+So by pointing a browser to the URL `http://localhost:8000` we can get
+to the `nc_web_viewer`, but there not yet... how does the
+`nc_web_viewer` knows where a nanocube serving process sits? What port
+it listens? To specify where nanocube processes are hosted we need to
+genereate a `nc_web_viewer` specific `.json` configuration file and
+copy it to the `$NANOCUBE_SRC/extra/nc_web_viewer` folder. In our
+case, we can generate a valid `nc_web_viewer` for the Chicago crime
+data by running
 
     ncwebviewer-config -s http://localhost:29512 -o $NANOCUBE_SRC/extra/nc_web_viewer/config_crime.json
 
