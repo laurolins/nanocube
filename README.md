@@ -1,3 +1,5 @@
+<span style="color:red; font-size:20pt">(master branch and this documentation is being modified towards release 3.0.2, visit https://github.com/laurolins/nanocube/tree/3.0.1 for a more consistent documentation)</span>
+
 # Nanocubes: an in-memory data structure for spatiotemporal data cubes
 
 Nanocubes are a fast data structure for in-memory data cubes developed
@@ -138,7 +140,7 @@ scripts:
 These python scripts depend on some python modules that are not
 standard `pandas`, `numpy`, `argparse`. Here is a recipe to install
 a local python environment (in case you don't have these modules already)
-and have the python toolkit of nanocubes ready to go.
+and have the python toolkit of nanocubes ready to go:
 
 1. Go to the `$NANOCUBE_SRC`
 
@@ -201,6 +203,14 @@ get to the `nc_web_viewer`, but there is one catch. How does the
 one or more nanocube processes are hosted we need to genereate
 one or more `nc_web_viewer` specific `.json` configuration files and
 copy those to the `$NANOCUBE_SRC/extra/nc_web_viewer` folder.
+To generate a valid `nc_web_viewer` configuration you can run the
+command
+
+    ncwebviewer-config -s http://localhost:29512 -o $NANOCUBE_SRC/extra/nc_web_viewer/config_crime.json
+
+Now you should be able to point your browser to
+`http://localhost:8000/#config_crime` and visualize the data that is
+sitting on the nanocube running on `http://localhost:29512`.
 
 # TODO: cleanup comments below
 
