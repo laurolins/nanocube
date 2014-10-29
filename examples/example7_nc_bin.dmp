@@ -1,9 +1,0 @@
-name: example7
-encoding: binary
-field: a nc_dim_cat_1
-field: b nc_dim_cat_1
-field: c nc_dim_cat_1
-field: t nc_dim_time_1
-field: x nc_var_uint_1
-
-
