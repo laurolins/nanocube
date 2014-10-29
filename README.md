@@ -23,16 +23,16 @@ modern-day laptop.
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
 
-## Compiling the latest release
+## Installing prerequisites
 
-**Prerequisites**
+At the moment, the list of prerequisites for nanocubes is this one
 
 1. The nanocubes server is 64-bit only.  There is NO support on 32-bit operating systems.
 2. The nanocubes server is written in C++ 11.  You must use a recent version of gcc (>= 4.8).
 3. The nanocubes server uses [Boost](http://www.boost.org).  You must use version 1.48 or later.
 4. To build the nanocubes server, you must have the [GNU build system](http://www.gnu.org/software/autoconf/) installed.
 
-**Linux (Ubuntu)**
+#### Linux (Ubuntu)
 
 On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but you may have to install the following packages:
 
@@ -42,8 +42,7 @@ On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but y
     sudo apt-get install zlib1g-dev
     sudo apt-get install libboost-all-dev
 
-
-**Mac OS X (10.9)**
+#### Mac OS X (10.9)
 
 Example installation on Mac OS 10.9 Maverick with a local homebrew:
 
@@ -61,19 +60,20 @@ Set path to the boost directory
 
 	export BOOST_ROOT=${PWD}/homebrew
 
-**General Instructions**
+## Compiling the latest release
 
-Run the following commands to compile nanocubes on your linux/mac system. Replace `3.0.2`
-with other valid release numbers (e.g. 3.0.1, 3.0, 2.1.3, 2.1, 2.0).
+To compile the nanocube toolkit, tun the following commands on your
+linux/mac system (you can replace `3.0.2` with other valid release
+numbers, e.g. 3.0.1, 3.0, 2.1.3, 2.1, 2.0).
 
     wget https://github.com/laurolins/nanocube/archive/3.0.2.zip
     unzip 3.0.2.zip
     cd nanocube-3.0.2
-    export NANOCUBE_ROOT=`pwd`
+    export NANOCUBE_SRC=`pwd`
     ./bootstrap
     mkdir build
     cd build
-    ../configure --prefix=`pwd`/..
+    ../configure --prefix=$NANOCUBE_SRC
     make -j
     make install
 
@@ -81,29 +81,130 @@ After these commands you should have directory `nanocube-3.0.2/bin` with the
 nanocube toolkit inside. To make these tools available you can export them
 to environment variables
 
-    export NANOCUBE_BIN=$NANOCUBE_ROOT
+    export NANOCUBE_BIN=$NANOCUBE_SRC/bin
     export PATH=$NANOCUBE_BIN:$PATH
 
 If a recent version of gcc is not the default, you can run `configure`
 with the specfic recent version of gcc in your system. For example
-`CXX=g++-4.8 ../configure --prefix=$NANOCUBE_ROOT`.
+`CXX=g++-4.8 ../configure --prefix=$NANOCUBE_ROOT`. **(Hint)** For better
+performance you might configure nanocubes with the option a tcmalloc
+option: `../configure --prefix=$NANOCUBE_ROOT --with-tcmalloc`.
 
-** Running a nanocube **
+## Running a nanocube
 
 With the nanocube toolkit installed, we are ready to start a first
-nanocube with an example dataset file included in the distribution:
-`$NANOCUBE_ROOT/data/crime50k.dmp`. Here is the command:
+nanocube with Chicago Crimes example dataset file included in the
+distribution: `$NANOCUBE_ROOT/data/crime50k.dmp`. Here is the command:
 
-    cat $NANOCUBE_ROOT/data/crime50k.dmp | nanocube-leaf -q 29512
+    cat $NANOCUBE_SRC/data/crime50k.dmp | nanocube-leaf -q 29512
 
-and the output you get is
+The command above simply says to start a nanocube back-end process
+from the `crime50k.dmp` data file
+
+    VERSION: 3.0.2
+    query-port: 29512
+    (stdin:done) count:      50000 mem. res:         17MB. time(s):          0
+
+## Simple queries
+
+With a nanocube process running we are able to query this nanocube
+using [API](https://github.com/laurolins/nanocube/blob/api3/API.md). For
+example by putting the URL `http://localhost:29512/count` we get the
+following json object with the total count of records:
+
+    { "layers":[  ], "root":{ "val":50000 } }
+
+Or we can get the schema of the nanocube by querying the URL `http://localhost:29512/schema`
+
+    { "fields":[ { "name":"src", "type":"nc_dim_quadtree_25", "valnames":{  } }, { "name":"crime", "type":"nc_dim_cat_1", "valnames":{ "CRIM_SEXUAL_ASSAULT":7, "WEAPONS_VIOLATION":30, "KIDNAPPING":13, "OFFENSE_INVOLVING_CHILDREN":20, "CONCEALED_CARRY_LICENSE_VIOLATION":4, "SEX_OFFENSE":27, "INTIMIDATION":12, "PROSTITUTION":23, "ARSON":0, "BURGLARY":3, "ROBBERY":26, "CRIMINAL_TRESPASS":6, "THEFT":29, "HOMICIDE":10, "OBSCENITY":19, "OTHER_NARCOTIC_VIOLATION":21, "MOTOR_VEHICLE_THEFT":15, "GAMBLING":9, "NARCOTICS":16, "NON-CRIMINAL_(SUBJECT_SPECIFIED)":18, "DECEPTIVE_PRACTICE":8, "STALKING":28, "CRIMINAL_DAMAGE":5, "PUBLIC_PEACE_VIOLATION":25, "BATTERY":2, "ASSAULT":1, "PUBLIC_INDECENCY":24, "NON-CRIMINAL":17, "LIQUOR_LAW_VIOLATION":14, "OTHER_OFFENSE":22, "INTERFERENCE_WITH_PUBLIC_OFFICER":11 } }, { "name":"time", "type":"nc_dim_time_2", "valnames":{  } }, { "name":"count", "type":"nc_var_uint_4", "valnames":{  } } ], "metadata":[ { "key":"tbin", "value":"2013-12-01_00:00:00_3600s" }, { "key":"src__origin", "value":"degrees_mercator_quadtree25" }, { "key":"name", "value":"crime50k.csv" } ] }
+
+If we want to breakdown the counts per `crime` type we can simply query the URL: `http://localhost:29512/count.a("crime",dive([],1))`
+
+    { "layers":[ "anchor:crime" ], "root":{ "children":[ { "path":[0], "val":63 }, { "path":[1], "val":2629 }, { "path":[2], "val":8990 }, { "path":[3], "val":2933 }, { "path":[4], "val":1 }, { "path":[5], "val":4660 }, { "path":[6], "val":1429 }, { "path":[7], "val":181 }, { "path":[8], "val":2190 }, { "path":[9], "val":2 }, { "path":[10], "val":69 }, { "path":[11], "val":229 }, { "path":[12], "val":21 }, { "path":[13], "val":46 }, { "path":[14], "val":69 }, { "path":[15], "val":2226 }, { "path":[16], "val":5742 }, { "path":[17], "val":1 }, { "path":[18], "val":1 }, { "path":[19], "val":1 }, { "path":[20], "val":456 }, { "path":[21], "val":2 }, { "path":[22], "val":3278 }, { "path":[23], "val":211 }, { "path":[24], "val":2 }, { "path":[25], "val":441 }, { "path":[26], "val":2132 }, { "path":[27], "val":119 }, { "path":[28], "val":20 }, { "path":[29], "val":11367 }, { "path":[30], "val":489 } ] } }
 
 
+## Auxiliar Tools in Python
 
+Nanocube's distribution comes with a set of tools that are Python
+scripts:
 
+| Tool Name | Description |
+|:------:|-------------|
+| nanocube-binning-csv | Convert a `.csv` file into a `.dmp` file readable by the nanocube-leaf program |
+| nanocube-benchmark | From a text file with one query per row, generate a report of latency and sizes  <br> by running those queries on a given nanocube server |
+| nanocube-view-dmp | Show records of a `.dmp` file on the command line |
+| nanocube-monitor | Feedback of latency and size distribution for nanocube profiling |
 
+These python scripts depend on some python modules that are not
+standard `pandas`, `numpy`, `argparse`. Here is a recipe to install
+a local python environment (in case you don't have these modules already)
+and have the python toolkit of nanocubes ready to go.
 
-***Tcmalloc***
+1. Go to the `$NANOCUBE_SRC`
+
+        cd `$NANOCUBE_SRC`
+
+2. For compiling our python helper code, you will need the following packages:
+
+        sudo apt-get install python-dev
+
+3. Install the python data analysis library (pandas) in a separate python environment (Recommended)
+
+        wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.6.tar.gz
+        tar xfz virtualenv-1.11.6.tar.gz
+        python virtualenv-1.11.6/virtualenv.py  myPy
+        
+        # Make sure PYTHONHOME and PYTHONPATH are unset
+        unset PYTHONHOME
+        unset PYTHONPATH
+
+        # activate the virtualenv, type "deactivate" to disable the env when done
+        source myPy/bin/activate
+        pip install pandas numpy argparse
+
+Now you should have a local python environment compatible with the
+nanocube's python toolkit.
+
+## How to prepare a .csv file to be loaded into a nanocube?
+
+Nanocube is able to ingest only a special kind of file. From a high
+level perspective these files are simply tables. The file starts with
+a header describing the `columns` of the table followed by the
+records.  We call this file format `.dmp` files. To make things even
+more complicated, not all tables in `.dmp` format are nanocube ready
+data files. To be a nanocube ready `.dmp` file the column types of the
+records need to be of a special kind. We discuss these issues later,
+but for now, let's see how to go from a `.csv` file to a `.dmp` one
+that is nanocube-ready.
+
+    cd $NANOCUBE_SRC/data
+    nanocube-binning-csv --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 $NANOCUBE/src/crime50k.csv > crime50k_from_csv.dmp
+
+The file generated with the command above is the same file
+`$NANOCUBE_SRC/data/crime50k.dmp` that goes in the distribution of
+nanocubes.
+
+## (extra) `nc_web_viewer`, a nanocube viewer in js, d3, and html5
+
+To visualize a nanocube that has one spatial dimension, zero or more
+categorical dimensions and one temporal dimension you can use a
+javascrit/d3/html5 viewer that sits on
+`$NANOCUBE_SRC/extra/nc_web_viewer`. We can start the `nc_web_viewer`
+by running
+
+    cd $NANOCUBE_SRC/extra/nc_web_viewer
+    python -m SimpleHTTPServer 8000
+
+So by pointing a browser to the URL `http://localhost:8000` we can
+get to the `nc_web_viewer`, but there is one catch. How does the
+`nc_web_viewer` knows where a nanocube server sits? To specify where
+one or more nanocube processes are hosted we need to genereate
+one or more `nc_web_viewer` specific `.json` configuration files and
+copy those to the `$NANOCUBE_SRC/extra/nc_web_viewer` folder.
+
+# TODO: cleanup comments below
+
+### tcmalloc
 
 We strongly suggest linking nanocubes with
 [Thread-Caching Malloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html),
@@ -121,6 +222,7 @@ You must then re-run the configure script, indicating support for tcmalloc.
     make clean
     make
     make install
+
 
 ## Loading a CSV file into a nanocube
 

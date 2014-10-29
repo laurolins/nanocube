@@ -4,9 +4,12 @@
 
 # dist_bin_SCRIPTS = nanocube-dmpvu nanocube-benchmark nanocube-monitor nanocube-csv
 
-install-exec-hook:
-	cp $(top_srcdir)/src/ncbuild $(prefix)/bin
-	chmod +x $(prefix)/bin/ncbuild
+#
+# ncbuild is not robust enough
+#
+# install-exec-hook:
+# 	cp $(top_srcdir)/src/ncbuild $(prefix)/bin
+# 	chmod +x $(prefix)/bin/ncbuild
 
 AUTOMAKE_OPTIONS = subdir-objects
 
