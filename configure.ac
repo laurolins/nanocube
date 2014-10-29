@@ -64,5 +64,6 @@ AC_TYPE_UINT64_T
 # Checks for library functions.
 
 AC_CONFIG_FILES([Makefile
-                 src/Makefile])
+                 src/Makefile
+                 scripts/Makefile])
 AC_OUTPUT
