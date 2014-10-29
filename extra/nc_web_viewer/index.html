@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Pragma" content="no-cache"> 
+    <meta http-equiv="Expires" content="-1"> 
+    <meta http-equiv="cache-control" content="no-store">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1"> 
+    <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.2/jquery.mobile-1.4.2.min.css">
+    <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css"/>
+    <link rel="stylesheet" href="lib/leaflet.draw/leaflet.draw.css"/>
+    <link rel="stylesheet" href="nanocube2.css"/>    
+
+    <!-- Start of scripts-->
+    <!-- jQuery, Leaflet, Underscore includes -->
+    <script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+    <script src="http://code.jquery.com/mobile/1.4.2/jquery.mobile-1.4.2.min.js"></script>
+    
+    <script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
+    
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet-src.js"></script>
+    <script src="lib/leaflet.draw/leaflet.draw-src.js"></script>
+    <script src="lib/colorbrewer.js"></script>
+    
+    <!-- Custom includes -->
+    <script src="nanocube3.js"></script>
+    <script src="TileLatLngUtils.js"></script>
+    
+    <script src="NanocubeLayer.js"></script>
+    <script src="Timeseries.js"></script>
+    <script src="GroupedBarChart.js"></script>
+    
+    <script src="QueryConstraint.js"></script>
+    <script src="Variables.js"></script>
+    <script src="Model.js"></script>
+    
+    <script src="init.js"></script>
+    
+    <!-- Main -->
+    <script>
+     //main
+     $(function(){
+       var conf = window.location.hash.substring(1)
+       if (conf == ""){
+         conf = "config";
+       }
+       
+       $.getJSON(conf+".json", function(config){
+         initPage(config);
+         initNanocube(config);
+       }).fail(function(){throw new Error("Fail to get or parse "+conf);});
+     });
+    </script>
+  </head>
+  
+  <body>
+    <div id="nc-container">
+      <div data-role="page" id="pageone">
+        <div data-role="panel" id="ctrlpanel" data-display="reveal"> 
+          <div data-role="main" class="ui-content"> 
+            <ul data-role="listview" data-inset="true">
+              <li data-role="list-divider">Geographical map</li>
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Opacity:</legend>
+                    <button id="map-op-btn-inc" class="ui-shadow ui-btn ui-corner-all ui-icon-plus ui-btn-inline ui-btn-icon-notext" 
+                            data-mini="true">plus</button>
+                    <button id="map-op-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline ui-btn-icon-notext" 
+                            data-mini="true">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              
+              <li data-role="list-divider">Heatmap</li>
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Opacity:</legend>
+                    <button id="heatmap-op-btn-inc" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-plus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">
+                      plus</button>
+                    <button id="heatmap-op-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Radius:</legend>
+                    <button id="heatmap-rad-btn-inc" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-plus
+                            ui-btn-inline
+                            ui-btn-icon-notext">plus</button>
+                    <button id="heatmap-rad-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline
+                            ui-btn-icon-notext">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-grid">Grid:</label>
+                  <select name="flip-grid" id="flip-grid"
+                          data-role="slider"
+                          data-mini="true"> 
+                    <option value="off">Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-log">Log:</label>
+                  <select name="flip-log" id="flip-log"
+                          data-role="slider"
+                          data-mini="true"> 
+                    <option value="off">Off</option>
+                    <option value="on" selected>On</option>
+                  </select>
+                </div>
+              </li>
+              
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-refresh">Animate:</label>
+                  <select name="flip-refresh" id="flip-refresh"
+                          data-role="slider"
+                          data-mini="true"> 
+                    <option value="off" selected>Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+
+              <li data-role="list-divider">Time Series</li>
+              <li>
+                <!-- <div class="ui-field-contain">
+                  <label for="flip-gts">Global:</label>
+                  <select name="flip-gts" id="flip-gts"
+                          data-role="slider"
+                          data-mini="true" disabled="disabled"> 
+                    <option value="off">Off</option>
+                    <option value="on" selected>On</option>
+                  </select> 
+                </div> -->
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Resolution:</legend>
+                    <button id="tbinsize-btn-inc" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-plus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">
+                      plus</button>
+                    <button id="tbinsize-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+            </ul>
+          </div>
+          
+          <!-- keyboard instructions -->
+          <a href="#popupBasic" data-rel="popup" class="ui-btn 
+             ui-corner-all ui-shadow ui-btn-inline" data-mini="true" 
+             data-transition="pop">Keyboard shortcuts</a>
+          <div data-role="popup" id="popupBasic">
+            <h4>Geographical Map: </h4>
+            <p>
+              <code>d</code>: decrease opacity (looks darker)<br />
+              <code>b</code>: increase opacity (looks brighter)<br />
+            </p>
+            <h4>Heatmap</h4>
+            <p>
+              <code>&lt;</code>: decrease opacity<br />
+              <code>&gt;</code>: increase opacity<br />
+              <code>,</code>: decrease radius<br />
+              <code>.</code>: increase radius<br />
+            </p>
+            <h4>Timeseries</h4>
+            <p>
+              <code>g</code>: Toggle the display of the global time
+              series when there are polygon/rect selections.
+            </p>
+          </div>
+        </div>
+        
+        <div id="maincontent" data-role="content" >
+          <div id="panelbtn">
+            <a href="#ctrlpanel" class="ui-btn ui-icon-carat-r
+               ui-btn-icon-notext
+               ui-corner-all">No text</a>  
+          </div>          
+        </div>      
+      </div>    
+    </div>
+  </body>  
+</html>

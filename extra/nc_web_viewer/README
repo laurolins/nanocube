@@ -1,0 +1,38 @@
+Steps to run the San Francisco Taxi example:
+
+1. Build nanocube and make sure ncdmp and ncserve are in the PATH
+
+2. Download the file sftaxi.dmp.gz from
+
+   wget https://www.dropbox.com/s/s1f33t22cvmbofj/sftaxi.dmp.gz
+
+3. gunzip sftaxi.dmp.gz
+
+4. run the servers with just pickup locations and with pickup and 
+   dropoff locations
+
+   cat sftaxi.dmp |                     \
+   ncdmp --encoding=b                   \
+   dim-dmq=src,src_lat,src_lon,25       \
+   dim-hour=hour,time                   \
+   dim-weekday=weekday,time             \
+   dim-tbin=time,time,2008-01-01_1h,2   \
+   var-one=count,4                      \
+   | ncserve --rf=100000 --port=29512
+
+   cat sftaxi.dmp |                     \
+   ncdmp --encoding=b                   \
+   dim-dmq=src,src_lat,src_lon,25       \
+   dim-dmq=dst,dst_lat,dst_lon,25       \
+   dim-tbin=time,time,2008-01-01_1h,2   \
+   var-one=count,4                      \
+   | ncserve --rf=100000 --port=29513
+
+5. run a simple web server
+
+   python -m SimpleHTTPServer
+
+6. open on a browser:
+
+   http://localhost:8000/sftaxi_src.html   (pickup demo)
+   http://localhost:8000/sftaxi_sd.html    (src,dst demo)
