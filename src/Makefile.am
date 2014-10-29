@@ -11,7 +11,7 @@ install-exec-hook:
 AUTOMAKE_OPTIONS = subdir-objects
 
 bin_PROGRAMS =              \
-ncdmp                       \
+nanocube-binning-dmp        \
 nanocube-leaf               \
 nc_q25_u2_u4                \
 nc_q25_c1_u2_u8             \
@@ -54,7 +54,7 @@ nanocube_leaf_SOURCES = \
 nanocube-leaf.cc        \
 DumpFile.cc
 
-ncdmp_SOURCES =       \
+nanocube_binning_dmp_SOURCES = \
 ncdmp.cc              \
 ncdmp_base.cc         \
 ncdmp_base.hh         \
