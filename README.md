@@ -44,9 +44,9 @@ On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but y
     sudo apt-get install zlib1g-dev
     sudo apt-get install libboost-all-dev
 
-#### Mac OS X (10.9)
+#### Mac OS X (10.9 and 10.10)
 
-Example installation on Mac OS 10.9 Maverick with a local homebrew:
+Example installation on Mac OS 10.9 Mavericks and 10.10 Yosemite with a local homebrew:
 
 	git clone https://github.com/mxcl/homebrew.git
 
@@ -61,6 +61,7 @@ Install the packages (This assumes your g++ has been installed by [XCode](https:
 Set path to the boost directory
 
 	export BOOST_ROOT=${PWD}/homebrew
+
 
 ## Compiling the latest release
 
@@ -233,13 +234,19 @@ its dependencies.
 
     sudo apt-get install libgoogle-perftools-dev
 
+For Mac OS 10.9 Mavericks only
+
+    brew install gperftools
+
+*Note*: We are currently experience problems with tcmalloc and nanocubes on Mac OS 10.10 Yosemite
+
+
 You must then re-run the configure script, indicating support for tcmalloc.
 
-    ../configure --prefix=`pwd`/..
+    ../configure --prefix=`pwd`/.. --with-tcmalloc
     make clean
     make
     make install
-
 
 ## Loading a CSV file into a nanocube
 
