@@ -71,7 +71,7 @@ class NanocubeInput:
 
         self.datefmt=args.datefmt
         self.levels = args.levels
-        self.port = args.port
+        # self.port = args.port
 
 
         for s in self.spname:
@@ -89,77 +89,77 @@ class NanocubeInput:
         #                               shell=True)
 
         self.readcsv(args.InputFile)
-        self.writeConfigFile()
+        # self.writeConfigFile()
 
-    def writeConfigFile(self):
-        config = {}
-        config['div'] = {}
-        #map
-        for v in self.spname:
-            div = v.replace(" ", "_");
-            config['div'][v] = {'height':'100%',
-                                  'width':'%d%%'%(100/len(self.spname)),
-                                  'padding':0, 'margin': 0,
-                                  'float' :'left',
-                                  'z-index':0}
-            config['heatmapmaxlevel'] = self.levels
+    # def writeConfigFile(self):
+    #     config = {}
+    #     config['div'] = {}
+    #     #map
+    #     for v in self.spname:
+    #         div = v.replace(" ", "_");
+    #         config['div'][v] = {'height':'100%',
+    #                               'width':'%d%%'%(100/len(self.spname)),
+    #                               'padding':0, 'margin': 0,
+    #                               'float' :'left',
+    #                               'z-index':0}
+    #         config['heatmapmaxlevel'] = self.levels
 
-        #time
-        for i,div in enumerate(self.timecol):
-            if div is 'defaulttime':
-                config['div'][div] = {'position': 'absolute'}
-                continue
+    #     #time
+    #     for i,div in enumerate(self.timecol):
+    #         if div is 'defaulttime':
+    #             config['div'][div] = {'position': 'absolute'}
+    #             continue
 
-            div = div.replace(" ", "_");
-            config['div'][div] = {'position': 'absolute',
-                                  'font': '10pt sans-serif',
-                                  'height':'100px',
-                                  'width': '960px',
-                                  'bottom': '%dpx'%(i*(100+10)+10),
-                                  'left': '10px',
-                                  'background-color':'#555',
-                                  'opacity': 0.8,
-                                  'z-index':1}
+    #         div = div.replace(" ", "_");
+    #         config['div'][div] = {'position': 'absolute',
+    #                               'font': '10pt sans-serif',
+    #                               'height':'100px',
+    #                               'width': '960px',
+    #                               'bottom': '%dpx'%(i*(100+10)+10),
+    #                               'left': '10px',
+    #                               'background-color':'#555',
+    #                               'opacity': 0.8,
+    #                               'z-index':1}
 
-        #cat
-        top = 30
-        for i,div in enumerate(self.catcol):
-            nval = len(self.valname[div])
-            height = 20* min(nval,25)+50 #50 is the default margin size
-            lmargin = max(30,15*max([len(k) for k in self.valname[div]]))
-            div = div.replace(" ", "_");
-            config['div'][div] = {'position': 'absolute',
-                                  'font': '10pt sans-serif',
-                                  'margin-left':'%dpx'%(lmargin),
-                                  'height':'%dpx'%(height) ,
-                                  'width': '%dpx'%(200+lmargin),
-                                  'top': '%dpx'%(top),
-                                  'right': '10px',
-                                  'background-color':'#555',
-                                  'opacity': 0.8,
-                                  'z-index':1}
-            top += (height+10)
+    #     #cat
+    #     top = 30
+    #     for i,div in enumerate(self.catcol):
+    #         nval = len(self.valname[div])
+    #         height = 20* min(nval,25)+50 #50 is the default margin size
+    #         lmargin = max(30,15*max([len(k) for k in self.valname[div]]))
+    #         div = div.replace(" ", "_");
+    #         config['div'][div] = {'position': 'absolute',
+    #                               'font': '10pt sans-serif',
+    #                               'margin-left':'%dpx'%(lmargin),
+    #                               'height':'%dpx'%(height) ,
+    #                               'width': '%dpx'%(200+lmargin),
+    #                               'top': '%dpx'%(top),
+    #                               'right': '10px',
+    #                               'background-color':'#555',
+    #                               'opacity': 0.8,
+    #                               'z-index':1}
+    #         top += (height+10)
 
-        #other info
-        config['div']['info'] = {'position': 'absolute',
-                                 'font': '10pt sans-serif',
-                                 'color': 'white',
-                                 'top': '5px',
-                                 'right': '5px',
-                                 'height': '1em',
-                                 'opacity': 0.9,
-                                 'padding':0,
-                                 'z-index':1}
+    #     #other info
+    #     config['div']['info'] = {'position': 'absolute',
+    #                              'font': '10pt sans-serif',
+    #                              'color': 'white',
+    #                              'top': '5px',
+    #                              'right': '5px',
+    #                              'height': '1em',
+    #                              'opacity': 0.9,
+    #                              'padding':0,
+    #                              'z-index':1}
 
-        config['latlonbox'] = { 'min':self.minlatlon,
-                                'max':self.maxlatlon }
+    #     config['latlonbox'] = { 'min':self.minlatlon,
+    #                             'max':self.maxlatlon }
 
-        config['url'] = 'http://%s:%s'%(socket.getfqdn(),self.port)
-        config['title'] = self.name
-        config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
+    #     config['url'] = 'http://%s:%s'%(socket.getfqdn(),self.port)
+    #     config['title'] = self.name
+    #     config['tilesurl'] = 'http://{s}.tile.osm.org/{z}/{x}/{y}.png'
 
-        json.dump(config, open(os.environ['NANOCUBE_WEB']
-                               + '/config.json','wb'),indent=4);
+    #     # json.dump(config, open(os.environ['NANOCUBE_WEB']
+    #     #                        + '/config.json','wb'),indent=4);
 
     def readcsv(self,files):
         coi = self.timecol+self.catcol+self.latcol+self.loncol
@@ -398,7 +398,7 @@ def main(argv):
     parser.add_argument('--timebinsize',type=str, default='1h')
     parser.add_argument('--timecol', type=str,default=None)
     parser.add_argument('--datefmt', type=str, default=None)
-    parser.add_argument('--spname', type=str,default='src')
+    parser.add_argument('--spname', type=str,default='location')
     parser.add_argument('--levels', type=int, default=25)
     parser.add_argument('--latcol', type=str,default='Latitude')
     parser.add_argument('--loncol', type=str,default='Longitude')
@@ -408,18 +408,18 @@ def main(argv):
     parser.add_argument('--ncheader', type=str, default=None)
     parser.add_argument('--header', type=str, default=None)
     parser.add_argument('--offset', type=str, default=None)
-    parser.add_argument('--port', type=str, default='29512')
+    # parser.add_argument('--port', type=str, default='29512')
     parser.add_argument('--countbytes', type=int, default='4', required=False)
     args = parser.parse_args()
 
     # sys.stderr.write("Count Bytes: %s\n" % args.countbytes)
     # sys.stderr.write("Count Bytes Type: %s\n" % str(type(args.countbytes)))
 
-    if 'NANOCUBE_WEB' not in os.environ:
-        os.environ['NANOCUBE_WEB'] = '../web'
+    # if 'NANOCUBE_WEB' not in os.environ:
+    #     os.environ['NANOCUBE_WEB'] = '../web'
 
-    if 'NANOCUBE_BIN' not in os.environ:
-        os.environ['NANOCUBE_BIN'] = '../src'
+    # if 'NANOCUBE_BIN' not in os.environ:
+    #     os.environ['NANOCUBE_BIN'] = '../src'
 
     ncinput = NanocubeInput(args)
 
