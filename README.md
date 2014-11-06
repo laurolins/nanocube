@@ -182,6 +182,16 @@ http://localhost:29512/count.a("crime",dive([],1))
 
 We would like to "anchor" (thus the ".a" in the query) on the `crime` dimension and report counts for each of the possible values.  Notice that we do not specify the crimes by name but rather by value.  `"path":[0], "val":63` indicates that there were 63 counts of ARSON, because ARSON has a value of 0 in the schema returned by Query 2.  Similarly, there were 2629 counts of ASSAULT.
 
+## Simple test script
+
+If you believe there may be a problem with the crime nanocube, try running 'nctest.sh' in the `test` subdirectory.
+It will make some queries of the nanocube (change the script if you are not using port 29512)
+and compare the results to known results that we gathered ourselves. If the results match, it will report 'SUCCESS'.
+
+```
+cd $NANOCUBE_SRC/test
+./nctest.sh
+```
 
 ## Simple web client
 
