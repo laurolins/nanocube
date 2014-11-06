@@ -262,7 +262,8 @@ tar xfz virtualenv-1.11.6.tar.gz
 python virtualenv-1.11.6/virtualenv.py  myPy
 ```
 
-C. Activate the virtual python environment.  Install the additional python libraries (this needs to be done only once).
+C. Activate the virtual python environment.  Install the additional python libraries.  Thankfully this
+needs to be done only once since it takes several minutes for it to complete.
 Once you are done with the tools, you should type `deactivate` to disable.
 
 ```
@@ -304,26 +305,26 @@ ID,Case Number,time,Block,IUCR,crime,Description,Location Description,Arrest,Dom
 
 Follow these simple instructions to convert that file into the DMP file that was used earlier when we built our first nanocube.
 This assumes that you have already installed the auxiliary python packages discussed above, and activated the virtual
-python environment.
+python environment.  The new DMP file should be identical to the one used before.
 
 ```
 cd $NANOCUBE_SRC/data
-nanocube-binning-csv --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' --port=29512 crime50k.csv > crime50k_from_csv.dmp
+nanocube-binning-csv --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' crime50k.csv > crime50k_from_csv.dmp
 ```
 
-## Asking for help
+#### Further details
 
-Our mailing list is the best and fastest way to ask questions and make suggestions related to nanocubes.
-If you are having a problem, please search the archives before creating new topics to see if
-your question has already been answered.  If you have other ideas for how we can improve
-nanocubes, please let us know.
+For a better understanding on how to ingest data into nanocubes and
+how to query nanocubes follow this
+[link](https://github.com/laurolins/nanocube/wiki). For larger
+datasets or if you want more flexibility on ingesting/querying data
+using nanocubes, the CSV loading method illustrated above might not be
+the most efficient way to go.
 
-A nice front-end for our mailing list is now being served through [Nabble](http://nanocubes-discuss.64146.x6.nabble.com).
-You should be able to post messages, search the archives, and even register as a new user from here.
+**Please note:** The documentation at that link is largely out-of-date, but we are working to fix it presently.
 
-The actual mailing list can be found [here](http://mailman.nanocubes.net/mailman/listinfo/nanocubes-discuss_mailman.nanocubes.net).
 
-### Thread-Caching Malloc (tcmalloc)
+## Thread-Caching Malloc (tcmalloc)
 
 We strongly suggest linking nanocubes with
 [Thread-Caching Malloc](http://goog-perftools.sourceforge.net/doc/tcmalloc.html),
@@ -348,13 +349,14 @@ You must then re-run the configure script, indicating support for tcmalloc.
     make -j
     make install
 
-## Further Details
+## Asking for help
 
-For a better understanding on how to ingest data into nanocubes and
-how to query nanocubes follow this
-[link](https://github.com/laurolins/nanocube/wiki). For larger
-datasets or if you want more flexibility on ingesting/querying data
-using nanocubes the CSV loading method illustrated above might not be
-the most efficient way to go.
+Our mailing list is the best and fastest way to ask questions and make suggestions related to nanocubes.
+If you are having a problem, please search the archives before creating new topics to see if
+your question has already been answered.  If you have other ideas for how we can improve
+nanocubes, please let us know.
 
-**Please note:** The documentation at that link is largely out-of-date, but we are working to fix it presently.
+A nice front-end for our mailing list is now being served through [Nabble](http://nanocubes-discuss.64146.x6.nabble.com).
+You should be able to post messages, search the archives, and even register as a new user from here.
+
+The actual mailing list can be found [here](http://mailman.nanocubes.net/mailman/listinfo/nanocubes-discuss_mailman.nanocubes.net).
