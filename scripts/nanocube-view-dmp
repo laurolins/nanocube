@@ -12,7 +12,7 @@ import math
 parser = argparse.ArgumentParser(description="Viewer for .dmp files")
 parser.add_argument('-i', '--input', type=str, help='input file (if not defined stdin)', required=True)
 # parser.add_argument('-f', '--format', type=str, help='format of records e.g. "<ffQi" for float float uint64 integer', required=True)
-parser.add_argument('-j', '--jump', type=int, help='start on the i-th record', default=1)
+parser.add_argument('-j', '--jump', type=int, help='start on the i-th record', default=0)
 
 # @ 	native 	native 	native
 # = 	native 	standard 	none
