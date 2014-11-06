@@ -14,14 +14,14 @@ config_template_text = '''{
     "title": "$TITLE", 
     "url": "$SERVER", 
     "latlonbox": {
-        "max": {
-            "src": [
+        "min": {
+            "$SPATIAL_DIMENSION_NAME": [
                 $LAT_MIN, 
                 $LON_MIN
             ]
         }, 
-        "min": {
-            "src": [
+        "max": {
+            "$SPATIAL_DIMENSION_NAME": [
                 $LAT_MAX, 
                 $LON_MAX
             ]
