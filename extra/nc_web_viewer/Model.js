@@ -64,7 +64,8 @@ Model.prototype.initVars = function(){
                 return;
             }
 
-            vref  = new CatVar(v.name,v.valnames);
+            vref  = new CatVar(v.name,v.valnames,
+			       that.options.config['div'][v.name]['displaynumcat']);
 
             //init the gui component (move it elsewhere?)
             vref.widget = new GroupedBarChart('#'+v.name);

@@ -38,6 +38,7 @@ function initNanocube(config){
             //set options (colormap etc)
             var options = {
                 nanocube:nc,
+		config: config,
                 colormaps: [{colors:cm,
                              domain:cdomain}],
                 tilesurl:config.tilesurl,

@@ -272,7 +272,10 @@ for f in schema.fields:
         config['div'][f.name] = CategoricalVariableTemplate
 
         #construct the width and height of the margins
-        config['div'][f.name]['height'] = "%dem"%(min(20,len(f.valnames))*2)
+        numofcat = 25
+        config['div'][f.name]['displaynumcat'] = numofcat
+        config['div'][f.name]['height'] = "%dem"%(min(numofcat,
+                                                      len(f.valnames))*2)
         txtlen = len(max(f.valnames, key=lambda x:len(x)))
         config['div'][f.name]['margin-left'] = "%dem"%(txtlen*0.7)
         

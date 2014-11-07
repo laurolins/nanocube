@@ -1,7 +1,10 @@
 //Categorical Variable
-function CatVar(dim, valnames){
-    this.dim = dim;
+function CatVar(dim, valnames, displaynumcat){
+    //Display 25 categories by default
+    displaynumcat=(typeof displaynumcat==="undefined")? 25:displaynumcat;    
 
+    this.dim = dim;
+    
     //setup constraint
     this.constraints = {};
     this.constraints[0] = new CatConstraint(dim);
@@ -14,6 +17,10 @@ function CatVar(dim, valnames){
     Object.keys(this.keyaddr).forEach(function(k){ 
         that.addrkey[that.keyaddr[k]]=k; 
     });
+
+    //Set number of variables for display
+    this.displaynumcat = Math.min(displaynumcat,
+				  Object.keys(this.keyaddr).length);
 }
 
 CatVar.prototype.jsonToList=function(json){
@@ -25,7 +32,7 @@ CatVar.prototype.jsonToList=function(json){
     });
 
     data = data.sort(function(a,b) {return -(a.value-b.value);});
-    return data.slice(0,25);
+    return data.slice(0,this.displaynumcat);
 };
 
 CatVar.prototype.update=function(json,id,color,q){
