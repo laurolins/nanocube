@@ -10,7 +10,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 |:------:|-------------|
 | 3.1 | Added new tools, standarized tool names, restructured code repository, bug fixes |
 | 3.0.1 | Fixed a bug that was causing memory inefficiencies |
-| 3.0 | [New API](https://github.com/laurolins/nanocube/blob/api3/API.md) to support more general nanocubes |
+| 3.0 | [New API](./API.md) to support more general nanocubes |
 | 2.1.3 | Minor fixes, improved csv2Nanocube.py script  |
 | 2.1.2 | Minor fixes, better documentation, shutdown service |
 | 2.1.1 | Fixed csv2Nanocube.py to work with pandas 0.14.0 |
@@ -127,7 +127,7 @@ query-port: 29512
 ## Simple queries
 
 With a nanocube process running, we are able to query this nanocube
-using the HTTP-based [API](https://github.com/laurolins/nanocube/blob/api3/API.md).
+using the HTTP-based [API](./API.md).
 Using your favorite browser (assuming your favorite is Chrome, Firefox, or Safari), enter the following simple
 queries and verify the [JSON](http://www.json.org/) objects returned are correct.
 Please note that differences in computers (e.g. compilers, libraries) may result in some of the data being returned
