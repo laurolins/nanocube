@@ -267,20 +267,24 @@ config['title']= schema.name
 config['url'] = args.server
 config['heatmapmaxlevel'] = spatial_field.spatialResolution()
 
+charttop=30
 for f in schema.fields:
     if f.isCategorical():
-        config['div'][f.name] = CategoricalVariableTemplate
+        config['div'][f.name] = CategoricalVariableTemplate.copy()
 
         #construct the width and height of the margins
-        numofcat = 25
+        numofcat = min(25,len(f.valnames))
+        height = numofcat*20
         config['div'][f.name]['displaynumcat'] = numofcat
-        config['div'][f.name]['height'] = "%dem"%(min(numofcat,
-                                                      len(f.valnames))*2)
+        config['div'][f.name]['height'] = "%dpx"%(height)
+        config['div'][f.name]['top'] = "%dpx"%(charttop)
+        charttop += height+10
+        
         txtlen = len(max(f.valnames, key=lambda x:len(x)))
-        config['div'][f.name]['margin-left'] = "%dem"%(txtlen*0.7)
+        config['div'][f.name]['margin-left'] = "%dpx"%(txtlen*10)
         
     if f.isTemporal():
-        config['div'][f.name] = TemporalVariableTemplate
+        config['div'][f.name] = TemporalVariableTemplate.copy()
 
     if f.isSpatial():
         minp,maxp = findbox(args.server,f.name,
@@ -288,8 +292,9 @@ for f in schema.fields:
         
         config['latlonbox']['min'][f.name]= minp
         config['latlonbox']['max'][f.name]= maxp
-        config['div'][f.name] = SpatialVariableTemplate
+        config['div'][f.name] = SpatialVariableTemplate.copy()
 
+        
 ostream = open(args.output,"w") if len(args.output) else sys.stdout
 ostream.write(json.dumps(config,indent=2))
 ostream.close()
