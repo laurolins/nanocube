@@ -1,11 +1,5 @@
 #!/usr/bin/python                                                               
-import time
-import sys
-import argparse
-import os
-import json
-import urllib2
-import re
+import sys,argparse,json,urllib2,random,math
 
 ###################################################################
 
@@ -54,10 +48,10 @@ TemporalVariableTemplate={
 
 CategoricalVariableTemplate={
     "opacity": 0.8, 
-    "width": "695px", 
+    "width": "500px", 
     "z-index": 1, 
     "right": "10px", 
-    "margin-left": "495px", 
+    "margin-left": "300px", 
     "position": "absolute", 
     "top": "30px", 
     "font": "10pt sans-serif", 
@@ -66,23 +60,6 @@ CategoricalVariableTemplate={
 }
 
 ###############################################################################
-
-
-parser = argparse.ArgumentParser();
-parser.add_argument('-s', 
-                    "--server", 
-                    dest="server", 
-                    type=str, 
-                    required=True, 
-                    help='Nanocube Server URL')
-parser.add_argument('-o', 
-                    "--output", 
-                    dest="output", 
-                    type=str,
-                    default="",
-                    required=False, 
-                    help='Output configuration .json file')
-args = parser.parse_args()
 
 
 # { fields:
@@ -141,15 +118,17 @@ class Schema:
     def __init__(self, name):
         self.name = name
         self.fields = []
-    def addField(self, field_name, field_type):
-        field = Field(field_name, field_type)
+    def addField(self, field_name, field_type, field_valnames=None):
+        field = Field(field_name, field_type, field_valnames)
         self.fields.append(field)
         return field
 
 class Field:
-    def __init__(self, name, field_type):
+    def __init__(self, name, field_type, valnames):
         self.name = name
         self.type = field_type
+        self.valnames = valnames
+        
     def isSpatial(self):
         return self.type.startswith("nc_dim_quadtree_")
     def isCategorical(self):
@@ -159,6 +138,92 @@ class Field:
     def spatialResolution(self):
         if self.isSpatial():
             return int(self.type.split('_')[-1])
+
+## Find the bounding box
+def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
+    query_url='%s/count.a("%s",dive(tile2d({x},{y},{z}),{drill}),"img")'%(server,dim)
+    
+    p = initp
+    newtiles=[]
+    for location in tiles:
+        res =  json.load(urllib2.urlopen(query_url.format(**location)))
+        res = res['root']['children']
+        offset = {'x':location['x']*2**location['drill'],
+                  'y':location['y']*2**location['drill'],
+                  'z':location['z']+location['drill']}
+
+        #add offset
+        res = [{'x':d['x']+offset['x'],
+                'y':d['y']+offset['y'],
+                'z':offset['z']} for d in res]
+        
+        #find extrememum
+        p={'x':func(p['x'],func(res,key=lambda d: d['x'])['x']),
+           'y':func(p['y'],func(res,key=lambda d: d['y'])['y']),
+           'z':offset['z']}
+
+        newtiles += [ t for t in res \
+                      if  (t['x'] == p['x'] or t['y'] == p['y'])]
+
+    if p['z'] >= maxlevel: # base case
+        return p
+
+    #filter out excessive tiles
+    newtiles = [ t for t in newtiles \
+                 if  (t['x'] == p['x'] or t['y'] == p['y'])]
+
+    random.shuffle(newtiles)
+
+    #Go into the next level
+    nextdrill = min(8,maxlevel-p['z'])
+    for t in newtiles: t['drill'] = nextdrill
+
+    return findext(server,dim,newtiles[:numoftiles],maxlevel,
+                   func,initp,numoftiles)
+
+def num2deg(p):
+    xtile = p['x']
+    ytile = p['y']
+    zoom = p['z']
+    
+    n = 2.0 ** zoom
+    ytile = n-ytile-1
+
+    lon_deg = xtile / n * 360.0 - 180.0
+    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+    lat_deg = math.degrees(lat_rad)
+    return [lat_deg, lon_deg]
+
+def findbox(server,dim,maxlevel):
+    # min query
+    minp = findext(server,dim,[{'x':0,'y':0,'z':0,'drill':8}],maxlevel,min,
+                   {'x':float('inf'),'y':float('inf')})
+    # max query
+    maxp = findext(server,dim,[{'x':0,'y':0,'z':0,'drill':8}],maxlevel,max,
+                   {'x':float('-inf'),'y':float('-inf')})
+    
+    return (num2deg(minp),num2deg(maxp))
+    
+
+
+##### Main ######        
+parser = argparse.ArgumentParser();
+parser.add_argument('-s', 
+                    "--server", 
+                    dest="server", 
+                    type=str, 
+                    required=True, 
+                    help='Nanocube Server URL')
+parser.add_argument('-o', 
+                    "--output", 
+                    dest="output", 
+                    type=str,
+                    default="",
+                    required=False, 
+                    help='Output configuration .json file')
+args = parser.parse_args()
+
+
 
 # load schema
 # print args.server
@@ -184,7 +249,12 @@ for item in schema_json['metadata']:
 schema = Schema(name)
 
 for json_field in schema_json['fields']:
-    field = schema.addField(json_field['name'], json_field['type'])
+    if 'valnames' not in json_field:
+        json_field['valnames'] = None
+    
+    field = schema.addField(json_field['name'],
+                            json_field['type'],
+                            json_field['valnames'])
     if field.isSpatial():
         spatial_field = field
     elif field.isTemporal():
@@ -200,11 +270,21 @@ config['heatmapmaxlevel'] = spatial_field.spatialResolution()
 for f in schema.fields:
     if f.isCategorical():
         config['div'][f.name] = CategoricalVariableTemplate
+
+        #construct the width and height of the margins
+        config['div'][f.name]['height'] = "%dem"%(min(20,len(f.valnames))*2)
+        txtlen = len(max(f.valnames, key=lambda x:len(x)))
+        config['div'][f.name]['margin-left'] = "%dem"%(txtlen*0.7)
+        
     if f.isTemporal():
         config['div'][f.name] = TemporalVariableTemplate
+
     if f.isSpatial():
-        config['latlonbox']['min'][f.name]=[-85.0,-180.0]
-        config['latlonbox']['max'][f.name]=[85.0,180.0]
+        minp,maxp = findbox(args.server,f.name,
+                            spatial_field.spatialResolution()-8)
+        
+        config['latlonbox']['min'][f.name]= minp
+        config['latlonbox']['max'][f.name]= maxp
         config['div'][f.name] = SpatialVariableTemplate
 
 ostream = open(args.output,"w") if len(args.output) else sys.stdout
