@@ -7,28 +7,15 @@ import json
 import urllib2
 import re
 
-#################################################################################
+###################################################################
 
 
-config_template_text = '''{
-    "title": "$TITLE", 
-    "url": "$SERVER", 
-    "latlonbox": {
-        "min": {
-            "$SPATIAL_DIMENSION_NAME": [
-                $LAT_MIN, 
-                $LON_MIN
-            ]
-        }, 
-        "max": {
-            "$SPATIAL_DIMENSION_NAME": [
-                $LAT_MAX, 
-                $LON_MAX
-            ]
-        }
-    }, 
-    "tilesurl": "$TILES_URL", 
-    "heatmapmaxlevel": $SPATIAL_RESOLUTION, 
+ConfigTemplate={
+    "title": None, 
+    "url": None, 
+    "latlonbox": {"min":{}, "max":{}},
+    "tilesurl": "http://{s}.tile.osm.org/{z}/{x}/{y}.png", 
+    "heatmapmaxlevel": 25, 
     "div": {
         "info": {
             "opacity": 0.9, 
@@ -40,46 +27,45 @@ config_template_text = '''{
             "top": "5px", 
             "font": "10pt sans-serif", 
             "height": "1em"
-        }, 
-        "$SPATIAL_DIMENSION_NAME": {
-            "float": "left", 
-            "height": "100%", 
-            "padding": 0, 
-            "width": "100%", 
-            "z-index": 0, 
-            "margin": 0
-        }, 
-        $CATEGORICAL_VARIABLES
-        "$TEMPORAL_DIMENSION_NAME": {
-            "opacity": 0.8, 
-            "width": "960px", 
-            "z-index": 1, 
-            "left": "10px", 
-            "bottom": "10px", 
-            "position": "absolute", 
-            "font": "10pt sans-serif", 
-            "background-color": "#555", 
-            "height": "100px"
         }
     }
 }
-'''
 
-categorical_variable_template_text ='''"$CATEGORICAL_DIMENSION_NAME": {
-            "opacity": 0.8, 
-            "width": "695px", 
-            "z-index": 1, 
-            "right": "10px", 
-            "margin-left": "495px", 
-            "position": "absolute", 
-            "top": "30px", 
-            "font": "10pt sans-serif", 
-            "background-color": "#555", 
-            "height": "550px"
-        }, 
-'''
+SpatialVariableTemplate={
+    "float": "left", 
+    "height": "100%", 
+    "padding": 0, 
+    "width": "100%", 
+    "z-index": 0, 
+    "margin": 0
+}
+    
+TemporalVariableTemplate={
+    "opacity": 0.8, 
+    "width": "960px", 
+    "z-index": 1, 
+    "left": "10px", 
+    "bottom": "10px", 
+    "position": "absolute", 
+    "font": "10pt sans-serif", 
+    "background-color": "#555", 
+    "height": "100px"
+}
 
-#################################################################################
+CategoricalVariableTemplate={
+    "opacity": 0.8, 
+    "width": "695px", 
+    "z-index": 1, 
+    "right": "10px", 
+    "margin-left": "495px", 
+    "position": "absolute", 
+    "top": "30px", 
+    "font": "10pt sans-serif", 
+    "background-color": "#555", 
+    "height": "550px"
+}
+
+###############################################################################
 
 
 parser = argparse.ArgumentParser();
@@ -178,9 +164,6 @@ class Field:
 # print args.server
 response = urllib2.urlopen(args.server+"/schema")
 schema_json = json.loads(response.read())
-# print schema_json
-
-# 
 
 #
 # spatial field
@@ -208,54 +191,22 @@ for json_field in schema_json['fields']:
         temporal_field = field
 
 
-class Template:
-    def __init__(self, text):
-        self.text = text
-        self.variables = re.findall('[$][A-Z_]+', text)
-        self.instance = None
-    def start(self):
-        self.instance = self.text
-        return self
-    def set(self, i, value):
-        if type(i) == int:
-            self.instance = self.instance.replace(self.variables[i],value)
-        elif type(i) == str:
-            self.instance = self.instance.replace(i,value)
-        return self
-    def current(self):
-        return self.instance
-    
-
-# categorical config
-
-categorical_variable_template = Template(categorical_variable_template_text)
-lst = []
+# General Config
+config= ConfigTemplate;
+config['title']= schema.name
+config['url'] = args.server
+config['heatmapmaxlevel'] = spatial_field.spatialResolution()
 
 for f in schema.fields:
     if f.isCategorical():
-        categorical_variable_template.start().set(0, f.name)
-        lst.append(categorical_variable_template.current())
-categorical_config = "".join(lst)
-
-
-# general config: uses categorical_config
-config_template = Template(config_template_text)
-
-config_template.start()
-config_template.set('$TITLE', schema.name)
-config_template.set('$SERVER', args.server)
-config_template.set('$LAT_MIN', '-85')
-config_template.set('$LON_MIN', '-180')
-config_template.set('$LAT_MAX', '85')
-config_template.set('$LON_MAX', '180')
-config_template.set('$TILES_URL', "http://{s}.tile.osm.org/{z}/{x}/{y}.png")
-config_template.set('$SPATIAL_RESOLUTION', str(spatial_field.spatialResolution()))
-config_template.set('$SPATIAL_DIMENSION_NAME', spatial_field.name)
-config_template.set('$TEMPORAL_DIMENSION_NAME', temporal_field.name)
-config_template.set('$CATEGORICAL_VARIABLES',categorical_config)
+        config['div'][f.name] = CategoricalVariableTemplate
+    if f.isTemporal():
+        config['div'][f.name] = TemporalVariableTemplate
+    if f.isSpatial():
+        config['latlonbox']['min'][f.name]=[-85.0,-180.0]
+        config['latlonbox']['max'][f.name]=[85.0,180.0]
+        config['div'][f.name] = SpatialVariableTemplate
 
 ostream = open(args.output,"w") if len(args.output) else sys.stdout
-ostream.write(config_template.current())
+ostream.write(json.dumps(config,indent=2))
 ostream.close()
-
-
