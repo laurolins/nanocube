@@ -89,7 +89,7 @@ export PATH=$NANOCUBE_BIN:$PATH
 ```
 
 **Please note:** If the default version of g++ on your system is too old,
-you can run `configure` and specify a more recent version of g++: `CXX=g++-4.8 ../configure --prefix=$NANOCUBE_SRC`.
+you can run `configure` and specify a more recent version of g++: `CXX=g++-4.8 ../configure --prefix=$NANOCUBE_SRC CXXFLAGS="-O3"`.
 
 **Please note:** For better performance you might configure nanocubes with the tcmalloc
 option (see details below): `../configure --prefix=$NANOCUBE_SRC --with-tcmalloc CXXFLAGS="-O3"`.
