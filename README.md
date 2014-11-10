@@ -344,18 +344,16 @@ its dependencies.
 
     sudo apt-get install libgoogle-perftools-dev
 
-For Mac OS 10.9 Mavericks only
+For Mac OS (Static libraries only)
 
     brew install gperftools
 
-**Please note**: We are currently experience problems with tcmalloc and nanocubes on Mac OS 10.10 Yosemite.
-
 You must then re-run the configure script, indicating support for tcmalloc.
 
-    ../configure --prefix=$NANOCUBES_SRC --with-tcmalloc
+    ../configure --prefix=$NANOCUBES_SRC LIBS=${PWD}/homebrew/lib/libtcmalloc_minimal.a
     make clean
     make -j
-    make install
+    make install    
 
 ## Asking for help
 
