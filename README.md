@@ -1,5 +1,3 @@
-(this branch is being modified towards release 3.1, visit https://github.com/laurolins/nanocube/tree/3.0.1 for a more consistent documentation)
-
 # Nanocubes: an in-memory data structure for spatiotemporal data cubes
 
 Nanocubes are a fast data structure for in-memory data cubes developed at the [Information Visualization department](http://www.research.att.com/infovis) at [AT&T Labs Research](http://www.research.att.com). Visualizations powered by nanocubes can be used to explore datasets with billions of elements at interactive rates in a web browser, and in some cases nanocubes uses sufficiently little memory that you can run a nanocube in a modern-day laptop.
@@ -78,7 +76,7 @@ export NANOCUBE_SRC=`pwd`
 ./bootstrap
 mkdir build
 cd build
-../configure --prefix=$NANOCUBE_SRC
+../configure --prefix=$NANOCUBE_SRC CXXFLAGS="-O3"
 make -j
 make install
 ```
@@ -94,7 +92,7 @@ export PATH=$NANOCUBE_BIN:$PATH
 you can run `configure` and specify a more recent version of g++: `CXX=g++-4.8 ../configure --prefix=$NANOCUBE_SRC`.
 
 **Please note:** For better performance you might configure nanocubes with the tcmalloc
-option (see details below): `../configure --prefix=$NANOCUBE_SRC --with-tcmalloc`.
+option (see details below): `../configure --prefix=$NANOCUBE_SRC --with-tcmalloc CXXFLAGS="-O3"`.
 
 ## Running a nanocube
 
