@@ -31,8 +31,13 @@ CatVar.prototype.jsonToList=function(json){
         return { value: +d.val, addr: +d.path[0]  };
     });
 
-    data = data.sort(function(a,b) {return -(a.value-b.value);});
-    return data.slice(0,this.displaynumcat);
+    var that = this;
+    data.sort(function(a,b) {return -(a.value-b.value);});
+    data = data.slice(0,this.displaynumcat);
+    data.sort(function(a,b) {
+	return that.addrkey[a.addr].localeCompare(that.addrkey[b.addr])
+    });
+    return data;
 };
 
 CatVar.prototype.update=function(json,id,color,q){
