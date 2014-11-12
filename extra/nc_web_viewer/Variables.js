@@ -35,7 +35,12 @@ CatVar.prototype.jsonToList=function(json){
     data.sort(function(a,b) {return -(a.value-b.value);});
     data = data.slice(0,this.displaynumcat);
     data.sort(function(a,b) {
-	return that.addrkey[a.addr].localeCompare(that.addrkey[b.addr])
+	try{
+	    return that.addrkey[a.addr].localeCompare(that.addrkey[b.addr])
+	}
+	catch(e){
+	    return 0;
+	}
     });
     return data;
 };
