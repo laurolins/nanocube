@@ -120,9 +120,9 @@ query-port: 29512
 (stdin:done) count:      50000 mem. res:         26MB. time(s):          0
 ```
 
-For lower level details on how to generate valid data for nanocubes go [here](https://github.com/laurolins/nanocube/wiki/nanocube-ready-dmp)
-
 **Please note:** If port 29512 is already in use, select another port and use it consistently throughout the examples below.
+
+**Please note:** For lower level details on how to generate valid data for nanocubes go [here](https://github.com/laurolins/nanocube/wiki/nanocube-ready-dmp)
 
 ## Simple queries
 
