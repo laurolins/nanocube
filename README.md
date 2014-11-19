@@ -108,10 +108,6 @@ statistics every 10,000 insertions.  Sample output from this call is shown below
 After inserting all 50,000 records, the nanocube is using 26MB of memory (approximately 20MB if
 you are using tcmalloc).
 
-**For low level details on how to generate data for nanocubes check the text of
-Generating nanocube ready `.dmp` files [here](wiki/nanocube-ready-dmp)**
-
-
 ##### Output
 ```
 VERSION: 3.1
@@ -123,6 +119,8 @@ query-port: 29512
 (stdin     ) count:      50000 mem. res:         26MB. time(s):          0
 (stdin:done) count:      50000 mem. res:         26MB. time(s):          0
 ```
+
+For lower level details on how to generate valid data for nanocubes go [here](https://github.com/laurolins/nanocube/wiki/nanocube-ready-dmp)
 
 **Please note:** If port 29512 is already in use, select another port and use it consistently throughout the examples below.
 
