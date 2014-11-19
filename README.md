@@ -108,6 +108,10 @@ statistics every 10,000 insertions.  Sample output from this call is shown below
 After inserting all 50,000 records, the nanocube is using 26MB of memory (approximately 20MB if
 you are using tcmalloc).
 
+**For low level details on how to generate data for nanocubes check the text of
+Generating nanocube ready `.dmp` files [here](wiki/nanocube-ready-dmp)**
+
+
 ##### Output
 ```
 VERSION: 3.1
