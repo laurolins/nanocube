@@ -298,7 +298,7 @@ public: // methods
 
     void mountReport(report::Report &report);
 
-    void query(::query::QueryDescription  &query_description,
+    void query(const ::query::QueryDescription  &query_description,
                ::query::result::Result    &result);
 
     void timeQuery(::query::QueryDescription &query_description,
@@ -442,7 +442,7 @@ void NanoCubeTemplate<dim_names, var_types>::mountReport(report::Report &report)
 
 template <typename dim_names, typename var_types>
 void NanoCubeTemplate<dim_names, var_types>::query(
-        ::query::QueryDescription  &query_description,
+        const ::query::QueryDescription  &query_description,
         ::query::result::Result    &result)
 {
     Cache cache; // caches only within a single query

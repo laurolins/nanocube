@@ -157,34 +157,21 @@ struct Options {
         "data-filename"   // type description
     };
 
+    TCLAP::ValueArg<int> sliding {
+        "w",                      // flag
+        "sliding-window",                // name
+        "Sliding Window",         // description
+        false,                    // required
+        0,                        // value
+        "sliding window units"    // type description
+    };
     
-    // TCLAP::ValueArg<std::uint64_t> logmem_delay {  
-    //         "d",                 // flag
-    //         "logmem-delay",      // name
-    //         "",                  // description
-    //         false,               // required
-    //         5000,                // value
-    //         "sleep"              // type description
-    //         };
-
-
-
-    // int      initial_port        {  29512 };
-    // int      no_mongoose_threads {     10 };
-    // uint64_t max_points          {      0 };
-    // uint64_t report_frequency    { 100000 };
-    // uint64_t batch_size          {   1000 };
-    // uint64_t sleep_for_ns        {    100 };
-
-    // uint64_t    logmem_delay     {   5000 };
-    // std::string logmem;
-    // std::string input_filename;
 
 
 };
 
 
-Options::Options(std::vector<std::string>& args) 
+Options::Options(std::vector<std::string>& args)
 {
     cmd_line.add(schema); // add command option
     cmd_line.add(data);
@@ -196,6 +183,7 @@ Options::Options(std::vector<std::string>& args)
     cmd_line.add(batch_size);
     cmd_line.add(sleep_for_ns);
     cmd_line.add(mask_cache_budget);
+    cmd_line.add(sliding);
     cmd_line.parse(args);
 }
 
@@ -444,7 +432,7 @@ struct NanocubeServer {
 
 public: // Constructor
 
-    NanocubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream);
+    NanocubeServer(::nanocube::Schema &schema, Options &options, std::istream &input_stream);
 
 private: // Private Methods
 
@@ -463,12 +451,8 @@ public: // Public Methods
 
     void serveTimeQuery (Request &request, bool json, bool compression);
     void serveTile      (Request &request);
-    void serveStats     (Request &request);
     void serveSchema    (Request &request, bool json);
     void serveSetValname(Request &request);
-    void serveTBin      (Request &request);
-    void serveSummary   (Request &request);
-    void serveGraphViz  (Request &request);
     void serveTiming    (Request &request);
     void serveVersion   (Request &request);
 
@@ -499,7 +483,21 @@ public: // Data Members
     
     std::uint64_t inserted_points { 0 };
     
-    NanoCube     &nanocube;
+    // when sliding window is active, keep rotating on this 3 element array
+    std::unique_ptr<NanoCube> nanocubes[3];
+
+    int active_window { 0 };
+    bool sliding { false };
+    struct {
+        bool      empty                { true };
+        uint64_t  size                 { 0 };
+        uint64_t  active_window_t0     { 0 };
+        uint64_t  previous_window_t0   { 0 };
+        int       time_record_offset   { 0 };
+        int       time_record_bytes    { 0 };
+    } sliding_window;
+    
+    Schema       &schema;
     Options      &options;
     std::istream &input_stream;
 
@@ -507,12 +505,11 @@ public: // Data Members
     
     boost::asio::io_service io_service; // io_service for tcp insert port (clean this up)
 
-    bool          finish { false };
-    
+    bool                      finish { false };
+
     boost::shared_mutex       shared_mutex; // one writer multiple readers
     
     MaskCache mask_cache;
-    
 
 };
 
@@ -533,12 +530,28 @@ void NanocubeServer::printMessages() {
 // NanocubeServer Impl.
 //------------------------------------------------------------------------------
 
-NanocubeServer::NanocubeServer(NanoCube &nanocube, Options &options, std::istream &input_stream):
-    nanocube(nanocube),
+NanocubeServer::NanocubeServer(Schema &schema, Options &options, std::istream &input_stream):
+    schema(schema),
     options(options),
     input_stream(input_stream),
     finish(false)
 {
+    // create one active nanocube (if not sliding window, it will be the only nanocube)
+    nanocubes[active_window].reset(new NanoCube(schema));
+
+    sliding_window.size = (uint64_t) options.sliding.getValue();
+    sliding = sliding_window.size > 0;
+    
+    if (sliding) {
+        // store location of timestamp on input records on the sliding window info
+        for (auto field: schema.dump_file_description.fields) {
+            if (field->field_type.name.find("nc_dim_time_") == 0) {
+                sliding_window.time_record_offset = field->offset_inside_record;
+                sliding_window.time_record_bytes  = field->getNumBytes();
+            }
+        }
+    }
+    
     try {
         initializeQueryServer();
 
@@ -731,7 +744,7 @@ void NanocubeServer::insert_from_stdin()
 
     bool done = false;
 
-    auto record_size = this->nanocube.schema.dump_file_description.record_size;
+    auto record_size = schema.dump_file_description.record_size;
     auto num_bytes_per_batch = record_size * batch_size;
     
     std::stringstream ss;
@@ -741,7 +754,7 @@ void NanocubeServer::insert_from_stdin()
     //     std::ofstream ofs("/tmp/verification.tmp", std::ofstream::out | std::ofstream::app);
     //     ofs << "open verification.tmp, num bytes per batch: " << num_bytes_per_batch << std::endl;
     // }
-
+    
     while (!done) {
 
         //std::cerr << "reading " << num_bytes_per_batch << "...";
@@ -759,7 +772,61 @@ void NanocubeServer::insert_from_stdin()
             for (uint64_t i=0;i<batch_size && !done;++i)
             {
                 // std::cout << i << std::endl;
-                bool ok = nanocube.add(ss);
+                bool ok = true;
+
+                if (!sliding) {
+                    ok = nanocubes[active_window].get()->add(ss);
+                }
+                else {
+                    // get timestamp from record
+                    char *ptr = &buffer[0] + i * record_size + sliding_window.time_record_offset;
+                    std::uint64_t timestamp = 0;
+                    std::copy(ptr, ptr + sliding_window.time_record_bytes, (char*) &timestamp);
+                    
+                    if (sliding_window.empty) {
+                        sliding_window.active_window_t0 = timestamp;
+                        sliding_window.empty = false;
+                        nanocubes[active_window].get()->add(ss);
+                    }
+                    else {
+                        // rotate windows
+                        int previous_window = active_window == 0 ? 2 : active_window - 1;
+                        int next_window     = active_window == 2 ? 0 : active_window + 1;
+
+                        if (timestamp >= sliding_window.active_window_t0 + sliding_window.size) {
+                            
+                            // new active window
+
+                            // TODO: turn the deletion of the previous window to
+                            // another thread. for now let it rest there
+                            
+                            nanocubes[next_window].reset(new NanoCube(schema));
+                            nanocubes[previous_window].reset(); // erase previous window
+                            
+                            active_window = next_window;
+                            
+                            sliding_window.previous_window_t0 = sliding_window.active_window_t0;
+                            sliding_window.active_window_t0   = timestamp;
+                            
+                            ok = nanocubes[active_window].get()->add(ss);
+
+                            std::stringstream ss;
+                            ss << "(stdin   ) switching to new window" << std::endl;
+                            addMessage(ss.str());
+
+                            
+                        }
+                        else if (timestamp >= sliding_window.active_window_t0) {
+
+                            ok = nanocubes[active_window].get()->add(ss);
+
+                        }
+                        else if (timestamp >= sliding_window.previous_window_t0 && timestamp < sliding_window.previous_window_t0 + sliding_window.size) {
+                            ok = nanocubes[previous_window].get()->add(ss);
+                        }
+                    }
+                }
+                
                 if (!ok) {
                     // std::cout << "not ok" << std::endl;
                     done = true;
@@ -807,6 +874,7 @@ void NanocubeServer::insert_from_stdin()
 
 void NanocubeServer::insert_from_tcp()
 {
+#if 0
     using Socket   = boost::asio::ip::tcp::socket;
     using Acceptor = boost::asio::ip::tcp::acceptor;
     using boost::asio::ip::tcp;
@@ -1078,6 +1146,7 @@ void NanocubeServer::insert_from_tcp()
         addMessage(ss.str());
         finish = true; // turn of problem flag
     }
+#endif
 }
 
 #if 0
@@ -1552,7 +1621,7 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         ::query::QueryDescription query_description;
         
-        AnnotatedSchema annotated_schema(nanocube.schema);
+        AnnotatedSchema annotated_schema(schema);
         
         OutputEncoding output_encoding = JSON;
         
@@ -1591,7 +1660,20 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         ::query::result::Result result(treestore_result);
         
-        nanocube.query(query_description, result);
+        nanocubes[active_window].get()->query(query_description, result);
+
+        if (sliding) {
+
+            // add the result from the previous window too...
+            int previous_window = active_window == 0 ? 2 : active_window-1;
+            
+            nanocubes[active_window].get()->query(query_description, result);
+            
+            if (nanocubes[previous_window].get()) {
+                nanocubes[previous_window].get()->query(query_description, result);
+            }
+            
+        }
         
         // set level names
         int level=0;
@@ -1600,12 +1682,12 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
             if (flag) {
                 if (annotated_schema.dimType(i) == AnnotatedSchema::TIME) {
                     if (branch_target_on_time_dimension.active)
-                        treestore_result.setLevelName(level, std::string("multi-target:") + nanocube.schema.getDimensionName(i));
+                        treestore_result.setLevelName(level, std::string("multi-target:") + schema.getDimensionName(i));
                     else
                         throw std::runtime_error("Cannot anchor on time dimension");
                 }
                 else {
-                    treestore_result.setLevelName(level, std::string("anchor:") + nanocube.schema.getDimensionName(i));
+                    treestore_result.setLevelName(level, std::string("anchor:") + schema.getDimensionName(i));
                 }
                 ++level;
             }
@@ -1963,31 +2045,6 @@ void NanocubeServer::serveTimeQuery(Request &request, bool json, bool compressio
 #endif
 }
 
-void NanocubeServer::serveStats(Request &request)
-{
-    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-
-    report::Report report(nanocube.DIMENSION + 1);
-    nanocube.mountReport(report);
-    std::stringstream ss;
-    for (auto layer: report.layers) {
-        ss << *layer << std::endl;
-    }
-
-    request.respondJson(ss.str());
-}
-
-void NanocubeServer::serveGraphViz(Request &request)
-{
-    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-
-    report::Report report(nanocube.DIMENSION + 1);
-    nanocube.mountReport(report);
-    std::stringstream ss;
-    report_graphviz(ss, report);
-    request.respondJson(ss.str());
-}
-
 void NanocubeServer::serveTiming(Request &request)
 {
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
@@ -2048,7 +2105,7 @@ void NanocubeServer::serveSetValname(Request &request)
 
 void NanocubeServer::serveSchema(Request &request, bool json)
 {
-    auto &dump_file = nanocube.schema.dump_file_description;
+    auto &dump_file = schema.dump_file_description;
     
     std::stringstream ss;
     if (json) {
@@ -2091,7 +2148,7 @@ void NanocubeServer::serveSchema(Request &request, bool json)
         request.respondJson(ss.str());
     }
     else {
-        ss << nanocube.schema.dump_file_description;
+        ss << schema.dump_file_description;
         request.respondText(ss.str());
     }
     
@@ -2110,31 +2167,6 @@ void NanocubeServer::serveSchema(Request &request, bool json)
     //    std::stringstream ss;
     //    ss << nanocube.schema.dump_file_description;
 }
-
-
-void NanocubeServer::serveTBin(Request &request)
-{
-    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-
-    auto &metadata = nanocube.schema.dump_file_description.metadata;
-    auto it = metadata.find("tbin");
-    if (it != metadata.end()) {
-        auto str = it->second;
-        request.respondJson(str);
-    }
-}
-
-void NanocubeServer::serveSummary(Request &request)
-{
-    boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-
-
-    nanocube::Summary summary = mountSummary(this->nanocube);
-    std::stringstream ss;
-    ss << summary;
-    request.respondJson(ss.str());
-}
-
 
 
 // //-----------------------------------------------------------------------------
@@ -2240,15 +2272,12 @@ int main(int argc, char *argv[]) {
         // create nanocube_schema from input_file_description
         ::nanocube::Schema nanocube_schema(input_file_description);
         
-        // create nanocube
-        NanoCube nanocube(nanocube_schema);
-        
 #ifdef DEBUG_NC_PROCESS
         std::cerr << "starting nc_... child process " << std::endl;
 #endif
         
         // start nanocube http server
-        NanocubeServer nanocube_server(nanocube, options, is);
+        NanocubeServer nanocube_server(nanocube_schema, options, is);
 
     };
     
