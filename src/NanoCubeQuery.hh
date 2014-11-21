@@ -69,7 +69,7 @@ public: // subtypes & class constants
 public: // constructor
 
     Query(dimension_type            &tree,
-          query_description_type    &query_description,
+          const query_description_type    &query_description,
           query_result_type         &result,
           Cache                     &cache);
 
@@ -79,7 +79,7 @@ public: // methods
 
 public: // methods
 
-    ::query::QueryDescription &query_description;
+    const ::query::QueryDescription &query_description;
 
     query_result_type &result;
     Cache             &cache;
@@ -108,7 +108,7 @@ struct Eval {
     typedef typename query_type::query_result_type         query_result_type;
     typedef typename query_type::dimension_content_type    dimension_content_type;
 
-    static void eval(dimension_content_type &content, query_description_type &qd, query_result_type &result, Cache &cache) {
+    static void eval(dimension_content_type &content, const query_description_type &qd, query_result_type &result, Cache &cache) {
 
         Query<nanocube_type, query_type::DIMENSION_INDEX + 1> q(content, qd, result, cache);
 
@@ -126,7 +126,7 @@ struct Eval<query_type, true> {
     typedef typename query_type::dimension_content_type     dimension_content_type;
 
     static void eval(dimension_content_type &content,
-                     query_description_type &qd,
+                     const query_description_type &qd,
                      query_result_type      &result,
                      Cache &cache) {
 
@@ -194,7 +194,7 @@ struct Eval<query_type, true> {
 
 template <typename NanoCube, int Index>
 Query<NanoCube, Index>::Query(dimension_type             &tree,
-                              query_description_type     &query_description,
+                              const query_description_type     &query_description,
                               query_result_type          &result,
                               Cache                      &cache):
     query_description(query_description),
