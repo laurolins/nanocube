@@ -54,16 +54,14 @@ function Nanocube(opts) {
 
     var that = this;
 
-    $.getJSON(that.getSchemaQuery())
-	.done(function(json){
-	    that.setSchema(json);
-	    that.setTimeInfo().done(function(){
-		opts.ready(that);
-	    });
-	})
-	.fail(function(){
-	    console.log('Failed to get Schema from ', that.url);
+    $.getJSON(that.getSchemaQuery()).done(function(json){
+	that.setSchema(json);
+	that.setTimeInfo().done(function(){
+	    opts.ready(that);
 	});
+    }).fail(function(){
+	console.log('Failed to get Schema from ', that.url);
+    });
 }
 
 Nanocube.prototype.setSchema = function(json){
@@ -128,8 +126,7 @@ Nanocube.prototype.getTbinInfo = function() {
 	day = +res[1];
     }
 
-    return {date_offset:offset, 
-	    bin_to_hour: day*24+hour+min/60.0+sec/3600.0};
+    return {date_offset:offset,bin_to_hour:day*24+hour+min/60.0+sec/3600.0};
 };
 
 
@@ -142,25 +139,24 @@ Nanocube.prototype.setTimeInfo = function() {
     var q = this.query();
     q = q.dim(tvar[0].name);
     q = q.tseries(0,1,65536);
-    return q.run_query()
-	.done(function(json){
-	    if (!json.root.children){
-		return;
-	    }
+    return q.run_query().done(function(json){
+	if (!json.root.children){
+	    return;
+	}
 
-	    var tbounds = json.root.children.reduce(function(prev,curr){
-		return { min: Math.min(curr.path[0], prev.min),
-			 max: Math.max(curr.path[0], prev.max)};
-	    }, {min:65536,max:0});
+	var tbounds = json.root.children.reduce(function(prev,curr){
+	    return { min: Math.min(curr.path[0], prev.min),
+		     max: Math.max(curr.path[0], prev.max)};
+	}, {min:65536,max:0});
 
-	    var tbinfo = that.getTbinInfo();
-	    that.timeinfo = tbinfo;
-	    that.timeinfo.start=tbounds.min;
-	    that.timeinfo.end=tbounds.max;
-	    that.timeinfo.nbins=(that.timeinfo.end
-				 -that.timeinfo.start+1);
-	    dfd.resolve();
-	});
+	var tbinfo = that.getTbinInfo();
+	that.timeinfo = tbinfo;
+	that.timeinfo.start=tbounds.min;
+	that.timeinfo.end=tbounds.max;
+	that.timeinfo.nbins=(that.timeinfo.end
+			     -that.timeinfo.start+1);
+	dfd.resolve();
+    });
     return dfd.promise();
 };
 

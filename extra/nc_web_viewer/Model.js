@@ -748,9 +748,42 @@ Model.prototype.setTimeBinSize = function(hr, tvar){
     tvar.setBinSize(Math.ceil(hr*1.0/b2h));
 };
 
-
 Model.prototype.updateTimeStep = function(stepsize,window){
     var that = this;
+    $.getJSON(that.getSchemaQuery()).done(function(json){
+	that.setSchema(json);
+	that.setTimeInfo().done(function(){
+	    this.nanocube.setTimeInfo().done(function(){
+		var tvarname = Object.keys(that.temporal_vars)[0];
+		var tvar = that.temporal_vars[tvarname];
+		var time_const = tvar.constraints[0];
+
+		var start = that.nanocube.timeinfo.start;
+		var end = that.nanocube.timeinfo.end;
+
+		var tbinfo=that.nanocube.getTbinInfo();
+		tvar.date_offset = tbinfo.date_offset;
+		tvar.bin_to_hour = tbinfo.bin_to_hour;
+		time_const.bin_to_hour = tbinfo.bin_to_hour;
+
+		if (stepsize < 0){ //reset
+		    time_const.start=start;
+		    time_const.end=end;
+		    time_const.nbins=end-start+1;
+		}
+		else{ //advance
+		    time_const.nbins = stepsize;
+		    time_const.start = time_const.end-stepsize;
+		}
+        
+		time_const.setSelection(0,0);
+		tvar.widget.x.domain([0,1]);
+		that.redraw();
+	    });
+	});
+    });
+};
+    /*var that = this;
     $.getJSON(this.nanocube.getTQuery(), function(json){
         var addr = json.root.children[0].addr;
         addr = addr.toString();
@@ -783,7 +816,7 @@ Model.prototype.updateTimeStep = function(stepsize,window){
         tvar.widget.x.domain([0,1]);
         that.redraw();
     });
-};
+};*/
 
 Model.prototype.animate = function(auto,stepsize,window){
     auto = typeof auto !== 'undefined' ? auto : false;

@@ -36,7 +36,7 @@ CatVar.prototype.jsonToList=function(json){
     data = data.slice(0,this.displaynumcat);
     data.sort(function(a,b) {
 	try{
-	    return that.addrkey[a.addr].localeCompare(that.addrkey[b.addr])
+	    return that.addrkey[a.addr].localeCompare(that.addrkey[b.addr]);
 	}
 	catch(e){
 	    return 0;
