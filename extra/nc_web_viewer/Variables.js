@@ -24,7 +24,8 @@ function CatVar(dim, valnames, displaynumcat){
 }
 
 CatVar.prototype.jsonToList=function(json){
-    if (json == null){ //nothing to do
+    if (json == null|| (typeof json.root.children=='undefined') ){
+	//nothing to do
         return [];
     }
     var data = json.root.children.map(function(d){

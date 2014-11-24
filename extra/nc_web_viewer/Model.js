@@ -508,7 +508,7 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#flip-refresh").on('change', function(){
         if (this.value == "on"){
-            that.animate(true,10,5); 
+            that.animate(true,1,10); 
         }
         else{
             that.animate(false); 
@@ -725,7 +725,10 @@ Model.prototype.updateInfo = function(){
         var enddate = new Date(startdate);
         enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
-        var count = json.root.val;
+        var count = 0;
+	if (typeof json.root.val != 'undefined'){
+	    count = json.root.val;
+	}
         var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
         $('#info').text(startdate.toLocaleString() + ' - '
@@ -773,9 +776,9 @@ Model.prototype.updateTimeStep = function(stepsize,window){
 		    time_const.nbins=end-start+1;
 		}
 		else{ //advance
-		    time_const.nbins = stepsize;
+		    time_const.nbins = window;
 		    time_const.end=end;
-		    time_const.start = time_const.end-stepsize;
+		    time_const.start = time_const.end-window;
 		}
         
 		time_const.setSelection(0,0);
