@@ -508,7 +508,7 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#flip-refresh").on('change', function(){
         if (this.value == "on"){
-            that.animate(true,1,5); 
+            that.animate(true,10,5); 
         }
         else{
             that.animate(false); 
@@ -750,18 +750,19 @@ Model.prototype.setTimeBinSize = function(hr, tvar){
 
 Model.prototype.updateTimeStep = function(stepsize,window){
     var that = this;
-    $.getJSON(that.getSchemaQuery()).done(function(json){
-	that.setSchema(json);
-	that.setTimeInfo().done(function(){
-	    this.nanocube.setTimeInfo().done(function(){
+    var nc = that.nanocube;
+    $.getJSON(nc.getSchemaQuery()).done(function(json){
+	nc.setSchema(json);
+	nc.setTimeInfo().done(function(){
+	    nc.setTimeInfo().done(function(){
 		var tvarname = Object.keys(that.temporal_vars)[0];
 		var tvar = that.temporal_vars[tvarname];
 		var time_const = tvar.constraints[0];
 
-		var start = that.nanocube.timeinfo.start;
-		var end = that.nanocube.timeinfo.end;
+		var start = nc.timeinfo.start;
+		var end = nc.timeinfo.end;
 
-		var tbinfo=that.nanocube.getTbinInfo();
+		var tbinfo = nc.getTbinInfo();
 		tvar.date_offset = tbinfo.date_offset;
 		tvar.bin_to_hour = tbinfo.bin_to_hour;
 		time_const.bin_to_hour = tbinfo.bin_to_hour;
@@ -773,6 +774,7 @@ Model.prototype.updateTimeStep = function(stepsize,window){
 		}
 		else{ //advance
 		    time_const.nbins = stepsize;
+		    time_const.end=end;
 		    time_const.start = time_const.end-stepsize;
 		}
         

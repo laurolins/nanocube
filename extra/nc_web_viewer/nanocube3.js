@@ -245,6 +245,10 @@ Query.prototype.polygonQuery = function(pts) {
 
 //Time Series Query
 Query.prototype.tseries = function(base, bucket, count) {
+    if (isNaN(base) || isNaN(bucket)|| isNaN(count)){
+	debugger;
+    }
+    
     var varname = this.dimension.name;
     var constraint = "";
     if (count > 1){
