@@ -158,8 +158,56 @@ http://localhost:29512/schema
 
 ##### Ouput
 
-```
-{ "fields":[ { "name":"location", "type":"nc_dim_quadtree_25", "valnames":{  } }, { "name":"crime", "type":"nc_dim_cat_1", "valnames":{ "OTHER_OFFENSE":22, "NON-CRIMINAL_(SUBJECT_SPECIFIED)":18, "NARCOTICS":16, "GAMBLING":9, "MOTOR_VEHICLE_THEFT":15, "OTHER_NARCOTIC_VIOLATION":21, "OBSCENITY":19, "HOMICIDE":10, "THEFT":29, "DECEPTIVE_PRACTICE":8, "CRIMINAL_DAMAGE":5, "STALKING":28, "BATTERY":2, "PUBLIC_PEACE_VIOLATION":25, "PUBLIC_INDECENCY":24, "ASSAULT":1, "BURGLARY":3, "ROBBERY":26, "LIQUOR_LAW_VIOLATION":14, "INTERFERENCE_WITH_PUBLIC_OFFICER":11, "NON-CRIMINAL":17, "PROSTITUTION":23, "ARSON":0, "INTIMIDATION":12, "SEX_OFFENSE":27, "CONCEALED_CARRY_LICENSE_VIOLATION":4, "OFFENSE_INVOLVING_CHILDREN":20, "KIDNAPPING":13, "CRIM_SEXUAL_ASSAULT":7, "WEAPONS_VIOLATION":30, "CRIMINAL_TRESPASS":6 } }, { "name":"time", "type":"nc_dim_time_2", "valnames":{  } }, { "name":"count", "type":"nc_var_uint_4", "valnames":{  } } ], "metadata":[ { "key":"location__origin", "value":"degrees_mercator_quadtree25" }, { "key":"tbin", "value":"2013-12-01_00:00:00_3600s" }, { "key":"name", "value":"crime50k.csv" } ] }
+```json
+{
+  "fields": [
+    {"name": "location","type": "nc_dim_quadtree_25","valnames": {}},
+    {
+      "name": "crime",
+      "type": "nc_dim_cat_1",
+      "valnames": {
+        "OTHER_OFFENSE": 22,
+        "NON-CRIMINAL_(SUBJECT_SPECIFIED)": 18,
+        "NARCOTICS": 16,
+        "GAMBLING": 9,
+        "MOTOR_VEHICLE_THEFT": 15,
+        "OTHER_NARCOTIC_VIOLATION": 21,
+        "OBSCENITY": 19,
+        "HOMICIDE": 10,
+        "THEFT": 29,
+        "DECEPTIVE_PRACTICE": 8,
+        "CRIMINAL_DAMAGE": 5,
+        "STALKING": 28,
+        "BATTERY": 2,
+        "PUBLIC_PEACE_VIOLATION": 25,
+        "PUBLIC_INDECENCY": 24,
+        "ASSAULT": 1,
+        "BURGLARY": 3,
+        "ROBBERY": 26,
+        "LIQUOR_LAW_VIOLATION": 14,
+        "INTERFERENCE_WITH_PUBLIC_OFFICER": 11,
+        "NON-CRIMINAL": 17,
+        "PROSTITUTION": 23,
+        "ARSON": 0,
+        "INTIMIDATION": 12,
+        "SEX_OFFENSE": 27,
+        "CONCEALED_CARRY_LICENSE_VIOLATION": 4,
+        "OFFENSE_INVOLVING_CHILDREN": 20,
+        "KIDNAPPING": 13,
+        "CRIM_SEXUAL_ASSAULT": 7,
+        "WEAPONS_VIOLATION": 30,
+        "CRIMINAL_TRESPASS": 6
+      }
+    },
+    {"name": "time","type": "nc_dim_time_2","valnames": {}},
+    {"name": "count","type": "nc_var_uint_4","valnames": {}}
+  ],
+  "metadata": [
+    {"key": "location__origin","value": "degrees_mercator_quadtree25"},
+    {"key": "tbin","value": "2013-12-01_00:00:00_3600s"},
+    {"key": "name","value": "crime50k.csv"}
+  ]
+}
 ```
 
 ##### Interpretation
@@ -174,8 +222,45 @@ http://localhost:29512/count.a("crime",dive([],1))
 
 ##### Output
 
-```
-{ "layers":[ "anchor:crime" ], "root":{ "children":[ { "path":[0], "val":63 }, { "path":[1], "val":2629 }, { "path":[2], "val":8990 }, { "path":[3], "val":2933 }, { "path":[4], "val":1 }, { "path":[5], "val":4660 }, { "path":[6], "val":1429 }, { "path":[7], "val":181 }, { "path":[8], "val":2190 }, { "path":[9], "val":2 }, { "path":[10], "val":69 }, { "path":[11], "val":229 }, { "path":[12], "val":21 }, { "path":[13], "val":46 }, { "path":[14], "val":69 }, { "path":[15], "val":2226 }, { "path":[16], "val":5742 }, { "path":[17], "val":1 }, { "path":[18], "val":1 }, { "path":[19], "val":1 }, { "path":[20], "val":456 }, { "path":[21], "val":2 }, { "path":[22], "val":3278 }, { "path":[23], "val":211 }, { "path":[24], "val":2 }, { "path":[25], "val":441 }, { "path":[26], "val":2132 }, { "path":[27], "val":119 }, { "path":[28], "val":20 }, { "path":[29], "val":11367 }, { "path":[30], "val":489 } ] } }
+```json
+{
+  "layers": ["anchor:crime"],
+  "root": {
+    "children": [
+      {"path": [0],"val": 63},
+      {"path": [1],"val": 2629},
+      {"path": [2],"val": 8990},
+      {"path": [3],"val": 2933},
+      {"path": [4],"val": 1},
+      {"path": [5],"val": 4660},
+      {"path": [6],"val": 1429},
+      {"path": [7],"val": 181},
+      {"path": [8],"val": 2190},
+      {"path": [9],"val": 2},
+      {"path": [10],"val": 69},
+      {"path": [11],"val": 229},
+      {"path": [12],"val": 21},
+      {"path": [13],"val": 46},
+      {"path": [14],"val": 69},
+      {"path": [15],"val": 2226},
+      {"path": [16],"val": 5742},
+      {"path": [17],"val": 1},
+      {"path": [18],"val": 1},
+      {"path": [19],"val": 1},
+      {"path": [20],"val": 456},
+      {"path": [21],"val": 2},
+      {"path": [22],"val": 3278},
+      {"path": [23],"val": 211},
+      {"path": [24],"val": 2},
+      {"path": [25],"val": 441},
+      {"path": [26],"val": 2132},
+      {"path": [27],"val": 119},
+      {"path": [28],"val": 20},
+      {"path": [29],"val": 11367},
+      {"path": [30],"val": 489}
+    ]
+  }
+}
 ```
 
 ##### Interpretation
