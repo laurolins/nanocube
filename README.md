@@ -77,7 +77,7 @@ export NANOCUBE_SRC=`pwd`
 mkdir build
 cd build
 ../configure --prefix=$NANOCUBE_SRC CXXFLAGS="-O3"
-make -j
+make
 make install
 ```
 
