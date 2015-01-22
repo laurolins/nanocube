@@ -54,13 +54,14 @@ class NanocubeInput:
         except:
             self.offset = None
 
+        self.sep = args.sep
+
         try:
-            self.header=args.header.split(',')
+            self.header=args.header.split(self.sep)
         except:
             self.header=None
 
         self.countcol = args.countcol
-        self.sep = args.sep
 
         #esc char fixes
         self.sep = self.sep.replace('\\t','\t')
@@ -71,26 +72,17 @@ class NanocubeInput:
 
         self.datefmt=args.datefmt
         self.levels = args.levels
-        # self.port = args.port
+        self.chunksize = args.chunksize
 
 
         for s in self.spname:
             self.minlatlon[s] = [float("inf"),float("inf")]
             self.maxlatlon[s] = [float("-inf"),float("-inf")]
 
-        #this requires 2.7 does not work on 2.6
-        #self.minlatlon={s:[float("inf"),float("inf")] for s in self.spname}
-        #self.maxlatlon={s:[float("-inf"),float("-inf")] for s in self.spname}
+        #Read the csv file
+        self.readcsv(args.InputFile,self.chunksize)
 
-
-        #start nanocube
-        #cmd = os.environ['NANOCUBE_BIN']+'/ncserve --rf=1000 --threads=100'
-        #self.ncproc = subprocess.Popen([cmd],stdin=subprocess.PIPE,
-        #                               shell=True)
-
-        self.readcsv(args.InputFile)
         # self.writeConfigFile()
-
     # def writeConfigFile(self):
     #     config = {}
     #     config['div'] = {}
@@ -161,7 +153,7 @@ class NanocubeInput:
     #     # json.dump(config, open(os.environ['NANOCUBE_WEB']
     #     #                        + '/config.json','wb'),indent=4);
 
-    def readcsv(self,files):
+    def readcsv(self,files,csize=10000):
         coi = self.timecol+self.catcol+self.latcol+self.loncol
         if self.countcol is not None:
             coi += [self.countcol]
@@ -175,7 +167,7 @@ class NanocubeInput:
             if f == '-':
                 f=sys.stdin
 
-            reader = pd.read_csv(f,chunksize=100000,
+            reader = pd.read_csv(f,chunksize=csize,
                                  error_bad_lines=False,sep=self.sep,
                                  compression=comp,names=self.header,
                                  usecols=coi)
@@ -408,8 +400,8 @@ def main(argv):
     parser.add_argument('--ncheader', type=str, default=None)
     parser.add_argument('--header', type=str, default=None)
     parser.add_argument('--offset', type=str, default=None)
-    # parser.add_argument('--port', type=str, default='29512')
-    parser.add_argument('--countbytes', type=int, default='4', required=False)
+    parser.add_argument('--chunksize', type=int, default=10000)
+    parser.add_argument('--countbytes', type=int, default=4, required=False)
     args = parser.parse_args()
 
     # sys.stderr.write("Count Bytes: %s\n" % args.countbytes)
