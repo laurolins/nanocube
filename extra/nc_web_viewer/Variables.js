@@ -36,8 +36,16 @@ CatVar.prototype.jsonToList=function(json){
     data.sort(function(a,b) {return -(a.value-b.value);});
     data = data.slice(0,this.displaynumcat);
     data.sort(function(a,b) {
+	var key_a = that.addrkey[a.addr];
+	var key_b = that.addrkey[b.addr];
+
 	try{
-	    return that.addrkey[a.addr].localeCompare(that.addrkey[b.addr]);
+	    if (!isNaN(key_a) && !isNaN(key_b)){
+		return key_a - key_b;
+	    }
+	    else{
+		return key_a.localeCompare(key_b);
+	    }
 	}
 	catch(e){
 	    return 0;
