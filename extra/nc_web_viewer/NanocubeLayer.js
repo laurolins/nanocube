@@ -130,6 +130,10 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
         }
 
         v = (v-minv)/maxv;
+	if ((maxv-minv)/maxv < 0.05){
+	    v = 0.8; //fix disappearing pixel
+	}
+	
         var color = d3.rgb(that.colormap(v));
         var idx = (imgData.height-1-d.y)*imgData.width + d.x;
         pixels[idx*4]=color.r;
