@@ -114,11 +114,12 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
     var that = this;
     var minv = that.min;
     var maxv = that.max;
-    if (this.log){
-        minv = Math.log(minv);
-        maxv = Math.log(maxv);
+    if (that.log){
+        minv = Math.log(minv+1);
+        maxv = Math.log(maxv+1);
     }
-
+    minv*=0.9;
+    
     data.forEach(function(d){ 
         if(d.v < 1e-6){ 
             return;
@@ -128,18 +129,15 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
         if (that.log){
             v = Math.log(v+1);
         }
-
-        v = (v-minv)/maxv;
-	if ((maxv-minv)/maxv < 0.05){
-	    v = 0.8; //fix disappearing pixel
-	}
 	
+        v = (v-minv)/(maxv-minv);
+
         var color = d3.rgb(that.colormap(v));
         var idx = (imgData.height-1-d.y)*imgData.width + d.x;
         pixels[idx*4]=color.r;
         pixels[idx*4+1]=color.g ;
         pixels[idx*4+2]=color.b;
-        pixels[idx*4+3]= v*255*2;
+        pixels[idx*4+3]=v*255*2;
     });
     
     //set image
