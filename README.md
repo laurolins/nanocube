@@ -6,6 +6,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 | Number | Description |
 |:------:|-------------|
+| 3.2 | Sliding Window; Removed legacy assertions that would crash the server |
 | 3.1 | Added new tools, standarized tool names, restructured code repository, bug fixes |
 | 3.0.1 | Fixed a bug that was causing memory inefficiencies |
 | 3.0 | [New API](./API.md) to support more general nanocubes |

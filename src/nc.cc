@@ -811,7 +811,7 @@ void NanocubeServer::insert_from_stdin()
                             ok = nanocubes[active_window].get()->add(ss);
 
                             std::stringstream ss;
-                            ss << "(stdin   ) switching to new window" << std::endl;
+                            ss << "(stdin     ) switching to new window" << std::endl;
                             addMessage(ss.str());
 
                             
