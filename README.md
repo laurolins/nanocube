@@ -23,15 +23,15 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 We can now use the *sliding window* option `-v <number>` to indicate
 we are only interested in the most recent records in time. For example
-if we have the data binned in hours we might use the option `-v 24` we
-indicate we are only interested in the most recent record and the
-records that are at most 24 hours older than that record. In practice
-we might keep even older records but not older than 48 hours (or twice
-the sliding window size requested.
-
-This option is interesting for the use cases where we are only
-interested in the most recent records and we don't want or cannot
-afford to store all the records that are being streamed into the
+if we have the data binned in hours we might use the option `-v 24` to
+keep a 1-day sliding window of data relative to the time bin of the
+most recent record that was streamed into the nanocube. In order to
+have a simple and efficient implementation we guarantee that all
+records in the sliding window range are in the nanocube, but there
+might also be older records in the nanocube. These older records
+that might exceed the lenght of the sliding window, cannot exceed
+twice the size of the sliding window. In our example, there cannot
+be records that are >48h older than the most recent record in the
 nanocube.
 
 **(Note)** Make sure you have enough temporal resolution for your
