@@ -16,6 +16,41 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
 
+## What is new on release 3.2
+
+### Sliding Window
+
+We can now use the *sliding window* option `-v <number>` to indicate
+we are only interested in the most recent records in time. For example
+if we have the data binned in hours we might use the option `-v 24` we
+indicate we are only interested in the most recent record and the
+records that are at most 24 hours older than that record. In practice
+we might keep even older records but not older than 48 hours (or twice
+the sliding window size requested.
+
+This option is interesting for the use cases where we are only
+interested in the most recent records and we don't want or cannot
+afford to store all the records that are being streamed into the
+nanocube.
+
+**(Note)** Make sure you have enough temporal resolution for your
+data. In other words, if we let the sliding window run for a certain
+time we can still represent the time bins in the amount of bytes
+reserved for that. On a `q25_c1_u2_u4` nanocube the `u2` indicates
+that time bins are stored in two bytes. In this case if the most
+recent record ends up in a time bin of index greater or equal to 2^16
+(or 65536) the nanocube overflows and becomes inconsistent.
+
+### Bug Fixes
+
+We got rid of some legacy assertions that would make the server crash
+when spatial ranges with different levels were used as targets on a
+quadtree dimension. For example the query
+
+    http://localhost:29512/count.r("location",range2d(tile2d(0,0,2),tile2d(1,1,3)))
+
+On the Chicago Crime example would result in a server crash.
+
 ## Installing prerequisites
 
 The following are prerequisites for all systems:
