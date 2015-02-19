@@ -2,6 +2,7 @@
 import time
 import sys
 import curses
+import subprocess
 import argparse
 import sys
 import os
@@ -12,12 +13,14 @@ import numpy
 import threading
 import traceback
 import bisect
+import re
 
 from psh import sh
 
 
 parser = argparse.ArgumentParser(description="Viewer for .dmp files")
-parser.add_argument('-i', '--input', type=str, help='input file ppv file', required=True)
+parser.add_argument('-i', '--input', type=str, help='input file ppv file')
+parser.add_argument('-e', '--regular-expression', type=str, help='fitler regular expression only')
 
 args = parser.parse_args()
 
@@ -44,6 +47,8 @@ class State:
         self.args = args
         self.records = []
         self.per         = range(0,101,10) # percentile list
+        self.re = None if not args.regular_expression else re.compile(args.regular_expression)
+
 
     def insert(self, record):
         bisect.insort_left(self.records, record)
@@ -80,14 +85,35 @@ class Read(threading.Thread):
     def run(self):
         global state
         try:
-            with sh.tail("-f","-n","1000000", state.args.input) as process:
-                self.process = process
-                for line in process:
-                    try:
-                        state.insert(Record(line.strip()))
-                    except:
-                        # traceback.print_exc()
-                        pass
+            if state.args.input:
+                with sh.tail("-f","-n","1000000", state.args.input) as process:
+                    self.process = process
+                    for line in process:
+                        line = line.strip()
+                        try:
+                            if state.re:
+                                if state.re.search(line):
+                                    state.insert(Record(line))
+                            else:
+                                state.insert(Record(line))
+                        except:
+                            # traceback.print_exc()
+                            pass
+            # else:
+            #     with subprocess.Popen('cat',stdin=subprocess.PIPE) as process:
+            #         self.process = process
+            #         for line in process:
+            #             try:
+            #                 state.insert(Record(line.strip()))
+            #             except:
+            #                 # traceback.print_exc()
+            #                 pass
+                # for line in sys.stdin:
+                #     try:
+                #         state.insert(Record(line.strip()))
+                #     except:
+                #         # traceback.print_exc()
+                #         pass
         except:
             pass # process was killed
 
@@ -110,36 +136,39 @@ def mainloop(stdscr):
 
         n = state.size()
 
-        curses.flushinp()
-        stdscr.clear()
-        stdscr.addstr("nanocube-monitor\n")
-        stdscr.addstr("\n")
-        stdscr.addstr("file: %s\n" % state.args.input)
-        stdscr.addstr("\n")
-        stdscr.addstr("number of queries: %d\n" % n)
-        stdscr.addstr("\n")
-        stdscr.addstr("latency distribution in milli-seconds\n")
-        stdscr.addstr(("%-9s"*11) % tuple([str(x)+"%" for x in state.percentiles()]))
-        stdscr.addstr("\n")
-        stdscr.addstr(("%-9.2f"*11) % tuple([x/1.0e6 for x in state.var_percentiles("latency_ns")]))
-        stdscr.addstr("\n")
-        stdscr.addstr("\n")
-        stdscr.addstr("result size distribution in kilo-bytes\n")
-        stdscr.addstr(("%-9s"*11) % tuple([str(x)+"%" for x in state.percentiles()]))
-        stdscr.addstr("\n")
-        stdscr.addstr(("%-9.2f"*11) % tuple([x/1024.0 for x in state.var_percentiles("output_bytes")]))
-        stdscr.addstr("\n")
-        stdscr.addstr("\n")
-        stdscr.addstr("slowest %d queries\n" % k)
-        
-        for i in xrange(min(n,k)):
-            r = state.records[n-1-i]
-            # stdscr.addstr(str(r))
-            # stdscr.addstr("%2d. %9.2f\n" % (i+1, r.latency_ns/1000000.0))
-            try:
+        try:
+
+            curses.flushinp()
+            stdscr.clear()
+            stdscr.addstr("nanocube-monitor\n")
+            stdscr.addstr("\n")
+            stdscr.addstr("file: %s\n" % state.args.input)
+            stdscr.addstr("\n")
+            stdscr.addstr("number of queries: %d\n" % n)
+            stdscr.addstr("\n")
+            stdscr.addstr("latency distribution in milli-seconds\n")
+            stdscr.addstr(("%-9s"*11) % tuple([str(x)+"%" for x in state.percentiles()]))
+            stdscr.addstr("\n")
+            stdscr.addstr(("%-9.2f"*11) % tuple([x/1.0e6 for x in state.var_percentiles("latency_ns")]))
+            stdscr.addstr("\n")
+            stdscr.addstr("\n")
+            stdscr.addstr("result size distribution in kilo-bytes\n")
+            stdscr.addstr(("%-9s"*11) % tuple([str(x)+"%" for x in state.percentiles()]))
+            stdscr.addstr("\n")
+            stdscr.addstr(("%-9.2f"*11) % tuple([x/1024.0 for x in state.var_percentiles("output_bytes")]))
+            stdscr.addstr("\n")
+            stdscr.addstr("\n")
+            stdscr.addstr("slowest %d queries\n" % k)
+            
+            for i in xrange(min(n,k)):
+                r = state.records[n-1-i]
+                # stdscr.addstr(str(r))
+                # stdscr.addstr("%2d. %9.2f\n" % (i+1, r.latency_ns/1000000.0))
                 stdscr.addstr("%2d. %9.2f %s\n" % (i+1, r.latency_ns/1000000.0, r.query_string))
-            except:
-                pass
+
+        except:
+            pass
+        
 
 
         # stdscr.addstr(str(percentiles));
