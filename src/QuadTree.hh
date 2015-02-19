@@ -579,7 +579,9 @@ QuadTree<N, Content>::_createPath(AddressType current_address, AddressType targe
 
     int n = max_level - min_level + 1;
 
-    assert (n > 0);
+    if (! (n > 0)) {
+        throw std::string("n <= 0 on QuadTree<N, Content>::_createPath(...)");
+    }
 
     // leaf
     Node<Content> *current = new ScopedNode<Content, NodeType0000>();
@@ -709,7 +711,7 @@ QuadTree<N, Content>::add(AddressType address, Point &point, QuadTreeAddPolicy &
 
     // Shouldn't get here. Should exit
     // when currentAddr == address
-    assert(false);
+    throw std::string("ooops");
 
 }
 #endif
@@ -1141,10 +1143,12 @@ void QuadTree<N,Content>::visitRange(AddressType min_address, AddressType max_ad
     if (this->isEmpty()) // empty
         return;
 
-    assert (min_address.level == max_address.level &&
-            min_address.x     <= max_address.x     &&
-            min_address.y     <= max_address.y);
-
+    if (!(min_address.level == max_address.level &&
+          min_address.x     <= max_address.x     &&
+          min_address.y     <= max_address.y) ) {
+        throw std::string("Invalid range addresses");
+    }
+        
     std::stack<StackItemTemplate<N, Content, QuadTree<N, Content>>> stack;
     stack.push(StackItemTemplate<N, Content, QuadTree<N, Content>>(root, AddressType()));
 
@@ -1482,7 +1486,11 @@ inline AddressRangeRelation Address<N, Structure>::getRangeRelation(const Addres
     int target_level = min_addr.level;
 
     // make sure levels match requirements
-    assert (max_addr.level == target_level && target_level >= this->level);
+    if (! (max_addr.level == target_level && target_level >= this->level) ) {
+        
+        throw std::string("Invalid range on Address::getRangeRelation()");
+
+    }
 
     // get range of addresses of this addres
     Address<N, Structure> this_min_addr, this_max_addr;
@@ -1692,8 +1700,10 @@ Address<N, Structure> Address<N, Structure>::nextAddressTowards(const Address<N,
 template<BitSize N, typename Structure>
 PathElement Address<N, Structure>::operator[](PathIndex index) const
 {
-    assert (level > 0);
-    assert (index < level);
+    if (!(level > 0))
+        throw std::string("level <= 0 on Address::operator[]");
+    if (!(index < level))
+        throw std::string("index >= level on Address::operator[]");
     PathElement e = (xbit(1+index) ? 1 : 0) + ((ybit(1+index) ? 1 : 0) << 1);
     return e;
 }
