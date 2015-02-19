@@ -50,7 +50,7 @@ quadtree dimension. For example the query
 
     http://localhost:29512/count.r("location",range2d(tile2d(0,0,2),tile2d(1,1,3)))
 
-On the Chicago Crime example would result in a server crash.
+on the Chicago Crime example would result in a server crash.
 
 ## Installing prerequisites
 
