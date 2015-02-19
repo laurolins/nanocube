@@ -130,9 +130,9 @@ struct Options {
     TCLAP::ValueArg<int> batch_size {
             "b",              // flag
             "batch-size",        // name
-            "",     // description
+            "Batch Size (default: 1)",     // description
             false,                                 // required
-            1000,                                   // value
+            1,                                   // value
             "batch-size"                         // type description
             };
 
@@ -140,9 +140,9 @@ struct Options {
     TCLAP::ValueArg<int> sleep_for_ns {
             "y",              // flag
             "sleep",        // name
-            "",     // description
+            "sleep (default: 0ns)",     // description
             false,                                 // required
-            100,                                   // value
+            0,                                   // value
             "sleep"                         // type description
             };
 
