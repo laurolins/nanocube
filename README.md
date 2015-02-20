@@ -21,9 +21,9 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 ### Sliding Window
 
-We can now use the *sliding window* option `-v <number>` to indicate
+We can now use the *sliding window* option `-w <number>` to indicate
 we are only interested in the most recent records in time. For example
-if we have the data binned in hours we might use the option `-v 24` to
+if we have the data binned in hours we might use the option `-w 24` to
 keep a 1-day sliding window of data relative to the time bin of the
 most recent record that was streamed into the nanocube. In order to
 have a simple and efficient implementation we guarantee that all
