@@ -37,8 +37,9 @@ function GroupedBarChart(id){
     this.xAxis = d3.svg.axis()
         .scale(this.x)
         .orient("bottom")
-        .ticks(4)
-        .tickFormat(d3.format('.2s'));
+	.ticks(4, function(d){
+	    return d3.format('.2s')(d);
+	});
     
     this.yAxis = d3.svg.axis()
         .scale(this.y0)
@@ -56,7 +57,8 @@ function GroupedBarChart(id){
 }
 
 GroupedBarChart.prototype.updateAxis = function(data){
-    this.x.domain([0, d3.max(data, function(d){return d.value;})]);
+    this.x.domain([0.5*d3.min(data, function(d){return d.value;}),
+		   d3.max(data, function(d){return d.value;})]);
     var cats = data.map(function(d){return d.cat;});
     this.y0.domain(cats);
     this.y1.domain(data.map(function(d){return d.color;}))
