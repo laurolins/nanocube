@@ -1,4 +1,4 @@
-#!/usr/bin/python                                                               
+#!/usr/bin/env python                                                               
 import sys,argparse,json,urllib2,random,math
 
 ###################################################################
@@ -15,11 +15,12 @@ ConfigTemplate={
             "opacity": 0.9, 
             "padding": 0, 
             "z-index": 1, 
-            "right": "5px", 
+            "right": "1em", 
             "color": "white", 
             "position": "absolute", 
-            "top": "5px", 
-            "font": "10pt sans-serif", 
+            "top": "1em", 
+            "font-size": "10pt",
+            "font-family": "Arial,Helvetica,sans-serif",
             "height": "1em"
         }
     }
@@ -36,27 +37,29 @@ SpatialVariableTemplate={
     
 TemporalVariableTemplate={
     "opacity": 0.8, 
-    "width": "960px", 
+    "width": "75%", 
     "z-index": 1, 
-    "left": "10px", 
-    "bottom": "10px", 
+    "left": "1em", 
+    "bottom": "1em", 
     "position": "absolute", 
-    "font": "10pt sans-serif", 
+    "font-size": "10pt",
+    "font-family": "Arial,Helvetica,sans-serif",
     "background-color": "#555", 
-    "height": "100px"
+    "height": "10em"
 }
 
 CategoricalVariableTemplate={
     "opacity": 0.8, 
-    "width": "500px", 
+    "width": "30%", 
     "z-index": 1, 
-    "right": "10px", 
-    "margin-left": "300px", 
+    "right": "1em", 
+    "margin-left": "10em", 
     "position": "absolute", 
-    "top": "30px", 
-    "font": "10pt sans-serif", 
+    "top": "1em", 
+    "font-size": "10pt",
+    "font-family": "Arial,Helvetica,sans-serif",
     "background-color": "#555", 
-    "height": "550px"
+    "height": "30em"
 }
 
 ###############################################################################
@@ -267,21 +270,22 @@ config['title']= schema.name
 config['url'] = args.server
 config['heatmapmaxlevel'] = spatial_field.spatialResolution()
 
-charttop=30
+charttop=3
 for f in schema.fields:
     if f.isCategorical():
         config['div'][f.name] = CategoricalVariableTemplate.copy()
 
         #construct the width and height of the margins
         numofcat = min(25,len(f.valnames))
-        height = numofcat*20
+        height = numofcat+5
         config['div'][f.name]['displaynumcat'] = numofcat
-        config['div'][f.name]['height'] = "%dpx"%(height)
-        config['div'][f.name]['top'] = "%dpx"%(charttop)
-        charttop += height+10
+        config['div'][f.name]['height'] = "%dem"%(height)
+        config['div'][f.name]['top'] = "%dem"%(charttop)
+        charttop += height+1
         
-        txtlen = len(max(f.valnames, key=lambda x:len(x)))
-        config['div'][f.name]['margin-left'] = "%dpx"%(txtlen*10)
+        txtlen = len(max(f.valnames, key=lambda x:len(x.strip())))
+        config['div'][f.name]['margin-left'] = "%dch"%(txtlen*1.5)
+        config['div'][f.name]['width'] = "%dch"%(txtlen*1.5+30)
         
     if f.isTemporal():
         config['div'][f.name] = TemporalVariableTemplate.copy()

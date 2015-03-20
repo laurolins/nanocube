@@ -115,6 +115,7 @@ cd build
 ../configure --prefix=$NANOCUBE_SRC CXXFLAGS="-O3"
 make
 make install
+cd ..
 ```
 
 After these commands you should have directory `nanocube-3.2/bin` with the nanocubes toolkit inside. To make these tools more easily accessible in your account, add the `nanocube-3.2/bin` directory to your PATH environment variable.
