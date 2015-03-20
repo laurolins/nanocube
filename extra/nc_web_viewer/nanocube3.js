@@ -1,37 +1,22 @@
-/* global $,d3,L,console */
-
+/*global $,console,module */
 
 //-----------------------------------------------------------------------
-// binary_xhr
+// Tile
 //-----------------------------------------------------------------------
-
-function binary_xhr(url, handler){
-    var xhr = new window.XMLHttpRequest();
-    var ready = false;
-    xhr.onreadystatechange = function() {
-	if (xhr.readyState === 4 && xhr.status === 200
-	    && ready !== true) {
-	    if (xhr.responseType === "arraybuffer") {
-		handler(xhr.response, url);
-	    } else if (xhr.mozResponseArrayBuffer !== null) {
-		handler(xhr.mozResponseArrayBuffer, url);
-	    } else if (xhr.responseText !== null) {
-		var data = String(xhr.responseText);
-		var ary = new Array(data.length);
-		for (var i = 0; i <data.length; i++) {
-		    ary[i] = data.charCodeAt(i) & 0xff;
-		}
-		var uint8ay = new Uint8Array(ary);
-		handler(uint8ay.buffer, url);
-	    }
-	    ready = true;
-	}
-    };
-    xhr.open("GET", url, true);
-    xhr.responseType="arraybuffer";
-    xhr.send();
+function Tile (x, y, level) {
+    this.x = x;
+    this.y = y;
+    this.level = level;
+    return this;
 }
 
+Tile.prototype.raw = function() {
+    return "qaddr(" + this.x + "," + this.y + "," + this.level + ")";
+};
+
+Tile.prototype.tile2d = function() {
+    return "tile2d(" + this.x + "," + this.y + "," + this.level + ")";
+};
 
 //-----------------------------------------------------------------------
 // Dimension
@@ -44,6 +29,121 @@ function Dimension (obj) {
 }
 
 //-----------------------------------------------------------------------
+// Query
+//-----------------------------------------------------------------------
+function Query (nanocube) {
+    this.nanocube       = nanocube;
+    this.dimension      = null;
+    this.drilldown_flag = false;
+    this.query_elements = {};
+};
+
+Query.prototype.reset = function() {
+    this.query_elements = {};
+    return this;
+};
+
+Query.prototype.dim = function(dim_name) {
+    this.dimension = this.nanocube.getDimension(dim_name);
+    return this;
+};
+
+Query.prototype.drilldown = function() {
+    this.drilldown_flag = true;
+    return this;
+};
+
+Query.prototype.rollup = function() {
+    this.drilldown_flag = false;
+    return this;
+};
+
+//Categorial Query
+Query.prototype.findAndDive = function(selection) {
+    var varname = this.dimension.name;
+    var constraint = "";
+    if(selection == null && this.drilldown_flag){
+	constraint = 'a(\"'+varname+'\",dive([],1))';
+    }
+    else{
+	constraint = 'r(\"'+varname+'\",set('+selection.join(',') +'))';
+    }
+
+    this.query_elements[this.dimension.name] = constraint;
+    return this;
+};
+
+//Rectangle Query
+Query.prototype.rectQuery = function(topLeft,bottomRight) {
+    var varname = this.dimension.name;
+    var constraint = "r(\""+varname+"\",range2d("
+	+topLeft.tile2d()+","+bottomRight.tile2d()
+	+"))";
+
+    this.query_elements[varname] = constraint;
+    return this;
+};
+
+//Polygon Query
+Query.prototype.polygonQuery = function(pts) {
+    var varname = this.dimension.name;
+    var w = Math.pow(2,pts[0].level) ;
+    var constraint = "r(\""+varname+"\",mercator_mask(";
+
+    var coordstr = '\"'+ pts.map(function(d){
+	return (d.x/w*2-1) +','+ (d.y/w*2-1);
+    }).join(',')+'\"';
+
+    constraint =  constraint+coordstr+","+ pts[0].level +"))";
+
+    this.query_elements[varname] = constraint;
+    return this;
+};
+
+//Tile Query
+Query.prototype.findTile = function(tile,drill) {
+    var varname = this.dimension.name;
+    var constraint = "a(\""+varname+"\",dive("+tile.tile2d()
+	+","+drill+"),\"img\")";
+    this.query_elements[this.dimension.name] = constraint;
+    return this;
+};
+
+//Time Series Query
+Query.prototype.tseries = function(base, bucket, count) {
+    var varname = this.dimension.name;
+    var constraint = "";
+    if (count > 1){
+	constraint = 'r(\"'+varname+'\",mt_interval_sequence('
+	    +base+','+bucket+','+count+'))';
+	this.timebucketsize = bucket;
+    }
+    else{
+	constraint = 'r(\"'+varname+'\",interval('
+	    +base+','+(base+bucket)+'))';
+    }
+
+    this.query_elements[this.dimension.name] = constraint;
+    return this;
+};
+
+Query.prototype.toString = function(type) {
+    var qelem = this.query_elements;
+    var dims = Object.keys(qelem);
+    var vals = dims.map(function(d){return qelem[d];});
+
+    var query_string = vals.join('.');
+    return this.nanocube.url+'/'+type+'.'+ query_string;
+};
+
+Query.prototype.run_query = function(callback) {
+    var query_string = this.toString('count');
+    console.log(query_string);
+    return $.getJSON(query_string);
+};
+
+
+//-----------------------------------------------------------------------
 // Nanocube
 //-----------------------------------------------------------------------
 
@@ -54,14 +154,16 @@ function Nanocube(opts) {
 
     var that = this;
 
-    $.getJSON(that.getSchemaQuery()).done(function(json){
-	that.setSchema(json);
-	that.setTimeInfo().done(function(){
-	    opts.ready(that);
+    $.getJSON(that.getSchemaQuery())
+	.done(function(json){
+	    that.setSchema(json);
+	    that.setTimeInfo().done(function(){
+		opts.ready(that);
+	    });
+	})
+	.fail(function(){
+	    console.log('Failed to get Schema from ', that.url);
 	});
-    }).fail(function(){
-	console.log('Failed to get Schema from ', that.url);
-    });
 }
 
 Nanocube.prototype.setSchema = function(json){
@@ -126,182 +228,64 @@ Nanocube.prototype.getTbinInfo = function() {
 	day = +res[1];
     }
 
-    return {date_offset:offset,bin_to_hour:day*24+hour+min/60.0+sec/3600.0};
+    return {date_offset:offset, 
+	    bin_to_hour: day*24+hour+min/60.0+sec/3600.0};
 };
 
-
-Nanocube.prototype.setTimeInfo = function() {
-    var dfd = $.Deferred();
-    var that = this;
-    var tvar  = this.schema.fields.filter(function (f) {
-	return f.type.indexOf("nc_dim_time") == 0;
-    });
+Nanocube.prototype.getTimeBound = function(timevar,start,end,func,lastdfd){
+    var dfd = lastdfd || $.Deferred();
+    
     var q = this.query();
-    q = q.dim(tvar[0].name);
-    q = q.tseries(0,1,65536);
-    return q.run_query().done(function(json){
+    var len = (end-start);
+    var elem = 8192;
+    var binsize = Math.floor(len/elem+1);
+
+    q = q.dim(timevar);
+    q = q.tseries(start,binsize,elem);
+    var that = this;
+    q.run_query().done(function(json){
 	if (!json.root.children){
-	    return;
+	    throw new Error("Invalid Range");
 	}
-
-	var tbounds = json.root.children.reduce(function(prev,curr){
-	    return { min: Math.min(curr.path[0], prev.min),
-		     max: Math.max(curr.path[0], prev.max)};
-	}, {min:65536,max:0});
-
-	var tbinfo = that.getTbinInfo();
-	that.timeinfo = tbinfo;
-	that.timeinfo.start=tbounds.min;
-	that.timeinfo.end=tbounds.max;
-	that.timeinfo.nbins=(that.timeinfo.end
-			     -that.timeinfo.start+1);
-	dfd.resolve();
+	
+	var bound = json.root.children.reduce(function(prev,curr){
+	    return func(curr.path[0], prev);
+	},json.root.children[0].path[0]);
+	
+	if (binsize > 1){
+	    var newstart = start + bound * binsize;
+	    var newend = newstart + binsize;
+	    return that.getTimeBound(timevar,newstart,newend,func,dfd);
+	}
+	else{
+	    return dfd.resolve(start+bound);
+	}
     });
     return dfd.promise();
 };
 
-//-----------------------------------------------------------------------
-// Query
-//-----------------------------------------------------------------------
+Nanocube.prototype.setTimeInfo = function() {
+    var dfd = new $.Deferred();
+    var that = this;
+    var tvar  = this.schema.fields.filter(function (f) {
+	return f.type.indexOf("nc_dim_time") == 0;
+    });
 
-function Query (nanocube) {
-    this.nanocube       = nanocube;
-    this.dimension      = null;
-    this.drilldown_flag = false;
-    this.query_elements = {};
+    var minb = this.getTimeBound(tvar[0].name,0,Math.pow(2,32),Math.min);
+    var maxb = this.getTimeBound(tvar[0].name,0,Math.pow(2,32),Math.max);
+    $.when(minb,maxb).done(function(minbound,maxbound){
+	that.timeinfo = that.getTbinInfo();
+
+	that.timeinfo.start = minbound;
+	that.timeinfo.end = maxbound;	
+	that.timeinfo.nbins=(that.timeinfo.end-that.timeinfo.start+1);
+	console.log(that.timeinfo);
+	dfd.resolve();
+    });    
+    return dfd.promise();
 };
 
-Query.prototype.reset = function() {
-    this.query_elements = {};
-    return this;
-};
-
-Query.prototype.dim = function(dim_name) {
-    this.dimension = this.nanocube.getDimension(dim_name);
-    return this;
-};
-
-Query.prototype.drilldown = function() {
-    this.drilldown_flag = true;
-    return this;
-};
-
-Query.prototype.rollup = function() {
-    this.drilldown_flag = false;
-    return this;
-};
-
-//Spatial Tile Query
-Query.prototype.findTile = function(tile,drill) {
-    var varname = this.dimension.name;
-    var constraint = "a(\""+varname+"\",dive("+tile.tile2d()+","+drill+"),\"img\")";
-    this.query_elements[this.dimension.name] = constraint;
-    return this;
-};
-
-//Categorial Query
-Query.prototype.findAndDive = function(selection) {
-    var varname = this.dimension.name;
-    var constraint = "";
-    if(selection == null && this.drilldown_flag){
-	constraint = 'a(\"'+varname+'\",dive([],1))';
-    }
-    else{
-	constraint = 'r(\"'+varname+'\",set('+selection.join(',') +'))';
-    }
-
-    this.query_elements[this.dimension.name] = constraint;
-    return this;
-};
-
-//Spatial Query
-Query.prototype.rectQuery = function(topLeft,bottomRight) {
-    var varname = this.dimension.name;
-    var constraint = "r(\""+varname+"\",range2d("
-	+topLeft.tile2d()+","+bottomRight.tile2d()
-	+"))";
-
-    this.query_elements[varname] = constraint;
-    return this;
-};
-
-
-//Spatial Query
-Query.prototype.polygonQuery = function(pts) {
-    var varname = this.dimension.name;
-    var w = Math.pow(2,pts[0].level) ;
-    var constraint = "r(\""+varname+"\",mercator_mask(";
-
-    var coordstr = '\"'+ pts.map(function(d){
-	return (d.x/w*2-1) +','+ (d.y/w*2-1);
-    }).join(',')+'\"';
-
-    constraint =  constraint+coordstr+","+ pts[0].level +"))";
-
-    this.query_elements[varname] = constraint;
-    return this;
-};
-
-
-//Time Series Query
-Query.prototype.tseries = function(base, bucket, count) {
-    if (isNaN(base) || isNaN(bucket)|| isNaN(count)){
-	debugger;
-    }
-    
-    var varname = this.dimension.name;
-    var constraint = "";
-    if (count > 1){
-	constraint = 'r(\"'+varname+'\",mt_interval_sequence('
-	    +base+','+bucket+','+count+'))';
-	this.timebucketsize = bucket;
-    }
-    else{
-	constraint = 'r(\"'+varname+'\",interval('
-	    +base+','+(base+bucket)+'))';
-    }
-
-    this.query_elements[this.dimension.name] = constraint;
-    return this;
-};
-
-Query.prototype.toString = function(type) {
-    var qelem = this.query_elements;
-    var dims = Object.keys(qelem);
-    var vals = dims.map(function(d){return qelem[d];});
-
-    var query_string = vals.join('.');
-    return this.nanocube.url+'/'+type+'.'+ query_string;
-};
-
-Query.prototype.run_query = function(callback) {
-    var query_string = this.toString('count');
-    console.log(query_string);
-    return $.getJSON(query_string);
-};
-
-Query.prototype.run_tile = function(callback) {
-    var query_string = this.toString('tile');
-    console.log(query_string);
-    binary_xhr(query_string, callback);
-    return this;
-};
-
-//-----------------------------------------------------------------------
-// Tile
-//-----------------------------------------------------------------------
-
-function Tile (x, y, level) {
-    this.x = x;
-    this.y = y;
-    this.level = level;
-    return this;
-}
-
-Tile.prototype.raw = function() {
-    return "qaddr(" + this.x + "," + this.y + "," + this.level + ")";
-};
-
-Tile.prototype.tile2d = function() {
-    return "tile2d(" + this.x + "," + this.y + "," + this.level + ")";
-};
+//module.exports = {
+//    Nanocube: Nanocube,
+//    Tile: Tile
+//};
