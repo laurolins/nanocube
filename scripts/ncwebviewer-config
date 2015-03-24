@@ -284,8 +284,9 @@ for f in schema.fields:
         charttop += height+1
         
         txtlen = len(max(f.valnames, key=lambda x:len(x.strip())))
-        config['div'][f.name]['margin-left'] = "%dch"%(txtlen*1.5)
-        config['div'][f.name]['width'] = "%dch"%(txtlen*1.5+30)
+        margin = max(txtlen+1, 15)
+        config['div'][f.name]['margin-left'] = "%dch"%(margin)
+        config['div'][f.name]['width'] = "%dch"%(margin+30)
         
     if f.isTemporal():
         config['div'][f.name] = TemporalVariableTemplate.copy()

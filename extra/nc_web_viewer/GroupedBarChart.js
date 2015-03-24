@@ -37,9 +37,8 @@ function GroupedBarChart(id){
     this.xAxis = d3.svg.axis()
         .scale(this.x)
         .orient("bottom")
-	.ticks(4, function(d){
-	    return d3.format('.2s')(d);
-	});
+	.ticks(3)
+	.tickFormat(d3.format('.2s'));
     
     this.yAxis = d3.svg.axis()
         .scale(this.y0)
