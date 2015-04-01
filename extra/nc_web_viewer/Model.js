@@ -708,9 +708,23 @@ Model.prototype.updateInfo = function(){
         if (json == null){
             return;
         }
+	//count
+        var count = 0;
+	if (typeof json.root.val != 'undefined'){
+	    count = json.root.val;
+	}
+        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
+	
+	//Time
         var tvarname = Object.keys(that.temporal_vars)[0];
         var tvar  = that.temporal_vars[tvarname];
+
+	if (!tvar){ //For defaulttime/ no time constraint
+            $('#info').text('Total: ' + countstr);
+	    return;
+	}
+
         var time_const = tvar.constraints[0];
         var start = time_const.selection_start;
 
@@ -724,12 +738,6 @@ Model.prototype.updateInfo = function(){
 
         var enddate = new Date(startdate);
         enddate.setTime(enddate.getTime()+dhours*3600*1000);
-
-        var count = 0;
-	if (typeof json.root.val != 'undefined'){
-	    count = json.root.val;
-	}
-        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
         $('#info').text(startdate.toLocaleString() + ' - '
                         + enddate.toLocaleString() + ' '
