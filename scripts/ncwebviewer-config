@@ -277,14 +277,14 @@ for f in schema.fields:
 
         #construct the width and height of the margins
         numofcat = min(25,len(f.valnames))
-        height = numofcat+5
+        height = numofcat*1.5
         config['div'][f.name]['displaynumcat'] = numofcat
         config['div'][f.name]['height'] = "%dem"%(height)
         config['div'][f.name]['top'] = "%dem"%(charttop)
         charttop += height+1
         
         txtlen = len(max(f.valnames, key=lambda x:len(x.strip())))
-        margin = max(txtlen+1, 15)
+        margin = max(1.2*txtlen+1, 15)
         config['div'][f.name]['margin-left'] = "%dch"%(margin)
         config['div'][f.name]['width'] = "%dch"%(margin+30)
         

@@ -68,7 +68,7 @@ Model.prototype.initVars = function(){
 			       that.options.config['div'][v.name]['displaynumcat']);
 
             //init the gui component (move it elsewhere?)
-            vref.widget = new GroupedBarChart('#'+v.name);
+            vref.widget = new GroupedBarChart(v.name);
 
             //set selection and click callback
             vref.widget.setSelection(vref.constraints[0].selection);
@@ -95,7 +95,7 @@ Model.prototype.initVars = function(){
             var nbins = tinfo.end-tinfo.start+1;
 
             //init gui
-            vref.widget = new Timeseries('#'+v.name);
+            vref.widget = new Timeseries(v.name);
             vref.widget.brush_callback = function(start,end){
                 vref.constraints[0].setSelection(start,end,vref.date_offset);
                 that.redraw(vref);

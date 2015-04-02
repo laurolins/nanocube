@@ -1,14 +1,17 @@
-function Timeseries(id, margin){
+function Timeseries(name, margin){
+    id = '#'+name;
+
     this.data = {};
     this.brush_callback = null;
 
     //code
     if (margin==undefined){
-        margin = {top: 10, right: 10, bottom: 30, left: 50};
+        margin = {top: 30, right: 10, bottom: 30, left: 50};
     }
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height()- margin.top - margin.bottom;
+
     
     this.x = d3.time.scale()
         .range([0, width]);
@@ -62,11 +65,18 @@ function Timeseries(id, margin){
         .attr("transform", "translate(" + margin.left + "," 
               + margin.top + ")").call(this.zoom);
 
+   
     //add svg stuffs
     this.svg.append("text")
         .attr("x", 5)
         .attr("y", 5)
         .text("");
+
+    //add title
+    this.svg.append("text")
+	.attr("x", -10)
+        .attr("y", -10)
+	.text(name);    
 
     this.svg.append("g")
         .attr("class", "x axis")

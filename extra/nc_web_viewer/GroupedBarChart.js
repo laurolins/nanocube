@@ -1,5 +1,6 @@
-function GroupedBarChart(id){
-    var margin = {top:10,right:10,left:30,bottom:30};
+function GroupedBarChart(name){
+    var margin = {top:20,right:10,left:30,bottom:30};
+    var id = '#'+name;
 
     //setup the d3 margins from the css margin variables
     margin.left = Math.max(margin.left, parseInt($(id).css('margin-left')));
@@ -28,6 +29,9 @@ function GroupedBarChart(id){
         .attr("height", height + margin.top + margin.bottom)
         .append("g").attr("transform","translate(" + margin.left + "," 
                           + margin.top + ")");
+
+    //add title
+    var title = this.svg.append("text").attr('y',-5).text(name);    
     
     //axis
     this.x  = d3.scale.linear().range([0,width]);
