@@ -289,7 +289,8 @@ for f in schema.fields:
         config['div'][f.name]['width'] = "%dch"%(margin+30)
         
     if f.isTemporal():
-        config['div'][f.name] = TemporalVariableTemplate.copy()
+        if f.name != 'defaulttime':
+            config['div'][f.name] = TemporalVariableTemplate.copy()
 
     if f.isSpatial():
         minp,maxp = findbox(args.server,f.name,
