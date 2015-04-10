@@ -1,4 +1,4 @@
-function GroupedBarChart(name){
+function GroupedBarChart(name,logaxis){
     var margin = {top:20,right:10,left:30,bottom:30};
     var id = '#'+name;
 
@@ -35,14 +35,18 @@ function GroupedBarChart(name){
     
     //axis
     this.x  = d3.scale.linear().range([0,width]);
+    if (logaxis){
+	this.x  = d3.scale.log().range([0,width]);
+    }
+    
     this.y0  = d3.scale.ordinal().rangeRoundBands([0,height],0.05);//cat
     this.y1  = d3.scale.ordinal();//selections
 
     this.xAxis = d3.svg.axis()
         .scale(this.x)
         .orient("bottom")
-	.ticks(3)
-	.tickFormat(d3.format('.2s'));
+	.ticks(3,',.1s');
+
     
     this.yAxis = d3.svg.axis()
         .scale(this.y0)

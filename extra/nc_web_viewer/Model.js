@@ -68,8 +68,9 @@ Model.prototype.initVars = function(){
 			       that.options.config['div'][v.name]['displaynumcat']);
 
             //init the gui component (move it elsewhere?)
-            vref.widget = new GroupedBarChart(v.name);
-
+            vref.widget = new GroupedBarChart(v.name,
+					      that.options.config['div'][v.name]['logaxis']);
+	    
             //set selection and click callback
             vref.widget.setSelection(vref.constraints[0].selection);
             vref.widget.setClickCallback(function(d){
