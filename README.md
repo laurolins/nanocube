@@ -307,8 +307,13 @@ We would like to "anchor" (thus the ".a" in the query) on the `crime` dimension 
 ## Simple test script
 
 If you believe there may be a problem with the crime nanocube, try running 'nctest.sh' in the `test` subdirectory.
-It will make some queries of the nanocube (change the script if you are not using port 29512)
-and compare the results to known results that we gathered ourselves. If the results match, it will report 'SUCCESS'.
+It will make some queries of the nanocube (change the script if you are not using port 29512) and produces `out.txt`.
+
+Please compare your results with the expected results generated on MacOSX 10.10 or Ubuntu 14.04.
+
+<!--
+compare the results to known results that we gathered ourselves. If the results match, it will report 'SUCCESS'.
+-->
 
 ```
 cd $NANOCUBE_SRC/test

@@ -1,14 +1,19 @@
-function Timeseries(id, margin){
+/*global $,d3 */
+
+function Timeseries(name, margin){
+    var id = '#'+name;
+
     this.data = {};
     this.brush_callback = null;
 
     //code
     if (margin==undefined){
-        margin = {top: 10, right: 10, bottom: 30, left: 50};
+        margin = {top: 30, right: 10, bottom: 30, left: 50};
     }
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height()- margin.top - margin.bottom;
+
     
     this.x = d3.time.scale()
         .range([0, width]);
@@ -22,7 +27,7 @@ function Timeseries(id, margin){
     this.yAxis = d3.svg.axis()
         .scale(this.y)
         .orient("left")
-        .ticks(3).tickFormat(d3.format('.2s'));
+        .ticks(3,',.1s');
 
     var that = this;
 
@@ -62,11 +67,18 @@ function Timeseries(id, margin){
         .attr("transform", "translate(" + margin.left + "," 
               + margin.top + ")").call(this.zoom);
 
+    
     //add svg stuffs
     this.svg.append("text")
         .attr("x", 5)
         .attr("y", 5)
         .text("");
+
+    //add title
+    this.svg.append("text")
+	.attr("x", -10)
+        .attr("y", -10)
+	.text(name);    
 
     this.svg.append("g")
         .attr("class", "x axis")
@@ -201,21 +213,21 @@ Timeseries.prototype.drawLine=function(data,color){
         .style('stroke',color);
 
     /*
-    //add data points
-    if(this.ptidx != null){
-        var points = this.ptidx.map(function(idx){return data[idx];});
+     //add data points
+     if(this.ptidx != null){
+     var points = this.ptidx.map(function(idx){return data[idx];});
 
-        this.svg.selectAll('circle.dot')
-            .data(points)
-            .enter()
-            .append("circle")
-            .attr('class', 'dot')
-            .attr('r', 5.0)
-            .attr('cx', function(d){return that.x(d.date);})
-            .attr('cy', function(d){return that.y(d.value);})
-            .style('stroke','black')
-            .style('stroke-width',2)
-            .style('fill','none');
-    }
+     this.svg.selectAll('circle.dot')
+     .data(points)
+     .enter()
+     .append("circle")
+     .attr('class', 'dot')
+     .attr('r', 5.0)
+     .attr('cx', function(d){return that.x(d.date);})
+     .attr('cy', function(d){return that.y(d.value);})
+     .style('stroke','black')
+     .style('stroke-width',2)
+     .style('fill','none');
+     }
      */
 };

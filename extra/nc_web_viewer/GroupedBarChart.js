@@ -1,5 +1,8 @@
-function GroupedBarChart(id){
-    var margin = {top:10,right:10,left:30,bottom:30};
+/*global $,d3 */
+
+function GroupedBarChart(name,logaxis){
+    var margin = {top:20,right:10,left:30,bottom:30};
+    var id = '#'+name;
 
     //setup the d3 margins from the css margin variables
     margin.left = Math.max(margin.left, parseInt($(id).css('margin-left')));
@@ -28,17 +31,24 @@ function GroupedBarChart(id){
         .attr("height", height + margin.top + margin.bottom)
         .append("g").attr("transform","translate(" + margin.left + "," 
                           + margin.top + ")");
+
+    //add title
+    var title = this.svg.append("text").attr('y',-5).text(name);    
     
     //axis
     this.x  = d3.scale.linear().range([0,width]);
+    if (logaxis){
+	this.x  = d3.scale.log().range([0,width]);
+    }
+    
     this.y0  = d3.scale.ordinal().rangeRoundBands([0,height],0.05);//cat
     this.y1  = d3.scale.ordinal();//selections
 
     this.xAxis = d3.svg.axis()
         .scale(this.x)
         .orient("bottom")
-        .ticks(4)
-        .tickFormat(d3.format('.2s'));
+	.ticks(3,',.1s');
+
     
     this.yAxis = d3.svg.axis()
         .scale(this.y0)
@@ -46,27 +56,35 @@ function GroupedBarChart(id){
     
     //add axis to the svg
     this.svgxaxis = this.svg.append("g")
-                            .attr("class", "axis x")
-                            .attr("transform", "translate(0," 
-                                  + (height+3) + ")");
+        .attr("class", "axis x")
+        .attr("transform", "translate(0," 
+              + (height+3) + ")");
     
     this.svgyaxis = this.svg.append("g")
-                            .attr("class", "axis y")
-                            .attr("transform", "translate(-3,0)");
+        .attr("class", "axis y")
+        .attr("transform", "translate(-3,0)");
 }
 
-GroupedBarChart.prototype.updateAxis = function(data){
-    this.x.domain([0, d3.max(data, function(d){return d.value;})]);
+GroupedBarChart.prototype.updateAxis = function(data){    
+    var xmin = 0.1 * d3.min(data, function(d){return d.value;});
+    var xmax = d3.max(data, function(d){return d.value;});
+    
+    this.x.domain([xmin,xmax]);
     var cats = data.map(function(d){return d.cat;});
     this.y0.domain(cats);
     this.y1.domain(data.map(function(d){return d.color;}))
         .rangeRoundBands([0, this.y0.rangeBand()]);
-           
-
+    
+    
     this.svgxaxis.call(this.xAxis);
     this.svgyaxis.call(this.yAxis);
-
-
+    
+    //Make Axis Label's clickable
+    var that = this;
+    this.svgyaxis.selectAll('.tick').on('click',function(d){
+	var obj = $.grep(data, function(e){return e.cat==d;})[0];
+	that.click_callback(obj);
+    });
 };
 
 GroupedBarChart.prototype.setData = function(data,id,color){
@@ -122,13 +140,13 @@ GroupedBarChart.prototype.redraw = function(){
         .on('click', this.click_callback) //toggle callback
         .style('fill', function(d){
             if (that.selection.length < 1  //no selection (everything)
-                || (that.selection.indexOf(d.addr) != -1 )){ //addr in selection
-                    return d.color;
-                }
+                || (that.selection.indexOf(d.addr)!=-1)){//addr in selection
+                return d.color;
+            }
             else{
                 return 'gray';
             }
         })
         .append("svg:title") //tooltip
-        .text(function(d) { return d.value; });   
+        .text(function(d) { return d3.format(',')(d.value); });   
 };
