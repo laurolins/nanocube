@@ -441,8 +441,23 @@ python environment.  The new DMP file should be identical to the one used before
 
 ```
 cd $NANOCUBE_SRC/data
-nanocube-binning-csv --sep=',' --timecol='time' --latcol='Latitude' --loncol='Longitude' --catcol='crime' crime50k.csv > crime50k_from_csv.dmp
+nanocube-binning-csv    \
+--sep=','               \
+--timecol='time'        \
+--latcol='Latitude'     \
+--loncol='Longitude'    \
+--catcol='crime'        \
+crime50k.csv > crime50k_from_csv.dmp
 ```
+
+Note that in the example above, every row is going to count as one,
+and that is the measure that will be pre-aggregating: the number of
+rows.  If we have a column in the .csv file that has weights which we
+would like to use as our measure instead, we can add the the directive
+`--countcol=<colname>`. Furthermore, if we don't have a time
+dimension, we should omit the directive `--timecol=<colname>`
+directive and a dummy time column (which is currently required) is
+generated with all the rows having the same time value.
 
 #### Further details
 
