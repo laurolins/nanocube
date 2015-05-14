@@ -65,7 +65,8 @@ Model.prototype.initVars = function(){
             }
 
             vref  = new CatVar(v.name,v.valnames,
-			       that.options.config['div'][v.name]['displaynumcat']);
+			       that.options.config['div'][v.name]['displaynumcat'],
+			       that.options.config['div'][v.name]['alpha_order']);
 
             //init the gui component (move it elsewhere?)
             vref.widget = new GroupedBarChart(v.name,
@@ -714,7 +715,8 @@ Model.prototype.updateInfo = function(){
 	if (typeof json.root.val != 'undefined'){
 	    count = json.root.val;
 	}
-        var countstr =  count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        var countstr = d3.format(",.")(count);
+	//count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 	
 	//Time
@@ -740,6 +742,8 @@ Model.prototype.updateInfo = function(){
         var enddate = new Date(startdate);
         enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
+	var options = {}
+	options.timeZoneName = 'short';
         $('#info').text(startdate.toLocaleString() + ' - '
                         + enddate.toLocaleString() + ' '
                         + ' Total: ' + countstr);

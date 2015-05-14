@@ -1,7 +1,8 @@
 //Categorical Variable
-function CatVar(dim, valnames, displaynumcat){
+function CatVar(dim, valnames, displaynumcat, alpha_order){
     //Display 25 categories by default
     displaynumcat=(typeof displaynumcat==="undefined")? 25:displaynumcat;    
+    alpha_order=(typeof alpha_order==="undefined")? true:alpha_order;
 
     this.dim = dim;
     
@@ -21,6 +22,9 @@ function CatVar(dim, valnames, displaynumcat){
     //Set number of variables for display
     this.displaynumcat = Math.min(displaynumcat,
 				  Object.keys(this.keyaddr).length);
+
+    //Sort in alphabetical order ... or not ...
+    this.alpha_order = alpha_order;
 }
 
 CatVar.prototype.jsonToList=function(json){
@@ -35,6 +39,10 @@ CatVar.prototype.jsonToList=function(json){
     var that = this;
     data.sort(function(a,b) {return -(a.value-b.value);});
     data = data.slice(0,this.displaynumcat);
+    if (!this.alpha_order){
+	return data;
+    }
+
     data.sort(function(a,b) {
 	var key_a = that.addrkey[a.addr];
 	var key_b = that.addrkey[b.addr];
