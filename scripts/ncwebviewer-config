@@ -61,7 +61,8 @@ CategoricalVariableTemplate={
     "background-color": "#555", 
     "height": "30em",
     "alpha_order": True,
-    "displaynumcat": 25
+    "displaynumcat": 25,
+    "logaxis": False
 }
 
 ###############################################################################
