@@ -33,11 +33,11 @@ hierarchy* instance, then, obviously, this path will not be visited.
 
 ## Multi-Target
 
-Sometimes we want to have multiple targets on a single dimension. For
-example, we might want to query multiple consecutive intervals from a
-binary tree representation for time. Each interval data can be
-"solved" by visiting a (minimal) set of time bins that is a cover
-for it (the interval).
+Sometimes we want to collect separetely values of multiple targets on
+a single dimension. For example, we might want to query multiple
+consecutive intervals from a binary tree representation for time. Each
+interval data can be "solved" by visiting a (minimal) set of time bins
+that is a cover for it (the interval).
 
 # Services
 
