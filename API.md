@@ -6,14 +6,17 @@ example, let's consider a table like the Chicago crime one:
     latitude | longitude | timestamp | type
 
 How many records in the geo-location table fall into a certain spatial
-bin? Or fall
+bin? Or is of type `theft`? By efficiently pre-computing and storing
+counts or measures, nanocube can handle a reasonable amount of records
+and solve queries at interactive rates.
 
 # Paths
 
 A *path* is the identifier of a *bin* in a *dimension* of a
 nanocube. This *bin* can be either an aggregate one or a finest
 resolution one. For example, if we have a dimension for a categorical
-variable "device" represented as a two level tree where the root is
+variable "device" represented as a two level tree, the root represents
+any device and a leaf might represent an `iPhone` or `Android`.
 
 # Target
 
