@@ -7,8 +7,9 @@ example, let's consider a table like the Chicago crime one:
 
 How many records in the geo-location table fall into a certain spatial
 bin? Or is of type `theft`? By efficiently pre-computing and storing
-counts or measures, nanocube can handle a reasonable amount of records
-and solve queries at interactive rates.
+counts or measures, nanocube can handle a good amount of records in a
+few dimensions (e.g. one or two spatial dimensions, one temporal dimension,
+a few categorical dimensions) to solve queries at interactive rates. 
 
 # Paths
 
