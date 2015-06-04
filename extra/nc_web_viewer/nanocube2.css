@@ -1,3 +1,8 @@
+* {
+    font-family: 'Open Sans','sans-serif';
+    font-size: 10pt;
+}
+
 html, body, .ui-content, #nc-container{
     height: 100%;
     width: 100%;

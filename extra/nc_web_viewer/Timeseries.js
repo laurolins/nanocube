@@ -27,7 +27,7 @@ function Timeseries(name, margin){
     this.yAxis = d3.svg.axis()
         .scale(this.y)
         .orient("left")
-        .ticks(3,',.1s');
+        .ticks(3,',.s');
 
     var that = this;
 
@@ -183,7 +183,7 @@ Timeseries.prototype.redraw=function(){
     //Remove lines
     this.svg.selectAll("path.line").data([]).exit().remove();
     //Remove points
-    this.svg.selectAll("circle.dot").data([]).exit().remove();
+    //this.svg.selectAll("circle.dot").data([]).exit().remove();
 
     var that = this;
     //Draw Lines

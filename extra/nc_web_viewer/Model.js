@@ -715,8 +715,7 @@ Model.prototype.updateInfo = function(){
 	if (typeof json.root.val != 'undefined'){
 	    count = json.root.val;
 	}
-        var countstr = d3.format(",.")(count);
-	//count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        var countstr = d3.format(",")(count);
 
 	
 	//Time
@@ -742,11 +741,8 @@ Model.prototype.updateInfo = function(){
         var enddate = new Date(startdate);
         enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
-	var options = {}
-	options.timeZoneName = 'short';
-        $('#info').text(startdate + ' - '
-                        + enddate + ' '
-                        + ' Total: ' + countstr);
+        $('#info').text(startdate + ' - '+ enddate + ' '
+			+ ' Total: ' + countstr);
     });
 };
 
