@@ -203,11 +203,8 @@ Nanocube.prototype.getTbinInfo = function() {
     });
 
     var s = tbininfo[0].value.split('_');
-    var datearr = s[0].split(/[^0-9]/);
-    var timearr = s[1].split(/[^0-9]/);
-    var offset=new Date (+datearr[0],+datearr[1]-1,+datearr[2],
-			 +timearr[0],+timearr[1],+timearr[2]);
-
+    var offset=new Date(s[0]+'T'+s[1]+'Z'); //construct UTC iso time string
+    
     var day=0, hour=0, min=0, sec=0, res=null;
     res = s[2].match(/([0-9]+)m/);
     if (res){

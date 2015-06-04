@@ -744,8 +744,8 @@ Model.prototype.updateInfo = function(){
 
 	var options = {}
 	options.timeZoneName = 'short';
-        $('#info').text(startdate.toLocaleString() + ' - '
-                        + enddate.toLocaleString() + ' '
+        $('#info').text(startdate + ' - '
+                        + enddate + ' '
                         + ' Total: ' + countstr);
     });
 };
