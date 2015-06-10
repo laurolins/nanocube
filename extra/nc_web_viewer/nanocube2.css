@@ -3,7 +3,7 @@
     font-size: 10pt;
 }
 
-html, body, .ui-content, #nc-container{
+html,body,.ui-content,#nc-container,#maincontent{
     height: 100%;
     width: 100%;
     margin: 0px;

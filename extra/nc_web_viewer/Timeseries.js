@@ -27,7 +27,7 @@ function Timeseries(name, margin){
     this.yAxis = d3.svg.axis()
         .scale(this.y)
         .orient("left")
-        .ticks(3,',.s');
+        .ticks(3,',s');
 
     var that = this;
 

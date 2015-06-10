@@ -20,8 +20,14 @@ class NanocubeInput:
         self.sep = self.sep.replace('\\n','\n')
         self.sep = self.sep.replace('\\r','\r')
 
-        self.name= args.name || args.InputFile[0]
+        self.name = args.name
+        if self.name == '':
+            self.name=args.InputFile[0]
 
+        if self.name == '-':
+            self.name= 'Nanocube'
+        
+            
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
         self.spname=args.spname.split(self.sep)
@@ -100,10 +106,8 @@ class NanocubeInput:
                                  usecols=coi)
 
             for i,data in enumerate(reader):
-                sys.stderr.write("ok 1\n")
                 data = data[coi].dropna()
                 data = self.processData(data)
-                sys.stderr.write("ok 2\n")
 
                 if start:
                     if self.ncheader is None:
@@ -112,7 +116,6 @@ class NanocubeInput:
                     start = False
 
                 self.writeRawData(data)
-                sys.stderr.write("ok 3\n")
 
     def readNCHeader(self,header):
         valname = {}
@@ -333,7 +336,7 @@ def main(argv):
     parser.add_argument('--offset', type=str, default=None)
     parser.add_argument('--chunksize', type=int, default=20000)
     parser.add_argument('--countbytes', type=int, default=4, required=False)
-    parser.add_argument('--name', type=str, default='Nanocube')
+    parser.add_argument('--name', type=str, default='')
 
     args = parser.parse_args()
 
