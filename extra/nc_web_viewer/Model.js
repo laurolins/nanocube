@@ -75,7 +75,12 @@ Model.prototype.initVars = function(){
             //set selection and click callback
             vref.widget.setSelection(vref.constraints[0].selection);
             vref.widget.setClickCallback(function(d){
-                vref.constraints[0].toggle(d.addr);
+		if (typeof d != "undefined") {
+                    vref.constraints[0].toggle(d.addr);
+		    d3.event.stopPropagation();
+		} else {
+                    vref.alpha_order = !vref.alpha_order;
+		}
                 that.redraw();
             });
 

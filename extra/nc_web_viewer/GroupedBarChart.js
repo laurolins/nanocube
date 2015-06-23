@@ -33,7 +33,8 @@ function GroupedBarChart(name,logaxis){
                           + margin.top + ")");
 
     //add title
-    var title = this.svg.append("text").attr('y',-5).text(name);    
+    var title = this.svg.append("text").attr('y',-5).text(name)
+	.append("svg:title").text(function(d) { return "Click dimension title to toggle between alphabetical sorting and numerical sorting."; });
     
     //axis
     this.x  = d3.scale.linear().range([0,width]);
@@ -120,6 +121,8 @@ GroupedBarChart.prototype.redraw = function(){
     var flatdata = this.flattenData(this.data);
     this.updateAxis(flatdata);
     var that = this;
+
+    this.svg.on('click', this.click_callback);
 
     //remove the bars
     this.svg.selectAll('.bar')
