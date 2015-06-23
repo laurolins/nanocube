@@ -6,7 +6,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 | Number | Description |
 |:------:|-------------|
-| 3.2 | Sliding Window; Removed legacy assertions that would crash the server |
+| 3.2 | Sliding window; removed legacy assertions that would crash the server |
 | 3.1 | Added new tools, standarized tool names, restructured code repository, bug fixes |
 | 3.0.1 | Fixed a bug that was causing memory inefficiencies |
 | 3.0 | [New API](./API.md) to support more general nanocubes |
@@ -22,25 +22,31 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 ### Sliding Window
 
 We can now use the *sliding window* option `-w <number>` to indicate
-we are only interested in the most recent records in time. For example
-if we have the data binned in hours we might use the option `-w 24` to
-keep a 1-day sliding window of data relative to the time bin of the
-most recent record that was streamed into the nanocube. In order to
-have a simple and efficient implementation we guarantee that all
-records in the sliding window range are in the nanocube, but there
-might also be older records in the nanocube. These older records
-that might exceed the lenght of the sliding window, cannot exceed
-twice the size of the sliding window. In our example, there cannot
-be records that are >48h older than the most recent record in the
-nanocube.
+we are only interested in the most recent records in time. For
+example, if we are streaming data into a nanocube and the nanocubes server
+inserts the data records into hourly
+time bins, we might use the option `-w 24` to keep a 1-day sliding
+window of data relative to the time bin of the most recent record that
+was streamed into the nanocube. In order to have a simple and
+efficient implementation, we guarantee that all records in the sliding
+window range are in the nanocube, but there might also be older
+records in the nanocube. These older records that might exceed the
+length of the sliding window cannot exceed twice the size of the
+sliding window. In our example, there cannot be records that are more
+than 48 hours older than the newest record (in terms of timestamp) in the nanocube.
+Of course, these older records are ignored by all queries to the nanocube: only those
+records that are within the sliding window time range will be included.
 
-**(Note)** Make sure you have enough temporal resolution for your
-data. In other words, if we let the sliding window run for a certain
-time we can still represent the time bins in the amount of bytes
-reserved for that. On a `q25_c1_u2_u4` nanocube the `u2` indicates
-that time bins are stored in two bytes. In this case if the most
-recent record ends up in a time bin of index greater or equal to 2^16
-(or 65536) the nanocube overflows and becomes inconsistent.
+**NOTE:** When using the sliding window option, you must make sure
+that you have enough temporal resolution for the lifetime of your
+nanocube. In other words, if you are using hourly bins, and you expect
+the nanocube to run for 5 years, then you will need storage for 24 *
+365 * 5 = 43,800 bins (ignoring leap years).  In this example, you
+would then need 2 bytes (16 bits) for your temporal dimension (2^16 =
+65536).  In a `q25_c1_u2_u4` nanocube the `u2` indicates that time
+bins are stored in two bytes.  However, if you expected 10 years
+running time, you would then need 87,600 bins, which means that you
+would need an additional byte for your time bins: `q25_c1_u3_u4`.
 
 ### Bug Fixes
 
@@ -50,7 +56,8 @@ quadtree dimension. For example the query
 
     http://localhost:29512/count.r("location",range2d(tile2d(0,0,2),tile2d(1,1,3)))
 
-on the Chicago Crime example would result in a server crash.
+on the Chicago Crime example would result in a server crash.  Now it returns a
+warning message and allows the nanocube to continue answering other queries.
 
 ## Installing prerequisites
 
@@ -306,13 +313,17 @@ We would like to "anchor" (thus the ".a" in the query) on the `crime` dimension 
 
 ## Simple test script
 
-If you believe there may be a problem with the crime nanocube, try running 'nctest.sh' in the `test` subdirectory.
-It will make some queries of the nanocube (change the script if you are not using port 29512) and produces `out.txt`.
-
-Please compare your results with the expected results generated on MacOSX 10.10 or Ubuntu 14.04.
+If you believe there may be a problem with the crime nanocube, try
+running 'nctest.sh' in the `test` subdirectory.  It will make some
+queries of the nanocube (change the script if you are not using port
+29512) and compare the results to known results that we gathered
+ourselves (for both Ubuntu 14.04 and MacOS 10.10).  If the results match, it will
+report 'SUCCESS'.  In the case of FAILURE, it may still be a simple discrepancy
+so you should look at the output to see if the results may simply be sorted differently.
 
 <!--
-compare the results to known results that we gathered ourselves. If the results match, it will report 'SUCCESS'.
+ and produces `out.txt`.
+Please compare your results with the expected results generated on MacOSX 10.10 or Ubuntu 14.04.
 -->
 
 ```
@@ -354,23 +365,24 @@ specified in the URL.
 http://localhost:8000/#config_crime
 ```
 
-The intial view should look like the image below, which shows a map of the entire world, together
-with a bar chart of the number of crimes and an hourly time-series of all crimes.  All widgets in
-the viewer should have tool-tips to help you navigate properly.
+The intial view should look like the image below, which shows a map of
+Chicago, together with a bar chart of the number of crimes (sorted
+alphabetically) and an hourly time-series of all crimes.  The left
+mouse button will pan the image.  You can zoom further into Chicago by
+using the navigation buttons in the top-left of the viewer, or using
+the mouse wheel.  You can select specific crimes by clicking on the
+corresponding bars (or names of crimes).  To sort the bar chart by
+number of occurrences, click the title "crime" above the bars.  All
+widgets in the viewer should have tool-tips to help you navigate
+properly.
 
-![image](./data/ChicagoCrimeWide.png?raw=true)
-
-The left mouse button will pan the image.  You can zoom into the Chicago area by using the navigation
-buttons in the top-left of the viewer, or using the mouse wheel.  An image of the 
-data once we have zoomed into the Chicago area is shown below.
-
-![image](./data/ChicagoCrimeClose.png?raw=true)
+![image](./data/ChicagoCrimeInitial.png?raw=true)
 
 
 ## Auxiliary python tools
 
 The nanocubes distribution comes with several auxiliary tools that help simplify creating, testing,
-and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirectory after compiling nanocubes.
+and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirectory after compiling nanocubes (and running `make install`).
 
 | Tool Name | Description |
 |:------:|-------------|
@@ -460,7 +472,7 @@ and that is the measure that will be pre-aggregating: the number of
 rows.  If we have a column in the .csv file that has weights which we
 would like to use as our measure instead, we can add the the directive
 `--countcol=<colname>`. Furthermore, if we don't have a time
-dimension, we should omit the directive `--timecol=<colname>`
+dimension, we should omit the `--timecol=<colname>`
 directive and a dummy time column (which is currently required) is
 generated with all the rows having the same time value.
 
