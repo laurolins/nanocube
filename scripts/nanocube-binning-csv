@@ -47,17 +47,21 @@ class NanocubeInput:
         except:
             self.timecol = []
 
-        try:
+        try:            
             self.ncheader = open(args.ncheader,'r').readlines()
-
+            
             #read the header
-            self.valname = self.readNCHeader(self.ncheader)
-
+            ncheader = self.readNCHeader(self.ncheader)
+            self.valname = ncheader['valname']
+            self.countbytes = ncheader['countb']
+            self.timebytes = ncheader['timeb']
+            self.catbytes = ncheader['catb']
+            
             #make this header printable
             self.ncheader = "".join(self.ncheader).strip()+"\n\n"
         except:
             self.ncheader = None
-
+            
         try:
             self.offset = dateutil.parser.parse(args.offset)
         except:
@@ -117,21 +121,39 @@ class NanocubeInput:
 
     def readNCHeader(self,header):
         valname = {}
+        cat = 0
+        time = 0
+        count = 0
         for line in header:
             try:
                 s = line.strip().split(':')
+                if s[0]=='field':
+                    ss = s[1].strip().split()
+                    catm = re.match('nc_dim_cat_([0-9])', ss[1])
+                    timem = re.match('nc_dim_time_([0-9])', ss[1])
+                    countm = re.match('nc_var_uint_([0-9])', ss[1])
+                    
+                    if catm:                        
+                        cat = int(catm.group(1))
+                    if timem:
+                        time = int(timem.group(1))
+                    if countm:
+                        count = int(countm.group(1))
+                            
+                                        
                 if s[0]=='valname':
                     ss = s[1].strip().split()
                     attr = ss[0].replace(' ','_')
                     val = int(ss[1])
-                    name = '_'.join(ss[2:])
+                    name = ' '.join(ss[2:])
                     if attr not in valname:
                         valname[attr] = {}
                     valname[attr][name]=val
 
             except:
                 continue
-        return valname
+
+        return {'countb':count, 'timeb': time, 'catb':cat, 'valname': valname}
 
     def processData(self, data):
         if self.countcol is None:
