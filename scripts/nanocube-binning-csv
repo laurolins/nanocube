@@ -26,8 +26,8 @@ class NanocubeInput:
 
         if self.name == '-':
             self.name= 'Nanocube'
-        
-            
+
+
         self.timebinsize=self.parseTimeBin(args.timebinsize)
 
         self.spname=args.spname.split(self.sep)
@@ -36,10 +36,8 @@ class NanocubeInput:
         self.loncol=args.loncol.split(self.sep)
 
         self.countbytes = args.countbytes
+        self.catbytes = args.catbytes
         
-        # sys.stderr.write("Count Bytes: %s\n" % self.countbytes)
-        # sys.stderr.write("Count Bytes Type: %s\n" % str(type(self.countbytes)))
-
         try:
             self.catcol = args.catcol.split(self.sep)
         except:
@@ -81,10 +79,10 @@ class NanocubeInput:
         for s in self.spname:
             self.minlatlon[s] = [float("inf"),float("inf")]
             self.maxlatlon[s] = [float("-inf"),float("-inf")]
-                        
+
         #Read the csv file
         self.readcsv(args.InputFile,self.chunksize)
-        
+
 
     def readcsv(self,files,csize=20000):
         coi = self.timecol+self.catcol+self.latcol+self.loncol
@@ -126,7 +124,7 @@ class NanocubeInput:
                     ss = s[1].strip().split()
                     attr = ss[0].replace(' ','_')
                     val = int(ss[1])
-                    name = ss[2].replace(' ','_')
+                    name = '_'.join(ss[2:])
                     if attr not in valname:
                         valname[attr] = {}
                     valname[attr][name]=val
@@ -172,7 +170,14 @@ class NanocubeInput:
 
         for i,c in enumerate(self.catcol):
             columns += [c]
-            data[c] = data[c].astype('<u1');
+            if self.catbytes == 1:
+                data[c] = data[c].astype('<u1');
+            elif self.catbytes == 2:
+                data[c] = data[c].astype('<u2');
+            elif self.catbytes == 4:
+                data[c] = data[c].astype('<u4');
+            else:
+                raise Exception("invalid byte size")
 
         for i,d in enumerate(self.timecol):
             columns += [d]
@@ -185,7 +190,7 @@ class NanocubeInput:
         elif self.countbytes == 8:
             data[self.countcol] = data[self.countcol].astype('<u8')
         else:
-            raise Exception("ooops")
+            raise Exception("invalid count size")
 
         data = data[columns] #permute
 
@@ -296,7 +301,8 @@ class NanocubeInput:
                                                    self.levels)
 
         for c in self.catcol:
-            h += 'field: %s nc_dim_cat_1\n'%(c.replace(' ',"_"))
+            h += 'field: %s nc_dim_cat_%d\n'%(c.replace(' ',"_"),
+                                              self.catbytes)
             for k in self.valname[c]:
                 h+='valname: %s %d %s\n'%(c.replace(' ',"_"),
                                           self.valname[c][k],k)
@@ -314,7 +320,7 @@ class NanocubeInput:
             h += 'field: %s nc_var_uint_8\n\n' %(self.countcol.replace(' ',"_"))
         else:
             raise Exception("only supports 4 and 8 bytes for counts")
-        
+
         return h
 
 def main(argv):
@@ -336,18 +342,10 @@ def main(argv):
     parser.add_argument('--offset', type=str, default=None)
     parser.add_argument('--chunksize', type=int, default=50000)
     parser.add_argument('--countbytes', type=int, default=4, required=False)
+    parser.add_argument('--catbytes', type=int, default=1, required=False)
     parser.add_argument('--name', type=str, default='')
 
     args = parser.parse_args()
-
-    # sys.stderr.write("Count Bytes: %s\n" % args.countbytes)
-    # sys.stderr.write("Count Bytes Type: %s\n" % str(type(args.countbytes)))
-
-    # if 'NANOCUBE_WEB' not in os.environ:
-    #     os.environ['NANOCUBE_WEB'] = '../web'
-
-    # if 'NANOCUBE_BIN' not in os.environ:
-    #     os.environ['NANOCUBE_BIN'] = '../src'
 
     ncinput = NanocubeInput(args)
 
