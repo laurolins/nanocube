@@ -379,6 +379,8 @@ properly.
 ![image](./data/ChicagoCrimeInitial.png?raw=true)
 
 
+Please see [here](https://github.com/laurolins/nanocube/tree/master/extra/nc_web_viewer) for more configuration options.
+
 ## Auxiliary python tools
 
 The nanocubes distribution comes with several auxiliary tools that help simplify creating, testing,
