@@ -455,6 +455,7 @@ public: // Public Methods
     void serveSetValname(Request &request);
     void serveTiming    (Request &request);
     void serveVersion   (Request &request);
+//    void serveShutdown  (Request &request);
 
 public:
 
@@ -637,10 +638,20 @@ void NanocubeServer::initializeQueryServer()
         nc_server.serveQuery(request, program);
     };
 
-    // topk handler
+    // timing handler
     handlers["timing"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
         nc_server.serveTiming(request);
     };
+
+    // version handler
+    handlers["version"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
+        nc_server.serveVersion(request);
+    };
+
+    // shutdown handler
+    // handlers["shutdown"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
+    //     nc_server.serveShutdown(request);
+    // };
     
     // topk handler
     handlers["words"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
@@ -2057,6 +2068,15 @@ void NanocubeServer::serveVersion(Request &request)
     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
     request.respondJson(NANOCUBE_VERSION);
 }
+
+// void NanocubeServer::serveShutdown(Request &request)
+// {
+//     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+//     request.respondJson("Nanocube server shutting down in 3 seconds...");
+//     std::cout << "Nanocube server shutting down in 3 seconds..." << std::endl;
+//     sleep(3);
+//     finish = true;
+// }
 
 void NanocubeServer::serveSetValname(Request &request)
 {
