@@ -10,7 +10,7 @@ ID,Case Number,time,Block,IUCR,crime,Description,Location Description,Arrest,Dom
 </pre>
 
 ```
-nanocube-binning-csv --latcol=latitude --loncol=longitude --timecol=time --catcol=device,make example.csv | nanocube-leaf ...
+nanocube-binning-csv --latcol=Latitude --loncol=Longitude --Timecol=time --catcol=crime,'Location Description' crime50k.csv | nanocube-leaf ...
 ```
 
 The `nanocube-binning-csv` script attempts to parse the csv file and convert it into the nanocubes binary format.
