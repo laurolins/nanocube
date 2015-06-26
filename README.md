@@ -6,6 +6,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 | Number | Description |
 |:------:|-------------|
+| 3.2.1 | Improved web client, documentation, testing |
 | 3.2 | Sliding window; removed legacy assertions that would crash the server |
 | 3.1 | Added new tools, standarized tool names, restructured code repository, bug fixes |
 | 3.0.1 | Fixed a bug that was causing memory inefficiencies |
@@ -17,47 +18,24 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
 
-## What is new on release 3.2
+## What is new in release 3.2.1
 
-### Sliding Window
+### Web Client
 
-We can now use the *sliding window* option `-w <number>` to indicate
-we are only interested in the most recent records in time. For
-example, if we are streaming data into a nanocube and the nanocubes server
-inserts the data records into hourly
-time bins, we might use the option `-w 24` to keep a 1-day sliding
-window of data relative to the time bin of the most recent record that
-was streamed into the nanocube. In order to have a simple and
-efficient implementation, we guarantee that all records in the sliding
-window range are in the nanocube, but there might also be older
-records in the nanocube. These older records that might exceed the
-length of the sliding window cannot exceed twice the size of the
-sliding window. In our example, there cannot be records that are more
-than 48 hours older than the newest record (in terms of timestamp) in the nanocube.
-Of course, these older records are ignored by all queries to the nanocube: only those
-records that are within the sliding window time range will be included.
+Improved overall layout and look of the web client front-end, including size
+and position of charts, font ratios, colormaps, and log scales.  Also enabled
+switching between alphabetical and numerical sorting of the bar charts.
 
-**NOTE:** When using the sliding window option, you must make sure
-that you have enough temporal resolution for the lifetime of your
-nanocube. In other words, if you are using hourly bins, and you expect
-the nanocube to run for 5 years, then you will need storage for 24 *
-365 * 5 = 43,800 bins (ignoring leap years).  In this example, you
-would then need 2 bytes (16 bits) for your temporal dimension (2^16 =
-65536).  In a `q25_c1_u2_u4` nanocube the `u2` indicates that time
-bins are stored in two bytes.  However, if you expected 10 years
-running time, you would then need 87,600 bins, which means that you
-would need an additional byte for your time bins: `q25_c1_u3_u4`.
 
-### Bug Fixes
+### Documentation
 
-We got rid of some legacy assertions that would make the server crash
-when spatial ranges with different levels were used as targets on a
-quadtree dimension. For example the query
+Improved README file to be more accurate and have clearer instructions. Added
+more details on how to configure the web client.
 
-    http://localhost:29512/count.r("location",range2d(tile2d(0,0,2),tile2d(1,1,3)))
+### Testing
 
-on the Chicago Crime example would result in a server crash.  Now it returns a
-warning message and allows the nanocube to continue answering other queries.
+Simplified the nctest.sh script to detect which OS you are using and make the
+appropriate comparisons.  Included expected data for MacOS and Ubuntu.
 
 ## Installing prerequisites
 
