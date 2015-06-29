@@ -87,12 +87,12 @@ export BOOST_ROOT=${PWD}/homebrew
 
 ## Compiling the latest release
 
-To compile the nanocubes toolkit, run the following commands on your linux/mac system.  You can replace `3.2` with other valid release numbers, e.g. 3.0.1, 3.0, 2.1.3, 2.1, 2.0, but in those cases please follow the instructions in the README.md file for those releases as they will differ slightly.
+To compile the nanocubes toolkit, run the following commands on your linux/mac system.  You can replace `3.2.1` with other valid release numbers, e.g. 3.2, 3.1, 3.0.1, etc. but in those cases please follow the instructions in the README.md file for those releases as they will differ slightly.
 
 ```
-wget https://github.com/laurolins/nanocube/archive/3.2.zip
-unzip 3.2.zip
-cd nanocube-3.2
+wget https://github.com/laurolins/nanocube/archive/3.2.1.zip
+unzip 3.2.1.zip
+cd nanocube-3.2.1
 export NANOCUBE_SRC=`pwd`
 ./bootstrap
 mkdir build
@@ -103,7 +103,7 @@ make install
 cd ..
 ```
 
-After these commands you should have directory `nanocube-3.2/bin` with the nanocubes toolkit inside. To make these tools more easily accessible in your account, add the `nanocube-3.2/bin` directory to your PATH environment variable.
+After these commands you should have directory `nanocube-3.2.1/bin` with the nanocubes toolkit inside. To make these tools more easily accessible in your account, add the `nanocube-3.2.1/bin` directory to your PATH environment variable.
 
 ```
 export NANOCUBE_BIN=$NANOCUBE_SRC/bin
@@ -132,7 +132,7 @@ you are using tcmalloc).
 
 ##### Output
 ```
-VERSION: 3.2
+VERSION: 3.2.1
 query-port: 29512
 (stdin     ) count:      10000 mem. res:          7MB. time(s):          0
 (stdin     ) count:      20000 mem. res:         12MB. time(s):          0
