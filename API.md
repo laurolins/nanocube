@@ -175,6 +175,23 @@ http://localhost:29512/count.a("location",degrees_mask("x0,y0,x1,y1,...,xn,yn;x0
 
 Timing
 
+## `.shutdown`
+
+To remotely shutdown a running nanocube server, use the shutdown service.  To provide some level of security,
+we have provided a passcode (standard out) when the nanocube server was started.  The passcode must be provided
+when requesting a shutdown:
+
+http://localhost:29512/shutdown.passcode("abcdefgh")
+
+If you have included the correct passcode, you will see the following message:
+
+`Nanocube server authorized shutdown in progress`
+
+Otherwise, you will see the following:
+
+`Ignoring unauthorized Nanocube server shutdown`
+
+
 ### Output Encoding
 
 There are three kinds of encodings: json (default), text, and
