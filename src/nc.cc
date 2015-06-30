@@ -444,6 +444,8 @@ private: // Private Methods
     void runQueryServer();
     void stopQueryServer();
 
+    std::string randomString();
+
 public: // Public Methods
     
     void serveQuery(Request &request, ::nanocube::lang::Program &program);
@@ -455,7 +457,7 @@ public: // Public Methods
     void serveSetValname(Request &request);
     void serveTiming    (Request &request);
     void serveVersion   (Request &request);
-//    void serveShutdown  (Request &request);
+    void serveShutdown  (Request &request);
 
 public:
 
@@ -466,7 +468,7 @@ public:
     void printMessages();
     
     void cacheMask(const std::string& key, ::query::Mask* mask);
-    
+
 private:
     
     void parse_program_into_query(const ::nanocube::lang::Program &program,
@@ -512,6 +514,10 @@ public: // Data Members
     
     MaskCache mask_cache;
 
+
+private:
+    std::string m_passcode;
+    const int PASSCODE_LENGTH = 8;
 };
 
 void NanocubeServer::addMessage(std::string s) {
@@ -561,6 +567,12 @@ NanocubeServer::NanocubeServer(Schema &schema, Options &options, std::istream &i
         ss << "query-port: " << options.query_port.getValue() << std::endl;
         // << "insert-port: " <<  options.insert_port.getValue() << std::endl; // disabled
         addMessage(ss.str());
+
+        // create passcode to authenticate some commands
+        std::stringstream ss2;
+        m_passcode = randomString();
+        ss2 << "passcode: " << m_passcode << std::endl;
+        addMessage(ss2.str());
     }
     catch (ServerException &e) {
         finish = true;
@@ -596,6 +608,27 @@ NanocubeServer::NanocubeServer(Schema &schema, Options &options, std::istream &i
         
     }
 
+}
+
+
+std::string NanocubeServer::randomString() {
+    static const char charset[] =
+        "abcdefghijklmnopqrstuvwxyz"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "0123456789";
+    static bool first_time = true;
+
+    if (first_time) {
+        srand(time(NULL));
+        first_time = false;
+    }
+    char s[PASSCODE_LENGTH+1];
+
+    for (int i = 0; i < PASSCODE_LENGTH; ++i) {
+        s[i] = charset[rand() % (sizeof(charset) - 1)];
+    }
+    s[PASSCODE_LENGTH] = '\0';
+    return s;
 }
 
 void NanocubeServer::stopQueryServer()
@@ -649,9 +682,9 @@ void NanocubeServer::initializeQueryServer()
     };
 
     // shutdown handler
-    // handlers["shutdown"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
-    //     nc_server.serveShutdown(request);
-    // };
+    handlers["shutdown"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
+        nc_server.serveShutdown(request);
+    };
     
     // topk handler
     handlers["words"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
@@ -2069,14 +2102,31 @@ void NanocubeServer::serveVersion(Request &request)
     request.respondJson(NANOCUBE_VERSION);
 }
 
-// void NanocubeServer::serveShutdown(Request &request)
-// {
-//     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
-//     request.respondJson("Nanocube server shutting down in 3 seconds...");
-//     std::cout << "Nanocube server shutting down in 3 seconds..." << std::endl;
-//     sleep(3);
-//     finish = true;
-// }
+void NanocubeServer::serveShutdown(Request &request)
+{
+    std::string passcode = randomString();
+    if (request.request_string.compare(0,19,"shutdown.passcode(\"") == 0)
+        passcode = request.request_string.substr(19,PASSCODE_LENGTH);
+
+    if (passcode == m_passcode) {
+        boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+        request.respondJson("Nanocube server authorized shutdown in progress");
+
+        std::stringstream ss;
+        ss << "Nanocube server authorized shutdown in progress" << std::endl;
+        addMessage(ss.str());
+
+        sleep(2);
+        finish = true;
+    } else {
+        boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+        request.respondJson("Ignoring unauthorized Nanocube server shutdown");
+
+        std::stringstream ss;
+        ss << "Ignoring unauthorized Nanocube server shutdown" << std::endl;
+        addMessage(ss.str());
+    }
+}
 
 void NanocubeServer::serveSetValname(Request &request)
 {
