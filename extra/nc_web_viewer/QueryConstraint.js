@@ -17,9 +17,12 @@ CatConstraint.prototype.add = function(q){
     return q.dim(this.dim).findAndDive(this.selection);    
 };
 
-CatConstraint.prototype.toggle = function(addr){
+CatConstraint.prototype.toggle = function(addr,single){
     var idx = this.selection.indexOf(addr);
     if (idx == -1){ //add unselected cat to selection
+	if(single){
+	    this.selection.length=0; //clear array
+	}
         this.selection.push(addr);
     }
     else{

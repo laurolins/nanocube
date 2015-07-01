@@ -81,7 +81,8 @@ Model.prototype.initVars = function(){
 	    vref.widget.setSelection(vref.constraints[0].selection);
 	    vref.widget.setClickCallback(function(d){
 		if (typeof d != "undefined") {
-		    vref.constraints[0].toggle(d.addr);
+		    var single = !d3.event.shiftKey; 
+		    vref.constraints[0].toggle(d.addr,single);
 		    d3.event.stopPropagation();
 		} else {
 		    vref.alpha_order = !vref.alpha_order;

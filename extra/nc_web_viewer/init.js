@@ -16,6 +16,13 @@ function initPage(config){
 	}
     }
 
+    var s = document.styleSheets[document.styleSheets.length-1];
+    config.css.forEach(function(d){
+	s.insertRule(d,s.cssRules.length);
+    });
+    debugger;
+    
+    
     $(window).on("resize load orientationchange", function(){
 	contents.forEach(function(div){
 	    //this will not work for multi maps
