@@ -249,15 +249,20 @@ class NanocubeInput:
 
     def processDate(self, data):
         for i,d in enumerate(self.timecol):
-            if data[d].dtype == 'int64':
+            if self.datefmt is None and data[d].dtype == 'int64' :
                 data[d] *= 1e9
 
-            data[d] = pd.to_datetime(data[d],
-                                     infer_datetime_format=True,
-                                     format=self.datefmt)
-            #if the strings are crazy coerce will fix it
-            data[d] = pd.to_datetime(data[d],coerce=True)
+            if (self.datefmt):
+                data[d] = pd.to_datetime(data[d].astype(str),
+                                         infer_datetime_format=False,
+                                         format=self.datefmt)
+            else:
+                data[d] = pd.to_datetime(data[d],infer_datetime_format=True)
 
+            #if the strings are crazy coerce will fix it
+            data[d] = pd.to_datetime(data[d],coerce=True)            
+            
+            
         #drop NaT
         data=data.dropna()
 
