@@ -312,9 +312,12 @@ class NanocubeInput:
         return xtile
 
     def parseTimeBin(self,timebinsize):
-        match = re.match(r'^(\d+)([smhDWWY])$',timebinsize)
+        match = re.match(r'^(\d+)([smhDWY])$',timebinsize)
         num, unit = match.groups()
+        num = int(num)
         td = np.timedelta64(num,unit)
+        if unit == 'Y':
+            td = np.timedelta64(num*8766,'h')
         return np.timedelta64(td,'s')
 
     def createHeader(self,data):
