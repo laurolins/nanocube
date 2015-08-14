@@ -547,6 +547,73 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 	that.setTimeBinSize(hr, tvar); //shift forward
 	return that.redraw(); //refresh
     });
+
+    $("#export-btn").on('click', function(){
+        function latlonBoundry(b){
+            return b.map(function(tile){
+                return tile_to_degree(tile, tile.level, true);
+            });
+        }
+
+        var export_obj = {};
+        //Export spatial constraints
+        export_obj.spatial = {};
+        for (var s in that.spatial_vars){
+            export_obj.spatial[s] = {};
+            export_obj.spatial[s].view_const=
+                latlonBoundry(that.spatial_vars[s].view_const.boundary);
+            for (var c in that.spatial_vars[s].constraints){
+                var cons = that.spatial_vars[s].constraints[c];
+                if (cons != that.spatial_vars[s].view_const){
+                    export_obj.spatial[s][c] = latlonBoundry(cons.boundary);
+                }
+            }
+        }
+        
+        //Export cat constraints
+        export_obj.cat = {};
+        for (var cat in that.cat_vars){
+            export_obj.cat[cat] = {};
+            for (c in that.cat_vars[cat].constraints){
+                cons = that.cat_vars[cat].constraints[c];
+                if (cons.selection.length > 0 ){
+                    export_obj.cat[cat][c] =
+                        cons.selection.map(function(d){
+                            return that.cat_vars[cat].addrkey[d];
+                        });
+                }
+            }
+        }
+        
+        //Export temporal constraints
+        export_obj.temporal = {};
+        for (var t in that.temporal_vars){
+            export_obj.temporal[t] = {};
+            for (c in that.temporal_vars[t].constraints){
+                var b2h = that.temporal_vars[t].bin_to_hour;
+                cons = that.temporal_vars[t].constraints[c];
+                if (cons.selection_start != cons.start ||
+                    cons.selected_bins != cons.nbins ){
+                        var offset = that.temporal_vars[t].date_offset;
+                        var start = new Date(offset);
+                        start.setSeconds(start.getSeconds()
+                                         + cons.selection_start *
+                                         b2h * 3600);
+                        var end = new Date(start);
+                        end.setSeconds(end.getSeconds()
+                                       + cons.selected_bins *
+                                       b2h * 3600),
+                        
+                        export_obj.temporal[t][c] ={
+                            start:start,
+                            end: end
+                        };
+                    }
+            }
+        }
+        //Save the file
+        this.href ='data:application/json,'+JSON.stringify(export_obj);
+    });
 };
 
 
