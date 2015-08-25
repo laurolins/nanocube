@@ -329,8 +329,9 @@ if 'port' in args:
     Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
     httpd = SocketServer.TCPServer(("", PORT), Handler)
 
-    if 'webdir' in args:
-        os.chdir(args.webdir)
+    tmpdir = tempfile.mkdtemp()
+    shutil.copytree(args.webdir, tmpdir+'/nc_web_viewer')
+    os.chdir(tmpdir+'/nc_web_viewer')
 
     ostream = open('config.json','w')
     ostream.write(json.dumps(config,indent=2)+'\n')    
