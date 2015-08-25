@@ -55,7 +55,7 @@
 
      $(function(){
        var conf = getURLParameter('config') ||
-          window.location.hash.substring(1);
+          window.location.hash.substring(1) || 'config';
               
        $.getJSON(conf+".json", function(config){
          initPage(config);
