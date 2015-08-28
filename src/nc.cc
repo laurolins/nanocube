@@ -54,117 +54,126 @@ using namespace nanocube;
 
 struct Options {
 
-    Options(std::vector<std::string>& args);
+  Options(std::vector<std::string>& args);
+  
+  TCLAP::CmdLine cmd_line { "Nanocube Leaf - local process", ' ', "2.3", true };
+  
+  // -s or --schema
+  TCLAP::ValueArg<std::string> schema {  
+    "s",              // flag
+      "schema",         // name
+      "Nanocube schema file (if not coming from stdin)", // description
+      false,            // required
+      "",               // value
+      "schema-filename" // type description
+      };
+  
+  // -d or --data
+  TCLAP::ValueArg<std::string> data {
+    "d",              // flag
+      "data",         // name
+      "Data coming from a file (if schema read header from schema)", // description
+      false,            // required
+      "",               // value
+      "data-filename" // type description
+      };
 
-    TCLAP::CmdLine cmd_line { "Nanocube Leaf - local process", ' ', "2.3", true };
+  TCLAP::ValueArg<int> query_port {
+    "q",              // flag
+      "query-port",     // name
+      "Port for querying",     // description
+      true,                                 // required
+      0,                                    // value
+      "query-port"                         // type description
+      };
 
-    // -s or --schema
-    TCLAP::ValueArg<std::string> schema {  
-            "s",              // flag
-            "schema",         // name
-            "Nanocube schema file (if not coming from stdin)", // description
-            false,            // required
-            "",               // value
-            "schema-filename" // type description
-            };
+  TCLAP::ValueArg<std::string> pem_file {
+    "l",              // flag
+      "sslfile",     // name
+      "SSL PEM file",     // description
+      false,                                 // required
+      "",                                    // value
+      "pem-file"                         // type description
+      };
 
-    // -d or --data
-    TCLAP::ValueArg<std::string> data {
-        "d",              // flag
-        "data",         // name
-        "Data coming from a file (if schema read header from schema)", // description
-        false,            // required
-        "",               // value
-        "data-filename" // type description
-    };
+  TCLAP::ValueArg<int> insert_port {
+    "i",                     // flag
+      "insert-port",           // name
+      "Port for inserting records via tcp",     // description
+      false,                                    // required
+      0,                                        // value
+      "insert-port"                             // type description
+      };
 
-    TCLAP::ValueArg<int> query_port {
-            "q",              // flag
-            "query-port",     // name
-            "Port for querying",     // description
-            true,                                 // required
-            0,                                    // value
-            "query-port"                         // type description
-            };
-
-    TCLAP::ValueArg<int> insert_port {
-            "i",                     // flag
-            "insert-port",           // name
-            "Port for inserting records via tcp",     // description
-            false,                                    // required
-            0,                                        // value
-            "insert-port"                             // type description
-            };
-
-    TCLAP::ValueArg<int> no_mongoose_threads {  
-            "t",              // flag
-            "threads",        // name
-            "Number of threads for querying (mongoose)",     // description
-            false,                                 // required
-            10,                                   // value
-            "threads"                         // type description
-            };
+  TCLAP::ValueArg<int> no_mongoose_threads {  
+    "t",              // flag
+      "threads",        // name
+      "Number of threads for querying (mongoose)",     // description
+      false,                                 // required
+      10,                                   // value
+      "threads"                         // type description
+      };
     
-    // should be std::size_t
-    TCLAP::ValueArg<int> max_points {
-            "m",              // flag
-            "max-points",        // name
-            "Insert only max-points",     // description
-            false,                                 // required
-            0,                                   // value
-            "max-points"                         // type description
-            };
+  // should be std::size_t
+  TCLAP::ValueArg<int> max_points {
+    "m",              // flag
+      "max-points",        // name
+      "Insert only max-points",     // description
+      false,                                 // required
+      0,                                   // value
+      "max-points"                         // type description
+      };
 
-    // should be std::size_t
-    TCLAP::ValueArg<int> report_frequency {
-            "f",              // flag
-            "report-frequency",        // name
-            "Report a line when inserting",     // description
-            false,                                 // required
-            100000,                                   // value
-            "report-frequency"                         // type description
-            };
-
-
-    // should be std::size_t
-    TCLAP::ValueArg<int> batch_size {
-            "b",              // flag
-            "batch-size",        // name
-            "Batch Size (default: 1)",     // description
-            false,                                 // required
-            1,                                   // value
-            "batch-size"                         // type description
-            };
-
-    // should be std::size_t
-    TCLAP::ValueArg<int> sleep_for_ns {
-            "y",              // flag
-            "sleep",        // name
-            "sleep (default: 0ns)",     // description
-            false,                                 // required
-            0,                                   // value
-            "sleep"                         // type description
-            };
+  // should be std::size_t
+  TCLAP::ValueArg<int> report_frequency {
+    "f",              // flag
+      "report-frequency",        // name
+      "Report a line when inserting",     // description
+      false,                                 // required
+      100000,                                   // value
+      "report-frequency"                         // type description
+      };
 
 
-    // -d or --data
-    TCLAP::ValueArg<int> mask_cache_budget {
-        "M",              // flag
-        "mask-cache-budget",         // name
-        "Number of masks that are kept in the cache. Every time we have 20% more masks in the cache we reduce it to the budget. Default 1000.", // description
-        false,            // required
-        1000,             // value
-        "data-filename"   // type description
-    };
+  // should be std::size_t
+  TCLAP::ValueArg<int> batch_size {
+    "b",              // flag
+      "batch-size",        // name
+      "Batch Size (default: 1)",     // description
+      false,                                 // required
+      1,                                   // value
+      "batch-size"                         // type description
+      };
 
-    TCLAP::ValueArg<int> sliding {
-        "w",                      // flag
-        "sliding-window",                // name
-        "Sliding Window",         // description
-        false,                    // required
-        0,                        // value
-        "sliding window units"    // type description
-    };
+  // should be std::size_t
+  TCLAP::ValueArg<int> sleep_for_ns {
+    "y",              // flag
+      "sleep",        // name
+      "sleep (default: 0ns)",     // description
+      false,                                 // required
+      0,                                   // value
+      "sleep"                         // type description
+      };
+
+
+  // -d or --data
+  TCLAP::ValueArg<int> mask_cache_budget {
+    "M",              // flag
+      "mask-cache-budget",         // name
+      "Number of masks that are kept in the cache. Every time we have 20% more masks in the cache we reduce it to the budget. Default 1000.", // description
+      false,            // required
+      1000,             // value
+      "data-filename"   // type description
+      };
+
+  TCLAP::ValueArg<int> sliding {
+    "w",                      // flag
+      "sliding-window",                // name
+      "Sliding Window",         // description
+      false,                    // required
+      0,                        // value
+      "sliding window units"    // type description
+      };
     
     TCLAP::SwitchArg  nolog { "0", "nolog", "Don't append to nanocube.log file" };
 
@@ -178,6 +187,7 @@ Options::Options(std::vector<std::string>& args)
     cmd_line.add(query_port);
     cmd_line.add(insert_port);
     cmd_line.add(no_mongoose_threads);
+    cmd_line.add(pem_file);
     cmd_line.add(max_points);
     cmd_line.add(report_frequency);
     cmd_line.add(batch_size);
@@ -904,7 +914,8 @@ void NanocubeServer::initializeQueryServer()
     
     server.setHandler(handler);
     
-    server.init(options.no_mongoose_threads.getValue());
+    server.init(options.no_mongoose_threads.getValue(),
+                options.pem_file.getValue());
 }
 
 void NanocubeServer::runQueryServer()
