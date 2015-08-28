@@ -166,7 +166,7 @@ struct Options {
         "sliding window units"    // type description
     };
     
-
+    TCLAP::SwitchArg  nolog { "0", "nolog", "Don't append to nanocube.log file" };
 
 };
 
@@ -184,6 +184,7 @@ Options::Options(std::vector<std::string>& args)
     cmd_line.add(sleep_for_ns);
     cmd_line.add(mask_cache_budget);
     cmd_line.add(sliding);
+    cmd_line.add(nolog);
     cmd_line.parse(args);
 }
 
@@ -424,11 +425,169 @@ struct FormatOption {
     DimAddress base_address;
 };
 
+
+//------------------------------------------------------------------------------
+// SlidingWindow
+//------------------------------------------------------------------------------
+
+using Timestamp       = std::int64_t;
+using Duration        = std::int64_t;
+using SlidingWindowID = std::int64_t;
+using NanocubeID      = int;
+
+/*!
+ * Given a timestamp, indicate which action should be taken.
+ * insert point nanocube with active ID
+ *
+ */
+template <typename nanocube_type>
+struct SlidingCubeManager {
+public:
+    
+    using nanocube_type_ptr   = std::unique_ptr<nanocube_type>;
+    using f_new_nanocube_type = std::function<nanocube_type*()>;
+    using f_visit_type        = std::function<void(nanocube_type& n)>;
+    
+public:
+    /*!
+     * Sliding window case
+     */
+    SlidingCubeManager(Timestamp base, Duration window_size, f_new_nanocube_type f_new);
+
+    inline nanocube_type* at(Timestamp timestamp);
+
+    inline void apply(f_visit_type f);
+
+    inline Timestamp latest() const { return _latest_at; }
+
+private:
+    
+    inline int current() const { return _parity; }
+    inline int previous() const { return 1 - _parity; }
+    
+    inline SlidingWindowID current_id() const { return _window_ids[current()]; }
+    inline SlidingWindowID previous_id() const { return _window_ids[previous()]; }
+    
+    inline void current_id(SlidingWindowID id) { _window_ids[current()] = id; }
+    inline void previous_id(SlidingWindowID id) { _window_ids[previous()] = id; }
+    
+    inline nanocube_type& current_cube() { return *_cubes[current()].get(); }
+    inline nanocube_type& previous_cube() { return *_cubes[previous()].get();; }
+
+    inline void current_cube(nanocube_type_ptr&& p) { _cubes[current()].swap(p); }
+    inline void previous_cube(nanocube_type_ptr&& p) { _cubes[previous()].swap(p); }
+    
+    inline SlidingWindowID id(Timestamp timestamp) const { return (timestamp - _base) / _window_size; }
+
+
+public:
+    // sliding window case
+    Timestamp _base        { 0 };
+    Duration  _window_size { 0 };
+
+    f_new_nanocube_type       _f_new_nanocube;
+
+    Timestamp                 _latest_at { -1 };
+    
+    //
+    nanocube_type_ptr         _cubes[2]; // active vs. previous.
+    SlidingWindowID           _window_ids[2] { -1, -1 };
+    int                       _parity { 0 };
+};
+
+
+//------------------------------------------------------------------------------
+// SlidingWindow
+//------------------------------------------------------------------------------
+
+template <typename nanocube_type>
+SlidingCubeManager<nanocube_type>::SlidingCubeManager(Timestamp base,
+                                                      Duration window_size,
+                                                      f_new_nanocube_type f_new):
+_base{base}, _window_size{window_size}, _f_new_nanocube(f_new)
+{}
+
+template <typename nanocube_type>
+void SlidingCubeManager<nanocube_type>::apply(f_visit_type f) {
+    if (current_id() >= 0)
+        f(current_cube());
+    if (previous_id() >= 0)
+        f(previous_cube());
+}
+
+template <typename nanocube_type>
+nanocube_type* SlidingCubeManager<nanocube_type>::at(Timestamp timestamp) {
+    _latest_at = std::max(_latest_at, timestamp);
+    auto window_id = id(timestamp);
+    auto curr_id   = current_id();
+    if (window_id == curr_id) {
+        return &current_cube();
+    }
+    else if (window_id == previous_id()) {
+        return &previous_cube();
+    }
+    else if (window_id == curr_id-1) {
+        // set previous cube
+        previous_cube(nanocube_type_ptr{ _f_new_nanocube() }); // reset previous cube
+        previous_id(curr_id - 1);
+        return &previous_cube();
+    }
+    else if (window_id == curr_id+1) {
+        _parity = 1 - _parity;
+        current_cube(nanocube_type_ptr{ _f_new_nanocube() }); // reset previous cube
+        current_id(window_id);
+        return &current_cube();
+    }
+    else if (window_id > curr_id+1) {
+        current_cube(nanocube_type_ptr{ _f_new_nanocube() });
+        current_id(window_id);
+        previous_cube(nanocube_type_ptr{});
+        previous_id(-1);
+        return &current_cube();
+    }
+    else {
+        // out of reach (point is too old)
+        return nullptr;
+    }
+}
+
+//------------------------------------------------------------------------------
+// ReadTimestamp
+//------------------------------------------------------------------------------
+
+struct ReadTimestamp {
+public:
+    ReadTimestamp() = default;
+    void init(int offset, int size);
+    Timestamp read(void *p) const;
+public:
+    int offset { 0 };
+    int size   { 0 };
+};
+
+void ReadTimestamp::init(int offset, int size) {
+    this->offset = offset;
+    this->size   = size;
+}
+
+inline Timestamp ReadTimestamp::read(void *p) const {
+    auto ptr = (char*) p + offset;
+    Timestamp timestamp = 0;
+    std::copy(ptr, ptr + size, (char*) &timestamp);
+    return timestamp;
+}
+
 //------------------------------------------------------------------------------
 // NanocubeServer
 //------------------------------------------------------------------------------
 
 struct NanocubeServer {
+    
+public:
+    
+    using nanocube_type       = NanoCube;
+    using sliding_mgr_type    = SlidingCubeManager<NanoCube>;
+    using f_new_nanocube_type = typename sliding_mgr_type::f_new_nanocube_type;
 
 public: // Constructor
 
@@ -467,6 +626,8 @@ public:
     void addMessage(std::string s);
     void printMessages();
     
+    void logMessage(std::string s);
+    
     void cacheMask(const std::string& key, ::query::Mask* mask);
 
 private:
@@ -480,25 +641,21 @@ private:
 
 
 public: // Data Members
+    
+    std::unique_ptr<std::ostream> log;
 
     std::mutex messages_mutex;
     std::vector<std::string> messages;
     
     std::uint64_t inserted_points { 0 };
     
-    // when sliding window is active, keep rotating on this 3 element array
-    std::unique_ptr<NanoCube> nanocubes[3];
-
-    int active_window { 0 };
-    bool sliding { false };
+    std::unique_ptr<nanocube_type>    plain_nanocube;
+    
     struct {
-        bool      empty                { true };
-        uint64_t  size                 { 0 };
-        uint64_t  active_window_t0     { 0 };
-        uint64_t  previous_window_t0   { 0 };
-        int       time_record_offset   { 0 };
-        int       time_record_bytes    { 0 };
-    } sliding_window;
+        std::unique_ptr<sliding_mgr_type> mgr_p;
+        ReadTimestamp                     read_ts;
+        bool                              active;
+    } sliding;
     
     Schema       &schema;
     Options      &options;
@@ -533,6 +690,13 @@ void NanocubeServer::printMessages() {
     messages.clear();
 }
 
+void NanocubeServer::logMessage(std::string s) {
+    if (log) {
+        *log << s << std::endl;
+    }
+}
+
+
 //------------------------------------------------------------------------------
 // NanocubeServer Impl.
 //------------------------------------------------------------------------------
@@ -543,18 +707,36 @@ NanocubeServer::NanocubeServer(Schema &schema, Options &options, std::istream &i
     input_stream(input_stream),
     finish(false)
 {
-    // create one active nanocube (if not sliding window, it will be the only nanocube)
-    nanocubes[active_window].reset(new NanoCube(schema));
-
-    sliding_window.size = (uint64_t) options.sliding.getValue();
-    sliding = sliding_window.size > 0;
+    //
+    // set log file
+    //
+    if (!options.nolog.isSet()){
+        log.reset(new std::ofstream{ "nanocube.log", std::ofstream::out | std::ofstream::app} );
+        logMessage("[start] " + schema.dump_file_description.name);
+    }
     
-    if (sliding) {
-        // store location of timestamp on input records on the sliding window info
+    //
+    // check if it a sliding window or plain scheme
+    // initialize accordingly...
+    //
+    
+    auto sliding_window_size = (Duration) options.sliding.getValue();
+    sliding.active = sliding_window_size > 0;
+    
+    if (!sliding.active) {
+        plain_nanocube.reset(new NanoCube(schema));
+    }
+    else {
+        // set mgr
+        f_new_nanocube_type f_new = [&schema]() { return new nanocube_type(schema); };
+        sliding.mgr_p.reset(new sliding_mgr_type { 0, sliding_window_size, f_new } );
+        
+        // set read_ts
         for (auto field: schema.dump_file_description.fields) {
             if (field->field_type.name.find("nc_dim_time_") == 0) {
-                sliding_window.time_record_offset = field->offset_inside_record;
-                sliding_window.time_record_bytes  = field->getNumBytes();
+                auto offset = field->offset_inside_record;
+                auto size   = field->getNumBytes();
+                sliding.read_ts.init(offset, size);
             }
         }
     }
@@ -799,6 +981,13 @@ void NanocubeServer::insert_from_stdin()
     //     ofs << "open verification.tmp, num bytes per batch: " << num_bytes_per_batch << std::endl;
     // }
     
+    
+    
+    auto plain_nc    = plain_nanocube.get(); // if sliding.active this is null
+    auto sliding_mgr = sliding.mgr_p.get();
+    
+    std::uint64_t current_record { 0 };
+    
     while (!done) {
 
         //std::cerr << "reading " << num_bytes_per_batch << "...";
@@ -815,59 +1004,26 @@ void NanocubeServer::insert_from_stdin()
             boost::unique_lock<boost::shared_mutex> lock(shared_mutex);
             for (uint64_t i=0;i<batch_size && !done;++i)
             {
+                ++current_record;
+                
                 // std::cout << i << std::endl;
                 bool ok = true;
 
-                if (!sliding) {
-                    ok = nanocubes[active_window].get()->add(ss);
+                if (!sliding.active) {
+                    ok = plain_nc->add(ss);
                 }
                 else {
                     // get timestamp from record
-                    char *ptr = &buffer[0] + i * record_size + sliding_window.time_record_offset;
-                    std::uint64_t timestamp = 0;
-                    std::copy(ptr, ptr + sliding_window.time_record_bytes, (char*) &timestamp);
+                    auto timestamp = sliding.read_ts.read( &buffer[0] + i * record_size );
+                    auto nc = sliding_mgr->at(timestamp);
                     
-                    if (sliding_window.empty) {
-                        sliding_window.active_window_t0 = timestamp;
-                        sliding_window.empty = false;
-                        nanocubes[active_window].get()->add(ss);
+                    if (nc) {
+                        ok = nc->add(ss);
                     }
                     else {
-                        // rotate windows
-                        int previous_window = active_window == 0 ? 2 : active_window - 1;
-                        int next_window     = active_window == 2 ? 0 : active_window + 1;
-
-                        if (timestamp >= sliding_window.active_window_t0 + sliding_window.size) {
-                            
-                            // new active window
-
-                            // TODO: turn the deletion of the previous window to
-                            // another thread. for now let it rest there
-                            
-                            nanocubes[next_window].reset(new NanoCube(schema));
-                            nanocubes[previous_window].reset(); // erase previous window
-                            
-                            active_window = next_window;
-                            
-                            sliding_window.previous_window_t0 = sliding_window.active_window_t0;
-                            sliding_window.active_window_t0   = timestamp;
-                            
-                            ok = nanocubes[active_window].get()->add(ss);
-
-                            std::stringstream ss;
-                            ss << "(stdin     ) switching to new window" << std::endl;
-                            addMessage(ss.str());
-
-                            
-                        }
-                        else if (timestamp >= sliding_window.active_window_t0) {
-
-                            ok = nanocubes[active_window].get()->add(ss);
-
-                        }
-                        else if (timestamp >= sliding_window.previous_window_t0 && timestamp < sliding_window.previous_window_t0 + sliding_window.size) {
-                            ok = nanocubes[previous_window].get()->add(ss);
-                        }
+                        std::stringstream ss;
+                        ss << "[Warning] sliding window discarding old record; num:" << current_record << " ts:" << timestamp << " already seen ts:" << sliding_mgr->latest();
+                        logMessage(ss.str());
                     }
                 }
                 
@@ -1704,20 +1860,15 @@ void NanocubeServer::serveQuery(Request &request, ::nanocube::lang::Program &pro
         
         ::query::result::Result result(treestore_result);
         
-        nanocubes[active_window].get()->query(query_description, result);
-
-        if (sliding) {
-
-            // add the result from the previous window too...
-            int previous_window = active_window == 0 ? 2 : active_window-1;
-            
-            nanocubes[active_window].get()->query(query_description, result);
-            
-            if (nanocubes[previous_window].get()) {
-                nanocubes[previous_window].get()->query(query_description, result);
-            }
-            
+        if (!sliding.active) {
+            plain_nanocube->query(query_description, result);
         }
+        else {
+            sliding.mgr_p->apply([&query_description, &result](nanocube_type& nc) {
+                nc.query(query_description, result);
+            });
+        }
+        
         
         // set level names
         int level=0;
