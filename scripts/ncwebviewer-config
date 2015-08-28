@@ -324,6 +324,7 @@ if 'port' in args:
     import SimpleHTTPServer
     import SocketServer
     import socket
+    import tempfile
     
     PORT = args.port
     Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
