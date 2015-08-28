@@ -321,10 +321,7 @@ if 'port' in args:
     if args.port == None:
        args.port = 8000 
 
-    import SimpleHTTPServer
-    import SocketServer
-    import socket
-    import tempfile
+    import SimpleHTTPServer,SocketServer,socket,tempfile,shutil,os
     
     PORT = args.port
     Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
