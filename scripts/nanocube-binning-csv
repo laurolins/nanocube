@@ -163,8 +163,8 @@ class NanocubeInput:
             data[self.countcol]=1
 
         #get NaN's for errors
-        data[self.countcol] = data[self.countcol].astype(np.float)
-
+        data[self.countcol] = data[self.countcol].convert_objects(convert_numeric=True)
+        
         #drop bad data
         data = data.dropna()
 
@@ -193,10 +193,13 @@ class NanocubeInput:
         for i,c in enumerate(self.catcol):
             columns += [c]
             if self.catbytes == 1:
-                data[c] = data[c].astype('<u1');
+                data[c] = np.minimum(data[c],2**8-2)
+                data[c] = data[c].astype('<u1');                
             elif self.catbytes == 2:
+                data[c] = np.minimum(data[c],2**16-2)
                 data[c] = data[c].astype('<u2');
             elif self.catbytes == 4:
+                data[c] = np.minimum(data[c],2**32-2)
                 data[c] = data[c].astype('<u4');
             else:
                 raise Exception("invalid byte size")
@@ -224,8 +227,8 @@ class NanocubeInput:
             lat = self.latcol[i]
             lon = self.loncol[i]
             lvl = self.levels
-            data[lon] = data[lon].astype(np.float)
-            data[lat] = data[lat].astype(np.float)
+            data[lon] = data[lon].convert_objects(convert_numeric=True)
+            data[lat] = data[lat].convert_objects(convert_numeric=True)
             data = data.dropna()
 
             data = data[data[lon] > -180]
@@ -332,7 +335,7 @@ class NanocubeInput:
 
         for c in self.catcol:
             h += 'field: %s nc_dim_cat_%d\n'%(c.replace(' ',"_"),
-                                              self.catbytes)
+                                              self.catbytes)            
             for k in self.valname[c]:
                 h+='valname: %s %d %s\n'%(c.replace(' ',"_"),
                                           self.valname[c][k],k)
