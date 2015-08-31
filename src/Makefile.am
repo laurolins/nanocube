@@ -26,6 +26,7 @@ nc_q25_c1_c1_u2_u8	    \
 nc_q25_c1_c1_c1_u2_u4       \
 nc_q25_c1_c1_c1_c1_u2_u4    \
 nc_q25_c1_c1_c1_c1_c1_u2_u4 \
+nc_q25_c1_c1_u2_u8          \
 nc_q20_q20_u4_u4            \
 nc_q25_c2_u2_u4
 
@@ -303,3 +304,14 @@ nc_q20_q20_u4_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -DVERSION=\"$(VERSION)\"
 nc_q20_q20_u4_u4_SOURCES =\
     $(nc_SOURCES)
+
+nc_q25_c1_c1_u2_u8_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_c1_u2_u8_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25,c1,c1 \
+    -DLIST_VARIABLE_TYPES=u2,u8 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_c1_c1_u2_u8_SOURCES =\
+    $(nc_SOURCES)
+
