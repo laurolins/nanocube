@@ -10,6 +10,9 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/asio.hpp>
 
+#include <signal.h>
+#include <curl/curl.h>
+
 #include "DumpFile.hh"
 #include "MemoryUtil.hh"
 #include "NanoCube.hh"
@@ -48,6 +51,139 @@
 
 using namespace nanocube;
 
+
+
+
+//-----------------------------------------------------------------------------
+// Nanocube registry to keep track of all nanocubes
+//-----------------------------------------------------------------------------
+struct NanocubeRegistry {
+
+public:
+    NanocubeRegistry(std::string hostname);
+    int register_nanocube();
+    int deregister_nanocube(int signum);
+
+    std::string nc_registry_hostname;
+    std::string nc_hostname;
+    int         nc_query_port;
+    std::string nc_name;
+    std::string nc_alias;
+    bool        nc_register;
+
+private:
+    void set_hostname();
+
+};
+
+
+NanocubeRegistry::NanocubeRegistry(std::string hostname):
+    nc_registry_hostname(hostname)
+{
+    set_hostname();
+    nc_query_port = 29512; //default
+    nc_register   = false;
+}
+
+void NanocubeRegistry::set_hostname()
+{
+    struct addrinfo hints, *result;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family   = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags    = AI_CANONNAME;
+
+    char hname[256];
+    if (gethostname(hname, 256) != 0) {
+        sprintf(hname, "Unknown");
+    }
+
+    // could use http, ssh, login, echo, ...
+    if (getaddrinfo(hname, "ssh", &hints, &result) != 0) {
+        // If this fails, fall back to gethostname()
+        nc_hostname = hname;
+    } else {
+        nc_hostname = result->ai_canonname;
+    }
+}
+
+static int gs_registration_rc(0);
+
+static size_t CurlWriteFunctionRegistration(char *ptr, size_t size, size_t nmemb, void *userdata)
+{
+    size_t realsize = size * nmemb;
+    if (realsize > 0) {
+        std::cerr << ptr << std::endl;
+        if (ptr[0] != '0') {
+            // Error during the registration process
+            std::stringstream ss;
+            ss << ptr[0] << '\0';
+            gs_registration_rc = atoi(ss.str().c_str());
+        }
+    }
+    return realsize;
+}
+
+int NanocubeRegistry::register_nanocube()
+{
+    std::stringstream nano_up;
+    nano_up << "http://" << nc_registry_hostname.c_str() << "/online/"
+            << nc_hostname.c_str()
+            << "/" << nc_query_port
+            << "/" << nc_alias
+            << "/" << NANOCUBE_VERSION;
+
+    CURL *curl;
+    CURLcode res;
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, nano_up.str().c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteFunctionRegistration);
+        res = curl_easy_perform(curl);
+    }
+    if (res != 0) {
+        std::cerr << "Registration with nanocube registry failed.  Curl error code: " << res << std::endl;
+        gs_registration_rc = res;
+    }
+    curl_easy_cleanup(curl);
+
+    int rc = gs_registration_rc;
+    gs_registration_rc = 0;
+    return rc;
+}
+
+// signum indicates which signal was caught, if any.  A value of zero
+// indicates a normal shutdown.
+int NanocubeRegistry::deregister_nanocube(int signum)
+{
+    std::stringstream nano_down;
+    nano_down << "http://" << nc_registry_hostname.c_str() << "/offline/"
+              << nc_hostname.c_str()
+              << "/" << nc_query_port
+              << "/" << signum;
+
+    CURL *curl;
+    CURLcode res;
+    curl = curl_easy_init();
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, nano_down.str().c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteFunctionRegistration);
+        res = curl_easy_perform(curl);
+    }
+    if (res != 0) {
+        std::cerr << "Deregistration with nanocube registry failed.  Curl error code: " << res << std::endl;
+        gs_registration_rc = res;
+    }
+    curl_easy_cleanup(curl);
+
+    int rc = gs_registration_rc;
+    gs_registration_rc = 0;
+    return rc;
+}
+
+static NanocubeRegistry gs_nanodb("localhost:29999");
+
 //------------------------------------------------------------------------------
 // Options
 //------------------------------------------------------------------------------
@@ -68,6 +204,16 @@ struct Options {
             "schema-filename" // type description
             };
 
+    // -r or --registry
+    TCLAP::ValueArg<std::string> nanocube_registry {  
+            "r",                // flag
+            "registry",         // name
+            "Nanocube registry location (hostname:port)", // description
+            false,              // required
+            "localhost:29999",  // value
+            "nanocube-registry" // type description
+            };
+
     // -d or --data
     TCLAP::ValueArg<std::string> data {
         "d",              // flag
@@ -76,6 +222,16 @@ struct Options {
         false,            // required
         "",               // value
         "data-filename" // type description
+    };
+
+    // -a or --alias
+    TCLAP::ValueArg<std::string> nanocube_alias {
+        "a",              // flag
+        "alias",          // name
+        "Alias of nanocube to simplify finding it later", // description
+        false,            // required
+        "_no_alias_",        // value
+        "nanocube-alias"  // type description
     };
 
     TCLAP::ValueArg<int> query_port {
@@ -184,6 +340,8 @@ Options::Options(std::vector<std::string>& args)
     cmd_line.add(sleep_for_ns);
     cmd_line.add(mask_cache_budget);
     cmd_line.add(sliding);
+    cmd_line.add(nanocube_alias);
+    cmd_line.add(nanocube_registry);
     cmd_line.parse(args);
 }
 
@@ -458,6 +616,7 @@ public: // Public Methods
     void serveTiming    (Request &request);
     void serveVersion   (Request &request);
     void serveShutdown  (Request &request);
+    //    void serveRegister  (Request &request);
 
 public:
 
@@ -477,7 +636,6 @@ private:
                                   OutputEncoding &output_encoding,
                                   BranchTargetOnTime &branch_target_on_time,
                                   std::vector<FormatOption> &format_options);
-
 
 public: // Data Members
 
@@ -571,12 +729,21 @@ NanocubeServer::NanocubeServer(Schema &schema, Options &options, std::istream &i
         // create passcode to authenticate some commands
         std::stringstream ss2;
         m_passcode = randomString();
-        ss2 << "passcode: " << m_passcode << std::endl;
+        ss2 << "passcode: " << m_passcode << std::endl << std::endl;
         addMessage(ss2.str());
+
+        int rc = (gs_nanodb.nc_register==true && gs_nanodb.register_nanocube());
+        if (rc != 0) {
+            throw std::runtime_error("Error during the registration process");
+        }
     }
     catch (ServerException &e) {
         finish = true;
         std::cerr << "[PROBLEM] Could not bind query-port:  " <<  server.port << std::endl;
+    } catch (...) {
+        finish = true;
+        std::cerr << "[PROBLEM] Error during the registration process with registry: "
+                  << gs_nanodb.nc_registry_hostname << std::endl;
     }
 
     if (!finish) {
@@ -596,6 +763,17 @@ NanocubeServer::NanocubeServer(Schema &schema, Options &options, std::istream &i
         }
         
         printMessages();
+
+        try { 
+            if (gs_nanodb.nc_register == true) {
+                if (gs_nanodb.deregister_nanocube(EXIT_SUCCESS) != 0) {
+                    
+                }
+            }
+        } catch (...) {
+            std::cerr << "[PROBLEM] Error during the deregistration process with registry: "
+                      << gs_nanodb.nc_registry_hostname << std::endl;
+        }
         
         // TODO: move this somewhere else
         io_service.stop();
@@ -605,7 +783,6 @@ NanocubeServer::NanocubeServer(Schema &schema, Options &options, std::istream &i
         
         stopQueryServer();
         http_server.join();
-        
     }
 
 }
@@ -685,6 +862,11 @@ void NanocubeServer::initializeQueryServer()
     handlers["shutdown"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
         nc_server.serveShutdown(request);
     };
+
+    // register handler
+    // handlers["register"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
+    //     nc_server.serveRegister(request);
+    // };
     
     // topk handler
     handlers["words"] = [&nc_server](Request& request, ::nanocube::lang::Program &program) {
@@ -2128,6 +2310,29 @@ void NanocubeServer::serveShutdown(Request &request)
     }
 }
 
+// void NanocubeServer::serveRegister(Request &request)
+// {
+//     boost::shared_lock<boost::shared_mutex> lock(shared_mutex);
+//     std::stringstream ss;
+//     if (request.request_string.compare(0,16,"register.alias(\"") == 0) {
+//         std::size_t found = request.request_string.find_first_of("\"", 16);
+//         if (found != std::string::npos) {
+//             gs_nanodb.nc_alias = request.request_string.substr(16,found-16);
+//             ss << "Registering " << gs_nanodb.nc_alias << " with registry running on "
+//                << gs_nanodb.nc_registry_hostname.c_str();
+//             request.respondJson(ss.str());
+//             int rc = gs_nanodb.register_nanocube();
+//         } else {
+//             ss << "";
+//             request.respondJson(ss.str());
+//         }
+//     } else {
+//         ss << "Registering nanocube with registry running on " << gs_nanodb.nc_registry_hostname.c_str();
+//         request.respondJson(ss.str());
+//         int rc = gs_nanodb.register_nanocube();
+//     }
+// }
+
 void NanocubeServer::serveSetValname(Request &request)
 {
 #if 0
@@ -2307,6 +2512,52 @@ void NanocubeServer::serveSchema(Request &request, bool json)
 // }
 
 
+//-----------------------------------------------------------------------------
+// signal handlers
+//-----------------------------------------------------------------------------
+static int exit_status = EXIT_SUCCESS;
+
+void exitFunction(void)
+{
+    //gs_nanodb.deregister_nanocube(exit_status);
+}
+
+void signalHandler(int signum)
+{
+    std::cerr << std::endl << std::endl << "Caught signal " << signum << ".  ";
+    std::cerr << "Shuting down..." << std::endl;
+    exit_status = signum;
+    if (gs_nanodb.nc_register == true) {
+        if (gs_nanodb.deregister_nanocube(exit_status) != 0) {
+            std::cerr << "[PROBLEM] Error during the deregistration process with registry: "
+                      << gs_nanodb.nc_registry_hostname << std::endl;
+        }
+    }
+    exit(signum);
+}
+
+void setupSignalHandlers()
+{
+    // If SIGHUP was being ignored, keep it that way...
+    void (*previousSignalHandler)(int);
+    previousSignalHandler = signal(SIGHUP, signalHandler);
+    if (previousSignalHandler == SIG_IGN) {
+        std::cout << "Ignoring SIGHUP as before" << std::endl;
+        signal(SIGHUP, SIG_IGN);
+    }
+
+    signal(SIGINT,  signalHandler);
+    signal(SIGQUIT, signalHandler);
+    signal(SIGILL,  signalHandler);
+    signal(SIGTRAP, signalHandler);
+    signal(SIGABRT, signalHandler);
+    signal(SIGFPE,  signalHandler);
+    signal(SIGSEGV, signalHandler);
+    signal(SIGTERM, signalHandler);
+
+    atexit(exitFunction);
+}
+
 //------------------------------------------------------------------------------
 // main
 //------------------------------------------------------------------------------
@@ -2317,11 +2568,12 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::string> params(argv, argv+argc);
     Options options(params);
-    
+
+    setupSignalHandlers();
+
 #ifdef DEBUG_NC_PROCESS
     std::cerr << "starting nc_... child process start" << std::endl;
 #endif
-    
     
 #if 0
     std::unique_ptr<std::ostream> ostream;
@@ -2345,12 +2597,26 @@ int main(int argc, char *argv[]) {
 #ifdef DEBUG_NC_PROCESS
         std::cerr << "starting nc_... child process " << std::endl;
 #endif
-        
+
+        gs_nanodb.nc_query_port = options.query_port.getValue();
+        gs_nanodb.nc_name       = input_file_description.name;
+        if (options.nanocube_alias.getValue() != "_no_alias_") {
+            gs_nanodb.nc_alias    = options.nanocube_alias.getValue();
+            gs_nanodb.nc_register = true;
+        }
+        if (options.nanocube_registry.getValue() != "localhost:29999") {
+            gs_nanodb.nc_registry_hostname = options.nanocube_registry.getValue();
+        } else {
+            // Command-line option not used.  Is NANOCUBE_REGISTRY env variable set?
+            char *nr = std::getenv("NANOCUBE_REGISTRY");
+            if (nr)
+                gs_nanodb.nc_registry_hostname = nr;
+        }
+
         // start nanocube http server
         NanocubeServer nanocube_server(nanocube_schema, options, is);
 
     };
-    
     
     try {
         if (options.schema.getValue().size()) {

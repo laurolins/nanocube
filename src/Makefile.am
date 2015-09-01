@@ -56,6 +56,8 @@ LIBS += $(BOOST_ASIO_LIBS)
 #LIBS += $(BOOST_MPI_LIBS)
 #LIBS += $(BOOST_SERIALIZATION_LIBS)
 
+LIBS += $(CURL_LIBS)
+
 # nanocube_SOURCES =    \
 # nanocube.cc
 
