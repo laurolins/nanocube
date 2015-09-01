@@ -22,36 +22,25 @@ nc_q25_c1_u4_u8             \
 nc_q25_c1_u2_u4             \
 nc_q25_c4_u2_u4             \
 nc_q25_c1_c1_u2_u4          \
+nc_q25_c1_c1_u2_u8	    \
 nc_q25_c1_c1_c1_u2_u4       \
 nc_q25_c1_c1_c1_c1_u2_u4    \
 nc_q25_c1_c1_c1_c1_c1_u2_u4 \
+nc_q25_c1_c1_u2_u8          \
 nc_q20_q20_u4_u4            \
 nc_q25_c2_u2_u4
 
+AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/src/mongoose \
+		$(OPENSSL_INCLUDES)
+AM_CXXFLAGS = -g -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS) -DHAVE_SSTREAM -DNS_ENABLE_SSL
+AM_CFLAGS = $(AM_CXXFLAGS)
 
-#
-# nc_q25_u2_u4          \
-# nc_q20_q20_u2_u4      \
-# nc_q25_q25_u2_u4      \
-# nc_q25_c1_c1_u2_u4    \
-# nc_q25_c1_c1_c1_u2_u4 \
-# nc_q25_c1_u2_u8       \
-# nc_q17_c1_c1_c1_u2_u4 \
-# nc_q25_c1_c2_u2_u4    \
-#
+AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_SYSTEM_LIBS) \
+	$(BOOST_ASIO_LDFLAGS) $(OPENSSL_LDFLAGS)
 
-AM_CPPFLAGS = -I$(top_srcdir)/src -I$(top_srcdir)/src/mongoose
-AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS) -DHAVE_SSTREAM
-AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS) $(BOOST_SYSTEM_LIBS) $(BOOST_ASIO_LDFLAGS)
+LIBS += $(BOOST_THREAD_LIBS) $(BOOST_SYSTEM_LIBS) $(BOOST_ASIO_LIBS)
+LIBS += $(OPENSSL_LIBS)
 
-#AM_CPPFLAGS = -I$(top_srcdir)/src
-#AM_CXXFLAGS = -D_GLIBCXX_USE_NANOSLEEP -D_GLIBCXX_USE_SCHED_YIELD $(BOOST_CPPFLAGS)
-#AM_LDFLAGS = $(BOOST_THREAD_LDFLAGS)
-#AM_LDFLAGS += $(BOOST_MPI_LDFLAGS)
-
-LIBS += $(BOOST_THREAD_LIBS)
-LIBS += $(BOOST_SYSTEM_LIBS)
-LIBS += $(BOOST_ASIO_LIBS)
 
 #LIBS += $(BOOST_MPI_LIBS)
 #LIBS += $(BOOST_SERIALIZATION_LIBS)
@@ -75,69 +64,6 @@ DumpFile.cc           \
 DumpFile.hh           \
 MercatorProjection.cc \
 MercatorProjection.hh
-
-# nanocube_distribute_SOURCES = \
-# nanocube-distribute.cc        \
-# NanoCubeSchema.cc             \
-# NanoCubeSchema.hh             \
-# DumpFile.cc                   \
-# DumpFile.hh                   \
-# Master.cc                     \
-# Master.hh                     \
-# NanoCubeQueryResult.cc        \
-# Query.cc                      \
-# QueryParser.cc                \
-# geometry.cc                   \
-# json.cc                       \
-# maps.cc                       \
-# mongoose/mongoose.c           \
-# vector.cc
-
-# test_words_SOURCES = \
-# Heap.cc              \
-# PartialSort.cc       \
-# test_words.cc 
-
-# nanocube_daemon_SOURCES =    \
-# nanocube-daemon.cc           
-
-# ncserve_SOURCES =     \
-# ncserve.cc            \
-# DumpFile.cc           \
-# mongoose/mongoose.c
-
-# nanocube_sliding_SOURCES = \
-# nanocube-sliding.cc        \
-# DumpFile.cc                \
-# NanoCubeSchema.cc          \
-# NanoCubeQueryResult.cc     \
-# Master.cc                  \
-# Query.cc                   \
-# QueryParser.cc             \
-# geometry.cc                \
-# json.cc                    \
-# maps.cc                    \
-# mongoose/mongoose.c        \
-# vector.cc
-
-
-
-
-#
-#ncmaster_SOURCES =    \
-#DumpFile.cc           \
-#Master.cc             \
-#NanoCubeQueryResult.cc\
-#NanoCubeSchema.cc     \
-#Query.cc              \
-#QueryParser.cc        \
-#geometry.cc           \
-#json.cc               \
-#maps.cc               \
-#mongoose/mongoose.c   \
-#ncmaster.cc           \
-#vector.cc
-#
 
 nc_SOURCES =              \
 cache.cc                  \
@@ -330,6 +256,16 @@ nc_q25_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
 nc_q25_c1_c1_u2_u4_SOURCES =\
     $(nc_SOURCES)
 
+nc_q25_c1_c1_u2_u8_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_c1_u2_u8_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25,c1,c1 \
+    -DLIST_VARIABLE_TYPES=u2,u8 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_c1_c1_u2_u8_SOURCES =\
+    $(nc_SOURCES)
+
 nc_q25_c1_c1_c1_u2_u4_LDFLAGS  = $(AM_LDFLAGS)
 nc_q25_c1_c1_c1_u2_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -D_GLIBCXX_USE_NANOSLEEP \
@@ -370,3 +306,14 @@ nc_q20_q20_u4_u4_CXXFLAGS = $(AM_CXXFLAGS) \
     -DVERSION=\"$(VERSION)\"
 nc_q20_q20_u4_u4_SOURCES =\
     $(nc_SOURCES)
+
+nc_q25_c1_c1_u2_u8_LDFLAGS  = $(AM_LDFLAGS)
+nc_q25_c1_c1_u2_u8_CXXFLAGS = $(AM_CXXFLAGS) \
+    -D_GLIBCXX_USE_NANOSLEEP \
+    -D_GLIBCXX_USE_SCHED_YIELD \
+    -DLIST_DIMENSION_NAMES=q25,c1,c1 \
+    -DLIST_VARIABLE_TYPES=u2,u8 \
+    -DVERSION=\"$(VERSION)\"
+nc_q25_c1_c1_u2_u8_SOURCES =\
+    $(nc_SOURCES)
+

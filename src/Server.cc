@@ -149,14 +149,22 @@ void Server::handle_request(Request &request) {
     }
 }
 
-void Server::init(int mongoose_threads) // blocks current thread
+void Server::init(int mongoose_threads, std::string pemfile) // blocks current thread
 {
     __server = this;
     
     mg_server *srv = mg_create_server(NULL, __mg_callback);
-    mg_set_option(srv, "num_threads", std::to_string(mongoose_threads).c_str());      // Serve current directory
-    mg_set_option(srv, "listening_port", std::to_string(port).c_str());  // Open port 8080
+    mg_set_option(srv, "num_threads", std::to_string(mongoose_threads).c_str());
+
+    if (pemfile  != ""){
+      mg_set_option(srv, "ssl_certificate", pemfile.c_str());
+    }
     
+    // Serve current directory
+    mg_set_option(srv, "listening_port", (std::to_string(port)).c_str());
+    // Open port
+
+              
     __mongoose_server = srv;
     
     mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop

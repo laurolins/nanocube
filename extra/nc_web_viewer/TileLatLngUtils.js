@@ -12,11 +12,12 @@ function tile_to_degree(p,z,flip_y){
     var zoom = z;
     var xtile = p.x+0.5;
     var ytile = p.y+0.5;
+
+    var n = Math.pow(2,z);
     if (flip_y){
         ytile = n-1-ytile;
     }
 
-    var n = Math.pow(2,z);
     var lng = xtile / n * 360.0 - 180.0;
     var lat_rad = Math.atan(sinh(Math.PI * (1 - 2 * ytile / n)));
     var lat = lat_rad * 180.0 / Math.PI;

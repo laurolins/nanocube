@@ -8,6 +8,7 @@ import os
 import time
 import struct
 import math
+import random
 
 parser = argparse.ArgumentParser(description="Viewer for .dmp files")
 parser.add_argument('-i', '--input', type=str, help='input file (if not defined stdin)', required=True)
@@ -118,10 +119,22 @@ class Config(object):
         self.format = ''.join(record_format)
         self.record_size = struct.calcsize(self.format)
 
+
         self.starting_record_pos = self.pos
         self.number_of_records = (self.input_file_size - self.starting_record_pos) / self.record_size
 
-        self.pos = self.starting_record_pos + self.record_size * args.jump
+        self.goto(0)
+        # self.pos = self.starting_record_pos + self.record_size * args.jump
+        # self.record_no = 0
+
+
+    def goto(self, record_no):
+        if record_no < 0:
+            record_no = 0
+        if record_no > self.number_of_records - self.count:
+            record_no = self.number_of_records - self.count;
+        self.record_no = record_no
+        self.pos = self.starting_record_pos + record_no * self.record_size
 
         # self.input_stream.seek(self.pos, 0)
         # buffer = self.input_stream.read(400)
@@ -147,11 +160,11 @@ class Config(object):
         #     i += 1
         return "".join(result);
 
-    def advance(self):
-        self.pos += self.record_size 
+    def move(self, n):
+        self.goto(self.record_no + n)
 
-    def rewind(self):
-        self.pos = max(self.pos - self.record_size, 0);
+    def random(self):
+        self.goto(random.randint(0,self.number_of_records-1))
 
 config = Config(args)
 
@@ -167,19 +180,35 @@ def mainloop(stdscr):
 
     while True:
 
-        curses.flushinp()
-        stdscr.clear()
+        try:
+            curses.flushinp()
+            stdscr.clear()
+            stdscr.addstr(config.next_frame());
+            # read next instruction
+        except:
+            pass
 
-        stdscr.addstr(config.next_frame());
-    
-        # read next instruction
         ch = stdscr.getch()
         # stdscr.addstr("read char\n")
     
         if ch == ord('.') or ch == 39:
-            config.advance()
+            config.move(1)
         elif ch == ord(',') or ch == 37:
-            config.rewind()
+            config.move(-1)
+        elif ch == ord('>'):
+            config.move(config.count)
+        elif ch == ord('<'):
+            config.move(-config.count)
+        elif ch == ord(']'):
+            config.move(1000)
+        elif ch == ord('['):
+            config.move(-1000)
+        elif ch == ord('r'):
+            config.random()
+        elif ch == ord('b'):
+            config.move(-config.number_of_records)
+        elif ch == ord('e'):
+            config.move(config.number_of_records)
         elif ch == ord('q'):
             break
 
