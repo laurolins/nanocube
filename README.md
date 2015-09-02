@@ -56,6 +56,7 @@ sudo apt-get install automake
 sudo apt-get install libtool
 sudo apt-get install zlib1g-dev
 sudo apt-get install libboost-all-dev
+sudo apt-get install libcurl4-openssl-dev
 ```
 
 #### Mac OS X (10.9 and 10.10)
