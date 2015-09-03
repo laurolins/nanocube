@@ -153,6 +153,10 @@ def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
                   'y':location['y']*2**location['drill'],
                   'z':location['z']+location['drill']}
 
+        if 'path' in res[0]:  #if the result is path and not x y ... (lauro...)
+            res =  [ {'x':r['path'][0], 'y':r['path'][1], 'val':r['val']} 
+                     for r in res]
+  
         #add offset
         res = [{'x':d['x']+offset['x'],
                 'y':d['y']+offset['y'],
@@ -226,8 +230,8 @@ parser.add_argument('-o',
 parser.add_argument('-p', 
                     "--port", 
                     nargs='?',
-                    default=argparse.SUPPRESS,
                     dest="port",
+                    const=8000,
                     type=int,
                     required=False, 
                     help='Start webserver')
@@ -235,7 +239,7 @@ parser.add_argument('-p',
 parser.add_argument('-w',
                     "--webdir", 
                     nargs=1,
-                    default=os.environ['NANOCUBE_SRC']+'/extra/nc_web_viewer/',
+                    default="",
                     dest="webdir",
                     type=str,
                     required=False, 
@@ -316,11 +320,7 @@ for f in schema.fields:
         config['latlonbox']['max'][f.name]= maxp
         config['div'][f.name] = SpatialVariableTemplate.copy()
         
-
-if 'port' in args:
-    if args.port == None:
-       args.port = 8000 
-
+if args.port != None:
     import SimpleHTTPServer,SocketServer,socket,tempfile,shutil,os
     
     PORT = args.port
@@ -328,6 +328,10 @@ if 'port' in args:
     httpd = SocketServer.TCPServer(("", PORT), Handler)
 
     tmpdir = tempfile.mkdtemp()
+    
+    if args.webdir == "": #default dir
+        args.webdir = os.environ['NANOCUBE_SRC']+'/extra/nc_web_viewer/'
+
     shutil.copytree(args.webdir, tmpdir+'/nc_web_viewer')
     os.chdir(tmpdir+'/nc_web_viewer')
 

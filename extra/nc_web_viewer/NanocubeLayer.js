@@ -201,7 +201,12 @@ L.NanocubeLayer.prototype.processJSON = function(json){
     }
 
     var data = json.root.children.map(function(d){
-	return { x: d.x, y: d.y, v: d.val };
+	if ('path' in d){
+	    return { x: d.path[0], y: d.path[1], v: d.val };
+	} 
+	else{
+	    return { x: d.x, y: d.y, v: d.val };
+	}
     });
 
     var minv = data.reduce(function(prev,curr){
