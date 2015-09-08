@@ -487,7 +487,7 @@ For Mac OS (Static libraries only)
 
 You must then re-run the configure script, indicating support for tcmalloc.
 
-    ../configure --prefix=$NANOCUBES_SRC LIBS=${PWD}/homebrew/lib/libtcmalloc_minimal.a
+    ../configure --prefix=$NANOCUBE_SRC LIBS=${PWD}/homebrew/lib/libtcmalloc_minimal.a
     make clean
     make -j
     make install    
