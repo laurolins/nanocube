@@ -113,6 +113,15 @@ Query.prototype.findTile = function(tile,drill) {
 Query.prototype.tseries = function(base, bucket, count) {
     var varname = this.dimension.name;
     var constraint = "";
+
+    if(base < 0){ //special crazy case ...
+        bucket += base;
+        bucket = Math.max(bucket,0); 
+        base = 0;
+    }
+
+    count = Math.max(0,count);
+    
     if (count > 1){
 	constraint = 'r(\"'+varname+'\",mt_interval_sequence('
 	    +base+','+bucket+','+count+'))';
