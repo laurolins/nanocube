@@ -43,7 +43,7 @@ public:
 // RequestHandler
 //-------------------------------------------------------------------------
 
-typedef std::function<void (Request&)> RequestHandler;
+using RequestHandler = std::function<void (Request&)>;
 
 //-------------------------------------------------------------------------
 // Server

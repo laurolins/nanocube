@@ -12,9 +12,7 @@
 #include <sstream>
 #include <string>
 
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
-
+#include "tokenizer.hh"
 
 //-------------------------------------------------------------------------
 // Request Impl.
@@ -23,7 +21,6 @@
 Request::Request(mg_connection *conn, const std::vector<std::string> &params):
     conn(conn), response_size(0), params(params)
 {}
-
 
 static std::string _content_type[] {
     std::string("application/json")         /* 0 */,
@@ -94,22 +91,33 @@ void* Server::mg_callback(mg_event event, mg_connection *conn)
 
         std::string uri(request_info->uri);
 
+        // std::cout << "---------------------------------------" << std::endl;
+
         // tokenize on slahses: first should be the address,
         // second the requested function name, and from
         // third on parameters to the functions
+        tokenizer::Tokenizer tok(uri,'/','/');
+        tok.update();
         std::vector<std::string> tokens;
-        boost::split(tokens, uri, boost::is_any_of("/"));
+        tokens.reserve(tok.tokens());
+        for (auto i=0;i<tok.tokens();++i) {
+            // std::cout << i << ":         " << "[" << tok.asStr(i) << "]" << std::endl;
+            tokens.push_back(tok.asStr(i));
+        }
+
+        std::cout << "URI:       " << uri << std::endl;
+        std::cout << "no tokens: " << tok.tokens() << std::endl;
 
         Request request(conn, tokens);
 
-        if (tokens.size() == 0) {
+        if (tok.tokens() == 0) {
             std::cout << "Request URI: " << uri << std::endl;
             std::stringstream ss;
             ss << "bad URL: " << uri;
             request.respondJson(ss.str());
             return  (void*) ""; // mark as processed
         }
-        else if (tokens.size() == 1) {
+        else if (tok.tokens() == 1) {
             std::cout << "Request URI: " << uri << std::endl;
             std::stringstream ss;
             ss << "no handler name was provided on " << uri;
@@ -117,8 +125,9 @@ void* Server::mg_callback(mg_event event, mg_connection *conn)
             return (void*) ""; // mark as processed
         }
 
+        // std::cout << "tokens[1]: " << tokens[1] << std::endl;
         std::string handler_name = tokens[1];
-        //std::cout << "Searching handler: " << handler_name << std::endl;
+        // std::cout << "Searching handler: " << handler_name << std::endl;
 
         if (handlers.find(handler_name) == handlers.end()) {
             std::cout << "Request URI: " << uri << std::endl;

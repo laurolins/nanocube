@@ -22,27 +22,6 @@
 #include <string>
 #include <fstream>
 
-// boost pre-processor
-#include <boost/preprocessor/repetition/repeat_from_to.hpp>
-
-// boost::mpl Metaprogramming Template
-#include <boost/mpl/if.hpp>
-#include <boost/mpl/at.hpp>
-#include <boost/mpl/push_back.hpp>
-#include <boost/mpl/push_front.hpp>
-#include <boost/mpl/reverse.hpp>
-#include <boost/mpl/vector.hpp>
-#include <boost/mpl/size.hpp>
-#include <boost/mpl/begin_end.hpp>
-#include <boost/mpl/back.hpp>
-#include <boost/mpl/front.hpp>
-#include <boost/type_traits/is_same.hpp>
-
-#include <boost/tokenizer.hpp>
-
-// some string manipulation
-#include <boost/algorithm/string.hpp>
-
 #include <Server.hh>
 Server *g_server;
 
