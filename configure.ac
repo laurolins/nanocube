@@ -19,6 +19,7 @@ if test "$host_os" = "Darwin"; then
    AS_VAR_SET([cpp_compiler],[clang++])
    CXX="clang++ "
    CXXFLAGS+=" -stdlib=libc++ -mmacosx-version-min=10.7"
+   CFLAGS+=" -mmacosx-version-min=10.7"
 else
    AS_VAR_SET([cpp_compiler],[])
 fi
@@ -39,7 +40,7 @@ AX_CXX_COMPILE_STDCXX_11(noext)
 AX_CHECK_ZLIB
 
 # Check OpenSSL
-AX_CHECK_OPENSSL
+AX_CHECK_OPENSSL([CXXFLAGS+=" -DNS_ENABLE_SSL"])
 
 #check boost
 BOOST_REQUIRE([1.48])
@@ -47,7 +48,7 @@ BOOST_THREADS
 BOOST_SYSTEM
 BOOST_ASIO
 
-AC_CHECK_CURL(7.35)
+AC_CHECK_CURL(7)
 
 TS_CHECK_TCMALLOC
 
