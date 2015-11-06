@@ -59,6 +59,30 @@ sudo apt-get install libboost-all-dev
 sudo apt-get install libcurl4-openssl-dev
 ```
 
+#### Linux (CentOS 6)
+
+Install updated tools from [Software Collections]{https://www.softwarecollections.org/en/}
+
+```
+sudo yum install https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/epel-6-x86_64/download/rhscl-devtoolset-3-epel-6-x86_64.noarch.rpm
+sudo yum install https://www.softwarecollections.org/en/scls/denisarnaud/boost157/epel-6-x86_64/download/denisarnaud-boost157-epel-6-x86_64.noarch.rpm
+sudo yum install https://www.softwarecollections.org/en/scls/praiskup/autotools/epel-6-x86_64/download/praiskup-autotools-epel-6-x86_64.noarch.rpm
+
+sudo yum install curl-devel
+sudo yum install zlib-devel
+sudo yum install autotools-latest
+sudo yum install boost157-devel
+sudo yum install devtoolset-3-gcc-c++
+```
+
+Then switch to the software collection environment for the new tools and libraries
+
+```
+scl enable devtoolset-3 autotools-latest bash
+export BOOST_ROOT=/usr/include/boost157
+export LDFLAGS=/usr/lib64/boost157
+```
+
 #### Mac OS X (10.9 and 10.10)
 
 Example installation on Mac OS 10.9 Mavericks and 10.10 Yosemite with a local homebrew:
