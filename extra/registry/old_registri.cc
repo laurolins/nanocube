@@ -1,192 +1,32 @@
 #include <iostream>
-#include <thread>
-#include <cassert>
-
-// nanomsg for tcp communication
-#include <nanomsg/nn.h>
-#include <nanomsg/reqrep.h>
-
-// characters
-#include "utf8.hh"
-
-using Timestamp = std::time_t;
-using Alias     = std::string;
-using Key       = std::string;
-using Value     = std::string;
-
-//------------------------------------------------------------------------------
-// Status
-//------------------------------------------------------------------------------
-
-enum Status {
-    OK=0,
-    ALIAS_ALREADY_EXISTS=1,
-    ALIAS_DOESNT_EXIST=2
-};
-
-static const char status_messages[][] {
-    "OK",
-    "ALIAS_ALREADY_EXISTS",
-    "ALIAS_DOESNT_EXIST"
-};
-
-//------------------------------------------------------------------------------
-// Entry
-//------------------------------------------------------------------------------
-
-template<typename T>
-struct Expected {
-
-    Expected() = default;
-    Expected(T object): _object(object), _statis(OK) {}
-    Expected(Status not_ok_status): _status(status) {}
-
-    Status status       () const { return _status; }
-    T      get          ()       { assert(status() == OK); return _object; }
-    T      operator    *()       { return get(); }
-           operator bool() const { return _status == OK; }
-
-    T      _object;
-    Status _status;
-};
-
-//------------------------------------------------------------------------------
-// Entry
-//------------------------------------------------------------------------------
-
-struct Item {
-
-    Alias       _alias;
-    Timestamp   _insertion_time;
-    Timestamp   _removal_time;
-    std::unordered_map<Key, Value> _dictionary;
-};
-
-
-//------------------------------------------------------------------------------
-// Collection
-//------------------------------------------------------------------------------
-
-struct Collection {
-
-    Expected<Item*> insert(const Alias& alias);
-
-    Status          remove(const Alias& alias);
-
-    Item*           get(const Alias& alias);
-    
-    // doesn't need to be very efficient
-    std::map<Alias, std::unique_ptr<Item>> _service_map;
-
-};
-
-Collection& collection();
-
-//------------------------------------------------------------------------------
-// Options
-//------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-// worker thread to process requests in "parallel"
-void worker(int worker_id)
-{
-    auto socket   = nn_socket(AF_SP, NN_REP); 
-    assert(socket>= 0);
-    auto endpoint = nn_connect(socket, "inproc://test"); 
-    assert(endpoint >= 0);
-
-    char buf [1024*1024]; // 1M per thread (don't expect messages larger than 1M)
-
-    char msg[] = "[n] pong";
-    msg[1] = (int) '0' + worker_id;
-
-    while (1) {
-        auto received_bytes = nn_recv (socket, buf, sizeof(buf) - 1, 0);
-        assert(received_bytes >= 0);
-
-        std::cerr << "[" << worker_id << "] received request '" << buf << "'" << std::endl; 
-
-        auto sent_bytes = nn_send(socket, msg, 8, 0);
-        assert(sent_bytes == 8);
-    }
-    nn_shutdown(socket,endpoint);
-}
-
-
-
-
-
-// redirect requests to worker threads
-int main() {
-
-    auto frontend_socket   = nn_socket(AF_SP_RAW, NN_REP);  
-    assert(frontend_socket >= 0);
-    auto frontend_endpoint = nn_bind(frontend_socket, "tcp://127.0.0.1:7777"); 
-    assert(frontend_endpoint >= 0);
-
-    auto backend_socket    = nn_socket(AF_SP_RAW, NN_REQ);
-    assert(backend_socket >= 0);
-    auto backend_endpoint  = nn_bind(backend_socket, "inproc://test");
-    assert(backend_endpoint >= 0);
-
-    // start three worker threads
-    std::thread t1(worker, 1);
-    std::thread t2(worker, 2);
-    std::thread t3(worker, 3);
-
-    auto exit_status = nn_device(frontend_socket, backend_socket);
-
-    nn_shutdown(frontend_socket,frontend_endpoint);
-    nn_shutdown(backend_socket,backend_endpoint);
-
-    return 0;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#include <random>
+#include <chrono>
+#include <deque>
+#include <sstream>
+#include <iomanip>
+
+#include <set>
+#include <stdio.h>
+#include <string.h>
+#include <signal.h>
+#include <sys/time.h>
+
+#include <cmath>
+#include <cstdlib>
+#include <ctime>
+#include <cstdio>
+
+#include <unordered_map>
+#include <unordered_set>
+
+#include <string>
+#include <fstream>
+
+#include <Server.hh>
+Server *g_server;
+
+#include <unordered_map>
+#include <functional>
 
 //-----------------------------------------------------------------------------
 // Split routines
