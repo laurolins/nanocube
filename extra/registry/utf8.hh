@@ -11,7 +11,7 @@ namespace utf8 {
     //
     using CodePoint = int32_t;
 
-    static const CodePoint DONE    = -1;
+    static const CodePoint END     = -1;
     static const CodePoint PROBLEM = -2;
 
     struct Next {
@@ -19,11 +19,11 @@ namespace utf8 {
         Next() = default;
 
         Next(uint32_t code_point, const char* next):
-            _code_point((CodePoint)code_point), _next_pos(next)
+            _code_point((CodePoint)code_point), _next(next)
         {}
 
         Next(CodePoint code_point, const char* next):
-            _code_point(code_point), _next_pos(next)
+            _code_point(code_point), _next(next)
         {}
 
         bool normal()  const { return _code_point >= 0; }
@@ -38,6 +38,8 @@ namespace utf8 {
 
         CodePoint   code_point() const { return _code_point; }
         
+        CodePoint   operator*() const { return _code_point; }
+
     public:
         // code point of a next call
         CodePoint   _code_point { PROBLEM };

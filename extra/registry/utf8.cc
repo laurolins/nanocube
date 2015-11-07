@@ -12,7 +12,7 @@ namespace utf8 {
     // 16 	U+0800 	U+FFFF 	 3 	1110xxxx 	10xxxxxx 	10xxxxxx
     // 21 	U+10000 U+1FFFFF 4 	11110xxx 	10xxxxxx 	10xxxxxx 	10xxxxxx
     //
-    Next next(const char* it, const char* end)
+    Next next(const char* it, const char* end)  noexcept
     {
         static const uint32_t MASK_R[]  = { 0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff }; 
         static const uint32_t MASK_L[]  = { 0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf8, 0xfc, 0xfe, 0xff }; 
@@ -23,7 +23,7 @@ namespace utf8 {
                 return Next(c1, it + 1);
             }
             else { // multibyte
-                auto bytes_available = std::distance(it,end);
+                auto bytes_available = end - it;
                 if( (c1 & MASK_L[3]) == 0xc0 && bytes_available >= 2) {
                     return Next(
                         ( (c1      & MASK_R[5]) << 6 ) + 
@@ -52,7 +52,7 @@ namespace utf8 {
             }
         }
         else {
-            return Next(DONE, end);
+            return Next(END, end);
         }
     }
 
