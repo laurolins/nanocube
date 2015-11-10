@@ -1,69 +1,30 @@
-# Nanocube Registry
+# Registry
 
-This process allows nanocube engine processes to register their URLs
-and make it easier for nanocube clients to connect to their engines of
-interest.
-
-
-# Message format
-
-An UTF-8 line based format of key-value pairs
-
-
-
-<service>|<params>
-
-
-
-
-Grammar:
-
-
-
-    DOCUMENT  = [KEYVALUE (NEWLINE KEYVALUE)*]
-    SEPARATOR = '\n'
-    CONTENT   = 
-
-Requests
-
-    subscribe|<alias>|[<key>:<value>(;<key>:<value>)*]
-    unsubscribe|<alias>|[<key>:<value>(;<key>:<value>)*]
-    info|<alias>|<key>
-    
-Response
-
-    
-    
-
-
-
-
-
-In json that is what we would have
-
-{
-    "service": "online",
-    "user": "llins",
-    "url": "http://nano1:854",
-    "alias": "latency-august",
-    "version": "0.1.4",
-    "description":"This is the August dataset of nanocube bla bla bla\nThis is very interesting..."
-    }
-
-
-
-
-
-
-
-
+A simple dictionary registry using nanomsg for communication.
 
 ## API
 
-### online '|' <hostname> '|' <port> '|' <alias> '|' <version> ['|' <description>]
+### insert '|' <alias> ( '|' <key> '|' <value> )*
 
-Registers a new server.
+Registers a new dictionary into the registry.
 
-### lookup/<alias>
+Results in `0|OK` in case of success and in `<error_code>|<error_message>` in case of error.
 
-Retrieve from the alias the host and port of the nanocube server
+### get 
+
+Retrieve all aliases and corresponding dictionaries from the registry
+
+Results in `0(|<alias_1>|<key_1_1>|<value_1_1>|...|<key_1_n>|<value_1_n><new_line>)*` in case of success and in `<error_code>|<error_message>` in case of error.
+
+### get '|' <alias>
+
+Retrieve alias dictionary
+
+Results in `0|<alias_1>|<key_1_1>|<value_1_1>|...|<key_1_n>|<value_1_n><new_line>` in case of success and in `<error_code>|<error_message>` in case of error.
+
+### remove '|' <alias>
+
+Removes dictionary from registry
+
+Results in `0|OK` in case of success and in `<error_code>|<error_message>` in case of error.
+
