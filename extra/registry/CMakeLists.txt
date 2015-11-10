@@ -21,7 +21,7 @@ endif()
 
 if(APPLE)
    set(CMAKE_CXX_FLAGS "-std=c++11 -stdlib=libc++" CACHE STRING "compile flags" FORCE)
-   set(CMAKE_EXE_LINKER_FLAGS "-stdlib=libc++" CACHE STRING "compile flags" FORCE)
+   set(CMAKE_LINKER_FLAGS "-stdlib=libc++" CACHE STRING "compile flags" FORCE)
    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "Deployment target for OSX" FORCE)
 endif(APPLE)
 
@@ -42,6 +42,11 @@ message("NANOMSG_LIBRARY:     ${NANOMSG_LIBRARY}")
 add_executable(nanocube-registry registry.cc utf8.cc)
 
 target_link_libraries(nanocube-registry PUBLIC ${NANOMSG_LIBRARY})
+
+if(UNIX)
+    target_link_libraries(nanocube-registry PUBLIC -lpthread)
+endif(UNIX)
+
 
 install_targets(/bin nanocube-registry)
 
