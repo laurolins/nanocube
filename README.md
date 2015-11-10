@@ -61,7 +61,7 @@ sudo apt-get install libcurl4-openssl-dev
 
 #### Linux (CentOS 6)
 
-Install updated tools from [Software Collections]{https://www.softwarecollections.org/en/}
+Install updated tools from [Software Collections](https://www.softwarecollections.org/en/)
 
 ```
 sudo yum install https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/epel-6-x86_64/download/rhscl-devtoolset-3-epel-6-x86_64.noarch.rpm
