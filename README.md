@@ -73,6 +73,7 @@ sudo yum install zlib-devel
 sudo yum install autotools-latest
 sudo yum install boost157-devel
 sudo yum install devtoolset-3-gcc-c++
+sudo yum updateinfo
 ```
 
 Then switch to the software collection environment for the new tools and libraries
@@ -80,7 +81,7 @@ Then switch to the software collection environment for the new tools and librari
 ```
 scl enable devtoolset-3 autotools-latest bash
 export BOOST_ROOT=/usr/include/boost157
-export LDFLAGS=/usr/lib64/boost157
+export LDFLAGS=-L/usr/lib64/boost157
 ```
 
 #### Mac OS X (10.9 and 10.10)
