@@ -576,6 +576,10 @@ int main(int argc, char** argv) {
     
     auto frontend_socket   = nn_socket(AF_SP_RAW, NN_REP);  
     assert(frontend_socket >= 0);
+
+    int option = 0;
+    nn_setsockopt(frontend_socket,NN_SOL_SOCKET,NN_IPV4ONLY,&option,sizeof(option));
+
     auto frontend_endpoint = nn_bind(frontend_socket, server.c_str()); 
     assert(frontend_endpoint >= 0);
 
@@ -589,7 +593,9 @@ int main(int argc, char** argv) {
     std::thread t2(worker, 2);
     std::thread t3(worker, 3);
 
-    std::cerr << "Registry is up on port " << port << std::endl;
+    std::string version = "0.0.1-2015.11.10";
+    std::cerr << "nanocube-registry v." << version << std::endl;
+    std::cerr << "Listening on port " << port << "..." << std::endl;
     
     auto exit_status = nn_device(frontend_socket, backend_socket);
 
