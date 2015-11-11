@@ -571,14 +571,11 @@ int main(int argc, char** argv) {
     }
 
     std::stringstream ss;
-    ss << "tcp://127.0.0.1:" << port;
+    ss << "tcp://*:" << port;
     auto server = ss.str();
     
     auto frontend_socket   = nn_socket(AF_SP_RAW, NN_REP);  
     assert(frontend_socket >= 0);
-
-    int option = 0;
-    nn_setsockopt(frontend_socket,NN_SOL_SOCKET,NN_IPV4ONLY,&option,sizeof(option));
 
     auto frontend_endpoint = nn_bind(frontend_socket, server.c_str()); 
     assert(frontend_endpoint >= 0);
