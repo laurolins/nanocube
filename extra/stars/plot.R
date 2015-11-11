@@ -497,16 +497,12 @@ time.range = range(t$date)
 xticks = seq(time.range[1],time.range[2],(time.range[2]-time.range[1])/8)
 yticks = seq(0,500,100)
 
-# pdf("nanocube-start.pdf",width=6,height=4,pointsize=10)
+png("nanocube-stars-evolution-2015-11-11.png",width=900,height=600,pointsize=20)
 plot(0, type="n", main="github nanocube stars", axes=F, xlab="time",ylab="number of stars", xlim=time.range,ylim=range(yticks))
-axis(1, xticks, format(xticks,"%b %d, %Y"), cex.axis=.7)
-axis(2, yticks, yticks, cex.axis=.7)
-abline(h=seq(0,500,100),col=gray(0.7),lty=2)
+axis(1, xticks, format(xticks,"%b %d, %Y"), cex.axis=.6)
+axis(2, yticks, yticks, cex.axis=.7, las=2)
+abline(h=seq(0,500,50),col=gray(0.7),lty=2)
 abline(v=xticks,col=gray(0.7),lty=2)
 lines(count ~ date, t, type="l" , lwd=3, col="blue")
-# dev.off()
-
-
-
-
+dev.off()
 

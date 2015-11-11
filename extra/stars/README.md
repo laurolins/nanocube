@@ -24,4 +24,7 @@ cat x1 x2 x3 x4 x5 x6 > all
 #
 ```
 
+Here is a plot up to 2015-11-11:
+
+![image](./nanocube-stars-evolution-2015-11-11.png?raw=true)
 
