@@ -67,13 +67,13 @@ Install updated tools from [Software Collections](https://www.softwarecollection
 sudo yum install https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/epel-6-x86_64/download/rhscl-devtoolset-3-epel-6-x86_64.noarch.rpm
 sudo yum install https://www.softwarecollections.org/en/scls/denisarnaud/boost157/epel-6-x86_64/download/denisarnaud-boost157-epel-6-x86_64.noarch.rpm
 sudo yum install https://www.softwarecollections.org/en/scls/praiskup/autotools/epel-6-x86_64/download/praiskup-autotools-epel-6-x86_64.noarch.rpm
+sudo yum updateinfo
 
 sudo yum install curl-devel
 sudo yum install zlib-devel
 sudo yum install autotools-latest
 sudo yum install boost157-devel
 sudo yum install devtoolset-3-gcc-c++
-sudo yum updateinfo
 ```
 
 Then switch to the software collection environment for the new tools and libraries
