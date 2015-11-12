@@ -113,7 +113,7 @@ export BOOST_ROOT=${PWD}/homebrew
 
 ## Compiling the latest release
 
-To compile the nanocubes toolkit, run the following commands on your linux/mac system.  You can replace `3.2.1` with other valid release numbers, e.g. 3.2, 3.1, 3.0.1, etc. but in those cases please follow the instructions in the README.md file for those releases as they will differ slightly.
+To compile the nanocubes toolkit, run the following commands on your linux/mac system.  You can `https://github.com/laurolins/nanocube.git` or replace `3.2.1` with other valid release numbers, e.g. 3.2, 3.1, 3.0.1, etc. but please follow the instructions in the README.md file for the older releases as they will differ slightly.
 
 ```
 wget https://github.com/laurolins/nanocube/archive/3.2.1.zip
