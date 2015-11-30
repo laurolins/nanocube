@@ -35,6 +35,7 @@ class NanocubeInput:
         self.latcol=args.latcol.split(self.sep)
         self.loncol=args.loncol.split(self.sep)
 
+        self.timebytes = args.timebytes
         self.countbytes = args.countbytes
         self.catbytes = args.catbytes
         
@@ -205,17 +206,12 @@ class NanocubeInput:
                 raise Exception("invalid byte size")
 
         for i,d in enumerate(self.timecol):
-            columns += [d]
-            data[d] = data[d].astype('<u2');
+            columns += [d]            
+            data[d] = data[d].astype('<u%d'%(self.timebytes));
 
         columns += [self.countcol]
 
-        if self.countbytes == 4:
-            data[self.countcol] = data[self.countcol].astype('<u4')
-        elif self.countbytes == 8:
-            data[self.countcol] = data[self.countcol].astype('<u8')
-        else:
-            raise Exception("invalid count size")
+        data[self.countcol] = data[self.countcol].astype('<u%d'%(self.countbytes))
 
         data = data[columns] #permute
 
@@ -344,6 +340,9 @@ class NanocubeInput:
             h += "metadata: tbin %s_%s_%ds\n"%(self.offset.date(),
                                                self.offset.time(),
                                                self.timebinsize.astype(np.int))
+        if self.timebytes == 4:
+            h += 'field: %s nc_dim_time_4\n'%(d.replace(' ',"_"))
+        else:
             h += 'field: %s nc_dim_time_2\n'%(d.replace(' ',"_"))
 
 
@@ -376,6 +375,7 @@ def main(argv):
     parser.add_argument('--chunksize', type=int, default=50000)
     parser.add_argument('--countbytes', type=int, default=4, required=False)
     parser.add_argument('--catbytes', type=int, default=1, required=False)
+    parser.add_argument('--timebytes', type=int, default=2, required=False)
     parser.add_argument('--name', type=str, default='')
 
     args = parser.parse_args()
