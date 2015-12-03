@@ -164,7 +164,7 @@ class NanocubeInput:
             data[self.countcol]=1
 
         #get NaN's for errors
-        data[self.countcol] = data[self.countcol].convert_objects(convert_numeric=True)
+        data[self.countcol] = pd.to_numeric(data[self.countcol]);
         
         #drop bad data
         data = data.dropna()
@@ -223,8 +223,8 @@ class NanocubeInput:
             lat = self.latcol[i]
             lon = self.loncol[i]
             lvl = self.levels
-            data[lon] = data[lon].convert_objects(convert_numeric=True)
-            data[lat] = data[lat].convert_objects(convert_numeric=True)
+            data[lon] = pd.to_numeric(data[lon])
+            data[lat] = pd.to_numeric(data[lat])
             data = data.dropna()
 
             data = data[data[lon] > -180]
@@ -259,7 +259,7 @@ class NanocubeInput:
                 data[d] = pd.to_datetime(data[d],infer_datetime_format=True)
 
             #if the strings are crazy coerce will fix it
-            data[d] = pd.to_datetime(data[d],coerce=True)            
+            data[d] = pd.to_datetime(data[d],errors='coerce')            
             
             
         #drop NaT
@@ -274,7 +274,7 @@ class NanocubeInput:
         for i,d in enumerate(self.timecol):
             data[d] -= self.offset
             data[d] = data[d] / self.timebinsize
-        return data.sort(self.timecol)
+        return data.sort_values(by=self.timecol)
 
     def processCat(self,data):
         for i,c in enumerate(self.catcol):
