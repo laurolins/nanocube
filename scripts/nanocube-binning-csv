@@ -10,7 +10,8 @@ class NanocubeInput:
     def __init__(self, args):
         self.field=[]
         self.valname={}
-
+        self.catbins={}
+        
         self.minlatlon={}
         self.maxlatlon={}
 
@@ -43,6 +44,7 @@ class NanocubeInput:
             self.catcol = args.catcol.split(self.sep)
         except:
             self.catcol = []
+
         try:
             self.timecol = args.timecol.split(self.sep)
         except:
@@ -80,14 +82,62 @@ class NanocubeInput:
         self.datefmt=args.datefmt
         self.levels = args.levels
         self.chunksize = args.chunksize
-
+        self.tz = args.tz
+        
         for s in self.spname:
             self.minlatlon[s] = [float("inf"),float("inf")]
             self.maxlatlon[s] = [float("-inf"),float("-inf")]
 
+        try:
+            ppcat = args.preprocesscat.split(self.sep)
+            self.preprocessCat(args.InputFile,ppcat,self.chunksize)
+        except:
+            pass
+            
+        try:
+            bincat = args.bincat.split(self.sep)
+            nbins = args.nbins
+            self.binCat(bincat,nbins)
+        except:
+            pass
+        
         #Read the csv file
         self.readcsv(args.InputFile,self.chunksize)
 
+    def preprocessCat(self,files,cols,csize=20000,nbins=None):
+        for f in files:
+            comp = None
+            if f.split('.')[-1] == 'gz':
+                comp = 'gzip'
+
+            if f == '-': ### cannot preprocess
+                return
+
+            coi = cols
+            reader = pd.read_csv(f,chunksize=csize,
+                                 error_bad_lines=False,sep=self.sep,
+                                 compression=comp,names=self.header,
+                                 usecols=coi)
+
+            datarange = {}
+            for i,data in enumerate(reader):
+                data = data[coi].dropna()
+                self.processCat(data)
+                
+    def binCat(self,cols,nbins=10):
+        # compute the bins
+        for c in cols:
+            f = map(lambda x: float(x),self.valname[c].keys())
+            s = pd.Series(f)
+            self.catbins[c]=s.quantile(np.linspace(0,1.0,nbins+1)).tolist()
+
+            self.valname[c]={}
+            for i,v in enumerate(self.catbins[c]):
+                if i==0:
+                    continue
+                k = '%5.3f-%5.3f'%(self.catbins[c][i-1], v)
+                self.valname[c][k] = i-1;
+                
 
     def readcsv(self,files,csize=20000):
         coi = self.timecol+self.catcol+self.latcol+self.loncol
@@ -216,8 +266,9 @@ class NanocubeInput:
         data = data[columns] #permute
 
         rec = data.to_records(index=False)
-        rec.tofile(sys.stdout)
-
+        #rec.tofile(sys.stdout)
+        print rec
+        
     def processLatLon(self,data):
         for i,spname in enumerate(self.spname):
             lat = self.latcol[i]
@@ -259,8 +310,10 @@ class NanocubeInput:
                 data[d] = pd.to_datetime(data[d],infer_datetime_format=True)
 
             #if the strings are crazy coerce will fix it
-            data[d] = pd.to_datetime(data[d],errors='coerce')            
-            
+            didx = pd.to_datetime(data[d],errors='coerce')
+            didx = pd.DatetimeIndex(didx).tz_localize('US/Eastern')
+            didx = didx.tz_convert('UTC').tz_localize(None)
+            data[d]=didx
             
         #drop NaT
         data=data.dropna()
@@ -269,7 +322,9 @@ class NanocubeInput:
             year = data[self.timecol].min().min().year
             month = data[self.timecol].min().min().month
             self.offset = datetime.datetime(year=year,month=month,day=1)
-
+            #,
+            #                                tzinfo=pytz.timezone(self.tz))
+            
         data = data[data[d] >= self.offset] #Avoid negative time
         for i,d in enumerate(self.timecol):
             data[d] -= self.offset
@@ -281,6 +336,17 @@ class NanocubeInput:
             #fix the spaces
             data[c] = data[c].apply(lambda x : str(x).replace(' ','_'))
 
+            #binning
+            if c in self.catbins:
+                def lessThan(x,quantiles):
+                    for i,v in enumerate(quantiles):
+                        if float(x) <= v:
+                            return i;
+                        
+                data[c] = data[c].apply(lambda x :lessThan(x,self.catbins[c]))
+                continue #skip the no binning part
+
+            #no binning
             if c not in self.valname:
                 self.valname[c] = {}
             labels = np.unique(data[c])
@@ -377,6 +443,10 @@ def main(argv):
     parser.add_argument('--catbytes', type=int, default=1, required=False)
     parser.add_argument('--timebytes', type=int, default=2, required=False)
     parser.add_argument('--name', type=str, default='')
+    parser.add_argument('--tz', type=str, default='UTC')
+    parser.add_argument('--preprocesscat', type=str,default=None)
+    parser.add_argument('--bincat', type=str,default=None)
+    parser.add_argument('--nbins', type=int,default=10)
 
     args = parser.parse_args()
 
