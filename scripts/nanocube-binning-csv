@@ -266,8 +266,7 @@ class NanocubeInput:
         data = data[columns] #permute
 
         rec = data.to_records(index=False)
-        #rec.tofile(sys.stdout)
-        print rec
+        rec.tofile(sys.stdout)
         
     def processLatLon(self,data):
         for i,spname in enumerate(self.spname):
