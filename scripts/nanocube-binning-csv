@@ -310,7 +310,7 @@ class NanocubeInput:
 
             #if the strings are crazy coerce will fix it
             didx = pd.to_datetime(data[d],errors='coerce')
-            didx = pd.DatetimeIndex(didx).tz_localize('US/Eastern')
+            didx = pd.DatetimeIndex(didx).tz_localize(self.tz,ambiguous='NaT')
             didx = didx.tz_convert('UTC').tz_localize(None)
             data[d]=didx
             
