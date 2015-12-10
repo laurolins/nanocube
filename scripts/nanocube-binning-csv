@@ -338,7 +338,7 @@ class NanocubeInput:
             #binning
             if c in self.catbins:
                 def lessThan(x,quantiles):
-                    for i,v in enumerate(quantiles):
+                    for i,v in enumerate(quantiles[1:]):
                         if float(x) <= v:
                             return i;
                         
