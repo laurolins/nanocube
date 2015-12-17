@@ -323,7 +323,9 @@ class NanocubeInput:
             self.offset = datetime.datetime(year=year,month=month,day=1)
             #,
             #                                tzinfo=pytz.timezone(self.tz))
-            
+        
+        
+        self.offset = pd.to_datetime(self.offset)    
         data = data[data[d] >= self.offset] #Avoid negative time
         for i,d in enumerate(self.timecol):
             data[d] -= self.offset
