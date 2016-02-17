@@ -1,0 +1,74 @@
+{
+    "nanocube":{
+        "taxi": {"url": "http://localhost:12345"}
+    },
+    
+    "widget":{
+        "src":{
+            "nanocube":{
+                "taxi":"src"
+            },            
+            "div":{
+                "float":"left",
+                "width": "50%",
+                "height": "100%",
+                "z-index": 0,
+                "coarse_offset":0,
+                "tilesurl": "http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png",
+                "viewbox": [[40.496044,-74.255735],[40.915256,-73.700272]]
+            }
+        },
+        "dst":{
+            "nanocube":{
+                "taxi":"dst"
+            },            
+            "div":{
+                "width": "50%",
+                "height": "100%",
+                "z-index": 0,
+                "coarse_offset":0,
+                "tilesurl": "http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png",
+                "viewbox": [[40.496044,-74.255735],[40.915256,-73.700272]]
+            }
+        },
+        "total_amount":{
+            "div":{
+                "opacity": 0.8, 
+                "top": "5em", 
+                "height": "15em", 
+                "width": "25em",
+                "margin-left": "20ch",
+                "z-index": 1, 
+                "position": "absolute", 
+                "background-color": "#555", 
+                "right": "1ch",
+                "logaxis": "true"
+            }
+        },
+
+        "tpep_pickup_datetime":{
+            "div":{
+                "opacity": 0.8, 
+                "bottom": "1em", 
+                "height": "12em", 
+                "width": "70%", 
+                "z-index": 1, 
+                "position": "absolute", 
+                "background-color": "#555", 
+                "left": "1ch"
+            }
+        },
+
+        "expr":{
+            "div":{
+                "top": "2em",
+                "right": "1ch",
+                "position": "absolute",
+                "padding": "0.5em",
+                "opacity": 0.8, 
+                "background-color": "#555",
+                "z-index":1
+            }
+        }
+    }
+}
