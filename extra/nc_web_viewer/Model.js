@@ -835,7 +835,7 @@ Model.prototype.updateInfo = function(){
         var vinfostr = spvar.heatmap.viewInfo();
 
         $('#info').html('['+vinfostr+']'+
-                        '<span style="display:inline-block; width: 20px;"></span>' +
+                        '<span style="display:inline-block; width: 100px;"></span>' +
                         startdate + ' - '+
                         enddate + ' '+ ' Total: ' + countstr) ;
     });
