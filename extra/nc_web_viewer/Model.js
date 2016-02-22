@@ -1,3 +1,5 @@
+/*global $ d3 L colorbrewer */
+
 var MAXCACHE=150;
 var hourbSizes = [1,12,24,7*24];
 var colors = colorbrewer.Set1[9];
@@ -479,12 +481,16 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#heatmap-rad-btn-dec").on('click', function(){
 	heatmap.coarselevels = Math.max(heatmap.coarselevels-1,0);
-	return heatmap.redraw();
+        heatmap.redraw();
+        that.updateInfo();
+        return;
     });
 
     $("#heatmap-rad-btn-inc").on('click', function(){
 	heatmap.coarselevels = Math.min(heatmap.coarselevels+1,8);
-	return heatmap.redraw();
+	heatmap.redraw();
+        that.updateInfo();
+        return;
     });
 
     $("#heatmap-op-btn-dec").on('click', function(){
@@ -646,11 +652,13 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
 	    //Coarsening
 	case 44: //','
 	    heatmap.coarselevels = Math.max(0,heatmap.coarselevels-1);
-	    return heatmap.redraw();
+            heatmap.redraw();
+            that.updateInfo();
 	    break;
 	case 46: //'.'
 	    heatmap.coarselevels = Math.min(8,heatmap.coarselevels+1);
-	    return heatmap.redraw();
+            heatmap.redraw();
+            that.updateInfo();
 	    break;
 
 	    //Opacity
@@ -819,8 +827,17 @@ Model.prototype.updateInfo = function(){
 	var enddate = new Date(startdate);
 	enddate.setTime(enddate.getTime()+dhours*3600*1000);
 
-	$('#info').text(startdate + ' - '+ enddate + ' '
-			+ ' Total: ' + countstr);
+
+        //Spatial
+        var spvarname = Object.keys(that.spatial_vars)[0];
+	var spvar  = that.spatial_vars[spvarname];
+
+        var vinfostr = spvar.heatmap.viewInfo();
+
+        $('#info').html('['+vinfostr+']'+
+                        '<span style="display:inline-block; width: 20px;"></span>' +
+                        startdate + ' - '+
+                        enddate + ' '+ ' Total: ' + countstr) ;
     });
 };
 

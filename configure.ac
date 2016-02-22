@@ -17,9 +17,9 @@ AC_PROG_LIBTOOL
 host_os=`uname`
 if test "$host_os" = "Darwin"; then
    AS_VAR_SET([cpp_compiler],[clang++])
-   CXX="clang++ "
-   CXXFLAGS+=" -stdlib=libc++ -mmacosx-version-min=10.7"
-   CFLAGS+=" -mmacosx-version-min=10.7"
+   #CXX="clang++ "
+   #CXXFLAGS+=" -stdlib=libc++ -mmacosx-version-min=10.7"
+   #CFLAGS+=" -mmacosx-version-min=10.7"
 else
    AS_VAR_SET([cpp_compiler],[])
 fi

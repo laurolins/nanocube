@@ -25,6 +25,26 @@ L.NanocubeLayer.prototype.toggleShowCount = function(){
     this.redraw();
 };
 
+L.NanocubeLayer.prototype.viewInfo = function(){
+    //get the view information
+    var zoom = this._map.getZoom();
+    var bounds = this._map.getBounds();
+    var drill = Math.min(this.variable.maxlevel-zoom,8)-this.coarselevels ;
+
+    var wdist = bounds.getNorthWest().distanceTo(bounds.getNorthEast()); 
+    var hdist = bounds.getNorthWest().distanceTo(bounds.getSouthWest()); 
+
+    var vsize = this._map.getSize();
+    var pwdist = wdist / vsize.x * Math.pow(2,(8-drill));
+    var phdist = hdist / vsize.y * Math.pow(2,(8-drill));
+
+    return 'Viewport: '+ d3.format('.2f')(wdist/1000) + 'km &#215; ' +
+            d3.format('.2f')(hdist/1000) +
+            'km (Bin:'+ d3.format('.2f')(pwdist) + 'm &#215; ' +
+            d3.format('.2f')(phdist)
+            + 'm)';
+};
+    
 
 L.NanocubeLayer.prototype.redraw = function(){
     if (this._map) {
@@ -33,7 +53,8 @@ L.NanocubeLayer.prototype.redraw = function(){
     }
     for (var i in this._tiles) {
 	this._redrawTile(this._tiles[i]);
-    }
+    }   
+       
     return this;
 };
 
@@ -210,9 +231,9 @@ L.NanocubeLayer.prototype.processJSON = function(json){
     });
 
     var minv = data.reduce(function(prev,curr){
-	return Math.min(prev,curr.v) }, Infinity);
+	return Math.min(prev,curr.v); }, Infinity);
     var maxv = data.reduce(function(prev,curr){
-	return Math.max(prev,curr.v) }, -Infinity);
+	return Math.max(prev,curr.v); }, -Infinity);
 
     return {min:minv,max:maxv,data:data};
 };
