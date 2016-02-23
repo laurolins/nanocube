@@ -11,12 +11,25 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
 	this.smooth = false;
 
 	this.show_count = false;
-	this.log = true;
+	this.log = function(x) { return Math.log(x+1); };
     }
 });
 
-L.NanocubeLayer.prototype.toggleLog = function(){
-    this.log = !this.log;
+L.NanocubeLayer.prototype.trans = function(method){
+    switch(method){
+    case 'raw':
+        this.log = function(x){return x;};
+        break;
+    case 'log':
+        this.log = function(x){return Math.log(x+1);};
+        break;
+    case 'sqrt':
+        this.log = function(x){return Math.sqrt(x);};
+        break;
+    default:
+        this.log = function(x){return Math.log(x);};
+    }
+        
     this.redraw();
 };
 
@@ -135,10 +148,8 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
     var that = this;
     var minv = that.min;
     var maxv = that.max;
-    if (that.log){
-	minv = Math.log(minv+1);
-	maxv = Math.log(maxv+1);
-    }
+    minv = that.log(minv);
+    maxv = that.log(maxv);
     minv*=0.9;
 
     data.forEach(function(d){
@@ -147,9 +158,7 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
 	}
 
 	var v = d.v;
-	if (that.log){
-	    v = Math.log(v+1);
-	}
+	v = that.log(v);
 
 	v = (v-minv)/(maxv-minv);
 
@@ -263,11 +272,7 @@ L.NanocubeLayer.prototype.processData = function(bindata){
 	if (rv < 1e-6){ //skip zeros
 	    continue;
 	}
-
-	//if (this.log){
-	//    rv = Math.log(rv+1);
-	//}
-
+        
 	data[i] = {x:rx, y:ry, v: rv};
 	maxv = Math.max(maxv,rv);
 	minv = Math.min(minv,rv);

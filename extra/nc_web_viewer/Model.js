@@ -294,6 +294,7 @@ Model.prototype.createMap = function(spvar,cm){
 
 	spvar.setCurrentView(tilelist);
 	that.redraw(spvar);
+        heatmap.redraw();
 	that.updateInfo();
     });
 
@@ -521,8 +522,9 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 	return heatmap.toggleShowCount(); //refresh
     });
 
-    $("#flip-log").on('change', function(){
-	return heatmap.toggleLog(); //refresh
+    $("#flip-log").on('change', function(e){
+	return heatmap.trans($('#flip-log').find(':selected')
+                             .val()); //refresh
     });
 
     $("#flip-refresh").on('change', function(){
