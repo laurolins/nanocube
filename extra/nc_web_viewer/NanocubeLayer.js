@@ -15,6 +15,7 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
 
         var that = this;
         this.on('load',function(){
+            console('finish loading');
             that.redraw();
         });
     }
