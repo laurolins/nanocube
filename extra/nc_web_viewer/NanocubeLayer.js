@@ -12,6 +12,11 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
 
 	this.show_count = false;
 	this.log = function(x) { return Math.log(x+1); };
+
+        var that = this;
+        this.on('load',function(){
+            that.redraw();
+        });
     }
 });
 

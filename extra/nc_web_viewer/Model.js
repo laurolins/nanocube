@@ -294,7 +294,6 @@ Model.prototype.createMap = function(spvar,cm){
 
 	spvar.setCurrentView(tilelist);
 	that.redraw(spvar);
-        heatmap.redraw();
 	that.updateInfo();
     });
 
