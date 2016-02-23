@@ -710,7 +710,18 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
 	    break;
 
 	case 108: // 'l' toggle log scale
-	    return heatmap.toggleLog(); //refresh
+            var logval = $('#flip-log').find(':selected').val();
+            if (logval != 'log'){
+                $('#flip-log').val('log');
+                $('#flip-log').selectmenu("refresh");
+                return heatmap.trans('log'); //refresh
+            }
+            else{
+                $('#flip-log').val('raw');
+                $('#flip-log').selectmenu("refresh");
+                return heatmap.trans('raw'); //refresh
+            }
+            
 	    break;
 
 	default:
