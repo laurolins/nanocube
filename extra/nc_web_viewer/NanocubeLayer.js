@@ -15,7 +15,7 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
 
         var that = this;
         this.on('load',function(){
-            console('finish loading');
+            console.log('finish loading');
             that.redraw();
         });
     }
@@ -122,8 +122,8 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
 	else{
 	    that.renderTile(canvas,size,tilePoint,zoom,null);
 	}
+        that.tileDrawn(canvas);    
     });
-    this.tileDrawn(canvas);
 };
 
 L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,data){
