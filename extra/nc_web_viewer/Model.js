@@ -803,13 +803,19 @@ Model.prototype.updateInfo = function(){
 	}
 	var countstr = d3.format(",")(count);
 
+        //Spatial
+        var spvarname = Object.keys(that.spatial_vars)[0];
+	var spvar  = that.spatial_vars[spvarname];
+
+        var vinfostr = spvar.heatmap.viewInfo();
 
 	//Time
 	var tvarname = Object.keys(that.temporal_vars)[0];
 	var tvar  = that.temporal_vars[tvarname];
 
 	if (!tvar){ //For defaulttime/ no time constraint
-	    $('#info').text('Total: ' + countstr);
+	    $('#info').html('['+vinfostr+']'+
+                        '<span style="display:inline-block; width: 20px;"></span>' + 'Total: ' + countstr);
 	    return;
 	}
 
@@ -826,13 +832,6 @@ Model.prototype.updateInfo = function(){
 
 	var enddate = new Date(startdate);
 	enddate.setTime(enddate.getTime()+dhours*3600*1000);
-
-
-        //Spatial
-        var spvarname = Object.keys(that.spatial_vars)[0];
-	var spvar  = that.spatial_vars[spvarname];
-
-        var vinfostr = spvar.heatmap.viewInfo();
 
         $('#info').html('['+vinfostr+']'+
                         '<span style="display:inline-block; width: 100px;"></span>' +
