@@ -10,10 +10,6 @@ html,body,.ui-content,#nc-container,#maincontent{
     padding: 0px;
 }
 
-legend,#flip-grid-label,#flip-log-label, #flip-refresh-label{
-    font-size: 10pt;
-}
-
 .leaflet-container { /*change background color*/
     background: #000;
 }     
@@ -73,4 +69,8 @@ text {
     -webkit-transform: translate3d(24em,0,0);
     -moz-transform: translate3d(24em,0,0);
     transform: translate3d(24em,0,0);
+}
+
+legend,.ui-mobile label{
+    font-size: 10pt;
 }

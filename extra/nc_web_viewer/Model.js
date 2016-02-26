@@ -15,7 +15,7 @@ function Model(opt){
     this.initVars();
 
     this.cache_off = false;
-
+    this.autorenorm = false;
 };
 
 //Init Variables according to the schema
@@ -296,7 +296,11 @@ Model.prototype.createMap = function(spvar,cm){
 
 	spvar.setCurrentView(tilelist);
 	that.redraw(spvar);
-        //heatmap.redraw();        
+
+        if (that.autorenorm){
+            heatmap.renormalize();
+        }
+
 	that.updateInfo();
         console.log('moveend');
     });
@@ -485,14 +489,24 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
 
     $("#heatmap-rad-btn-dec").on('click', function(){
 	heatmap.coarselevels = Math.max(heatmap.coarselevels-1,0);
-        heatmap.redraw();
+        if (that.autorenorm){
+            heatmap.renormalize();
+        }
+        else{
+	    heatmap.redraw();
+        }
         that.updateInfo();
         return;
     });
 
     $("#heatmap-rad-btn-inc").on('click', function(){
 	heatmap.coarselevels = Math.min(heatmap.coarselevels+1,8);
-	heatmap.redraw();
+        if (that.autorenorm){
+            heatmap.renormalize();
+        }
+        else{
+	    heatmap.redraw();
+        }
         that.updateInfo();
         return;
     });
@@ -526,8 +540,18 @@ Model.prototype.panelFuncs = function(maptiles,heatmap){
     });
 
     $("#flip-log").on('change', function(e){
-	return heatmap.trans($('#flip-log').find(':selected')
-                             .val()); //refresh
+	return heatmap.trans($('#flip-log').find(':selected').val());//refresh
+    });
+    
+    $("#flip-renorm").on('change', function(e){
+	var sel = $('#flip-renorm').find(':selected').val();
+        if (sel == "on"){
+            that.autorenorm = true;
+            heatmap.renormalize();
+        }
+        else{
+            that.autorenorm = false;
+        }
     });
 
     $("#flip-refresh").on('change', function(){
