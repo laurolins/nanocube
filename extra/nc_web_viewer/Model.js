@@ -680,9 +680,6 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
 
 	case 110: // 'n'
 	    heatmap.renormalize();
-            //force reloading by remove and re-add
-            map.removeLayer(heatmap);
-            map.addLayer(heatmap);
             break;
 
 	case 100: //'d'

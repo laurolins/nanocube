@@ -14,8 +14,6 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
 	this.show_count = false;
 	this.log = function(x) { return Math.log(x+1); };
 
-        this.renormalize();
-
         var that=this;
         this.on('load',function(){
             console.log('loaded');
@@ -25,6 +23,8 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
                 that.redraw();
             }
         });
+
+        this.renormalize();
     }
 });
 
@@ -43,7 +43,6 @@ L.NanocubeLayer.prototype.trans = function(method){
         this.log = function(x){return Math.log(x);};
     }
         
-    this.renormalize();
     this.redraw();
 };
 
@@ -315,4 +314,13 @@ L.NanocubeLayer.prototype.renormalize = function(){
     this.max = -Infinity;
     this.min = Infinity;
     this._normalize = true;
+
+    //try to force refresh
+    try{
+        var map = this._map;
+        map.removeLayer(this);
+        map.addLayer(this);
+    }
+    catch(e){
+    }
 };
