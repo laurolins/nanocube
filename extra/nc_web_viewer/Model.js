@@ -188,7 +188,6 @@ Model.prototype.tileQuery = function(vref,tile,drill,callback){
 	}
     });
 
-    //q = q.drilldown().dim(vref.dim).findAndDive(tile.raw(),drill);
 
     q = q.drilldown().dim(vref.dim).findTile(tile,drill);
 
@@ -201,8 +200,8 @@ Model.prototype.tileQuery = function(vref,tile,drill,callback){
     else{
 	q.run_query()
 	    .done(function(data){
-		callback(data);
 		that.setCache(qstr,data);
+		callback(data);
 	    });
     }
 };
@@ -247,8 +246,8 @@ Model.prototype.jsonQuery = function(v){
 	}
 	else{
 	    q.run_query().done(function(json){
-		v.update(json,k,color,q);
 		that.setCache(qstr,json);
+		v.update(json,k,color,q);
 	    });
 	}
     });
@@ -275,13 +274,16 @@ Model.prototype.createMap = function(spvar,cm){
 
     var maptile = L.tileLayer(this.options.tilesurl,{
 	noWrap:true,
-	opacity:0.4 });
+        detectRetina:true,
+	opacity:0.4
+    });
 
     var heatmap = new L.NanocubeLayer({
 	opacity: 0.6,
 	model: this,
 	variable: spvar,
 	noWrap:true,
+        detectRetina:true,
 	colormap:cm,
 	log: this.options.logcolormap
     });
@@ -294,7 +296,9 @@ Model.prototype.createMap = function(spvar,cm){
 
 	spvar.setCurrentView(tilelist);
 	that.redraw(spvar);
+        //heatmap.redraw();        
 	that.updateInfo();
+        console.log('moveend');
     });
 
     maptile.addTo(map);
@@ -673,6 +677,13 @@ Model.prototype.keyboardShortcuts = function(spvar,map){
 	    heatmapop = Math.min(heatmapop+0.1,1.0);
 	    return heatmap.setOpacity(heatmapop);
 	    break;
+
+	case 110: // 'n'
+	    heatmap.renormalize();
+            //force reloading by remove and re-add
+            map.removeLayer(heatmap);
+            map.addLayer(heatmap);
+            break;
 
 	case 100: //'d'
 	    //decrease opacity

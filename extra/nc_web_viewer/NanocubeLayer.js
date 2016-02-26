@@ -1,5 +1,6 @@
 L.NanocubeLayer = L.TileLayer.Canvas.extend({
     initialize: function(options){
+        options.async = true;
 	L.TileLayer.Canvas.prototype.initialize.call(this, options);
 	this.model = options.model;
 	this.variable = options.variable;
@@ -13,10 +14,16 @@ L.NanocubeLayer = L.TileLayer.Canvas.extend({
 	this.show_count = false;
 	this.log = function(x) { return Math.log(x+1); };
 
-        var that = this;
+        this.renormalize();
+
+        var that=this;
         this.on('load',function(){
-            console.log('finish loading');
-            that.redraw();
+            console.log('loaded');
+            if (that._normalize){
+                console.log(that.min,that.max);
+                that._normalize = false;
+                that.redraw();
+            }
         });
     }
 });
@@ -36,6 +43,7 @@ L.NanocubeLayer.prototype.trans = function(method){
         this.log = function(x){return Math.log(x);};
     }
         
+    this.renormalize();
     this.redraw();
 };
 
@@ -57,10 +65,10 @@ L.NanocubeLayer.prototype.viewInfo = function(){
     var pwdist = wdist / vsize.x * Math.pow(2,(8-drill));
     var phdist = hdist / vsize.y * Math.pow(2,(8-drill));
 
-    return 'Viewport: '+ d3.format('.2f')(wdist/1000) + 'km &#215; ' +
-            d3.format('.2f')(hdist/1000) +
-            'km (Bin:'+ d3.format('.2f')(pwdist) + 'm &#215; ' +
-            d3.format('.2f')(phdist)
+    return 'Viewport: '+ d3.format('.1f')(wdist/1000) + 'km &#215; ' +
+            d3.format('.1f')(hdist/1000) +
+            'km (Bin:'+ d3.format('.1f')(pwdist) + 'm &#215; ' +
+            d3.format('.1f')(phdist)
             + 'm)';
 };
     
@@ -70,10 +78,10 @@ L.NanocubeLayer.prototype.redraw = function(){
 	//this._reset({hard: false});  //no hard resetting
 	this._update();
     }
+
     for (var i in this._tiles) {
 	this._redrawTile(this._tiles[i]);
     }   
-       
     return this;
 };
 
@@ -115,13 +123,24 @@ L.NanocubeLayer.prototype.drawTile = function(canvas, tilePoint, zoom){
 	var result = that.processJSON(json);
 
 	if(result !=null){
-	    that.max = Math.max(that.max, result.max);
-	    that.min = Math.min(that.min, result.min);
-	    that.renderTile(canvas,size,tilePoint,zoom,result.data);
+            if(that._normalize){
+	        that.max = Math.max(that.max, result.max);
+	        that.min = Math.min(that.min, result.min);
+            }
+	    else{
+                that.renderTile(canvas,size,tilePoint,zoom,result.data);
+            }
 	}
 	else{
 	    that.renderTile(canvas,size,tilePoint,zoom,null);
 	}
+
+        /*
+        if(that._tilesToLoad == 1 && that._normalize){
+            that._normalize = false;
+            that.redraw(); //redraw once more
+        }*/
+
         that.tileDrawn(canvas);    
     });
 };
@@ -146,7 +165,7 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
 
     if (! this.smooth){ //blocky rendering
 	ctx.imageSmoothingEnabled = false;
-	ctx.webkitImageSmoothingEnabled = false;
+	//ctx.webkitImageSmoothingEnabled = false;
 	ctx.mozImageSmoothingEnabled = false;
     }
 
@@ -165,7 +184,9 @@ L.NanocubeLayer.prototype.renderTile = function(canvas, size, tilePoint,zoom,dat
 
 	var v = d.v;
 	v = that.log(v);
-
+        v = Math.min(maxv,v);
+        v = Math.max(minv,v);
+        
 	v = (v-minv)/(maxv-minv);
 
 	//try to parse rgba
@@ -227,7 +248,6 @@ L.NanocubeLayer.prototype.drawGridCount = function(ctx,tilePoint,zoom,data){
     ctx.font="10pt sans-serif";
     ctx.fillStyle="white";
     ctx.fillText(totalstr,10,20);
-
 };
 
 
@@ -291,9 +311,8 @@ L.NanocubeLayer.prototype.processData = function(bindata){
     return {min:minv,max:maxv,data:data};
 };
 
-
-L.NanocubeLayer.prototype._addTilesFromCenterOut = function (bounds){
+L.NanocubeLayer.prototype.renormalize = function(){
     this.max = -Infinity;
     this.min = Infinity;
-    L.TileLayer.Canvas.prototype._addTilesFromCenterOut.call(this, bounds);
+    this._normalize = true;
 };
