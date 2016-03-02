@@ -13,19 +13,6 @@ AC_PROG_CC
 AC_PROG_CPP
 AC_PROG_LIBTOOL
 
-# Checks for programs.
-host_os=`uname`
-#if test "$host_os" = "Darwin"; then
-#   AS_VAR_SET([cpp_compiler],[clang++])
-   #CXX="clang++ "
-   #CXXFLAGS+=" -stdlib=libc++ -mmacosx-version-min=10.7"
-   #CFLAGS+=" -mmacosx-version-min=10.7"
-#else
-#   AS_VAR_SET([cpp_compiler],[])
-#fi
-
-# echo "----------------> $CC"
-
 AC_PROG_CXX([AS_VAR_GET([cpp_compiler])])
 
 LT_LIB_DLLOAD
