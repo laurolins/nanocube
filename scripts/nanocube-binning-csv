@@ -341,9 +341,6 @@ class NanocubeInput:
 
     def processCat(self,data):
         for i,c in enumerate(self.catcol):
-            #fix the spaces
-            data[c] = data[c].apply(lambda x : str(x).replace(' ','_'))
-
             #binning
             if c in self.catbins:
                 def lessThan(x,quantiles):
@@ -354,6 +351,14 @@ class NanocubeInput:
                 data[c] = data[c].apply(lambda x :lessThan(x,self.catbins[c]))
                 continue #skip the no binning part
 
+            #fix the spaces
+            if data.dtypes[c] == object:
+                data[c] = data[c].apply(lambda x : str(x).replace(' ','_'))
+
+            #for int type
+            if data.dtypes[c] == int:
+                self.valname[c] = {}
+            
             #no binning
             if c not in self.valname:
                 self.valname[c] = {}
