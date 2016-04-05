@@ -37,6 +37,10 @@ Query.prototype = {
         });
 
         var coordstr = sel.coord.map(function(c){
+            c[0] = Math.max(-85,c[0]);
+            c[0] = Math.min(85,c[0]);
+            c[1] = Math.max(-180,c[1]);
+            c[1] = Math.min(180,c[1]);
             return c[1].toFixed(4) +","+ c[0].toFixed(4);
         });
         coordstr = coordstr.join(',');
@@ -517,7 +521,7 @@ Nanocube.prototype = {
             sec = +res[1]*60*60;
         }
 
-        res = s[2].match(/([0-9]+)D/);
+        res = s[2].match(/([0-9]+)[D,d]/);
         if (res) {
             sec = +res[1]*60*60*24;
         }
