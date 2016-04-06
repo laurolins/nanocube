@@ -35,10 +35,12 @@ class NanocubeInput:
 
         self.latcol=args.latcol.split(self.sep)
         self.loncol=args.loncol.split(self.sep)
-
-        self.xcol=args.xcol.split(self.sep)
-        self.ycol=args.ycol.split(self.sep)
+        
+        self.xcol=args.xcol
+        self.ycol=args.ycol
         if self.xcol is not None and self.ycol is not None:
+            self.xcol=args.xcol.split(self.sep)
+            self.ycol=args.ycol.split(self.sep)
             self.latcol=self.ycol
             self.loncol=self.xcol
                     
@@ -445,8 +447,8 @@ def main(argv):
     parser.add_argument('--levels', type=int, default=25)
     parser.add_argument('--latcol', type=str,default='Latitude')
     parser.add_argument('--loncol', type=str,default='Longitude')
-    parser.add_argument('--xcol', type=str,default='X')
-    parser.add_argument('--ycol', type=str,default='Y')
+    parser.add_argument('--xcol', type=str,default=None)
+    parser.add_argument('--ycol', type=str,default=None)
     parser.add_argument('--catcol', type=str,default=None)
     parser.add_argument('--countcol', type=str, default=None)
     parser.add_argument('--sep', type=str, default=',')
