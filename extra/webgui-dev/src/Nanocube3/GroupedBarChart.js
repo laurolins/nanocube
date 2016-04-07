@@ -70,147 +70,145 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         .attr("transform", "translate(-3,0)");
 }
 
-GroupedBarChart.prototype.getSelection=function(){        
-    return this.selection;
-};
+GroupedBarChart.prototype={
+    getSelection: function(){        
+        return this.selection;
+    },
 
-GroupedBarChart.prototype.update=function(){        
-    var widget = this;
+    _encodeArgs: function(){
+        return JSON.stringify(this.getSelection());
+    },
 
-    var promises = this.getDataCallback();
-    var promarray = Object.keys(promises).map(function(k){
-        return promises[k];
-    });
+    _decodeArgs: function(s){
+        var map = this._map;
+        var args = JSON.parse(s);
+        var v = args.global;
+        
+        map.setView(v.c,v.z);
+    },
 
-    var promkeys = Object.keys(promises);
-    $.when.apply($,promarray).done(function(){
-        var results = arguments;
-        var res = {};
-        promkeys.forEach(function(d,i){
-            res[d] = results[i];
+    update: function(){        
+        var widget = this;
+
+        var promises = this.getDataCallback();
+        var promarray = Object.keys(promises).map(function(k){
+            return promises[k];
         });
 
-        widget.redraw(res);
-    });
-};
+        var promkeys = Object.keys(promises);
+        $.when.apply($,promarray).done(function(){
+            var results = arguments;
+            var res = {};
+            promkeys.forEach(function(d,i){
+                res[d] = results[i];
+            });
 
-GroupedBarChart.prototype.updateAxis = function(data){    
-    var xmin = 0.9 * d3.min(data, function(d){return d.val;});
-    var xmax = d3.max(data, function(d){return d.val;});
-    
-    this.x.domain([xmin,xmax]);
-    var cats = data.map(function(d){return d.cat;});
-    this.y0.domain(cats);
-    this.y1.domain(data.map(function(d){return d.color;}))
-        .rangeRoundBands([0, this.y0.rangeBand()]);
-    
-    
-    this.svgxaxis.call(this.xAxis);
-    this.svgyaxis.call(this.yAxis);
-
-    /*
-    //Make Axis Label's clickable
-    var that = this;
-    this.svgyaxis.selectAll('.tick').on('click',function(d){
-	var obj = $.grep(data, function(e){return e.cat==d;})[0];
-	that.click_callback(obj);
-    }); */
-};
-
-//GroupedBarChart.prototype.setData = function(data,id,color){
-//    this.data[id] = {color:color, data: data};
-//};
-
-
-//GroupedBarChart.prototype.removeData = function(id){
-//    if (id in this.data){ delete this.data[id]; }
-//};
-
-GroupedBarChart.prototype.flattenData = function(data){
-    return Object.keys(data).reduce(function(prev,curr){         
-        var color = curr.replace('#','');
-        var is_color  = /(^[0-9A-Fa-f]{6}$)|(^[0-9A-Fa-f]{3}$)/i.test(color);
-        if(!is_color){
-            color = 'f00';
-        }
-        var row = Object.keys(data[curr].data).map(function(k){
-            return { cat: data[curr].data[k].cat,
-                     color: color,
-                     val:data[curr].data[k].val };
+            widget.redraw(res);
         });
-        return prev.concat(row);
-    }, []);
-};
+    },
 
+    updateAxis: function(data){    
+        var xmin = 0.9 * d3.min(data, function(d){return d.val;});
+        var xmax = d3.max(data, function(d){return d.val;});
+        
+        this.x.domain([xmin,xmax]);
+        var cats = data.map(function(d){return d.cat;});
+        this.y0.domain(cats);
+        this.y1.domain(data.map(function(d){return d.color;}))
+            .rangeRoundBands([0, this.y0.rangeBand()]);
+        
+        
+        this.svgxaxis.call(this.xAxis);
+        this.svgyaxis.call(this.yAxis);
 
-GroupedBarChart.prototype.redraw = function(data){
-    var widget = this;
+    },
 
-    var flatdata = this.flattenData(data);
-
-    flatdata.sort(function(a,b){
-        //numeric sort
-        var res = parseFloat(a.cat)-parseFloat(b.cat);
-        if (!isNaN(res)){
-            return res;
-        }
-        else{
-            return a.cat.localeCompare(b.cat);
-        }
-    });
-    
-    this.updateAxis(flatdata);    
-
-    //add the bars back
-    var bars = this.svg.selectAll('.bar').data(flatdata);
-
-    bars.enter()
-        .append('rect').attr('class', 'bar')
-        .on('click', function(d){ //click reaction
-            if(!widget.selection.brush){
-                widget.selection.brush = [];
+    flattenData: function(data){
+        return Object.keys(data).reduce(function(prev,curr){         
+            var color=curr.replace('#','');
+            var is_color=/(^[0-9A-Fa-f]{6}$)|(^[0-9A-Fa-f]{3}$)/i.test(color);
+            if(!is_color){
+                color = 'f00';
             }
+            var row = Object.keys(data[curr].data).map(function(k){
+                return { cat: data[curr].data[k].cat,
+                         color: color,
+                         val:data[curr].data[k].val };
+            });
+            return prev.concat(row);
+        }, []);
+    },
 
-            var idx = widget.selection.brush.indexOf(d.cat);
-            if (idx != -1){
-                widget.selection.brush.splice(idx,1);
+
+    redraw: function(data){
+        var widget = this;
+
+        var flatdata = this.flattenData(data);
+
+        flatdata.sort(function(a,b){
+            //numeric sort
+            var res = parseFloat(a.cat)-parseFloat(b.cat);
+            if (!isNaN(res)){
+                return res;
             }
             else{
-                widget.selection.brush = [d.cat];
+                return a.cat.localeCompare(b.cat);
             }
-
-            if(widget.selection.brush.length < 1){
-                delete widget.selection.brush;
-            }            
-            
-            widget.update(); //redraw itself
-            widget.updateCallback();            
-        }) //toggle callback
-        .append("svg:title"); //tooltip
-    
-    
-    bars.attr('x', 0)
-        .attr('y', function(d){return widget.y0(d.cat) + //category
-                               widget.y1(d.color);}) //selection group
-        .style('fill', function(d){
-            if (!widget.selection.brush || //no selection
-                (widget.selection.brush.indexOf(d.cat)!=-1)){//in selection
-                return d.color;
-            }
-            else{
-                return 'gray';
-            }
-        })
-        .attr('height',function(d){ return widget.y1.rangeBand(); })
-        .transition().duration(500)
-        .attr('width',function(d){
-            return widget.x(d.val);
         });
+        
+        this.updateAxis(flatdata);    
 
-    bars.select('title')
-        .text(function(d){
-            return d3.format(',')(d.val);
-        });
-    
-    bars.exit().transition().duration(5000).remove();
+        //add the bars back
+        var bars = this.svg.selectAll('.bar').data(flatdata);
+
+        bars.enter()
+            .append('rect').attr('class', 'bar')
+            .on('click', function(d){ //click reaction
+                if(!widget.selection.brush){
+                    widget.selection.brush = [];
+                }
+
+                var idx = widget.selection.brush.indexOf(d.cat);
+                if (idx != -1){
+                    widget.selection.brush.splice(idx,1);
+                }
+                else{
+                    widget.selection.brush = [d.cat];
+                }
+
+                if(widget.selection.brush.length < 1){
+                    delete widget.selection.brush;
+                }            
+                
+                widget.update(); //redraw itself
+                widget.updateCallback(widget._encodeArgs());            
+            }) //toggle callback
+            .append("svg:title"); //tooltip
+        
+        
+        bars.attr('x', 0)
+            .attr('y', function(d){return widget.y0(d.cat) + //category
+                                   widget.y1(d.color);}) //selection group
+            .style('fill', function(d){
+                if (!widget.selection.brush || //no selection
+                    (widget.selection.brush.indexOf(d.cat)!=-1)){//in selection
+                    return d.color;
+                }
+                else{
+                    return 'gray';
+                }
+            })
+            .attr('height',function(d){ return widget.y1.rangeBand(); })
+            .transition().duration(500)
+            .attr('width',function(d){
+                return widget.x(d.val);
+            });
+
+        bars.select('title')
+            .text(function(d){
+                return d3.format(',')(d.val);
+            });
+        
+        bars.exit().remove();
+    }
 };
