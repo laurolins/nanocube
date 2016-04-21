@@ -198,8 +198,10 @@ Query.prototype = {
         return this.nanocube.url + '/' + type + '.' + query_string;
     },
 
-    _run_query: function(ctx){
-        var query_string = this.toString('count');
+    _run_query: function(ctx,query_cmd){
+        query_cmd = query_cmd || 'count';
+
+        var query_string = this.toString(query_cmd);
 
         var dfd = $.Deferred();
         if (cache[query_string]){
@@ -254,7 +256,37 @@ Query.prototype = {
         return dfd.promise();
     },
 
+    //Top K query
+    topKQuery: function(varname, n){
+        var constraint = "k("+n+")";
+        this.query_elements[varname] = constraint;
 
+        var dfd = new $.Deferred();
+
+        this.valnames = this.nanocube.dimensions[varname].valnames;
+        this._run_query(this,'topk').done(function(data){
+            if (!data.root.children){
+                return dfd.resolve([]);
+            }
+
+            data = data.root.children;
+            var q = this;
+
+            //set up a val to name map
+            var valToName = {};
+            for (var name in q.valnames){
+                valToName[q.valnames[name]] = name;
+            }
+
+            var catarray = data.map(function(d){
+                return { cat: valToName[d.path[0]], val : d.val};
+            });
+            return dfd.resolve({type:'cat', data:catarray});
+        });
+        return dfd.promise();
+    },
+
+    
     //temporal queries, return an array of {date, val}
     temporalQuery: function(varname,start,end,interval_sec){
         var q = this;
@@ -383,25 +415,58 @@ Nanocube.prototype = {
     setSchema:function(json) {
         this.schema = json;
         var dim = this.schema.fields.filter(function(f) {
-            return f.type.indexOf("nc_dim") === 0;
+            return f.type.indexOf("nc_dim") === 0 ||
+                f.type.indexOf("path") === 0 ;
         });
-
+        
         var dimensions = {};
         dim.forEach(function(d){
             dimensions[d.name] = d;
-            var m =  d.type.match(/nc_dim_(.*)_([0-9]+)/i);
-            dimensions[d.name].vartype = m[1];
-            dimensions[d.name].varsize = +m[2];
+            if (d.type.indexOf("path") === 0){
+                var m =  d.type.match(/path\(([0-9]+),([0-9]+)\)/i);
+                var bits = +m[1];
+                var levels = +m[2];
+                
+                switch(bits){
+                case 1: //time dim
+                    dimensions[d.name].vartype = 'time';
+                    dimensions[d.name].varsize=levels/8;
+                    break;
+                case 2: //spatial dim
+                    dimensions[d.name].vartype = 'quadtree';
+                    dimensions[d.name].varsize=levels;
+                    break;
+                default: //cat dim
+                    dimensions[d.name].vartype = 'cat';
+                    dimensions[d.name].varsize = Math.pow(bits,levels)/8;
+                }
+            }
+            else{
+                var oldm = d.type.match(/nc_dim_(.*)_([0-9]+)/i);
+                
+                dimensions[d.name].vartype = oldm[1];
+                dimensions[d.name].varsize = +oldm[2];
+            }
         });
         this.dimensions = dimensions;
     },
 
+    
     setTimeInfo: function() {
-        var tvar = this.schema.fields.filter(function(f) {
-            return f.type.indexOf("nc_dim_time") === 0;
+        //var tvar = this.schema.fields.filter(function(f) {
+        //    return f.type.indexOf("nc_dim_time") === 0;
+        //});
+
+        var dim = this.dimensions;
+
+        var tvar = Object.keys(dim).filter(function(k){
+            return dim[k].vartype === 'time';
         });
-        tvar = tvar[0];
-        var twidth = +tvar.type.match(/_([0-9]+)/)[1];
+
+        tvar = dim[tvar[0]];
+        //var twidth = +tvar.type.match(/_([0-9]+)/)[1];
+        
+        var twidth = tvar.varsize;   //+tvar.type.match(/_([0-9]+)/)[1];
         var maxtime = Math.pow(2,twidth*8)-1;
 
         var dfd = new $.Deferred();

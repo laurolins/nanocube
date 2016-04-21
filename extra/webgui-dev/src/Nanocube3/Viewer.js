@@ -21,9 +21,12 @@ var Viewer = function(opts){
     var nc = nanocubes[k[0]];
     Object.keys(nc.dimensions).forEach(function(dim){
         var d = nc.dimensions[dim];
-        var m = d.type.match(/nc_dim_(.*)_([0-9]+)/i);
-        var dimtype = m[1];
-        var dimsize = +m[2];
+        //var m = d.type.match(/nc_dim_(.*)_([0-9]+)/i);
+        //var dimtype = m[1];
+        //var dimsize = +m[2];
+
+        var dimtype = d.vartype;
+        var dimsize = d.varsize;
 
         var options;
         
@@ -125,7 +128,8 @@ Viewer.prototype = {
     },
 
     update: function(skip,constraints,name,args){
-        console.log(skip);
+        console.log("skip: ",skip);
+
         skip = skip || [];
         constraints = constraints || [];
         var viewer = this;
