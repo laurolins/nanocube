@@ -167,8 +167,7 @@ GroupedBarChart.prototype={
                 if(!widget.selection.brush){
                     widget.selection.brush = [];
                 }
-                
-                
+                                
                 var idx = widget.selection.brush.findIndex(function(b){
                     return (b.cat == d.cat);
                 });

@@ -21,10 +21,6 @@ var Viewer = function(opts){
     var nc = nanocubes[k[0]];
     Object.keys(nc.dimensions).forEach(function(dim){
         var d = nc.dimensions[dim];
-        //var m = d.type.match(/nc_dim_(.*)_([0-9]+)/i);
-        //var dimtype = m[1];
-        //var dimsize = +m[2];
-
         var dimtype = d.vartype;
         var dimsize = d.varsize;
 
@@ -59,18 +55,18 @@ var Viewer = function(opts){
             });
             break;
 
-        /*case 'id':
+        case 'id':
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
             options.args = viewer._urlargs[d.name] || null;
 
             widget[d.name]=new GroupedBarChart(options, function(){
-                return viewer.getTopKData(d.name,20);
+                return viewer.getTopKData(d.name,options.topk);
             },function(args,constraints){
                 return viewer.update([d.name],constraints,d.name,args);
             });
-            break;*/
+            break;
             
         case 'time':
             options = $.extend(true, {}, opts.config.widget[d.name].div);
