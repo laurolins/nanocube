@@ -127,7 +127,10 @@ Query.prototype = {
             var q = this;
             var timearray = data.map(function(d){
                 var t = d.path[0];
-                var v = d.val.volume_count || d.val;
+                var v = d.val; //old style
+                if ('volume_count' in d.val){ //topk new style
+                    v = d.val.volume_count;
+                }
                 return { time: t, val: v };
             });
 
@@ -175,7 +178,7 @@ Query.prototype = {
                     d.y = d.path[1];
                 }
 
-                if(d.val.volume_count){
+                if('volume_count' in d.val){
                     d.val = d.val.volume_count;
                 }
 
@@ -318,6 +321,7 @@ Query.prototype = {
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record
             var nbins = res.timeconst.end - res.timeconst.start;
+            nbins = nbins/res.timeconst.bucketsize +1;
             var datecount = new Array(nbins);
             for(var i=0; i < nbins; i++){
                 var t = q.nanocube.bucketToTime(i,res.timeconst.start,
