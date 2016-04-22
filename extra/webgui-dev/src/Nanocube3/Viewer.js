@@ -59,7 +59,7 @@ var Viewer = function(opts){
             });
             break;
 
-        case 'id':
+        /*case 'id':
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
@@ -70,7 +70,7 @@ var Viewer = function(opts){
             },function(args,constraints){
                 return viewer.update([d.name],constraints,d.name,args);
             });
-            break;
+            break;*/
             
         case 'time':
             options = $.extend(true, {}, opts.config.widget[d.name].div);
