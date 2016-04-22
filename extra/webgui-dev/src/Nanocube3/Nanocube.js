@@ -12,6 +12,7 @@ var Query = function(nc){
 
     //constrains
     this.catconst = {};
+    this.idconst = {};
     this.spatialconst = {};
     this.temporalconst = {};
 };
@@ -26,6 +27,8 @@ Query.prototype = {
             return this.setCatConst(varname, c);
         case 'time':
             return this.setTimeConst(varname, c);
+        case 'id':
+            return this.setIdConst(varname, c);
         default:
             return this;
         }
@@ -75,17 +78,6 @@ Query.prototype = {
     },
 
     setCatConst: function(varname, catvalues) {
-        var strvalmap;
-        /*try{
-            strvalmap=this.nanocube.dimensions[varname].valnames;
-        }
-        catch(e){
-            console.log(e);
-        }
-
-        var values = catvalues.map(function(cat){
-            return strvalmap[cat];
-        });*/
         var values = catvalues.map(function(d){ return d.id; });
                                    
         if (values.length > 0){
@@ -100,6 +92,18 @@ Query.prototype = {
 
 
     setIdConst: function(varname, idvalues) {
+        console.log(idvalues);
+        var values = idvalues.map(function(d){ return d.id; });
+                                   
+        if (values.length > 0){
+            var constraint = 'ids('+values.join(',') +')';
+            this.query_elements[varname] = constraint;
+        }
+
+        //record catconst
+        this.idconst[varname]= idvalues;
+        
+        return this;
     },
         
     queryTime: function(varname, base, bucketsize, count) {
@@ -123,7 +127,7 @@ Query.prototype = {
             var q = this;
             var timearray = data.map(function(d){
                 var t = d.path[0];
-                var v = d.val.volume_total || d.val;
+                var v = d.val.volume_count || d.val;
                 return { time: t, val: v };
             });
 
@@ -171,8 +175,8 @@ Query.prototype = {
                     d.y = d.path[1];
                 }
 
-                if(d.val.volume_total){
-                    d.val = d.val.volume_total;
+                if(d.val.volume_count){
+                    d.val = d.val.volume_count;
                 }
 
                 d.x =  d.x + offset.x;
@@ -281,7 +285,7 @@ Query.prototype = {
             if (!data.root.val.volume_keys){
                 return dfd.resolve([]);
             }
-
+            
             data = data.root.val.volume_keys;
             var q = this;
             var idarray = data.map(function(d){
@@ -292,7 +296,6 @@ Query.prototype = {
         });
         return dfd.promise();
     },
-
     
     //temporal queries, return an array of {date, val}
     temporalQuery: function(varname,start,end,interval_sec){
@@ -301,7 +304,7 @@ Query.prototype = {
 
         var startbin = q.nanocube.timeToBin(start);
         startbin = Math.max(0,Math.floor(startbin+0.5));
-
+        
         var bucketsize = interval_sec / timeinfo.bin_sec;
         bucketsize = Math.max(1,Math.floor(bucketsize+0.5));
 
