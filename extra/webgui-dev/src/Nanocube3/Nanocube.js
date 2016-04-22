@@ -76,7 +76,7 @@ Query.prototype = {
 
     setCatConst: function(varname, catvalues) {
         var strvalmap;
-        try{
+        /*try{
             strvalmap=this.nanocube.dimensions[varname].valnames;
         }
         catch(e){
@@ -85,8 +85,9 @@ Query.prototype = {
 
         var values = catvalues.map(function(cat){
             return strvalmap[cat];
-        });
-
+        });*/
+        var values = catvalues.map(function(d){ return d.id; });
+                                   
         if (values.length > 0){
             var constraint = 'r("'+varname+'",'+'set('+values.join(',') +'))';
             this.query_elements[varname] = constraint;
@@ -97,6 +98,10 @@ Query.prototype = {
         return this;
     },
 
+
+    setIdConst: function(varname, idvalues) {
+    },
+        
     queryTime: function(varname, base, bucketsize, count) {
         var constraint = 'r(\"' + varname + '\",mt_interval_sequence(' +
                 base + ',' + bucketsize + ',' + count + '))';
@@ -257,7 +262,7 @@ Query.prototype = {
             }
 
             var catarray = data.map(function(d){
-                return { cat: valToName[d.path[0]], val : d.val};
+                return { id: d.path[0], cat: valToName[d.path[0]], val: d.val };
             });
             return dfd.resolve({type:'cat', data:catarray});
         });
@@ -279,10 +284,11 @@ Query.prototype = {
 
             data = data.root.val.volume_keys;
             var q = this;
-            var catarray = data.map(function(d){
-                return { cat: d.word, val : d.count};
+            var idarray = data.map(function(d){
+                return {id:d.key,cat:d.word,val:d.count};
             });
-            return dfd.resolve({type:'id', data:catarray});
+            
+            return dfd.resolve({type:'id', data: idarray});
         });
         return dfd.promise();
     },

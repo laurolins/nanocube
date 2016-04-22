@@ -3,7 +3,7 @@
 function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.getDataCallback=getDataCallback;
     this.updateCallback=updateCallback;
-
+    
     var name = opts.name;
     var logaxis = opts.logaxis;
     
@@ -78,7 +78,7 @@ GroupedBarChart.prototype={
     _encodeArgs: function(){
         return JSON.stringify(this.getSelection());
     },
-
+    
     _decodeArgs: function(s){
         var map = this._map;
         var args = JSON.parse(s);
@@ -89,12 +89,12 @@ GroupedBarChart.prototype={
 
     update: function(){        
         var widget = this;
-
+        
         var promises = this.getDataCallback();
         var promarray = Object.keys(promises).map(function(k){
             return promises[k];
         });
-
+        
         var promkeys = Object.keys(promises);
         $.when.apply($,promarray).done(function(){
             var results = arguments;
@@ -131,9 +131,9 @@ GroupedBarChart.prototype={
                 color = 'f00';
             }
             var row = Object.keys(data[curr].data).map(function(k){
-                return { cat: data[curr].data[k].cat,
-                         color: color,
-                         val:data[curr].data[k].val };
+                var d = data[curr].data[k];
+                d.color = color;
+                return d;
             });
             return prev.concat(row);
         }, []);
@@ -167,13 +167,17 @@ GroupedBarChart.prototype={
                 if(!widget.selection.brush){
                     widget.selection.brush = [];
                 }
-
-                var idx = widget.selection.brush.indexOf(d.cat);
+                
+                
+                var idx = widget.selection.brush.findIndex(function(b){
+                    return (b.cat == d.cat);
+                });
+                
                 if (idx != -1){
                     widget.selection.brush.splice(idx,1);
                 }
                 else{
-                    widget.selection.brush = [d.cat];
+                    widget.selection.brush = [{id:d.id, cat:d.cat}];
                 }
 
                 if(widget.selection.brush.length < 1){
@@ -191,7 +195,8 @@ GroupedBarChart.prototype={
                                    widget.y1(d.color);}) //selection group
             .style('fill', function(d){
                 if (!widget.selection.brush || //no selection
-                    (widget.selection.brush.indexOf(d.cat)!=-1)){//in selection
+                    widget.selection.brush.findIndex(function(b){
+                        return (b.cat == d.cat); }) != -1){//in selection
                     return d.color;
                 }
                 else{
@@ -203,7 +208,7 @@ GroupedBarChart.prototype={
             .attr('width',function(d){
                 return widget.x(d.val);
             });
-
+        
         bars.select('title')
             .text(function(d){
                 return d3.format(',')(d.val);
