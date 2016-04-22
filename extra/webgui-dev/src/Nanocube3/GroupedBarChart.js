@@ -6,7 +6,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     
     var name = opts.name;
     var logaxis = opts.logaxis;
-    
+
     var margin = {top:20,right:10,left:30,bottom:30};
     var id = '#'+name;
 
@@ -23,7 +23,12 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     $(id).css('margin-top','0px');
     $(id).css('margin-bottom','0px');
 
+
     this.selection = {global:[]};
+    if(opts.args){ // set selection from arguments
+        this._decodeArgs(opts.args);
+    }
+
     this.id = id;
 
     var width = $(id).width() - margin.left - margin.right;
@@ -80,11 +85,7 @@ GroupedBarChart.prototype={
     },
     
     _decodeArgs: function(s){
-        var map = this._map;
-        var args = JSON.parse(s);
-        var v = args.global;
-        
-        map.setView(v.c,v.z);
+        this.selection = JSON.parse(s);
     },
 
     update: function(){        
