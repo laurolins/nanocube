@@ -59,6 +59,19 @@ var Viewer = function(opts){
             });
             break;
 
+        case 'id':
+            options = $.extend(true, {}, opts.config.widget[d.name].div);
+            options.name = d.name;
+            options.model = viewer;
+            options.args = viewer._urlargs[d.name] || null;
+
+            widget[d.name]=new GroupedBarChart(options, function(){
+                return viewer.getTopKData(d.name,20);
+            },function(args,constraints){
+                return viewer.update([d.name],constraints,d.name,args);
+            });
+            break;
+            
         case 'time':
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
@@ -266,6 +279,50 @@ Viewer.prototype = {
         }
         return res;
     },
+
+    getTopKData:function(varname, n){
+        n = n || 20; // hard code test for now 
+        var k = Object.keys(this._nanocubes);
+        var viewer = this;
+        
+        //construct a list of queries
+        var cq = {};
+        k.forEach(function(d){
+            var nc = viewer._nanocubes[d];
+            cq[d]=viewer.constructQuery(nc,[varname]);
+        });
+
+        //organize the queries by selection
+        var selq = {};
+        Object.keys(cq).forEach(function(d){
+            Object.keys(cq[d]).forEach(function(s){
+                selq[s] = selq[s] || {};
+                selq[s][d] = cq[d][s];
+            });
+        });
+        
+        //remove global const if there is a selection
+        if (Object.keys(selq).length > 1){
+            delete selq.global;
+        }        
+
+        //generate queries for each selections
+        var res = {};
+        var expr = this.expression;
+        if (!expr) {
+            Object.keys(selq).forEach(function(s){
+                res[s]=selq[s][k[0]].topKQuery(varname,n);
+            });
+        }
+        else{
+            Object.keys(selq).forEach(function(s){
+                res[s] = expr.getData(selq[s],function(q){
+                    return q.topKQuery(varname,n);
+                });
+            });
+        }
+        return res;
+    },    
 
     getCategoricalData:function(varname){
         var k = Object.keys(this._nanocubes);
