@@ -117,7 +117,9 @@ Query.prototype = {
             data = data.root.children;
             var q = this;
             var timearray = data.map(function(d){
-                return { time: d.path[0], val : d.val };
+                var t = d.path[0];
+                var v = d.val.volume_total || d.val;
+                return { time: t, val: v };
             });
 
             dfd.resolve({timeconst: q.timeconst,
@@ -164,13 +166,19 @@ Query.prototype = {
                     d.y = d.path[1];
                 }
 
+                if(d.val.volume_total){
+                    d.val = d.val.volume_total;
+                }
+
                 d.x =  d.x + offset.x;
                 d.y = th-d.y + offset.y;
                 d.z = z;
                 return d;
             });
-
-            data = data.filter ( function(d){ return d.val !== 0; });
+            
+            data = data.filter (function(d){
+                return d.val !== 0;
+            });
             dfd.resolve(data);
             return;
         });
@@ -265,23 +273,16 @@ Query.prototype = {
 
         this.valnames = this.nanocube.dimensions[varname].valnames;
         this._run_query(this,'topk').done(function(data){
-            if (!data.root.children){
+            if (!data.root.val.volume_keys){
                 return dfd.resolve([]);
             }
 
-            data = data.root.children;
+            data = data.root.val.volume_keys;
             var q = this;
-
-            //set up a val to name map
-            var valToName = {};
-            for (var name in q.valnames){
-                valToName[q.valnames[name]] = name;
-            }
-
             var catarray = data.map(function(d){
-                return { cat: valToName[d.path[0]], val : d.val};
+                return { cat: d.word, val : d.count};
             });
-            return dfd.resolve({type:'cat', data:catarray});
+            return dfd.resolve({type:'id', data:catarray});
         });
         return dfd.promise();
     },
@@ -415,14 +416,15 @@ Nanocube.prototype = {
     setSchema:function(json) {
         this.schema = json;
         var dim = this.schema.fields.filter(function(f) {
-            return f.type.indexOf("nc_dim") === 0 ||
-                f.type.indexOf("path") === 0 ;
+            return f.type.match(/^path\(|^id\(|^nc_dim/);
         });
         
         var dimensions = {};
         dim.forEach(function(d){
             dimensions[d.name] = d;
-            if (d.type.indexOf("path") === 0){
+            //Match the variable type and process 
+            switch(d.type.match(/^path\(|^id\(|^nc_dim_/)[0]){
+            case 'path(': //new style for time / spatial / cat
                 var m =  d.type.match(/path\(([0-9]+),([0-9]+)\)/i);
                 var bits = +m[1];
                 var levels = +m[2];
@@ -440,8 +442,13 @@ Nanocube.prototype = {
                     dimensions[d.name].vartype = 'cat';
                     dimensions[d.name].varsize = Math.pow(bits,levels)/8;
                 }
-            }
-            else{
+                break;
+
+            case 'id(': // topk id
+                dimensions[d.name].vartype = 'id';
+                break;
+
+            case 'nc_dim_': //old style
                 var oldm = d.type.match(/nc_dim_(.*)_([0-9]+)/i);
                 
                 dimensions[d.name].vartype = oldm[1];

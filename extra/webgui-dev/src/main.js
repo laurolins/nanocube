@@ -67,18 +67,12 @@ define(['jquery','nanocube','colorbrewer'], function($,Nanocube3,colorbrewer){
             args.forEach(function(d,i){
                 nchash[ncnames[i]] = d;
             });
-
             viewer = new Nanocube3.Viewer({
                 nanocubes: nchash,
 
                 div_id:'#nc',
                 config: config,
                 urlargs: urlargs
-
-                //chicago
-                //viewbbox : [[41.6462,-87.6187],[42.0227,-87.5253]]
-                //usa
-                //viewbbox : [[23.73,-127.44],[50.79,-70.84]]
             });
             viewer.update();
         });
