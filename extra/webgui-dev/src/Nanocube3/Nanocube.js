@@ -128,7 +128,7 @@ Query.prototype = {
             var timearray = data.map(function(d){
                 var t = d.path[0];
                 var v = d.val; //old style
-                if ('volume_count' in d.val){ //topk new style
+                if(typeof(d.val.volume_count) != 'undefined'){
                     v = d.val.volume_count;
                 }
                 return { time: t, val: v };
@@ -178,7 +178,7 @@ Query.prototype = {
                     d.y = d.path[1];
                 }
 
-                if('volume_count' in d.val){
+                if(typeof(d.val.volume_count) != 'undefined'){
                     d.val = d.val.volume_count;
                 }
 
