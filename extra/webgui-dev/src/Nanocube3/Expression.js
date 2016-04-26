@@ -73,7 +73,9 @@ Expression.prototype = {
                         }
                     });
                 }
-
+                
+                catval = catval.map(function(d){ return {cat: d , id: null };});
+                
                 newq.setCatConst(catvar,catval);
             }
             return newq;
@@ -215,42 +217,49 @@ Expression.prototype = {
     },
 
     _opCategorical: function(opfunc,left,right){
-        var lefthash = {};
         if (typeof left === 'number'){
-            right.data.forEach(function(d,i){
-                lefthash[d.cat] = left;
+            var leftval = left;
+            left = $.extend(true, {}, right);
+            left.data = left.data.map(function(d) {
+                d.val = leftval;
+                return d;
             });
         }
-        else{
-            left.data.forEach(function(d,i){
-                lefthash[d.cat] = d.val;
-            });
-        }
-
-        var righthash = {};
+        
         if (typeof right == 'number'){
-            left.data.forEach(function(d,i){
-                righthash[d.cat] = right;
+            var rightval = right;
+            right = $.extend(true, {}, left);
+            right.data = right.data.map(function(d) {
+                d.val = rightval;
+                return d;
             });
-        }
-        else{
-            right.data.forEach(function(d,i){
-                righthash[d.cat] = d.val;
-            });
-        }
 
+        }
+        var lefthash = {};
+        left.data.forEach(function(d) {
+            lefthash[d.id]=d.val;
+        });
+        var righthash = {};
+        right.data.forEach(function(d) {
+            righthash[d.id]=d.val;
+        });
+        
         var allkeys = {};
-        Object.keys(righthash).forEach(function(d){ allkeys[d]=1; });
-        Object.keys(lefthash).forEach(function(d){ allkeys[d]=1; });
+        left.data.forEach(function(d){
+            allkeys[d.id] = d.cat;
+        });
 
+        right.data.forEach(function(d){
+            allkeys[d.id] = d.cat;
+        });
 
         var res = {};
         res.data = Object.keys(allkeys).map(function(k){
             var l = lefthash[k] || 0 ;
             var r = righthash[k] || 0;
-            var val =  opfunc(l,r);
+            var val = opfunc(l,r);
 
-            return {time: new Date(k),val: val};
+            return {id:k, cat:allkeys[k],val:val};
         });
         res.data = res.data.filter(function(d){return isFinite(d.val);});
         res.data = res.data.filter(function(d){return d.val !== 0;});
