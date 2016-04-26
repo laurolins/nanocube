@@ -214,6 +214,10 @@ Timeseries.prototype={
         var zeroFunc = d3.svg.line()
                 .x(function(d) { return widget.x(d.time); })
                 .y(function(d) { return widget.y(0); });
+
+        data.pop();
+        data.pop();
+        data.pop();
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));

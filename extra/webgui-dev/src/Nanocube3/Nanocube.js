@@ -78,10 +78,18 @@ Query.prototype = {
     },
 
     setCatConst: function(varname, catvalues) {
-        var values = catvalues.map(function(d){ return d.id; });
+        var q = this;
+        var valnames = q.nanocube.dimensions[varname].valnames;
+        
+        var values = catvalues.map(function(d){
+            return {cat: d.cat, id: valnames[d.cat] };
+        });   
                                    
         if (values.length > 0){
-            var constraint = 'r("'+varname+'",'+'set('+values.join(',') +'))';
+            var constraint = 'r("'+varname+'",'+'set('+values.map(function(d){
+                return d.id;
+            }).join(',') +'))';
+
             this.query_elements[varname] = constraint;
         }
 
@@ -118,13 +126,13 @@ Query.prototype = {
 
         var dfd = new $.Deferred();
         this._run_query(this).done(function(data){
+            var q = this;
             if (!data.root.children){
                 dfd.resolve({timeconst:q.timeconst, timearray:[]});
                 return;
             }
 
             data = data.root.children;
-            var q = this;
             var timearray = data.map(function(d){
                 var t = d.path[0];
                 var v = d.val; //old style
@@ -256,7 +264,7 @@ Query.prototype = {
         this.valnames = this.nanocube.dimensions[varname].valnames;
         this._run_query(this).done(function(data){
             if (!data.root.children){
-                return dfd.resolve([]);
+                return dfd.resolve({type:'cat',data:[]});
             }
 
             data = data.root.children;
@@ -286,7 +294,7 @@ Query.prototype = {
         this.valnames = this.nanocube.dimensions[varname].valnames;
         this._run_query(this,'topk').done(function(data){
             if (!data.root.val.volume_keys){
-                return dfd.resolve([]);
+                return dfd.resolve({type:'id', data: []});
             }
             
             data = data.root.val.volume_keys;
