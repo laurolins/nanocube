@@ -58,6 +58,8 @@ sudo apt-get install zlib1g-dev
 sudo apt-get install libboost-all-dev
 sudo apt-get install libcurl4-openssl-dev
 ```
+**The support for Ubuntu 16.04 is currently being tested (due to changes in gcc 5), please try it out with the `master` version.**
+
 
 #### Linux (CentOS 6)
 
