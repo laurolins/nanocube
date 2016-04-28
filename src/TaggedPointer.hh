@@ -21,7 +21,6 @@ struct TaggedPointer
     TaggedPointer(T *ptr, Tag tag)
     {
         data.ptr = static_cast<void*>(ptr);
-        assert (data.aux.tag == 0 || data.aux.tag == 0xFF);
         data.aux.tag = tag;
     }
 
@@ -44,7 +43,6 @@ struct TaggedPointer
     {
         Tag tag = getTag();
         data.ptr = static_cast<void*>(ptr);
-        assert (data.aux.tag == 0 || data.aux.tag == 0xFF);
         data.aux.tag = tag;
     }
 
