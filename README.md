@@ -323,9 +323,12 @@ If you believe there may be a problem with the crime nanocube, try
 running 'nctest.sh' in the `test` subdirectory.  It will make some
 queries of the nanocube (change the script if you are not using port
 29512) and compare the results to known results that we gathered
-ourselves (for both Ubuntu 14.04 and MacOS 10.10).  If the results match, it will
+ourselves.  If the results match, it will
 report 'SUCCESS'.  In the case of FAILURE, it may still be a simple discrepancy
-so you should look at the output to see if the results may simply be sorted differently.
+so you should look at the output to see if there is a simple explanation.  Note that we
+are sorting the results of multiple queries and checking that the values returned are
+identical, so it is highly unlikely that there is a problem if the sorted results match
+the expected results.
 
 <!--
  and produces `out.txt`.

@@ -1,26 +1,21 @@
 #!/bin/bash
 
-# Determine what OS you are running (Linux, MacOS are only ones supported)
-uname -a | grep -i linux >> /dev/null
-tmp=$?
-if [ $tmp -ne 0 ]; then
-uname -a | grep -i darwin >> /dev/null
-tmp2=$?
-if [ $tmp2 -ne 0 ]; then
-os=unknown
-else
-os=mac
-fi
-else
-os=linux
-fi
-
 # Test for wget (exit on error)
 which wget >> /dev/null
 if [ "$?" = "1" ]; then
 	echo "********************"
 	echo "The nctest script requires wget, but it was not found on your system."
 	echo "Please install it or update your PATH environment variable to include wget."
+	echo "********************"
+	exit
+fi
+
+# Test for sed (exit on error)
+which sed >> /dev/null
+if [ "$?" = "1" ]; then
+	echo "********************"
+	echo "The nctest script requires sed, but it was not found on your system."
+	echo "Please install it or update your PATH environment variable to include sed."
 	echo "********************"
 	exit
 fi
@@ -84,39 +79,23 @@ wget -q -O - 'http://localhost:29512/count.r("location",degrees_mask("-87.6512,4
 echo >> out.txt
 
 
-# Compare the output (out.txt) against the appropriate results file.
+# Mangle the file a bit to make comparisons easier.
 
-if [ $os == "linux" ]; then
+# Replace space and left brace with newline and left brace
+sed -i $'s/ {/\\\n{/g' out.txt
 
-diff out.txt nctest_output_expected.ubuntu.14.04.txt
+# Now sort the file so that we can more easily compare.  The values should be identical across all OSes.
+# Yes, we know this is not a perfect solution, but good enough to determine if your nanocube is setup correctly and able to answer queries.
+
+sort out.txt > out_sorted.txt
+
+diff out_sorted.txt nctest_output_expected_sorted.txt
 tmp=$?
 if [ $tmp -ne 0 ]; then
 echo "********************"
-echo "FAILURE: Test output does not match expected results for Linux.  Something is likely wrong with the setup."
+echo "FAILURE: Test output does not match expected results.  Please do a manual comparison to see what might be going wrong."
 echo "********************"
 else
 echo "SUCCESS"
-/bin/rm -f out.txt
-fi
-
-elif [ $os == "mac" ]; then
-diff out.txt nctest_output_expected.macos10.10.txt
-
-tmp=$?
-if [ $tmp -ne 0 ]; then
-echo "********************"
-echo "FAILURE: Test output does not match expected results for MacOS.  Something is likely wrong with the setup."
-echo "********************"
-else
-echo "SUCCESS"
-/bin/rm -f out.txt
-fi
-
-else
-echo "********************"
-echo "Your operating system does not appear to be Linux or MacOS.  You can try comparing out.txt to one"
-echo "of the two output files included, but it is likely that they will differ in some way.  You may be"
-echo "tell if there are only minor differences, which could indicate that your setup is correct. If you"
-echo "are seeing unexplained differences, please try posting your results to the nanocubes discussion forum."
-echo "********************"
+/bin/rm -f out.txt out_sorted.txt
 fi
