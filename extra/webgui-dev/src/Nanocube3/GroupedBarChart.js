@@ -126,10 +126,10 @@ GroupedBarChart.prototype={
 
     flattenData: function(data){
         return Object.keys(data).reduce(function(prev,curr){         
-            var color=curr.replace('#','');
-            var is_color=/(^[0-9A-Fa-f]{6}$)|(^[0-9A-Fa-f]{3}$)/i.test(color);
+            var color=curr;
+            var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
             if(!is_color){
-                color = 'f00';
+                color = '#f00';
             }
             var row = Object.keys(data[curr].data).map(function(k){
                 var d = data[curr].data[k];

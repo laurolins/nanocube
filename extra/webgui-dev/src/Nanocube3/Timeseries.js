@@ -90,7 +90,7 @@ Timeseries.prototype={
         var sel = this.getSelection();
         var start = sel.global.start;
         var end = sel.global.end;
-        var interval = (end - start+1) / 1000 / this.width * 3;
+        var interval = (end - start+1) / 1000 / this.width * 5;
 
         var promises = this.getDataCallback(start, end, interval);
         var promarray = Object.keys(promises).map(function(k){
@@ -181,7 +181,7 @@ Timeseries.prototype={
     },
 
     drawLine:function(data,color){
-        color = color.replace('#','');
+        var colorid = color.replace('#','');
         
         if (data.length < 2){
             return;
@@ -190,14 +190,14 @@ Timeseries.prototype={
         var widget = this;
         
         //create unexisted paths
-        var path = widget.svg.select('path.line.'+color);
+        var path = widget.svg.select('path.line.'+colorid);
         if (path.empty()){
             path = widget.svg.append('path');
-            path.attr('class', 'line '+color);
+            path.attr('class', 'line '+colorid);
 
-            var is_color=/(^[0-9A-Fa-f]{6}$)|(^[0-9A-Fa-f]{3}$)/i.test(color);
+            var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
             if (!is_color){
-                color = 'f00'; //make it red as default
+                color = '#f00'; //make it red as default
             }
             
             path.style('stroke-width','2px')
