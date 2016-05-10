@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env python
 
 import sys,argparse,json,urllib2,random,math,os
 
@@ -148,7 +148,7 @@ def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
     newtiles=[]
     for location in tiles:
         res_str =  urllib2.urlopen(query_url.format(**location)).read()
-        res_str.replace('\x00','}') # this is bad
+        res_str = res_str.replace('\x00','}') # this is bad
         res = json.loads(res_str)
 
         res = res['root']['children']
