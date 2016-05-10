@@ -147,7 +147,7 @@ def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
     p = initp
     newtiles=[]
     for location in tiles:
-        res_str =  urllib2.urlopen(query_url.format(**location).read())
+        res_str =  urllib2.urlopen(query_url.format(**location)).read()
         res_str.replace('\x00','}') # this is bad
         res = json.loads(res_str)
 
