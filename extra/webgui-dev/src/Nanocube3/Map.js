@@ -8,9 +8,8 @@ var Map=function(opts,getDataCallback,updateCallback){
     this._coarse_offset = opts.coarse_offset || 0;
     this._name = opts.name || 'defaultmap';
     this._tilesurl = opts.tilesurl ||
-        //'https://{s}.tiles.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6IlhHVkZmaW8ifQ.hAMX5hSW-QnTeRCMAy9A8Q';
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
+    
     var colors = colorbrewer.YlOrRd[9].slice(0).reverse();
     if(opts.colormap){
         colors = opts.colormap.colors;
@@ -85,6 +84,19 @@ Map.prototype = {
         this._initDrawingControls(map);
         this._renormalize=true;
 
+        //add info
+        $('#'+this._name).append('<p class="info">info test test</p>');
+        //style
+        var infodiv = $('#'+this._name+" .info");
+        infodiv.css({
+            position: 'absolute',
+            'z-index':1,
+            color: 'white',
+            'right': '1ch',
+            'top': '0.5em',
+            'padding':'0px',
+            'margin':'0px'
+        });
         return map;
     },
 
@@ -377,7 +389,6 @@ Map.prototype = {
                 var results = arguments;
                 promkeys.forEach(function(d,i){
                     console.log('tiletime:',window.performance.now()-startdata);
-                    //console.log(i,d,results[i]);
 
                     var res = results[i];
                     var colormap = widget._colors;
@@ -387,11 +398,16 @@ Map.prototype = {
                                                  widget._logheatmap);
                         widget._renormalize = false;
                     }
+                                                           
                     
                     var startrender = window.performance.now();
                     widget.drawCanvasLayer(res,canvas);
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
+
+                    res.total_count =  res.data.reduce(function(p,c){ return p+c.val;},0);
+                    widget.updateInfo('Total: '+ res.total_count);
+                    
                 });
             });
         }
@@ -411,5 +427,9 @@ Map.prototype = {
         op = Math.max(0.0,op);
         op = Math.min(1.0,op);
         this._maptiles.setOpacity(op);
+    },
+
+    updateInfo: function(html_str){
+        $('#'+this._name+" .info").html(html_str);
     }
 };
