@@ -21,7 +21,7 @@ LT_INIT([dlopen])
 AC_LANG([C++])
 
 # turn on c++11
-AX_CXX_COMPILE_STDCXX_11(noext)
+AX_CXX_COMPILE_STDCXX_11(noext,mandatory)
 
 # check zlib
 AX_CHECK_ZLIB
