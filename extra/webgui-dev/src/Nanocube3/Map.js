@@ -389,10 +389,6 @@ Map.prototype = {
                 var results = arguments;
                 promkeys.forEach(function(d,i){
                     console.log('tiletime:',window.performance.now()-startdata);
-<<<<<<< HEAD
-=======
-                    //console.log(i,d,results[i]);
->>>>>>> 1c878ada5c621c0655f32f6a2ca2e7cc84ac1f7b
 
                     var res = results[i];
                     var colormap = widget._colors;
@@ -402,10 +398,6 @@ Map.prototype = {
                                                  widget._logheatmap);
                         widget._renormalize = false;
                     }
-<<<<<<< HEAD
-                                                           
-=======
->>>>>>> 1c878ada5c621c0655f32f6a2ca2e7cc84ac1f7b
                     
                     var startrender = window.performance.now();
                     widget.drawCanvasLayer(res,canvas);
@@ -437,12 +429,9 @@ Map.prototype = {
         op = Math.max(0.0,op);
         op = Math.min(1.0,op);
         this._maptiles.setOpacity(op);
-<<<<<<< HEAD
     },
 
     updateInfo: function(html_str){
         $('#'+this._name+" .info").html(html_str);
-=======
->>>>>>> 1c878ada5c621c0655f32f6a2ca2e7cc84ac1f7b
     }
 };
