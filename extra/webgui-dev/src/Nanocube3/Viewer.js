@@ -8,13 +8,13 @@ var Viewer = function(opts){
     this._container = container;
     this._nanocubes = nanocubes;
     this._urlargs = opts.urlargs;
-    
+
     this.setupDivs(opts.config.widget);
 
     //View and controller
     var widget = {};
     this._widget = widget;
-    
+
     var viewer = this;
 
     var k  = Object.keys(nanocubes);
@@ -25,13 +25,13 @@ var Viewer = function(opts){
         var dimsize = d.varsize;
 
         var options;
-        
-        switch(dimtype){           
+
+        switch(dimtype){
         case 'quadtree':
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
-            options.levels = dimsize;            
+            options.levels = dimsize;
             options.args = viewer._urlargs[d.name] || null;
 
             widget[d.name]=new Map(options,function(bbox,zoom,
@@ -39,7 +39,7 @@ var Viewer = function(opts){
                 return viewer.getSpatialData(d.name,bbox,zoom);
             },function(args,constraints){
                 return viewer.update([d.name],constraints,d.name,args);
-            });            
+            });
             break;
 
         case 'cat':
@@ -67,14 +67,14 @@ var Viewer = function(opts){
                 return viewer.update([d.name],constraints,d.name,args);
             });
             break;
-            
+
         case 'time':
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
             options.timerange = viewer.getTimeRange();
             options.args = viewer._urlargs[d.name] || null;
-            
+
             widget[d.name]=new Timeseries(options,function(start,end,interval){
                 return viewer.getTemporalData(d.name, start,end,interval);
             },function(args,constraints){
@@ -129,9 +129,9 @@ Viewer.prototype = {
         var range = Object.keys(nc).reduce(function(p,c){
             var s = nc[c].timeinfo.start;
             var e = nc[c].timeinfo.end;
-            
+
             return [Math.min(p[0], nc[c].bucketToTime(s)),
-                    Math.max(p[1], nc[c].bucketToTime(e))];            
+                    Math.max(p[1], nc[c].bucketToTime(e))];
         }, [Infinity, 0]);
         return [new Date(range[0]), new Date(range[1])];
     },
@@ -150,7 +150,7 @@ Viewer.prototype = {
         for (var c in constraints){
             viewer.broadcastConstraint(skip,constraints[c]);
         }
-        
+
         Object.keys(this._widget).forEach(function(d){
             if (skip.indexOf(d) == -1){
                 //re-render
@@ -162,16 +162,37 @@ Viewer.prototype = {
     constructQuery: function(nc,skip){
         skip = skip || [];
 
+        var viewer = this;
         var queries = {};
         queries.global = nc.query();
 
-        var viewer = this;
+        //brush
         Object.keys(this._widget).forEach(function(d){
             if (skip.indexOf(d) == -1){
                 var sel = viewer._widget[d].getSelection();
+
+                if(sel.global){
+                    queries.global=queries.global.setConstraint(d,sel.global);
+                }
+
+                if(sel.brush){
+                    console.log(sel.brush);
+                    queries.global=queries.global.setConstraint(d,sel.brush);
+                }                
+            }
+        });
+        console.log(queries.global,skip);
+        
+        //then the rest
+        Object.keys(this._widget).forEach(function(d){
+            if (skip.indexOf(d) == -1){
+                var sel = viewer._widget[d].getSelection();                
                 Object.keys(sel).forEach(function(s){
-                    var q = null;
+                    if (s == 'brush' || s == 'global'){
+                        return;
+                    }
                     
+                    var q = null;
                     //get an appropriate query
                     if (s in queries){
                         q = queries[s];
@@ -179,19 +200,26 @@ Viewer.prototype = {
                     else { // take the global
                         q = $.extend(true,{},queries.global);
                     }
-                    
+
                     //add a constraint
                     queries[s] = q.setConstraint(d,sel[s]);
                 });
             }
         });
+
+        console.log(queries.global,skip);
+
+        if (Object.keys(queries).length > 1){
+            delete queries.global;
+        }
+
         return queries;
     },
 
     getSpatialData:function(varname, bbox, zoom, maptilesize){
         var k = Object.keys(this._nanocubes);
         var viewer = this;
-        
+
         //construct a list of queries
         var cq = {};
         k.forEach(function(d){
@@ -207,12 +235,12 @@ Viewer.prototype = {
                 selq[s][d] = cq[d][s];
             });
         });
-        
+
         //remove global const if there is a selection
-        if (Object.keys(selq).length > 1){
-            delete selq.global;
-        }        
-        
+        //if (Object.keys(selq).length > 1){
+        //    delete selq.global;
+        //}
+
         //generate queries for each selections
         var res = {};
         var expr = this.expression;
@@ -235,7 +263,7 @@ Viewer.prototype = {
     getTemporalData:function(varname, start,end,intervalsec){
         var k = Object.keys(this._nanocubes);
         var viewer = this;
-       
+
         //construct a list of queries
         var cq = {};
         k.forEach(function(d){
@@ -251,11 +279,11 @@ Viewer.prototype = {
                 selq[s][d] = cq[d][s];
             });
         });
-        
+
         //remove global const if there is a selection
-        if (Object.keys(selq).length > 1){
-            delete selq.global;
-        }        
+        //if (Object.keys(selq).length > 1){
+        //    delete selq.global;
+        //}
 
         //generate queries for each selections
         var res = {};
@@ -277,10 +305,10 @@ Viewer.prototype = {
     },
 
     getTopKData:function(varname, n){
-        n = n || 20; // hard code test for now 
+        n = n || 20; // hard code test for now
         var k = Object.keys(this._nanocubes);
         var viewer = this;
-        
+
         //construct a list of queries
         var cq = {};
         k.forEach(function(d){
@@ -296,11 +324,11 @@ Viewer.prototype = {
                 selq[s][d] = cq[d][s];
             });
         });
-        
+
         //remove global const if there is a selection
-        if (Object.keys(selq).length > 1){
-            delete selq.global;
-        }        
+        //if (Object.keys(selq).length > 1){
+        //    delete selq.global;
+        //}
 
         //generate queries for each selections
         var res = {};
@@ -318,12 +346,12 @@ Viewer.prototype = {
             });
         }
         return res;
-    },    
+    },
 
     getCategoricalData:function(varname){
         var k = Object.keys(this._nanocubes);
         var viewer = this;
-        
+
         //construct a list of queries
         var cq = {};
         k.forEach(function(d){
@@ -339,11 +367,11 @@ Viewer.prototype = {
                 selq[s][d] = cq[d][s];
             });
         });
-        
+
         //remove global const if there is a selection
-        if (Object.keys(selq).length > 1){
-            delete selq.global;
-        }        
+        //if (Object.keys(selq).length > 1){
+        //    delete selq.global;
+        //}
 
         //generate queries for each selections
         var res = {};
@@ -361,7 +389,7 @@ Viewer.prototype = {
             });
         }
         return res;
-    },    
+    },
 
     updateURL: function(k,argstring){
         if(!k || !argstring){
@@ -370,7 +398,7 @@ Viewer.prototype = {
 
         var args = this._urlargs;
         args[k] = argstring;
-        
+
         var res = Object.keys(args).map(function(k){
             return k+'='+args[k];
         });
@@ -379,5 +407,5 @@ Viewer.prototype = {
         //change the url
         window.history.pushState('test','title',
                                  window.location.pathname+argstr);
-    }    
+    }
 };
