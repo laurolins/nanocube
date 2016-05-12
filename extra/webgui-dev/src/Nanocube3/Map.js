@@ -84,7 +84,6 @@ Map.prototype = {
         this._initDrawingControls(map);
         this._renormalize=true;
 
-<<<<<<< HEAD
         //add info
         $('#'+this._name).append('<p class="info">info test test</p>');
         //style
@@ -98,8 +97,6 @@ Map.prototype = {
             'padding':'0px',
             'margin':'0px'
         });
-=======
->>>>>>> 1c878ada5c621c0655f32f6a2ca2e7cc84ac1f7b
         return map;
     },
 
