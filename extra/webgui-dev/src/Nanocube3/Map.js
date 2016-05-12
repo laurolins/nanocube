@@ -403,13 +403,10 @@ Map.prototype = {
                     widget.drawCanvasLayer(res,canvas);
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
-<<<<<<< HEAD
 
                     res.total_count =  res.data.reduce(function(p,c){ return p+c.val;},0);
                     widget.updateInfo('Total: '+ res.total_count);
                     
-=======
->>>>>>> 1c878ada5c621c0655f32f6a2ca2e7cc84ac1f7b
                 });
             });
         }
