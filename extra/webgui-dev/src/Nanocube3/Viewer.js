@@ -28,6 +28,10 @@ var Viewer = function(opts){
 
         switch(dimtype){
         case 'quadtree':
+            if (!(d.name in opts.config.widget)){
+                break;
+            }
+
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
@@ -43,6 +47,10 @@ var Viewer = function(opts){
             break;
 
         case 'cat':
+            if (!(d.name in opts.config.widget)){
+                break;
+            }
+            
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
@@ -56,6 +64,10 @@ var Viewer = function(opts){
             break;
 
         case 'id':
+            if (!(d.name in opts.config.widget)){
+                break;
+            }
+
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
@@ -69,6 +81,10 @@ var Viewer = function(opts){
             break;
 
         case 'time':
+            if (!(d.name in opts.config.widget)){
+                break;
+            }
+
             options = $.extend(true, {}, opts.config.widget[d.name].div);
             options.name = d.name;
             options.model = viewer;
@@ -176,39 +192,28 @@ Viewer.prototype = {
                 }
 
                 if(sel.brush){
-                    console.log(sel.brush);
                     queries.global=queries.global.setConstraint(d,sel.brush);
                 }                
             }
         });
-        console.log(queries.global,skip);
         
         //then the rest
         Object.keys(this._widget).forEach(function(d){
             if (skip.indexOf(d) == -1){
-                var sel = viewer._widget[d].getSelection();                
-                Object.keys(sel).forEach(function(s){
-                    if (s == 'brush' || s == 'global'){
-                        return;
-                    }
-                    
-                    var q = null;
+                var sel = viewer._widget[d].getSelection();
+                Object.keys(sel).filter(function(d){
+                    return (d != 'brush') && (d != 'global');
+                }).forEach(function(s){
                     //get an appropriate query
-                    if (s in queries){
-                        q = queries[s];
-                    }
-                    else { // take the global
-                        q = $.extend(true,{},queries.global);
-                    }
-
+                    var q = queries[s] || $.extend(true,{},queries.global);
                     //add a constraint
                     queries[s] = q.setConstraint(d,sel[s]);
                 });
             }
         });
-
+        
         console.log(queries.global,skip);
-
+        
         if (Object.keys(queries).length > 1){
             delete queries.global;
         }

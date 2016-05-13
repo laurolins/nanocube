@@ -51,7 +51,7 @@ define(['jquery','nanocube','colorbrewer'], function($,Nanocube3,colorbrewer){
     //read config and pass it to start viewer
 
     var urlargs = getArgFromUrl();
-    urlargs.config = urlargs.config || './testconfig.json';
+    urlargs.config = urlargs.config || './config.json';
 
     $.getJSON(urlargs.config).done(function(config){
         startViewer(config,urlargs);
@@ -75,6 +75,8 @@ define(['jquery','nanocube','colorbrewer'], function($,Nanocube3,colorbrewer){
                 urlargs: urlargs
             });
             viewer.update();
+        }).failed(function(){
+            console.log('failed to parse' +config);
         });
     }
 });
