@@ -411,6 +411,7 @@ Viewer.prototype = {
 
         //change the url
         window.history.pushState('test','title',
-                                 window.location.pathname+argstr);
+                                 window.location.pathname.replace(/\/$/,'')+
+                                 argstr);
     }
 };

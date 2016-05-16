@@ -75,7 +75,7 @@ define(['jquery','nanocube','colorbrewer'], function($,Nanocube3,colorbrewer){
                 urlargs: urlargs
             });
             viewer.update();
-        }).failed(function(){
+        }).fail(function(){
             console.log('failed to parse' +config);
         });
     }
