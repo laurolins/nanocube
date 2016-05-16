@@ -145,7 +145,7 @@ GroupedBarChart.prototype={
         var widget = this;
 
         var flatdata = this.flattenData(data);
-
+        
         flatdata.sort(function(a,b){
             //numeric sort
             var res = parseFloat(a.cat)-parseFloat(b.cat);
@@ -161,14 +161,14 @@ GroupedBarChart.prototype={
 
         //add the bars back
         var bars = this.svg.selectAll('.bar').data(flatdata);
-
+        
         bars.enter()
             .append('rect').attr('class', 'bar')
             .on('click', function(d){ //click reaction
                 if(!widget.selection.brush){
                     widget.selection.brush = [];
                 }
-                                
+                     
                 var idx = widget.selection.brush.findIndex(function(b){
                     return (b.cat == d.cat);
                 });
@@ -177,7 +177,12 @@ GroupedBarChart.prototype={
                     widget.selection.brush.splice(idx,1);
                 }
                 else{
-                    widget.selection.brush = [{id:d.id, cat:d.cat}];
+                    if(d3.event.shiftKey){
+                        widget.selection.brush.push({id:d.id, cat:d.cat});
+                    }
+                    else{
+                        widget.selection.brush = [{id:d.id, cat:d.cat}];
+                    }                        
                 }
 
                 if(widget.selection.brush.length < 1){
