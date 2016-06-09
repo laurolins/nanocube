@@ -22,9 +22,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.xAxis = d3.svg.axis().scale(widget.x)
         .orient("bottom");
     widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left")
-        .ticks(3)
-        .tickFormat(d3.format("s"));
+        .orient("left").ticks(3);
 
     //Zoom
     widget.zoom=d3.behavior.zoom();
@@ -149,11 +147,7 @@ Timeseries.prototype={
             .call(this.brush.event);
     },
     
-    redraw: function(lines){
-        Object.keys(lines).forEach(function(d){
-            lines[d].data.pop();
-        });
-            
+    redraw: function(lines){            
         //update y axis
         var yext = Object.keys(lines).reduce(function(p,c){
             var e = d3.extent(lines[c].data, function(d){ return d.val; });
@@ -161,6 +155,8 @@ Timeseries.prototype={
                      Math.max(p[1],e[1])];
         }, [Infinity,-Infinity]);
 
+
+        yext = yext.map(function(d){ return d3.round(d,2); });
         this.y.domain(yext);
 
         //update the axis

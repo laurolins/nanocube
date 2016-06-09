@@ -110,7 +110,14 @@ Expression.prototype = {
                 case '*':
                     return function(a,b) {return a*b;};
                 case '/':
-                    return function(a,b) {return (a+1e-4)/(b+1e-4);};
+                    return function(a,b) {
+                        if(isNaN(a/b)){
+                            return 0;
+                        }
+                        else{
+                            return a/b;
+                        }
+                    };
                 default:
                     throw "Unsupported Operation";
                 }
