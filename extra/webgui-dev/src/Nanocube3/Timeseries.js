@@ -19,8 +19,12 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.x = d3.time.scale.utc().range([0, width]);
     widget.y = d3.scale.linear().range([height, 0]);
 
-    widget.xAxis = d3.svg.axis().scale(widget.x).orient("bottom");
-    widget.yAxis = d3.svg.axis().scale(widget.y).orient("left").ticks(3);
+    widget.xAxis = d3.svg.axis().scale(widget.x)
+        .orient("bottom");
+    widget.yAxis = d3.svg.axis().scale(widget.y)
+        .orient("left")
+        .ticks(3)
+        .tickFormat(d3.format("s"));
 
     //Zoom
     widget.zoom=d3.behavior.zoom();
@@ -146,12 +150,17 @@ Timeseries.prototype={
     },
     
     redraw: function(lines){
+        Object.keys(lines).forEach(function(d){
+            lines[d].data.pop();
+        });
+            
         //update y axis
         var yext = Object.keys(lines).reduce(function(p,c){
             var e = d3.extent(lines[c].data, function(d){ return d.val; });
-            return [ Math.min(p[0],d3.round(e[0],3)),
-                     Math.max(p[1],d3.round(e[1],3)) ];
-        }, [Infinity,0]);
+            return [ Math.min(p[0],e[0]),
+                     Math.max(p[1],e[1])];
+        }, [Infinity,-Infinity]);
+
         this.y.domain(yext);
 
         //update the axis
@@ -215,9 +224,6 @@ Timeseries.prototype={
                 .x(function(d) { return widget.x(d.time); })
                 .y(function(d) { return widget.y(0); });
 
-        data.pop();
-        data.pop();
-        data.pop();
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));
