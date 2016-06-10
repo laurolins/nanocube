@@ -148,6 +148,10 @@ Timeseries.prototype={
     },
     
     redraw: function(lines){            
+        Object.keys(lines).forEach(function(k){
+            lines[k].data.pop(); //avoid extreme values at the end?
+        });
+
         //update y axis
         var yext = Object.keys(lines).reduce(function(p,c){
             var e = d3.extent(lines[c].data, function(d){ return d.val; });
@@ -156,7 +160,7 @@ Timeseries.prototype={
         }, [Infinity,-Infinity]);
 
 
-        yext = yext.map(function(d){ return d3.round(d,2); });
+        //yext = yext.map(function(d){ return d3.round(d,2); });
         this.y.domain(yext);
 
         //update the axis
