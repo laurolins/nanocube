@@ -18,6 +18,9 @@ Expression.prototype = {
         case 'BinaryExpression':
             p =  this._binExp(expr,q,qfunc);
             break;
+        case 'LogicalExpression':
+            p =  this._binExp(expr,q,qfunc);
+            break;
         case 'MemberExpression':
             p = this._memExp(expr,q,qfunc);
             break;
@@ -118,6 +121,11 @@ Expression.prototype = {
                             return a/b;
                         }
                     };
+                case '||':
+                    return function(a,b) { return Math.max(a,b); };
+                case '&&':
+                    return function(a,b) { return Math.min(a,b); };
+
                 default:
                     throw "Unsupported Operation";
                 }
