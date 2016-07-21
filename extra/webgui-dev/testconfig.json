@@ -1,53 +1,61 @@
 {
     "nanocube":{
-        "taxi": {"url": "http://localhost:12345"}
+        "NoD": {"url": "http://localhost:12345"}
+    },
+    
+    "data":{
+        "egress_tp": {
+            "expr": "NoD[type=='EGRESS_TP']",
+            "colormap": "Reds"
+        },
+        "ingress_tp": {
+            "expr": "NoD[type=='INGRESS_TP']",
+            "colormap": "Blues"
+        },
+        "bw": {
+            "expr": "NoD[type=='SPOT_BW']",
+            "colormap": "Greens",
+            "disabled": true
+        }
     },
     
     "widget":{
-        "src":{
-            "nanocube":{
-                "taxi":"src"
-            },            
+        "location":{
+            "type": "spatial",
             "div":{
+                "title": "location",
                 "float":"left",
-                "width": "50%",
+                "width": "100%",
                 "height": "100%",
                 "z-index": 0,
                 "coarse_offset":0,
                 "tilesurl": "http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png",
-                "viewbox": [[40.496044,-74.255735],[40.915256,-73.700272]]
+                "viewbox": [[21.8,-126.2],[51.9,-62.6]]
             }
         },
-        "dst":{
-            "nanocube":{
-                "taxi":"dst"
-            },            
+
+        "cust_name":{
+            "type": "cat",
             "div":{
-                "width": "50%",
-                "height": "100%",
-                "z-index": 0,
-                "coarse_offset":0,
-                "tilesurl": "http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png",
-                "viewbox": [[40.496044,-74.255735],[40.915256,-73.700272]]
-            }
-        },
-        "total_amount":{
-            "div":{
+                "title": "customer name",
                 "opacity": 0.8, 
                 "top": "5em", 
-                "height": "15em", 
-                "width": "25em",
-                "margin-left": "20ch",
+                "height": "30em", 
+                "width": "45em",
+                "margin-left": "42ch",
                 "z-index": 1, 
                 "position": "absolute", 
                 "background-color": "#555", 
                 "right": "1ch",
-                "logaxis": "true"
+                "logaxis": "true",
+                "overflow": "auto"
             }
         },
 
-        "tpep_pickup_datetime":{
+        "utc":{
+            "type": "time",
             "div":{
+                "title": "time",
                 "opacity": 0.8, 
                 "bottom": "1em", 
                 "height": "12em", 
@@ -56,18 +64,6 @@
                 "position": "absolute", 
                 "background-color": "#555", 
                 "left": "1ch"
-            }
-        },
-
-        "expr":{
-            "div":{
-                "top": "2em",
-                "right": "1ch",
-                "position": "absolute",
-                "padding": "0.5em",
-                "opacity": 0.8, 
-                "background-color": "#555",
-                "z-index":1
             }
         }
     }

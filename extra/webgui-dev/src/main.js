@@ -55,6 +55,8 @@ define(['jquery','nanocube','colorbrewer'], function($,Nanocube3,colorbrewer){
 
     $.getJSON(urlargs.config).done(function(config){
         startViewer(config,urlargs);
+    }).fail(function(err){
+        console.log("failed to parse json"+ err);
     });
     
     function startViewer(config,urlargs){
@@ -69,14 +71,13 @@ define(['jquery','nanocube','colorbrewer'], function($,Nanocube3,colorbrewer){
             });
             viewer = new Nanocube3.Viewer({
                 nanocubes: nchash,
-
                 div_id:'#nc',
                 config: config,
                 urlargs: urlargs
             });
             viewer.update();
         }).fail(function(){
-            console.log('failed to parse' +config);
+            console.log('failed to parse' + urlargs.config);
         });
     }
 });

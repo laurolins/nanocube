@@ -22,7 +22,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.xAxis = d3.svg.axis().scale(widget.x)
         .orient("bottom");
     widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left").ticks(3);
+        .orient("left").ticks(3,"s");
 
     //Zoom
     widget.zoom=d3.behavior.zoom();
@@ -64,7 +64,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.svg.append("text")
         .attr("x", -10)
         .attr("y", -10)
-        .text(opts.name);
+        .text(opts.title);
 
     widget.svg.append("g")
         .attr("class", "x axis")
@@ -190,6 +190,9 @@ Timeseries.prototype={
     },
 
     drawLine:function(data,color){
+        var colors = color.split('-');
+        color = colors[1];
+
         var colorid = color.replace('#','');
         
         if (data.length < 2){
@@ -199,7 +202,7 @@ Timeseries.prototype={
         var widget = this;
         
         //create unexisted paths
-        var path = widget.svg.select('path.line.'+colorid);
+        var path = widget.svg.select('path.line.color'+colorid);
         if (path.empty()){
             path = widget.svg.append('path');
             path.attr('class', 'line '+colorid);

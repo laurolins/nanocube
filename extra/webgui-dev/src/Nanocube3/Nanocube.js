@@ -20,6 +20,10 @@ var Query = function(nc){
 Query.prototype = {
     //Functions for setting Constraints
     setConstraint: function(varname,c){
+        if(!(varname in this.nanocube.dimensions)){
+            return this;
+        }
+
         switch(this.nanocube.dimensions[varname].vartype){
         case 'quadtree':
             return this.setSpatialConst(varname, c);

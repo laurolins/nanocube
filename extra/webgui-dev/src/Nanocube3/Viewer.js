@@ -1,123 +1,42 @@
-/*global $ jsep Expression Map Timeseries GroupedBarChart */
+/*global $ jsep colorbrewer Expression Map Timeseries GroupedBarChart */
 
 var Viewer = function(opts){
     var container = $(opts.div_id);
     var nanocubes = opts.nanocubes;
     var variables = [];
-
+ 
     this._container = container;
     this._nanocubes = nanocubes;
     this._urlargs = opts.urlargs;
-
-    this.setupDivs(opts.config.widget);
-
-    //View and controller
-    var widget = {};
-    this._widget = widget;
-
+    this._widget = {};
     var viewer = this;
+    
 
-    var k  = Object.keys(nanocubes);
-    var nc = nanocubes[k[0]];
-    Object.keys(nc.dimensions).forEach(function(dim){
-        var d = nc.dimensions[dim];
-        var dimtype = d.vartype;
-        var dimsize = d.varsize;
-
-        var options;
-
-        switch(dimtype){
-        case 'quadtree':
-            if (!(d.name in opts.config.widget)){
-                break;
-            }
-
-            options = $.extend(true, {}, opts.config.widget[d.name].div);
-            options.name = d.name;
-            options.model = viewer;
-            options.levels = dimsize;
-            options.args = viewer._urlargs[d.name] || null;
-
-            widget[d.name]=new Map(options,function(bbox,zoom,
-                                                    maptilesize){
-                return viewer.getSpatialData(d.name,bbox,zoom);
-            },function(args,constraints){
-                return viewer.update([d.name],constraints,d.name,args);
-            });
-            break;
-
-        case 'cat':
-            if (!(d.name in opts.config.widget)){
-                break;
-            }
-            
-            options = $.extend(true, {}, opts.config.widget[d.name].div);
-            options.name = d.name;
-            options.model = viewer;
-            options.args = viewer._urlargs[d.name] || null;
-
-            widget[d.name]=new GroupedBarChart(options, function(){
-                return viewer.getCategoricalData(d.name);
-            },function(args,constraints){
-                return viewer.update([d.name],constraints,d.name,args);
-            });
-            break;
-
-        case 'id':
-            if (!(d.name in opts.config.widget)){
-                break;
-            }
-
-            options = $.extend(true, {}, opts.config.widget[d.name].div);
-            options.name = d.name;
-            options.model = viewer;
-            options.args = viewer._urlargs[d.name] || null;
-
-            widget[d.name]=new GroupedBarChart(options, function(){
-                return viewer.getTopKData(d.name,options.topk);
-            },function(args,constraints){
-                return viewer.update([d.name],constraints,d.name,args);
-            });
-            break;
-
-        case 'time':
-            if (!(d.name in opts.config.widget)){
-                break;
-            }
-
-            options = $.extend(true, {}, opts.config.widget[d.name].div);
-            options.name = d.name;
-            options.model = viewer;
-            options.timerange = viewer.getTimeRange();
-            options.args = viewer._urlargs[d.name] || null;
-
-            widget[d.name]=new Timeseries(options,function(start,end,interval){
-                return viewer.getTemporalData(d.name, start,end,interval);
-            },function(args,constraints){
-                return viewer.update([d.name],constraints,d.name,args);
-            });
-            break;
-        }
-    });
-
-    //Expression input
-    var expr_input=$('<input>').attr('id','expr_input').attr('size',100);
-    $('#expr').append(expr_input);
-
-    expr_input.on('change',function(e){
+    //Expressions input
+    this._data = opts.config.data;
+    var data = this._data;    
+    for (var d in this._data){
+        var exp = this._data[d].expr;
         try{
-            viewer.expression = new Expression(expr_input[0].value);
-            viewer.update();
+            exp = new Expression(exp);
+            data[d].expr = exp;
+            if(typeof data[d].colormap == 'string'){
+                data[d].colormap = colorbrewer[data[d].colormap][9].slice(0);
+                data[d].colormap.reverse();
+            }
         }
         catch(err){
-            console.log(err);
+            console.log('Cannot parse '+ exp + '--' + err);            
         }
-    });
+    }
 
-    //init expression
-    expr_input[0].value = k.join('+');
-    viewer.expression = new Expression(expr_input[0].value);
+    //Setup each widget
+    for (var w in opts.config.widget){
+        viewer._widget[w] = viewer.setupWidget(w,opts.config.widget[w],
+                                               opts.config.widget[w].levels);
+    }
 };
+
 
 Viewer.prototype = {
     broadcastConstraint: function(skip,constraint){
@@ -130,7 +49,60 @@ Viewer.prototype = {
             }
         }
     },
+    
+    setupWidget:function(id, widget, levels){
+        var options = $.extend(true, {}, widget.div);
+        var viewer = this;
+        options.name = id;
+        options.model = viewer;
+        options.args = viewer._urlargs[id] || null;
 
+        //add the div
+        var newdiv = $('<div>');
+        newdiv.attr('id', id);
+        newdiv.css(widget.div);
+        this._container.append(newdiv);
+        
+        //Create the widget
+        switch(widget.type){
+        case 'spatial':            
+            options.levels = levels || 25;
+            return new Map(options,function(bbox,zoom,maptilesize){
+                return viewer.getSpatialData(id,bbox,zoom);
+            },function(args,constraints){
+                return viewer.update([id],constraints,
+                                     id,args);
+            });
+            
+        case 'cat':
+            return new GroupedBarChart(options, function(){
+                return viewer.getCategoricalData(id);
+            },function(args,constraints){
+                return viewer.update([id],constraints,
+                                     id,args);
+            });
+            
+        case 'id':
+            return new GroupedBarChart(options, function(){
+                return viewer.getTopKData(id,options.topk);
+            },function(args,constraints){
+                return viewer.update([id],constraints,
+                                     id,args);
+            });
+            
+        case 'time':
+            options.timerange = viewer.getTimeRange();
+            return new Timeseries(options,function(start,end,interval){
+                return viewer.getTemporalData(id,start,end,interval);
+            },function(args,constraints){
+                return viewer.update([id],constraints,
+                                     id,args);
+            });
+        default:
+            return null;
+        }
+    },
+    
     setupDivs: function(config){
         for (var d in config){
             var newdiv = $('<div>');
@@ -241,27 +213,23 @@ Viewer.prototype = {
             });
         });
 
-        //remove global const if there is a selection
-        //if (Object.keys(selq).length > 1){
-        //    delete selq.global;
-        //}
-
         //generate queries for each selections
         var res = {};
-        var expr = this.expression;
-        if (!expr) {
-            Object.keys(selq).forEach(function(s){
-                res[s]=selq[s][k[0]].spatialQuery(varname,bbox,
-                                                  zoom,maptilesize);
-            });
-        }
-        else{
-            Object.keys(selq).forEach(function(s){
-                res[s] = expr.getData(selq[s],function(q){
+        var data = viewer._data;
+        Object.keys(selq).forEach(function(s){
+            Object.keys(data).forEach(function(d){
+                if(data[d].disabled){
+                    return;
+                }
+                var expr = data[d].expr;
+                var cidx = data[d].colormap.length/2;
+                var c = data[d].colormap[Math.floor(cidx)];                
+                console.log(s+'-'+c);
+                res[s+'-'+c] = expr.getData(selq[s],function(q){
                     return q.spatialQuery(varname,bbox,zoom,maptilesize);
                 });
             });
-        }
+        });
         return res;
     },
 
@@ -285,27 +253,22 @@ Viewer.prototype = {
             });
         });
 
-        //remove global const if there is a selection
-        //if (Object.keys(selq).length > 1){
-        //    delete selq.global;
-        //}
-
         //generate queries for each selections
-        var res = {};
-        var expr = this.expression;
-        if (!expr) {
-            Object.keys(selq).forEach(function(s){
-                res[s]=selq[s][k[0]].temporalQuery(varname,start,end,
-                                                   intervalsec);
-            });
-        }
-        else{
-            Object.keys(selq).forEach(function(s){
-                res[s] = expr.getData(selq[s],function(q){
+        var res = {};        
+        var data = viewer._data;
+        Object.keys(selq).forEach(function(s){            
+            Object.keys(data).forEach(function(d){
+                if(data[d].disabled){
+                    return;
+                }
+                var expr = data[d].expr;
+                var cidx = data[d].colormap.length/2;
+                var c = data[d].colormap[Math.floor(cidx)];
+                res[s+'-'+c] = expr.getData(selq[s],function(q){
                     return q.temporalQuery(varname,start,end,intervalsec);
                 });
             });
-        }
+        });
         return res;
     },
 
@@ -330,26 +293,13 @@ Viewer.prototype = {
             });
         });
 
-        //remove global const if there is a selection
-        //if (Object.keys(selq).length > 1){
-        //    delete selq.global;
-        //}
-
         //generate queries for each selections
         var res = {};
-        var expr = this.expression;
-        if (!expr) {
-            Object.keys(selq).forEach(function(s){
-                res[s]=selq[s][k[0]].topKQuery(varname,n);
+        Object.keys(selq).forEach(function(s){
+            res[s] = expr.getData(selq[s],function(q){
+                return q.topKQuery(varname,n);
             });
-        }
-        else{
-            Object.keys(selq).forEach(function(s){
-                res[s] = expr.getData(selq[s],function(q){
-                    return q.topKQuery(varname,n);
-                });
-            });
-        }
+        });
         return res;
     },
 
@@ -373,26 +323,22 @@ Viewer.prototype = {
             });
         });
 
-        //remove global const if there is a selection
-        //if (Object.keys(selq).length > 1){
-        //    delete selq.global;
-        //}
-
         //generate queries for each selections
         var res = {};
-        var expr = this.expression;
-        if (!expr) {
-            Object.keys(selq).forEach(function(s){
-                res[s]=selq[s][k[0]].categorialQuery(varname);
-            });
-        }
-        else{
-            Object.keys(selq).forEach(function(s){
-                res[s] = expr.getData(selq[s],function(q){
+        var data = viewer._data;
+        Object.keys(selq).forEach(function(s){
+            Object.keys(data).forEach(function(d){
+                if(data[d].disabled){
+                    return;
+                }
+                var expr = data[d].expr;
+                var cidx = data[d].colormap.length/2;
+                var c = data[d].colormap[Math.floor(cidx)];
+                res[s+'-'+c] = expr.getData(selq[s],function(q){
                     return q.categorialQuery(varname);
                 });
             });
-        }
+        });
         return res;
     },
 

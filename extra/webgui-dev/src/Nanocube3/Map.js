@@ -405,7 +405,8 @@ Map.prototype = {
                                 window.performance.now()-startrender);
 
                     res.total_count =  res.data.reduce(function(p,c){ return p+c.val;},0);
-                    widget.updateInfo('Total: '+ res.total_count);
+                    widget.updateInfo('Total: '+
+                                      d3.format(',')(res.total_count));
                     
                 });
             });

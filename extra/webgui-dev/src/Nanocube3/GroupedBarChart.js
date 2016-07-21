@@ -6,7 +6,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     
     var name = opts.name;
     var logaxis = opts.logaxis;
-
+    
     var margin = {top:20,right:10,left:30,bottom:30};
     var id = '#'+name;
 
@@ -23,7 +23,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     $(id).css('margin-top','0px');
     $(id).css('margin-bottom','0px');
 
-
+    
     this.selection = {global:[]};
     if(opts.args){ // set selection from arguments
         this._decodeArgs(opts.args);
@@ -33,6 +33,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height()- margin.top - margin.bottom;
+    height = 1300;
     
     //add svg to the div
     this.svg = d3.select(id).append("svg")
@@ -42,7 +43,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
                           "," + margin.top + ")");
     
     //add title
-    var title = this.svg.append("text").attr('y',-5).text(name);
+    var title = this.svg.append("text").attr('y',-5).text(opts.title);
     
     //axis
     if (logaxis){
@@ -59,8 +60,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         .scale(this.x)
         .orient("bottom")
 	.ticks(3,',.1s');
-
-    
+   
     this.yAxis = d3.svg.axis()
         .scale(this.y0)
         .orient("left");
@@ -127,6 +127,8 @@ GroupedBarChart.prototype={
     flattenData: function(data){
         return Object.keys(data).reduce(function(prev,curr){         
             var color=curr;
+            var colors = color.split("-");
+            color = colors[1];
             var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
             if(!is_color){
                 color = '#f00';
@@ -148,7 +150,7 @@ GroupedBarChart.prototype={
         
         flatdata.sort(function(a,b){
             //numeric sort
-            var res = parseFloat(a.cat)-parseFloat(b.cat);
+            var res = parseFloat(a.id)-parseFloat(b.id);
             if (!isNaN(res)){
                 return res;
             }
