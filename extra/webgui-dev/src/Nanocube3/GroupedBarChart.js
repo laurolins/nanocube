@@ -3,6 +3,7 @@
 function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.getDataCallback=getDataCallback;
     this.updateCallback=updateCallback;
+    this._datasrc = opts.datasrc;
     
     var name = opts.name;
     var logaxis = opts.logaxis;
@@ -87,11 +88,22 @@ GroupedBarChart.prototype={
     _decodeArgs: function(s){
         this.selection = JSON.parse(s);
     },
-
+    
     update: function(){        
-        var widget = this;
+        var widget = this;        
+        var promises = {};
         
-        var promises = this.getDataCallback();
+        //generate promise for each expr
+        for (var d in widget._datasrc){
+            if (widget._datasrc[d].disabled){
+                continue;
+            }
+            var p = this.getDataCallback(d);
+            for (var k in p){
+                promises[k] = p[k];
+            }
+        }
+
         var promarray = Object.keys(promises).map(function(k){
             return promises[k];
         });
@@ -103,11 +115,11 @@ GroupedBarChart.prototype={
             promkeys.forEach(function(d,i){
                 res[d] = results[i];
             });
-
+            
             widget.redraw(res);
         });
     },
-
+    
     updateAxis: function(data){    
         var xmin = 0.9 * d3.min(data, function(d){return d.val;});
         var xmax = d3.max(data, function(d){return d.val;});
@@ -124,29 +136,27 @@ GroupedBarChart.prototype={
 
     },
 
-    flattenData: function(data){
-        return Object.keys(data).reduce(function(prev,curr){         
-            var color=curr;
-            var colors = color.split("-");
-            color = colors[1];
-            var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
-            if(!is_color){
-                color = '#f00';
-            }
-            var row = Object.keys(data[curr].data).map(function(k){
-                var d = data[curr].data[k];
-                d.color = color;
+    flattenData: function(res){
+        var widget = this;
+        return Object.keys(res).reduce(function(prev,curr){         
+            var label = curr.split('-'); 
+            var colormap = widget._datasrc[label[1]].colormap;
+            var cidx = Math.floor(colormap.length/2);
+            var c = colormap[cidx];
+
+            //Add color
+            var row = res[curr].data.map(function(d){
+                d.color = c;
                 return d;
             });
             return prev.concat(row);
         }, []);
     },
+    
 
-
-    redraw: function(data){
+    redraw: function(res){
         var widget = this;
-
-        var flatdata = this.flattenData(data);
+        var flatdata = this.flattenData(res);
         
         flatdata.sort(function(a,b){
             //numeric sort

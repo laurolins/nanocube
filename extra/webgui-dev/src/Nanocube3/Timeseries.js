@@ -2,6 +2,7 @@
 
 function Timeseries(opts,getDataCallback,updateCallback){
     var widget = this;
+    this._datasrc = opts.datasrc;
 
     widget.getDataCallback = getDataCallback;
     widget.updateCallback =  updateCallback;
@@ -94,7 +95,19 @@ Timeseries.prototype={
         var end = sel.global.end;
         var interval = (end - start+1) / 1000 / this.width * 5;
 
-        var promises = this.getDataCallback(start, end, interval);
+        var promises = {};
+
+        //generate promise for each expr
+        for (var d in widget._datasrc){
+            if (widget._datasrc[d].disabled){
+                continue;
+            }
+            var p = this.getDataCallback(d,start, end, interval);
+            for (var k in p){
+                promises[k] = p[k];
+            }
+        }
+            
         var promarray = Object.keys(promises).map(function(k){
             return promises[k];
         });
@@ -104,7 +117,11 @@ Timeseries.prototype={
             var results = arguments;
             var res = {};
             promkeys.forEach(function(d,i){
+                var label = d.split('-');
+                var colormap = widget._datasrc[label[1]].colormap;
+                var cidx = Math.floor(colormap.length/2);
                 res[d] = results[i];
+                res[d].color = colormap[cidx];
             });
 
             widget.redraw(res);
@@ -185,15 +202,16 @@ Timeseries.prototype={
         //Draw Lines
         Object.keys(lines).forEach(function(k){
             lines[k].data.sort(function(a,b){return a.time - b.time;});
-            widget.drawLine(lines[k].data, k);
+            widget.drawLine(lines[k].data,lines[k].color);
         });
     },
 
     drawLine:function(data,color){
-        var colors = color.split('-');
-        color = colors[1];
-
-        var colorid = color.replace('#','');
+        /*
+         var colors = color.split('-');
+         color = colors[1];
+         */
+        var colorid = 'color_'+color.replace('#','');
         
         if (data.length < 2){
             return;
@@ -202,15 +220,15 @@ Timeseries.prototype={
         var widget = this;
         
         //create unexisted paths
-        var path = widget.svg.select('path.line.color'+colorid);
+        var path = widget.svg.select('path.line.'+colorid);
         if (path.empty()){
             path = widget.svg.append('path');
             path.attr('class', 'line '+colorid);
 
-            var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
-            if (!is_color){
-                color = '#f00'; //make it red as default
-            }
+            //var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
+            //if (!is_color){
+              //  color = '#f00'; //make it red as default
+           // }
             
             path.style('stroke-width','2px')
                 .style('fill','none')

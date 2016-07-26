@@ -4,25 +4,26 @@ var Viewer = function(opts){
     var container = $(opts.div_id);
     var nanocubes = opts.nanocubes;
     var variables = [];
- 
+    
     this._container = container;
     this._nanocubes = nanocubes;
     this._urlargs = opts.urlargs;
     this._widget = {};
+    this._datasrc = opts.config.datasrc;
     var viewer = this;
     
-
     //Expressions input
-    this._data = opts.config.data;
-    var data = this._data;    
-    for (var d in this._data){
-        var exp = this._data[d].expr;
+    var datasrc = this._datasrc;
+    for (var d in datasrc){
+        var exp = datasrc[d].expr;
+        var colormap = datasrc[d].colormap;
         try{
-            exp = new Expression(exp);
-            data[d].expr = exp;
-            if(typeof data[d].colormap == 'string'){
-                data[d].colormap = colorbrewer[data[d].colormap][9].slice(0);
-                data[d].colormap.reverse();
+            //make an expression
+            datasrc[d].expr = new Expression(datasrc[d].expr);
+            if(typeof colormap == 'string'){
+                //make a copy of the colormap
+                datasrc[d].colormap = colorbrewer[colormap][9].slice(0);
+                datasrc[d].colormap.reverse();
             }
         }
         catch(err){
@@ -56,6 +57,7 @@ Viewer.prototype = {
         options.name = id;
         options.model = viewer;
         options.args = viewer._urlargs[id] || null;
+        options.datasrc = viewer._datasrc;
 
         //add the div
         var newdiv = $('<div>');
@@ -67,24 +69,24 @@ Viewer.prototype = {
         switch(widget.type){
         case 'spatial':            
             options.levels = levels || 25;
-            return new Map(options,function(bbox,zoom,maptilesize){
-                return viewer.getSpatialData(id,bbox,zoom);
-            },function(args,constraints){
+            return new Map(options,function(datasrc,bbox,zoom,maptilesize){
+                return viewer.getSpatialData(id,datasrc,bbox,zoom);
+            },function(args,constraints,datasrc){
                 return viewer.update([id],constraints,
-                                     id,args);
+                                     id,args,datasrc);
             });
             
         case 'cat':
-            return new GroupedBarChart(options, function(){
-                return viewer.getCategoricalData(id);
+            return new GroupedBarChart(options,function(datasrc){
+                return viewer.getCategoricalData(id,datasrc);
             },function(args,constraints){
                 return viewer.update([id],constraints,
                                      id,args);
             });
             
         case 'id':
-            return new GroupedBarChart(options, function(){
-                return viewer.getTopKData(id,options.topk);
+            return new GroupedBarChart(options, function(datasrc){
+                return viewer.getTopKData(id,datasrc,options.topk);
             },function(args,constraints){
                 return viewer.update([id],constraints,
                                      id,args);
@@ -92,11 +94,10 @@ Viewer.prototype = {
             
         case 'time':
             options.timerange = viewer.getTimeRange();
-            return new Timeseries(options,function(start,end,interval){
-                return viewer.getTemporalData(id,start,end,interval);
+            return new Timeseries(options,function(datasrc,start,end,interval){
+                return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
-                return viewer.update([id],constraints,
-                                     id,args);
+                return viewer.update([id],constraints,id,args);
             });
         default:
             return null;
@@ -124,13 +125,20 @@ Viewer.prototype = {
         return [new Date(range[0]), new Date(range[1])];
     },
 
-    update: function(skip,constraints,name,args){
+    update: function(skip,constraints,name,args,datasrc){
         console.log("skip: ",skip);
 
         skip = skip || [];
         constraints = constraints || [];
         var viewer = this;
 
+        //change datasrc configuration
+        if(datasrc){
+            for (var d in viewer._datasrc){
+                viewer._datasrc[d].disabled = datasrc[d].disabled;
+            }
+        }
+        
         //update the url
         viewer.updateURL(name,args);
 
@@ -139,7 +147,7 @@ Viewer.prototype = {
             viewer.broadcastConstraint(skip,constraints[c]);
         }
 
-        Object.keys(this._widget).forEach(function(d){
+        Object.keys(viewer._widget).forEach(function(d){
             if (skip.indexOf(d) == -1){
                 //re-render
                 viewer._widget[d].update();
@@ -193,7 +201,7 @@ Viewer.prototype = {
         return queries;
     },
 
-    getSpatialData:function(varname, bbox, zoom, maptilesize){
+    getSpatialData:function(varname, datasrc, bbox, zoom, maptilesize){
         var k = Object.keys(this._nanocubes);
         var viewer = this;
 
@@ -215,25 +223,17 @@ Viewer.prototype = {
 
         //generate queries for each selections
         var res = {};
-        var data = viewer._data;
+        var data = viewer._datasrc;
+        var expr = data[datasrc].expr;
         Object.keys(selq).forEach(function(s){
-            Object.keys(data).forEach(function(d){
-                if(data[d].disabled){
-                    return;
-                }
-                var expr = data[d].expr;
-                var cidx = data[d].colormap.length/2;
-                var c = data[d].colormap[Math.floor(cidx)];                
-                console.log(s+'-'+c);
-                res[s+'-'+c] = expr.getData(selq[s],function(q){
-                    return q.spatialQuery(varname,bbox,zoom,maptilesize);
-                });
+            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+                return q.spatialQuery(varname,bbox,zoom,maptilesize);
             });
         });
         return res;
     },
 
-    getTemporalData:function(varname, start,end,intervalsec){
+    getTemporalData:function(varname,datasrc,start,end,intervalsec){
         var k = Object.keys(this._nanocubes);
         var viewer = this;
 
@@ -255,24 +255,17 @@ Viewer.prototype = {
 
         //generate queries for each selections
         var res = {};        
-        var data = viewer._data;
+        var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){            
-            Object.keys(data).forEach(function(d){
-                if(data[d].disabled){
-                    return;
-                }
-                var expr = data[d].expr;
-                var cidx = data[d].colormap.length/2;
-                var c = data[d].colormap[Math.floor(cidx)];
-                res[s+'-'+c] = expr.getData(selq[s],function(q){
-                    return q.temporalQuery(varname,start,end,intervalsec);
-                });
+            var expr = data[datasrc].expr;
+            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+                return q.temporalQuery(varname,start,end,intervalsec);
             });
         });
         return res;
     },
 
-    getTopKData:function(varname, n){
+    getTopKData:function(varname,datasrc,n){
         n = n || 20; // hard code test for now
         var k = Object.keys(this._nanocubes);
         var viewer = this;
@@ -295,15 +288,17 @@ Viewer.prototype = {
 
         //generate queries for each selections
         var res = {};
+        var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){
-            res[s] = expr.getData(selq[s],function(q){
+            var expr = data[datasrc].expr;
+            res[s+'-'+datasrc] =expr.getData(selq[s],function(q){
                 return q.topKQuery(varname,n);
             });
         });
         return res;
     },
 
-    getCategoricalData:function(varname){
+    getCategoricalData:function(varname,datasrc){
         var k = Object.keys(this._nanocubes);
         var viewer = this;
 
@@ -325,23 +320,16 @@ Viewer.prototype = {
 
         //generate queries for each selections
         var res = {};
-        var data = viewer._data;
+        var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){
-            Object.keys(data).forEach(function(d){
-                if(data[d].disabled){
-                    return;
-                }
-                var expr = data[d].expr;
-                var cidx = data[d].colormap.length/2;
-                var c = data[d].colormap[Math.floor(cidx)];
-                res[s+'-'+c] = expr.getData(selq[s],function(q){
-                    return q.categorialQuery(varname);
-                });
+            var expr = data[datasrc].expr;
+            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+                return q.categorialQuery(varname);
             });
         });
         return res;
     },
-
+    
     updateURL: function(k,argstring){
         if(!k || !argstring){
             return;

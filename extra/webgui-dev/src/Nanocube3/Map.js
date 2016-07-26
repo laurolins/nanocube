@@ -1,33 +1,16 @@
 /*global $ L colorbrewer d3 window */
 
 var Map=function(opts,getDataCallback,updateCallback){
-    //this._model = opts.model;
     this.getDataCallback = getDataCallback;
     this.updateCallback = updateCallback;
 
+    this._datasrc = opts.datasrc;
     this._coarse_offset = opts.coarse_offset || 0;
     this._name = opts.name || 'defaultmap';
     this._tilesurl = opts.tilesurl ||
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    
-    var colors = colorbrewer.YlOrRd[9].slice(0).reverse();
-    if(opts.colormap){
-        colors = opts.colormap.colors;
-    }
 
-    colors = colors.map(function(d,i){
-        var m = d.match(/rgba\((.+),(.+),(.+),(.+)\)/);
-        if(m){
-            d={r:+m[1],g:+m[2],b:+m[3],a:+m[4]*255};
-            return d;
-        }
-        else{
-            d = d3.rgb(d);
-            return {r:d.r, g:d.g, b:d.b, a:i/colors.length*255};
-        }
-    });
-
-    this._colors = colors;
+    this._layers = this._genLayers(this._datasrc);
     this._map = this._initMap();
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
@@ -50,7 +33,41 @@ Map.nextcolor = function(){
 };
 
 Map.prototype = {
+    _genLayers: function(data){
+        var widget = this;
+        var layers = {};
+        function drawfunc(layer,options){
+                widget._canvasDraw(layer,options);
+        }
+
+        function colorfunc(d,i,array){
+            var m = d.match(/rgba\((.+),(.+),(.+),(.+)\)/);
+            if(m){
+                    d={r:+m[1],g:+m[2],b:+m[3],a:+m[4]*255};
+                return d;
+            }
+            else{
+                d = d3.rgb(d);
+                return {r:d.r, g:d.g, b:d.b, a:i/array.length*255};
+            }
+        }
+        
+        for (var d in data){
+            layers[d] = L.canvasOverlay({opacity:0.1});
+
+            //set callback
+            layers[d].drawing(drawfunc);
+            layers[d]._datasrc = d;
+
+            //set colormap
+            layers[d]._colormap = widget._datasrc[d].colormap.map(colorfunc);
+        }
+        return layers;
+    },
+    
     _initMap: function(viewbbox){
+        var widget = this;
+        
         //Leaflet stuffs
         var map = L.map(this._name,{detectRetina:true,
                                     attribution: '<a href="https://www.mapbox.com/about/maps/">Terms and Feedback</a>'});
@@ -61,15 +78,31 @@ Map.prototype = {
         //add an OpenStreetMap tile layer
         var mapt = L.tileLayer(this._tilesurl,{noWrap:true,opacity:0.4});
 
-        var widget = this;
+        //add base layer
+        map.addLayer(mapt);
 
-        var canvaslayer = L.canvasOverlay().drawing(function(layer,options){
-            widget._canvasDraw(layer,options);
+        //add nanocube layers
+        for (var l in this._layers){
+            map.addLayer(this._layers[l]);
+        }
+
+        //Layer 
+        L.control.layers(null,this._layers,{"collapsed":false}).addTo(map);
+
+        map.on('overlayadd', function (e) {
+            widget._datasrc[e.name].disabled=false;
+            widget.updateCallback(widget._encodeArgs(),[],
+                                  widget._datasrc);
         });
 
-        map.addLayer(mapt);
-        map.addLayer(canvaslayer);
-        
+        map.on('overlayremove', function (e) {
+            widget._datasrc[e.name].disabled=true;
+            widget.updateCallback(widget._encodeArgs(),[],
+                                  widget._datasrc);
+            
+        });
+
+        //Refresh after move
         map.on('moveend', function(){ //update other views
             widget.updateCallback(widget._encodeArgs(),[]);
         });
@@ -79,20 +112,19 @@ Map.prototype = {
             widget._keyboardShortcuts(e);
         });
 
-        this._heatmap = canvaslayer;
         this._maptiles = mapt;
         this._initDrawingControls(map);
         this._renormalize=true;
 
         //add info
-        $('#'+this._name).append('<p class="info">info test test</p>');
+        $('#'+this._name).append('<p class="info">info test</p>');
         //style
         var infodiv = $('#'+this._name+" .info");
         infodiv.css({
             position: 'absolute',
             'z-index':1,
             color: 'white',
-            'right': '1ch',
+            'right': '20ch',
             'top': '0.5em',
             'padding':'0px',
             'margin':'0px'
@@ -176,9 +208,11 @@ Map.prototype = {
             drawnItems.addLayer(e.layer);
 
             //add constraints to the other maps
-            widget.updateCallback(widget._encodeArgs(),[{type:"SPATIAL",
-                                                         key:e.layer.options.color
-                                                        }]);
+            widget.updateCallback(widget._encodeArgs(),
+                                  [{
+                                      type:"SPATIAL",
+                                      key:e.layer.options.color
+                                  }]);
             
             //Set color for the next shape
             var options = {};
@@ -251,7 +285,6 @@ Map.prototype = {
         //add polygonal constraints  
         this._drawnItems.getLayers().forEach(function(d){
             res[d.options.color]={};
-
             res[d.options.color] = {
                 coord: d._latlngs.map(function(d){
                     return [d.lat,d.lng];
@@ -264,13 +297,18 @@ Map.prototype = {
 
     update: function(){
         //force redraw
-        this._map.fire('resize');
-        this._heatmap._reset();
+        this._map.fire('resize');        
+        
+        for(var l in this._datasrc){
+            if (!this._datasrc[l].disabled){
+                this._layers[l]._reset();
+            }
+        }
     },
 
-    drawCanvasLayer: function(res,canvas){
+    drawCanvasLayer: function(res,canvas,cmap){
         var arr = this.dataToArray(res.opts.pb, res.data);
-        this.render(arr,res.opts.pb,this._colormap,canvas);
+        this.render(arr,res.opts.pb,cmap,canvas);
     },
 
     dataToArray: function(pb,data){
@@ -313,7 +351,7 @@ Map.prototype = {
             domain = domain.map(function(d){return Math.exp(d)+minv-2;});
         }
 
-        this._colormap = d3.scale.linear().domain(domain).range(colors);
+        return d3.scale.linear().domain(domain).range(colors);
     },
 
     render: function(arr,pb,colormap,canvas){
@@ -380,7 +418,7 @@ Map.prototype = {
         var bbox = { min:[nw.lat,nw.lng], max:[se.lat,se.lng] } ;
 
         try{
-            var promises = widget.getDataCallback(bbox,z);
+            var promises = widget.getDataCallback(layer._datasrc,bbox,z);
             var promarray = Object.keys(promises).map(function(k){
                 return promises[k];
             });
@@ -389,24 +427,29 @@ Map.prototype = {
                 var results = arguments;
                 promkeys.forEach(function(d,i){
                     console.log('tiletime:',window.performance.now()-startdata);
-
+                    
                     var res = results[i];
-                    var colormap = widget._colors;
                     widget._renormalize= true;
+
                     if(widget._renormalize){
-                        widget.normalizeColorMap(res.data,colormap,
-                                                 widget._logheatmap);
+                        var cmap = widget.normalizeColorMap(res.data,
+                                                            layer._colormap,
+                                                            widget._logheatmap);
+                        layer._cmap = cmap;
                         widget._renormalize = false;
                     }
                     
                     var startrender = window.performance.now();
-                    widget.drawCanvasLayer(res,canvas);
+                    widget.drawCanvasLayer(res,canvas,layer._cmap);
+
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
 
-                    res.total_count =  res.data.reduce(function(p,c){ return p+c.val;},0);
-                    widget.updateInfo('Total: '+
-                                      d3.format(',')(res.total_count));
+                    //res.total_count =  res.data.reduce(function(p,c){
+                    //    return p+c.val;
+                    //},0);
+                    //widget.updateInfo('Total: '+
+                    //                  d3.format(',')(res.total_count));
                     
                 });
             });
