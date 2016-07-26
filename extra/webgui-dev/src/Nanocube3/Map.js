@@ -53,12 +53,10 @@ Map.prototype = {
         }
         
         for (var d in data){
-            layers[d] = L.canvasOverlay({opacity:0.1});
+            layers[d] = L.canvasOverlay(drawfunc,{opacity:0.7});
 
-            //set callback
-            layers[d].drawing(drawfunc);
+            //set datasrc
             layers[d]._datasrc = d;
-
             //set colormap
             layers[d]._colormap = widget._datasrc[d].colormap.map(colorfunc);
         }
@@ -306,9 +304,9 @@ Map.prototype = {
         }
     },
 
-    drawCanvasLayer: function(res,canvas,cmap){
-        var arr = this.dataToArray(res.opts.pb, res.data);
-        this.render(arr,res.opts.pb,cmap,canvas);
+    drawCanvasLayer: function(res,canvas,cmap,opacity){
+        var arr = this.dataToArray(res.opts.pb,res.data);
+        this.render(arr,res.opts.pb,cmap,canvas,opacity);
     },
 
     dataToArray: function(pb,data){
@@ -354,7 +352,7 @@ Map.prototype = {
         return d3.scale.linear().domain(domain).range(colors);
     },
 
-    render: function(arr,pb,colormap,canvas){
+    render: function(arr,pb,colormap,canvas,opacity){
         var realctx = canvas.getContext("2d");        
         var width = pb.max.x-pb.min.x+1;
         var height = pb.max.y-pb.min.y+1;
@@ -376,8 +374,9 @@ Map.prototype = {
             var ii= idx[i];
             var v = arr[ii];
             v = Math.max(v,dom[0]);
-            v = Math.min(v,dom[1]);
+            v = Math.min(v,dom[1]);            
             var color = colormap(v);
+            color.a *= opacity;
             pixels[ii] =
                 (color.a << 24) |         // alpha
                 (color.b << 16) |         // blue
@@ -440,7 +439,7 @@ Map.prototype = {
                     }
                     
                     var startrender = window.performance.now();
-                    widget.drawCanvasLayer(res,canvas,layer._cmap);
+                    widget.drawCanvasLayer(res,canvas,layer._cmap,layer.options.opacity);
 
                     console.log('rendertime:',
                                 window.performance.now()-startrender);

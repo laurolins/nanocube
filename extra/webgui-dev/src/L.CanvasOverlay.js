@@ -43,7 +43,7 @@ L.CanvasOverlay = L.Class.extend({
   
     onAdd: function (map) {
         this._map = map;
-        this._canvas = L.DomUtil.create('canvas', 'leaflet-heatmap-layer');
+        this._canvas = L.DomUtil.create('Canvas', 'leaflet-heatmap-layer');
 
         var size = this._map.getSize();
         this._canvas.width = size.x;
@@ -94,6 +94,7 @@ L.CanvasOverlay = L.Class.extend({
         this._redraw();
         var topLeft = this._map.containerPointToLayerPoint([0, 0]);
         L.DomUtil.setPosition(this._canvas, topLeft);
+        console.log("canvas pos:",L.DomUtil.getPosition(this._canvas));
     },
     
     _move: function(){

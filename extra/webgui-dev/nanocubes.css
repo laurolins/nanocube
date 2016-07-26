@@ -26,3 +26,9 @@ text {
     fill-opacity: .25;
     shape-rendering: crispEdges;
 }
+
+canvas {
+    position:absolute;
+    top:0px;
+    left:0px;
+}
