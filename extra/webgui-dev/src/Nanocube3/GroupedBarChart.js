@@ -4,13 +4,15 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.getDataCallback=getDataCallback;
     this.updateCallback=updateCallback;
     this._datasrc = opts.datasrc;
+    this._opts = opts;
+    this._logaxis = opts.logaxis;
     
-    var name = opts.name;
-    var logaxis = opts.logaxis;
-    
+    var name = opts.name;    
     var margin = {top:20,right:10,left:30,bottom:30};
     var id = '#'+name;
 
+    this._margin = margin;
+    
     //setup the d3 margins from the css margin variables
     margin.left = Math.max(margin.left, parseInt($(id).css('margin-left')));
     margin.right = Math.max(margin.right, parseInt($(id).css('margin-right')));
@@ -34,20 +36,21 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height()- margin.top - margin.bottom;
-    height = 1300;
     
     //add svg to the div
-    this.svg = d3.select(id).append("svg")
+    this.svgcontainer = d3.select(id).append("svg")
         .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .append("g").attr("transform","translate(" + margin.left +
-                          "," + margin.top + ")");
+        .attr("height", height + margin.top + margin.bottom);
+
+    //Translate the svg
+    this.svg = this.svgcontainer.append("g")
+        .attr("transform","translate("+margin.left+","+margin.top + ")");
     
     //add title
     var title = this.svg.append("text").attr('y',-5).text(opts.title);
     
     //axis
-    if (logaxis){
+    if (this._logaxis){
 	this.x  = d3.scale.log().range([0,width]);
     }
     else{
@@ -121,16 +124,46 @@ GroupedBarChart.prototype={
     },
     
     updateAxis: function(data){    
-        var xmin = 0.9 * d3.min(data, function(d){return d.val;});
+        var xmin = d3.min(data, function(d){return d.val;});
+        xmin = xmin - Math.abs(xmin)*0.1;
         var xmax = d3.max(data, function(d){return d.val;});
-        
-        this.x.domain([xmin,xmax]);
         var cats = data.map(function(d){return d.cat;});
+
+        var minheight = 100;
+        
+        cats = cats.map(function(d){ return String(d); }) ;
+        var height = Math.max(minheight, 20 * cats.length);
+
+        this.svgcontainer.attr('height', height+
+                               this._margin.top +
+                               this._margin.bottom);
+
+        var width = +this.svgcontainer.attr('width');
+        width -= this._margin.left;
+        width -= this._margin.right;
+        
+        //update axis
+        if (this._logaxis){
+	    this.x  = d3.scale.log().range([0,width]);
+        }
+        else{
+            this.x  = d3.scale.linear().range([0,width]);
+        }
+    
+        this.y0  = d3.scale.ordinal().rangeRoundBands([0,height],0.05);//cat
+        this.y1  = d3.scale.ordinal();   //selections
+
+        //update domain
+        this.x.domain([xmin,xmax]);
         this.y0.domain(cats);
         this.y1.domain(data.map(function(d){return d.color;}))
             .rangeRoundBands([0, this.y0.rangeBand()]);
         
-        
+        //restyle the axes 
+        this.xAxis.scale(this.x);
+        this.yAxis.scale(this.y0);
+
+        this.svgxaxis.attr("transform", "translate(0," + (height+3) + ")");
         this.svgxaxis.call(this.xAxis);
         this.svgyaxis.call(this.yAxis);
 
