@@ -3,19 +3,14 @@
         "NoD": {"url": "http://localhost:12345"}
     },
     
-    "data":{
-        "egress_tp": {
-            "expr": "NoD[type=='EGRESS_TP']",
+    "datasrc":{
+        "diff_tp": {
+            "expr": "NoD[type=='EGRESS_TP'] - NoD[type=='INGRESS_TP']",
             "colormap": "Reds"
-        },
-        "ingress_tp": {
-            "expr": "NoD[type=='INGRESS_TP']",
-            "colormap": "Blues"
         },
         "bw": {
             "expr": "NoD[type=='SPOT_BW']",
-            "colormap": "Greens",
-            "disabled": true
+            "colormap": "Greens"
         }
     },
     
@@ -39,15 +34,15 @@
             "div":{
                 "title": "customer name",
                 "opacity": 0.8, 
-                "top": "5em", 
-                "height": "30em", 
-                "width": "45em",
-                "margin-left": "42ch",
+                "top": "7em", 
+                "height": "20em", 
+                "width": "47em",
+                "margin-left": "45ch",
                 "z-index": 1, 
                 "position": "absolute", 
                 "background-color": "#555", 
                 "right": "1ch",
-                "logaxis": "true",
+                "logaxis": false,
                 "overflow": "auto"
             }
         },

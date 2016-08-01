@@ -32,3 +32,12 @@ canvas {
     top:0px;
     left:0px;
 }
+
+.leaflet-control-layers-overlays i { 
+    width: 1em;
+    height: 1em;               
+    float: right;
+    margin-top: 2px;
+    margin-left: 5px;
+    top: 1px;
+}

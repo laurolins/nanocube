@@ -53,12 +53,23 @@ Map.prototype = {
         }
         
         for (var d in data){
-            layers[d] = L.canvasOverlay(drawfunc,{opacity:0.7});
+            var layer = L.canvasOverlay(drawfunc,{opacity:0.7});
 
             //set datasrc
-            layers[d]._datasrc = d;
+            layer._datasrc = d;
+
+            //set color
+            var midx = Math.floor(widget._datasrc[d].colormap.length /2);
+            layer._color = widget._datasrc[d].colormap[midx];
+            
             //set colormap
-            layers[d]._colormap = widget._datasrc[d].colormap.map(colorfunc);
+            layer._colormap = widget._datasrc[d].colormap.map(colorfunc);
+
+            //htmllabel
+            var htmllabel='<i style="background:'+
+                    layer._color+'"> </i>' + d;
+            
+            layers[htmllabel] = layer;
         }
         return layers;
     },
@@ -88,13 +99,13 @@ Map.prototype = {
         L.control.layers(null,this._layers,{"collapsed":false}).addTo(map);
 
         map.on('overlayadd', function (e) {
-            widget._datasrc[e.name].disabled=false;
+            widget._datasrc[e.layer._datasrc].disabled=false;
             widget.updateCallback(widget._encodeArgs(),[],
                                   widget._datasrc);
         });
 
         map.on('overlayremove', function (e) {
-            widget._datasrc[e.name].disabled=true;
+            widget._datasrc[e.layer._datasrc].disabled=true;
             widget.updateCallback(widget._encodeArgs(),[],
                                   widget._datasrc);
             
@@ -297,9 +308,10 @@ Map.prototype = {
         //force redraw
         this._map.fire('resize');        
         
-        for(var l in this._datasrc){
-            if (!this._datasrc[l].disabled){
-                this._layers[l]._reset();
+        for(var l in this._layers){
+            var layer = this._layers[l];
+            if (!this._datasrc[layer._datasrc].disabled){
+                layer._reset();
             }
         }
     },
