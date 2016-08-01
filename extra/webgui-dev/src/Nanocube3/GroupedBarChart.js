@@ -132,7 +132,7 @@ GroupedBarChart.prototype={
         var minheight = 100;
         
         cats = cats.map(function(d){ return String(d); }) ;
-        var height = Math.max(minheight, 20 * cats.length);
+        var height = Math.max(minheight, 13 * cats.length);
 
         this.svgcontainer.attr('height', height+
                                this._margin.top +
