@@ -42,6 +42,8 @@ Model.prototype.initVars = function(){
 	    var cmap = that.options.config.div[v.name].colormap ||
 		    colorbrewer.YlOrRd[9].reverse();
 
+	    var extralayers = that.options.config.div[v.name].layers;
+            
 	    var cdomain=cmap.map(function(d,i){return i*1.0/(cmap.length-1);});
 	    var cm={colors:cmap,domain:cdomain};
 
@@ -54,7 +56,7 @@ Model.prototype.initVars = function(){
 	    }
 
 	    //Create the map and heatmap
-	    var ret = that.createMap(vref,cm);
+	    var ret = that.createMap(vref,cm,extralayers);
 	    vref.map=ret.map;
 	    vref.heatmap=ret.heatmap;
 	    if(that.options.smooth != undefined){
@@ -267,7 +269,7 @@ Model.prototype.removeObsolete= function(k){
 
 
 //Setup maps
-Model.prototype.createMap = function(spvar,cm){
+Model.prototype.createMap = function(spvar,cm,extralayers){
     var map=L.map(spvar.dim,{
 	maxZoom: Math.min(18,spvar.maxlevel+1)
     });
@@ -318,6 +320,17 @@ Model.prototype.createMap = function(spvar,cm){
 
     //Drawing Rect and Polygons
     this.addDraw(map,spvar,false);
+
+
+    if (extralayers){
+        extralayers.markers.forEach(function(d){
+            var m = L.marker(d.coordinate);
+            m.bindPopup(d.popup)
+            m.addTo(map);
+        });
+
+    }
+    
 
     return {map:map, heatmap:heatmap};
 };
