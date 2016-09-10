@@ -6,6 +6,29 @@ function Timeseries(name, margin){
     this.data = {};
     this.brush_callback = null;
 
+    //Add CSS to the div
+    d3.select(id).style({
+        "overflow-y":"auto",
+        "overflow-x":"hidden"
+    });
+
+    //Make draggable
+    d3.select(id).attr("class","draggable");
+
+    var widget = this;
+    //Collapse on dbl click
+    d3.select(id).on('dblclick',function(d){
+        var currentheight = d3.select(id).style("height");
+        if ( currentheight != "20px"){
+            widget.restoreHeight =currentheight ;
+            d3.select(id).style('height','20px');
+        }
+        else{
+            d3.select(id).style("height",widget.restoreHeight);
+        }
+    });
+
+
     //code
     if (margin==undefined){
         margin = {top: 30, right: 10, bottom: 30, left: 50};
@@ -27,7 +50,7 @@ function Timeseries(name, margin){
     this.yAxis = d3.svg.axis()
         .scale(this.y)
         .orient("left")
-        .ticks(3,',s');
+        .ticks(3,'.1,s');
 
     var that = this;
 

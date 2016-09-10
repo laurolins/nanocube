@@ -1,92 +1,200 @@
-/*global $,d3 */
+/*global d3 */
 
 function GroupedBarChart(name,logaxis){
-    var margin = {top:20,right:10,left:30,bottom:30};
     var id = '#'+name;
+    var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
-    //setup the d3 margins from the css margin variables
-    margin.left = Math.max(margin.left, parseInt($(id).css('margin-left')));
-    margin.right = Math.max(margin.right, parseInt($(id).css('margin-right')));
-    margin.top = Math.max(margin.top, parseInt($(id).css('margin-top')));
-    margin.bottom = Math.max(margin.bottom, 
-                             parseInt($(id).css('margin-bottom')));
+    //Add CSS to the div
+    d3.select(id).style({
+        "overflow-y":"auto",
+        "overflow-x":"hidden"
+    });
+
+    //Make draggable
+    d3.select(id).attr("class","draggable");
+
+    var widget = this;
+    //Collapse on dbl click
+    d3.select(id).on('dblclick',function(d){
+        var currentheight = d3.select(id).style("height");
+        if ( currentheight != "20px"){
+            widget.restoreHeight =currentheight ;
+            d3.select(id).style('height','20px');
+        }
+        else{
+            d3.select(id).style("height",widget.restoreHeight);
+        }
+    });
+
     
-    $(id).css('margin','0px 0px 0px 0px');
-    $(id).css('margin-left','0px');
-    $(id).css('margin-right','0px');
-    $(id).css('margin-top','0px');
-    $(id).css('margin-bottom','0px');
+    //SVG container
+    var svg = d3.select(id).append("svg").append("g");
 
-    this.data = {};
-    this.selection=null;
+    //Title
+    svg.append("text").attr('y',-5).text(name);
+
+    //Axes
+    svg.append("g").attr("class", "y axis");
+    svg.append("g").attr("class", "x axis");
+   
+    //Scales
+    var y0 = d3.scale.ordinal();
+    var y1 = d3.scale.ordinal();
+    var x = d3.scale.linear();
+    if (logaxis){
+        x = d3.scale.log();
+    }
+
+    //Axis
+    var xAxis = d3.svg.axis();
+    var yAxis = d3.svg.axis();
+
+    xAxis.orient("bottom").ticks(3,",.1s");
+    yAxis.orient("left");
+
+    //Save vars to "this"
+    this.margin = margin;
+    this.svg=svg;
+    this.y0=y0;
+    this.y1=y1;
+    this.x=x;
+    this.xAxis = xAxis;
+    this.yAxis = yAxis;
 
     this.id = id;
-
-    var width = $(id).width() - margin.left - margin.right;
-    var height = $(id).height()- margin.top - margin.bottom;
-    
-    //add svg to the div
-    this.svg = d3.select(id).append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .append("g").attr("transform","translate(" + margin.left + "," 
-                          + margin.top + ")");
-
-    //add title
-    var title = this.svg.append("text").attr('y',-5).text(name)
-	.append("svg:title").text(function(d) { return "Click dimension title to toggle between alphabetical sorting and numerical sorting."; });
-    
-    //axis
-    this.x  = d3.scale.linear().range([0,width]);
-    if (logaxis){
-	this.x  = d3.scale.log().range([0,width]);
-    }
-    
-    this.y0  = d3.scale.ordinal().rangeRoundBands([0,height],0.05);//cat
-    this.y1  = d3.scale.ordinal();//selections
-
-    this.xAxis = d3.svg.axis()
-        .scale(this.x)
-        .orient("bottom")
-	.ticks(3,',.1s');
-
-    
-    this.yAxis = d3.svg.axis()
-        .scale(this.y0)
-        .orient("left");
-    
-    //add axis to the svg
-    this.svgxaxis = this.svg.append("g")
-        .attr("class", "axis x")
-        .attr("transform", "translate(0," 
-              + (height+3) + ")");
-    
-    this.svgyaxis = this.svg.append("g")
-        .attr("class", "axis y")
-        .attr("transform", "translate(-3,0)");
+    this.data = {};
+    this.selection=null;
 }
 
-GroupedBarChart.prototype.updateAxis = function(data){    
-    var xmin = 0.1 * d3.min(data, function(d){return d.value;});
-    var xmax = d3.max(data, function(d){return d.value;});
+GroupedBarChart.prototype.redraw = function(){
+    var fdata = this.flattenData(this.data);
+    var x =this.x;
+    var y0 =this.y0;
+    var y1 =this.y1;
+    var svg =this.svg;
+    var selection = this.selection;
     
-    this.x.domain([xmin,xmax]);
-    var cats = data.map(function(d){return d.cat;});
-    this.y0.domain(cats);
-    this.y1.domain(data.map(function(d){return d.color;}))
-        .rangeRoundBands([0, this.y0.rangeBand()]);
+    svg.on('click', this.click_callback);
     
+    //update the axis and svgframe
+    this.updateYAxis(fdata);
+    this.updateXAxis(fdata);
+    this.updateSVG();
+
+    var widget = this;
     
-    this.svgxaxis.call(this.xAxis);
-    this.svgyaxis.call(this.yAxis);
-    
-    //Make Axis Label's clickable
-    var that = this;
-    this.svgyaxis.selectAll('.tick').on('click',function(d){
-	var obj = $.grep(data, function(e){return e.cat==d;})[0];
-	that.click_callback(obj);
+    //bind data
+    var bars = this.svg.selectAll('.bar').data(fdata);
+
+    //append new bars
+    bars.enter()
+        .append('rect')
+        .attr('class', 'bar')
+        .append("svg:title"); //tooltip
+
+    //set shape
+    bars.attr('x', 0)
+        .attr('y', function(d){
+            return y0(d.cat) + y1(d.color);
+        }) //selection group
+        .attr('height',function(d){ return y1.rangeBand(); })
+        .attr('width',function(d){
+            return x(d.value);
+        })
+        .on('click', widget.click_callback) //toggle callback
+        .style('fill', function(d){
+            if (selection.length < 1  //no selection (everything)
+                || (selection.indexOf(d.addr)!=-1)){//addr in selection
+                return d.color;
+            }
+            else{
+                return 'gray';
+            }
+        })
+        .transition().duration(100);
+
+    //add tool tip
+    bars.select('title').text(function(d){
+        return d3.format(',')(d.value);
     });
+
+    //remove bars with no data
+    bars.exit().remove();
 };
+
+GroupedBarChart.prototype.updateSVG = function(){
+    var svg = this.svg;
+    var margin = this.margin;
+
+    var svgframe = d3.select(svg.node().parentNode);
+    var rect=svgframe.node().parentNode.getBoundingClientRect();
+
+    //calculate width and height in side the margin
+    var width = rect.width-margin.left-margin.right;
+    var height = this.totalheight;
+
+    //resize the frame
+    svgframe.attr("width", width + margin.left + margin.right);
+    svgframe.attr("height", height + margin.top + margin.bottom);
+
+    svg.attr("transform", "translate("+margin.left+","+margin.top+")");
+
+    this.width = width;
+    this.height = height;
+};
+
+GroupedBarChart.prototype.updateXAxis=function(data){
+    var margin = this.margin;
+    var x=this.x;
+    var xAxis=this.xAxis;
+    var svg=this.svg;
+
+
+    var svgframe = d3.select(svg.node().parentNode);
+    var rect=svgframe.node().parentNode.getBoundingClientRect();
+    var width = rect.width - this.margin.left-this.margin.right;
+
+    x.domain([d3.min(data, function(d) {return +d.value;})*0.5 ,
+              d3.max(data, function(d) {return +d.value;})]);
+
+    x.range([0,width]);
+
+    xAxis.scale(x);
+
+    //move and draw the axis
+    svg.select('.x.axis')
+        .attr("transform", "translate(0,"+this.totalheight+")")
+        .call(xAxis);
+    this.width=width;
+};
+
+GroupedBarChart.prototype.updateYAxis=function(data){
+    var y0=this.y0;
+    var y1=this.y1;
+    var yAxis=this.yAxis;
+    var svg = this.svg;
+
+    y0.domain(data.map(function(d){return d.cat;}));
+    y1.domain(data.map(function(d){return d.color;}));
+    var totalheight = y0.domain().length* y1.domain().length * 18;
+
+    y0.rangeRoundBands([0, totalheight],0.05);
+    y1.rangeRoundBands([0, y0.rangeBand()]);
+    yAxis.scale(y0);
+    svg.select('.y.axis').call(yAxis);
+
+    //enable axis click
+    var widget = this;
+    svg.select('.y.axis').selectAll('.tick')
+        .on('click',function(d){
+            var obj = data.filter(function(e){return e.cat==d;})[0];
+            widget.click_callback(obj);
+        });
+    
+    this.totalheight = totalheight;
+    this.margin.left = svg.select('.y.axis').node().getBBox().width+5;
+};
+
 
 GroupedBarChart.prototype.setData = function(data,id,color){
     this.data[id] = {color:color, data: data};
@@ -101,9 +209,9 @@ GroupedBarChart.prototype.removeData = function(id){
 };
 
 GroupedBarChart.prototype.flattenData = function(data){
-    return Object.keys(data).reduce(function(prev,curr){ 
+    return Object.keys(data).reduce(function(prev,curr){
         var row = Object.keys(data[curr].data).map(function(k){
-            return { addr: data[curr].data[k].addr, 
+            return { addr: data[curr].data[k].addr,
                      cat: data[curr].data[k].cat,
                      color: data[curr].color,
                      value:data[curr].data[k].value };
@@ -115,41 +223,4 @@ GroupedBarChart.prototype.flattenData = function(data){
 
 GroupedBarChart.prototype.setClickCallback = function(cb){
     this.click_callback = cb;
-};
-
-GroupedBarChart.prototype.redraw = function(){
-    var flatdata = this.flattenData(this.data);
-    this.updateAxis(flatdata);
-    var that = this;
-
-    this.svg.on('click', this.click_callback);
-
-    //remove the bars
-    this.svg.selectAll('.bar')
-        .data([])
-        .exit()
-        .remove();
-
-    //add the bars back
-    this.svg.selectAll('.bar')
-        .data(flatdata).enter()
-        .append('rect')
-        .attr('class', 'bar')
-        .attr('x', 0)
-        .attr('y', function(d){return that.y0(d.cat) //category
-                               +that.y1(d.color);}) //selection group
-        .attr('height',function(d){return that.y1.rangeBand();})
-        .attr('width',function(d){return that.x(d.value);})
-        .on('click', this.click_callback) //toggle callback
-        .style('fill', function(d){
-            if (that.selection.length < 1  //no selection (everything)
-                || (that.selection.indexOf(d.addr)!=-1)){//addr in selection
-                return d.color;
-            }
-            else{
-                return 'gray';
-            }
-        })
-        .append("svg:title") //tooltip
-        .text(function(d) { return d3.format(',')(d.value); });   
 };

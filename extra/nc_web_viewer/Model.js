@@ -325,7 +325,7 @@ Model.prototype.createMap = function(spvar,cm,extralayers){
     if (extralayers){
         extralayers.markers.forEach(function(d){
             var m = L.marker(d.coordinate);
-            m.bindPopup(d.popup)
+            m.bindPopup(d.popup);
             m.addTo(map);
         });
 
