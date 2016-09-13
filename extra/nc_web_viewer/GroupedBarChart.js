@@ -1,7 +1,7 @@
 /*global d3 */
 
 function GroupedBarChart(name,logaxis){
-    var id = '#'+name;
+    var id = "#"+name.replace(/\./g,'\\.');
     var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
     //Add CSS to the div

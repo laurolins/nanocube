@@ -32,10 +32,11 @@ Model.prototype.initVars = function(){
     variables.forEach(function(v){
 	var vref={};
 	var t = v.type.match(/nc_dim_(.+)_(.+)/);
+        var id = '#'+v.name.replace(/\./g, '\\.');
 
 	switch(t[1]){
 	case 'quadtree':  //Create a spatial var and map
-	    if ($('#'+v.name).length < 1){
+	    if ($(id).length < 1){
 		return;
 	    }
 
@@ -69,7 +70,7 @@ Model.prototype.initVars = function(){
 	    break;
 
 	case 'cat': //Create a categorical var and barchart
-	    if ($('#'+v.name).length < 1){
+	    if ($(id).length < 1){
 		return;
 	    }
 
@@ -98,7 +99,7 @@ Model.prototype.initVars = function(){
 	    break;
 
 	case 'time': //Create a temporal var and timeseries
-	    if ($('#'+v.name).length < 1){
+	    if ($(id).length < 1){
 		return;
 	    }
 

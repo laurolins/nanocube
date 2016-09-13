@@ -1,7 +1,7 @@
 /*global $,d3 */
 
 function Timeseries(name, margin){
-    var id = '#'+name;
+    var id = "#"+name.replace(/\./g,'\\.');
 
     this.data = {};
     this.brush_callback = null;

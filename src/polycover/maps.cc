@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cmath>
 #include <algorithm>
 
 #include "maps.hh"
@@ -264,7 +265,7 @@ auto maps::osmZoomFor(const ScreenRectangle &screen_rect,
 //    std::cout << "excess:       " << f(z)           << std::endl;
 
     if (z > 0) {
-        if (abs(f(z-1)) < f(z))
+      if (std::fabs(f(z-1)) < f(z))
             --z;
     }
 
