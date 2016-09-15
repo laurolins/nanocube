@@ -102,7 +102,7 @@ GroupedBarChart.prototype.redraw = function(){
         }) //selection group
         .attr('height',function(d){ return y1.rangeBand()-1;})
         .attr('width',function(d){
-            return x(d.value)-1;
+            return x(d.value);
         })
         .on('click', widget.click_callback) //toggle callback
         .style('fill', function(d){
