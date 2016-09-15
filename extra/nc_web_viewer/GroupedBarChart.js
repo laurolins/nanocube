@@ -14,6 +14,8 @@ function GroupedBarChart(name,logaxis){
     //Make draggable and resizable
     d3.select(id).attr("class","resize-drag");
     
+    d3.select(id).on("divresize",function(){ widget.redraw(); });
+
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
         var currentheight = d3.select(id).style("height");

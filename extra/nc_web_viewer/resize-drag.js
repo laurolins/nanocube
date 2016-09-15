@@ -40,6 +40,10 @@ function resizeMoveListener(event) {
     
     target.setAttribute('data-x', x);
     target.setAttribute('data-y', y);
+
+    //fire an event...
+    var e = new Event('divresize',target);
+    target.dispatchEvent(e);
 }
 
 function dragMoveListener (event) {

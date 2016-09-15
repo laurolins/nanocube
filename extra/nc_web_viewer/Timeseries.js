@@ -3,6 +3,30 @@
 function Timeseries(name, margin){
     var id = '#'+ name.replace(/\./g,'\\.');
 
+    //Add CSS to the div
+    d3.select(id).style({
+        "overflow-y":"auto",
+        "overflow-x":"hidden"
+    });
+
+    var widget = this;
+    //Make draggable and resizable
+    d3.select(id).attr("class","resize-drag");
+    
+    d3.select(id).on("divresize",function(){ widget.redraw(); });
+
+    //Collapse on dbl click
+    d3.select(id).on('dblclick',function(d){
+        var currentheight = d3.select(id).style("height");
+        if ( currentheight != "20px"){
+            widget.restoreHeight =currentheight ;
+            d3.select(id).style('height','20px');
+        }
+        else{
+            d3.select(id).style("height",widget.restoreHeight);
+        }
+    });
+
     this.data = {};
     this.brush_callback = null;
 
@@ -23,7 +47,7 @@ function Timeseries(name, margin){
             else{
                 $(this).height(chart.restoreHeight);
             }
-	})
+    });
     
     this.x = d3.time.scale.utc()
         .range([0, width]);
