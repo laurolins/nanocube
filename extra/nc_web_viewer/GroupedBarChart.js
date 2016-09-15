@@ -96,7 +96,7 @@ GroupedBarChart.prototype.redraw = function(){
         .append("svg:title"); //tooltip
 
     //set shape
-    bars.attr('x', 1)
+    bars.attr('x', 0)
         .attr('y', function(d){
             return y0(d.cat) + y1(d.color);
         }) //selection group
