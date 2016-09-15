@@ -10,10 +10,10 @@ function GroupedBarChart(name,logaxis){
         "overflow-x":"hidden"
     });
 
-    //Make draggable
-    d3.select(id).attr("class","draggable");
-
     var widget = this;
+    //Make draggable and resizable
+    d3.select(id).attr("class","resize-drag");
+    
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
         var currentheight = d3.select(id).style("height");
@@ -34,7 +34,8 @@ function GroupedBarChart(name,logaxis){
     svg.append("text").attr('y',-5).text(name);
 
     //Axes
-    svg.append("g").attr("class", "y axis");
+    svg.append("g").attr("class", "y axis")
+        .attr("transform", "translate(-3,0)");
     svg.append("g").attr("class", "x axis");
    
     //Scales
@@ -93,13 +94,13 @@ GroupedBarChart.prototype.redraw = function(){
         .append("svg:title"); //tooltip
 
     //set shape
-    bars.attr('x', 0)
+    bars.attr('x', 1)
         .attr('y', function(d){
             return y0(d.cat) + y1(d.color);
         }) //selection group
-        .attr('height',function(d){ return y1.rangeBand(); })
+        .attr('height',function(d){ return y1.rangeBand()-1;})
         .attr('width',function(d){
-            return x(d.value);
+            return x(d.value)-1;
         })
         .on('click', widget.click_callback) //toggle callback
         .style('fill', function(d){
@@ -178,7 +179,7 @@ GroupedBarChart.prototype.updateYAxis=function(data){
     y1.domain(data.map(function(d){return d.color;}));
     var totalheight = y0.domain().length* y1.domain().length * 18;
 
-    y0.rangeRoundBands([0, totalheight],0.05);
+    y0.rangeRoundBands([0, totalheight]);
     y1.rangeRoundBands([0, y0.rangeBand()]);
     yAxis.scale(y0);
     svg.select('.y.axis').call(yAxis);
@@ -192,7 +193,7 @@ GroupedBarChart.prototype.updateYAxis=function(data){
         });
     
     this.totalheight = totalheight;
-    this.margin.left = svg.select('.y.axis').node().getBBox().width+5;
+    this.margin.left = svg.select('.y.axis').node().getBBox().width+10;
 };
 
 
