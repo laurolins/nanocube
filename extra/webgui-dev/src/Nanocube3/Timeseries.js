@@ -189,7 +189,9 @@ Timeseries.prototype={
     
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
-            lines[k].data.pop(); //avoid extreme values at the end?
+            var last = lines[k].data[lines[k].data.length-1];
+            lines[k].data.push(last); //add one last data point for step line
+            //.pop(); //avoid extreme values at the end?
         });
 
         //update y axis

@@ -346,7 +346,7 @@ Viewer.prototype = {
 
         //change the url
         window.history.pushState('test','title',
-                                 window.location.pathname.replace(/\/$/,'')+
+                                 window.location.pathname+
                                  argstr);
     }
 };
