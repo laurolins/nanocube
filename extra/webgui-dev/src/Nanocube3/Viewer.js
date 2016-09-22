@@ -54,6 +54,7 @@ Viewer.prototype = {
     setupWidget:function(id, widget, levels){
         var options = $.extend(true, {}, widget.div);
         var viewer = this;
+
         options.name = id;
         options.model = viewer;
         options.args = viewer._urlargs[id] || null;

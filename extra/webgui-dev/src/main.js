@@ -7,9 +7,11 @@ require.config({
         leafletdraw: 'node_modules/leaflet-draw/dist/leaflet.draw-src',
         jquery: 'node_modules/jquery/dist/jquery.min',
         d3: 'node_modules/d3/d3.min',
+        interact: 'node_modules/interact.js/dist/interact.min',
         colorbrewer: 'node_modules/colorbrewer/colorbrewer',
         jsep: 'node_modules/jsep/build/jsep.min',
         canvaslayer: 'src/L.CanvasOverlay',
+        'resize-drag': 'src/resize-drag',
         nanocube: 'dist/Nanocube'
     },
 
@@ -46,7 +48,8 @@ function getArgFromUrl() {
 }
 
 var viewer ;
-define(['jquery','nanocube','colorbrewer'], function($,Nanocube3,colorbrewer){
+define(['jquery','nanocube','colorbrewer','resize-drag'],
+       function($,Nanocube3,colorbrewer){
     'use strict';
     //read config and pass it to start viewer
 

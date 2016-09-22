@@ -1,89 +1,91 @@
-/*global $,d3 */
+/*global d3 $ */
 
 function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.getDataCallback=getDataCallback;
     this.updateCallback=updateCallback;
-    this._datasrc = opts.datasrc;
-    this._opts = opts;
-    this._logaxis = opts.logaxis;
-    
-    var name = opts.name;    
-    var margin = {top:20,right:10,left:30,bottom:30};
-    var id = '#'+name;
 
-    this._margin = margin;
-    
-    //setup the d3 margins from the css margin variables
-    margin.left = Math.max(margin.left, parseInt($(id).css('margin-left')));
-    margin.right = Math.max(margin.right, parseInt($(id).css('margin-right')));
-    margin.top = Math.max(margin.top, parseInt($(id).css('margin-top')));
-    margin.bottom = Math.max(margin.bottom,
-                             parseInt($(id).css('margin-bottom')));
-    
-    $(id).css('margin','0px 0px 0px 0px');
-    $(id).css('margin-left','0px');
-    $(id).css('margin-right','0px');
-    $(id).css('margin-top','0px');
-    $(id).css('margin-bottom','0px');
+    var name=opts.name;
+    var id = "#"+name.replace(/\./g,'\\.');
+    var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
-    
+    //Add CSS to the div
+    d3.select(id).style({
+        "overflow-y":"auto",
+        "overflow-x":"hidden"
+    });
+
+    //set param
     this.selection = {global:[]};
     if(opts.args){ // set selection from arguments
         this._decodeArgs(opts.args);
     }
+    
+    var widget = this;
+    //Make draggable and resizable
+    d3.select(id).attr("class","resize-drag");
+    
+    d3.select(id).on("divresize",function(){
+        widget.update();
+    });
 
-    this.id = id;
+    //Collapse on dbl click
+    d3.select(id).on('dblclick',function(d){
+        var currentheight = d3.select(id).style("height");
+        if ( currentheight != "20px"){
+            widget.restoreHeight =currentheight ;
+            d3.select(id).style('height','20px');
+        }
+        else{
+            d3.select(id).style("height",widget.restoreHeight);
+        }
+    });
 
-    var width = $(id).width() - margin.left - margin.right;
-    var height = $(id).height()- margin.top - margin.bottom;
     
-    //add svg to the div
-    this.svgcontainer = d3.select(id).append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom);
+    //SVG container
+    var svg = d3.select(id).append("svg").append("g");
 
-    //Translate the svg
-    this.svg = this.svgcontainer.append("g")
-        .attr("transform","translate("+margin.left+","+margin.top + ")");
-    
-    //add title
-    var title = this.svg.append("text").attr('y',-5).text(opts.title);
-    
-    //axis
-    if (this._logaxis){
-	this.x  = d3.scale.log().range([0,width]);
-    }
-    else{
-        this.x  = d3.scale.linear().range([0,width]);
-    }
-    
-    this.y0  = d3.scale.ordinal().rangeRoundBands([0,height],0.05);//cat
-    this.y1  = d3.scale.ordinal();   //selections
+    //Title
+    svg.append("text").attr('y',-5).text(name);
 
-    this.xAxis = d3.svg.axis()
-        .scale(this.x)
-        .orient("bottom")
-	.ticks(3,',.1s');
-   
-    this.yAxis = d3.svg.axis()
-        .scale(this.y0)
-        .orient("left");
-    
-    //add axis to the svg
-    this.svgxaxis = this.svg.append("g")
-        .attr("class", "axis x")
-        .attr("transform", "translate(0," + (height+3) + ")");
-    
-    this.svgyaxis = this.svg.append("g")
-        .attr("class", "axis y")
+    //Axes
+    svg.append("g").attr("class", "y axis")
         .attr("transform", "translate(-3,0)");
+    svg.append("g").attr("class", "x axis");
+    
+    //Scales
+    var y0 = d3.scale.ordinal();
+    var y1 = d3.scale.ordinal();
+    var x = d3.scale.linear();
+    if (opts.logaxis){
+        x = d3.scale.log();
+    }
+
+    //Axis
+    var xAxis = d3.svg.axis();
+    var yAxis = d3.svg.axis();
+
+    xAxis.orient("bottom").ticks(3,",.1s");
+    yAxis.orient("left");
+
+    //Save vars to "this"
+    this.margin = margin;
+    this.svg=svg;
+    this.y0=y0;
+    this.y1=y1;
+    this.x=x;
+    this.xAxis = xAxis;
+    this.yAxis = yAxis;
+
+    this._datasrc = opts.datasrc;
+    this._opts = opts;
+    this._logaxis = opts.logaxis;
 }
 
-GroupedBarChart.prototype={
+GroupedBarChart.prototype = {
     getSelection: function(){        
         return this.selection;
     },
-
+    
     _encodeArgs: function(){
         return JSON.stringify(this.getSelection());
     },
@@ -123,52 +125,6 @@ GroupedBarChart.prototype={
         });
     },
     
-    updateAxis: function(data){    
-        var xmin = d3.min(data, function(d){return d.val;});
-        xmin = xmin - Math.abs(xmin)*0.1;
-        var xmax = d3.max(data, function(d){return d.val;});
-        var cats = data.map(function(d){return d.cat;});
-
-        var minheight = 100;
-        
-        cats = cats.map(function(d){ return String(d); }) ;
-        var height = Math.max(minheight, 13 * cats.length);
-
-        this.svgcontainer.attr('height', height+
-                               this._margin.top +
-                               this._margin.bottom);
-
-        var width = +this.svgcontainer.attr('width');
-        width -= this._margin.left;
-        width -= this._margin.right;
-        
-        //update axis
-        if (this._logaxis){
-	    this.x  = d3.scale.log().range([0,width]);
-        }
-        else{
-            this.x  = d3.scale.linear().range([0,width]);
-        }
-    
-        this.y0  = d3.scale.ordinal().rangeRoundBands([0,height],0.05);//cat
-        this.y1  = d3.scale.ordinal();   //selections
-
-        //update domain
-        this.x.domain([xmin,xmax]);
-        this.y0.domain(cats);
-        this.y1.domain(data.map(function(d){return d.color;}))
-            .rangeRoundBands([0, this.y0.rangeBand()]);
-        
-        //restyle the axes 
-        this.xAxis.scale(this.x);
-        this.yAxis.scale(this.y0);
-
-        this.svgxaxis.attr("transform", "translate(0," + (height+3) + ")");
-        this.svgxaxis.call(this.xAxis);
-        this.svgyaxis.call(this.yAxis);
-
-    },
-
     flattenData: function(res){
         var widget = this;
         return Object.keys(res).reduce(function(prev,curr){         
@@ -185,61 +141,64 @@ GroupedBarChart.prototype={
             return prev.concat(row);
         }, []);
     },
-    
 
-    redraw: function(res){
+    redraw :function(res){
+        var fdata = this.flattenData(res);
+        var x =this.x;
+        var y0 =this.y0;
+        var y1 =this.y1;
+        var svg =this.svg;
+        var selection = this.selection;
+        
+        //svg.on('click', this.click_callback);
+        
+        //update the axis and svgframe
+        this.updateYAxis(fdata);
+        this.updateXAxis(fdata);
+        this.updateSVG();
+
         var widget = this;
-        var flatdata = this.flattenData(res);
         
-        flatdata.sort(function(a,b){
-            //numeric sort
-            var res = parseFloat(a.id)-parseFloat(b.id);
-            if (!isNaN(res)){
-                return res;
-            }
-            else{
-                return a.cat.localeCompare(b.cat);
-            }
-        });
-        
-        this.updateAxis(flatdata);    
+        //bind data
+        var bars = this.svg.selectAll('.bar').data(fdata);
 
-        //add the bars back
-        var bars = this.svg.selectAll('.bar').data(flatdata);
-        
-        bars.enter()
-            .append('rect').attr('class', 'bar')
-            .on('click', function(d){ //click reaction
-                if(!widget.selection.brush){
-                    widget.selection.brush = [];
+        function clickFunc(d){
+            if(!widget.selection.brush){
+                widget.selection.brush = [];
+            }
+            
+            var idx = widget.selection.brush.findIndex(function(b){
+                return (b.cat == d.cat);
+            });
+            
+            if (idx != -1){
+                widget.selection.brush.splice(idx,1);
                 }
-                     
-                var idx = widget.selection.brush.findIndex(function(b){
-                    return (b.cat == d.cat);
-                });
-                
-                if (idx != -1){
-                    widget.selection.brush.splice(idx,1);
+            else{
+                if(d3.event.shiftKey){
+                    widget.selection.brush.push({id:d.id, cat:d.cat});
                 }
                 else{
-                    if(d3.event.shiftKey){
-                        widget.selection.brush.push({id:d.id, cat:d.cat});
-                    }
-                    else{
-                        widget.selection.brush = [{id:d.id, cat:d.cat}];
-                    }                        
-                }
-
-                if(widget.selection.brush.length < 1){
-                    delete widget.selection.brush;
-                }            
-                
-                widget.update(); //redraw itself
-                widget.updateCallback(widget._encodeArgs());            
-            }) //toggle callback
+                    widget.selection.brush = [{id:d.id, cat:d.cat}];
+                }                        
+            }
+            
+            if(widget.selection.brush.length < 1){
+                delete widget.selection.brush;
+            }            
+            
+            widget.update(); //redraw itself
+            widget.updateCallback(widget._encodeArgs());            
+        }
+        
+        //append new bars
+        bars.enter()
+            .append('rect')
+            .attr('class', 'bar')
+            .on('click', clickFunc)//toggle callback
             .append("svg:title"); //tooltip
-        
-        
+
+        //set shape
         bars.attr('x', 0)
             .attr('y', function(d){return widget.y0(d.cat) + //category
                                    widget.y1(d.color);}) //selection group
@@ -253,17 +212,91 @@ GroupedBarChart.prototype={
                     return 'gray';
                 }
             })
-            .attr('height',function(d){ return widget.y1.rangeBand(); })
+            .attr('height',function(d){ return widget.y1.rangeBand()-1; })
             .transition().duration(500)
             .attr('width',function(d){
                 return widget.x(d.val);
             });
         
-        bars.select('title')
-            .text(function(d){
-                return d3.format(',')(d.val);
+        //add tool tip
+        bars.select('title').text(function(d){
+            return d3.format(',')(d.val);
+        });
+
+        //remove bars with no data
+        bars.exit().remove();
+    },
+
+    updateSVG : function(){
+        var svg = this.svg;
+        var margin = this.margin;
+
+        var svgframe = d3.select(svg.node().parentNode);
+        var rect=svgframe.node().parentNode.getBoundingClientRect();
+
+        //calculate width and height in side the margin
+        var width = rect.width-margin.left-margin.right;
+        var height = this.totalheight;
+
+        //resize the frame
+        svgframe.attr("width", width + margin.left + margin.right);
+        svgframe.attr("height", height + margin.top + margin.bottom);
+
+        svg.attr("transform", "translate("+margin.left+","+margin.top+")");
+
+        this.width = width;
+        this.height = height;
+    },
+
+    updateXAxis: function(data){
+        var margin = this.margin;
+        var x=this.x;
+        var xAxis=this.xAxis;
+        var svg=this.svg;
+
+
+        var svgframe = d3.select(svg.node().parentNode);
+        var rect=svgframe.node().parentNode.getBoundingClientRect();
+        var width = rect.width - this.margin.left-this.margin.right;
+
+        x.domain([d3.min(data, function(d) {return +d.val;})*0.5 ,
+                  d3.max(data, function(d) {return +d.val;})]);
+
+        x.range([0,width]);
+
+        xAxis.scale(x);
+
+        //move and draw the axis
+        svg.select('.x.axis')
+            .attr("transform", "translate(0,"+this.totalheight+")")
+            .call(xAxis);
+        this.width=width;
+    },
+
+    updateYAxis:function(data){
+        var y0=this.y0;
+        var y1=this.y1;
+        var yAxis=this.yAxis;
+        var svg = this.svg;
+
+        y0.domain(data.map(function(d){return d.cat;}));
+        y1.domain(data.map(function(d){return d.color;}));
+        var totalheight = y0.domain().length* y1.domain().length * 18;
+
+        y0.rangeRoundBands([0, totalheight]);
+        y1.rangeRoundBands([0, y0.rangeBand()]);
+        yAxis.scale(y0);
+        svg.select('.y.axis').call(yAxis);
+
+        //enable axis click
+        var widget = this;
+        svg.select('.y.axis').selectAll('.tick')
+            .on('click',function(d){
+                var obj = data.filter(function(e){return e.cat==d;})[0];
+                //widget.click_callback(obj);
             });
         
-        bars.exit().remove();
+        this.totalheight = totalheight;
+        this.margin.left = svg.select('.y.axis').node().getBBox().width+10;
     }
 };
