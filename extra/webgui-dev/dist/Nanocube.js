@@ -662,10 +662,16 @@ GroupedBarChart.prototype = {
         var yAxis=this.yAxis;
         var svg = this.svg;
 
-        y0.domain(data.map(function(d){return d.cat;}).sort(
-            function(a,b){
-                return a-b;
-            }));
+        var catarray = data.map(function(d){return d.cat;});
+        var is_num = catarray.every(function(d){ return !isNaN(d);});
+        if(is_num){
+            catarray = catarray.map(function(d){ return +d; }).sort();
+        }
+        else{
+            catarray = catarray.sort();
+        }
+        
+        y0.domain(catarray);
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
@@ -2054,7 +2060,7 @@ Timeseries.prototype={
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
             var last = lines[k].data[lines[k].data.length-1];
-            lines[k].data.push(last); //add one last data point for step line
+            //lines[k].data.push(last); //add one last data point for step line
             //.pop(); //avoid extreme values at the end?
         });
 
