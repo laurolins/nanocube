@@ -33,7 +33,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
 
     var margin = opts.margin;
-    var id = '#' + opts.name;
     if (margin===undefined){
         margin = {top: 30, right: 10, bottom: 30, left: 70};
     }
