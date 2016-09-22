@@ -279,7 +279,10 @@ GroupedBarChart.prototype = {
         var yAxis=this.yAxis;
         var svg = this.svg;
 
-        y0.domain(data.map(function(d){return d.cat;}));
+        y0.domain(data.map(function(d){return d.cat;}).sort(
+            function(a,b){
+                return a-b;
+            }));
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
