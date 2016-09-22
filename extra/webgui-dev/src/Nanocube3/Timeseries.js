@@ -1,7 +1,31 @@
 /*global $,d3 */
 
 function Timeseries(opts,getDataCallback,updateCallback){
+    var id = '#'+ opts.name.replace(/\./g,'\\.');
+    //Add CSS to the div
+    d3.select(id).style({
+        "overflow-y":"auto",
+        "overflow-x":"hidden"
+    });
+
     var widget = this;
+    //Make draggable and resizable
+    d3.select(id).attr("class","resize-drag");
+    
+    d3.select(id).on("divresize",function(){ widget.redraw(); });
+
+    //Collapse on dbl click
+    d3.select(id).on('dblclick',function(d){
+        var currentheight = d3.select(id).style("height");
+        if ( currentheight != "20px"){
+            widget.restoreHeight =currentheight ;
+            d3.select(id).style('height','20px');
+        }
+        else{
+            d3.select(id).style("height",widget.restoreHeight);
+        }
+    });
+
     this._datasrc = opts.datasrc;
 
     widget.getDataCallback = getDataCallback;

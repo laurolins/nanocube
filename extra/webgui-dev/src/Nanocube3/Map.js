@@ -126,7 +126,7 @@ Map.prototype = {
         this._renormalize=true;
 
         //add info
-        $('#'+this._name).append('<p class="info">info test</p>');
+        //$('#'+this._name).append('<p class="info">info test</p>');
         //style
         var infodiv = $('#'+this._name+" .info");
         infodiv.css({
