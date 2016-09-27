@@ -2,15 +2,9 @@
 
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
-    //Add CSS to the div
-    d3.select(id).style({
-        "overflow-y":"auto",
-        "overflow-x":"hidden"
-    });
-
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","resize-drag");
+    d3.select(id).attr("class","timeseries resize-drag");
     
     d3.select(id).on("divresize",function(){ widget.redraw(); });
 
@@ -22,7 +16,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
             d3.select(id).style('height','20px');
         }
         else{
-            d3.select(id).style("height",widget.restoreHeight);
+            d3.select(id).style('height',widget.restoreHeight);
         }
     });
 

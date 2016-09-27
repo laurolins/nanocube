@@ -8,12 +8,6 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var id = "#"+name.replace(/\./g,'\\.');
     var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
-    //Add CSS to the div
-    d3.select(id).style({
-        "overflow-y":"auto",
-        "overflow-x":"hidden"
-    });
-
     //set param
     this.selection = {global:[]};
     if(opts.args){ // set selection from arguments
@@ -22,7 +16,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","resize-drag");
+    d3.select(id).attr("class","barchart resize-drag");
     
     d3.select(id).on("divresize",function(){
         widget.update();
@@ -45,8 +39,8 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var svg = d3.select(id).append("svg").append("g");
 
     //Title
-    svg.append("text").attr('y',-5).text(name);
-
+    svg.append("text").attr('y',-5);
+    
     //Axes
     svg.append("g").attr("class", "y axis")
         .attr("transform", "translate(-3,0)");
@@ -75,10 +69,11 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.x=x;
     this.xAxis = xAxis;
     this.yAxis = yAxis;
-
+    
     this._datasrc = opts.datasrc;
     this._opts = opts;
     this._logaxis = opts.logaxis;
+    this._name = name;
 }
 
 GroupedBarChart.prototype = {
@@ -212,10 +207,16 @@ GroupedBarChart.prototype = {
                     return 'gray';
                 }
             })
-            .attr('height',function(d){ return widget.y1.rangeBand()-1; })
+            .attr('height',function(d){
+                return widget.y1.rangeBand()-1;
+            })
             .transition().duration(500)
             .attr('width',function(d){
-                return widget.x(d.val);
+                var w = widget.x(d.val);
+                if(isNaN(w) && d.val===0 ){
+                    w = 0;
+                }
+                return w;
             });
         
         //add tool tip
@@ -259,11 +260,18 @@ GroupedBarChart.prototype = {
         var rect=svgframe.node().parentNode.getBoundingClientRect();
         var width = rect.width - this.margin.left-this.margin.right;
 
-        x.domain([d3.min(data, function(d) {return +d.val;})*0.5 ,
+        x.domain([d3.min(data, function(d) {return +d.val;})*0.5,
                   d3.max(data, function(d) {return +d.val;})]);
 
-        x.range([0,width]);
+        if(this._opts.logaxis){ // prevent zeros for log
+            var d = x.domain();
+            d[0] = Math.max(d[0],1e-6);
+            d[1] = Math.max(d[1],d[0]+1e-6);
+            x.domain(d);
+        }
 
+        x.range([0,width]);
+        
         xAxis.scale(x);
 
         //move and draw the axis
@@ -303,5 +311,8 @@ GroupedBarChart.prototype = {
         
         this.totalheight = totalheight;
         this.margin.left = svg.select('.y.axis').node().getBBox().width+10;
-    }
+
+        //update title with cat count
+        svg.select('text').text(this._name+' ('+y0.domain().length+')');
+    }    
 };

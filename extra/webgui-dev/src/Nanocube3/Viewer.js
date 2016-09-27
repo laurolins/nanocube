@@ -2,10 +2,27 @@
 
 var Viewer = function(opts){
     var container = $(opts.div_id);
+
+    //overlays
+    var catdiv = $('<div>');
+    catdiv.addClass('chart-overlay');
+    catdiv.attr('id', 'cat_overlay');
+    container.append(catdiv);
+    
+    var timediv = $('<div>');
+    timediv.addClass('chart-overlay');
+    timediv.attr('id', 'time_overlay');
+    container.append(timediv);
+    
+
+    //setup
     var nanocubes = opts.nanocubes;
     var variables = [];
     
     this._container = container;
+    this._catoverlay = catdiv;
+    this._timeoverlay = timediv;
+
     this._nanocubes = nanocubes;
     this._urlargs = opts.urlargs;
     this._widget = {};
@@ -52,9 +69,9 @@ Viewer.prototype = {
     },
     
     setupWidget:function(id, widget, levels){
-        var options = $.extend(true, {}, widget.div);
+        var options = $.extend(true, {}, widget);
         var viewer = this;
-
+        
         options.name = id;
         options.model = viewer;
         options.args = viewer._urlargs[id] || null;
@@ -63,12 +80,12 @@ Viewer.prototype = {
         //add the div
         var newdiv = $('<div>');
         newdiv.attr('id', id);
-        newdiv.css(widget.div);
-        this._container.append(newdiv);
+        newdiv.css(widget.css);
         
         //Create the widget
         switch(widget.type){
         case 'spatial':            
+            this._container.append(newdiv);
             options.levels = levels || 25;
             return new Map(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
@@ -78,6 +95,7 @@ Viewer.prototype = {
             });
             
         case 'cat':
+            this._catoverlay.append(newdiv);
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
             },function(args,constraints){
@@ -86,6 +104,7 @@ Viewer.prototype = {
             });
             
         case 'id':
+            this._catoverlay.append(newdiv);
             return new GroupedBarChart(options, function(datasrc){
                 return viewer.getTopKData(id,datasrc,options.topk);
             },function(args,constraints){
@@ -94,6 +113,7 @@ Viewer.prototype = {
             });
             
         case 'time':
+            this._timeoverlay.append(newdiv);
             options.timerange = viewer.getTimeRange();
             return new Timeseries(options,function(datasrc,start,end,interval){
                 return viewer.getTemporalData(id,datasrc,start,end,interval);

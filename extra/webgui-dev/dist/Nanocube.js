@@ -391,12 +391,6 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var id = "#"+name.replace(/\./g,'\\.');
     var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
-    //Add CSS to the div
-    d3.select(id).style({
-        "overflow-y":"auto",
-        "overflow-x":"hidden"
-    });
-
     //set param
     this.selection = {global:[]};
     if(opts.args){ // set selection from arguments
@@ -405,7 +399,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","resize-drag");
+    d3.select(id).attr("class","barchart resize-drag");
     
     d3.select(id).on("divresize",function(){
         widget.update();
@@ -428,8 +422,8 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var svg = d3.select(id).append("svg").append("g");
 
     //Title
-    svg.append("text").attr('y',-5).text(name);
-
+    svg.append("text").attr('y',-5);
+    
     //Axes
     svg.append("g").attr("class", "y axis")
         .attr("transform", "translate(-3,0)");
@@ -458,10 +452,11 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.x=x;
     this.xAxis = xAxis;
     this.yAxis = yAxis;
-
+    
     this._datasrc = opts.datasrc;
     this._opts = opts;
     this._logaxis = opts.logaxis;
+    this._name = name;
 }
 
 GroupedBarChart.prototype = {
@@ -595,10 +590,16 @@ GroupedBarChart.prototype = {
                     return 'gray';
                 }
             })
-            .attr('height',function(d){ return widget.y1.rangeBand()-1; })
+            .attr('height',function(d){
+                return widget.y1.rangeBand()-1;
+            })
             .transition().duration(500)
             .attr('width',function(d){
-                return widget.x(d.val);
+                var w = widget.x(d.val);
+                if(isNaN(w) && d.val===0 ){
+                    w = 0;
+                }
+                return w;
             });
         
         //add tool tip
@@ -642,11 +643,18 @@ GroupedBarChart.prototype = {
         var rect=svgframe.node().parentNode.getBoundingClientRect();
         var width = rect.width - this.margin.left-this.margin.right;
 
-        x.domain([d3.min(data, function(d) {return +d.val;})*0.5 ,
+        x.domain([d3.min(data, function(d) {return +d.val;})*0.5,
                   d3.max(data, function(d) {return +d.val;})]);
 
-        x.range([0,width]);
+        if(this._opts.logaxis){ // prevent zeros for log
+            var d = x.domain();
+            d[0] = Math.max(d[0],1e-6);
+            d[1] = Math.max(d[1],d[0]+1e-6);
+            x.domain(d);
+        }
 
+        x.range([0,width]);
+        
         xAxis.scale(x);
 
         //move and draw the axis
@@ -686,7 +694,10 @@ GroupedBarChart.prototype = {
         
         this.totalheight = totalheight;
         this.margin.left = svg.select('.y.axis').node().getBBox().width+10;
-    }
+
+        //update title with cat count
+        svg.select('text').text(this._name+' ('+y0.domain().length+')');
+    }    
 };
 
 /*global $ L colorbrewer d3 window */
@@ -1868,15 +1879,9 @@ function latlong2tile(latlong,zoom) {
 
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
-    //Add CSS to the div
-    d3.select(id).style({
-        "overflow-y":"auto",
-        "overflow-x":"hidden"
-    });
-
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","resize-drag");
+    d3.select(id).attr("class","timeseries resize-drag");
     
     d3.select(id).on("divresize",function(){ widget.redraw(); });
 
@@ -1888,7 +1893,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
             d3.select(id).style('height','20px');
         }
         else{
-            d3.select(id).style("height",widget.restoreHeight);
+            d3.select(id).style('height',widget.restoreHeight);
         }
     });
 
@@ -2146,10 +2151,27 @@ Timeseries.prototype={
 
 var Viewer = function(opts){
     var container = $(opts.div_id);
+
+    //overlays
+    var catdiv = $('<div>');
+    catdiv.addClass('chart-overlay');
+    catdiv.attr('id', 'cat_overlay');
+    container.append(catdiv);
+    
+    var timediv = $('<div>');
+    timediv.addClass('chart-overlay');
+    timediv.attr('id', 'time_overlay');
+    container.append(timediv);
+    
+
+    //setup
     var nanocubes = opts.nanocubes;
     var variables = [];
     
     this._container = container;
+    this._catoverlay = catdiv;
+    this._timeoverlay = timediv;
+
     this._nanocubes = nanocubes;
     this._urlargs = opts.urlargs;
     this._widget = {};
@@ -2196,9 +2218,9 @@ Viewer.prototype = {
     },
     
     setupWidget:function(id, widget, levels){
-        var options = $.extend(true, {}, widget.div);
+        var options = $.extend(true, {}, widget);
         var viewer = this;
-
+        
         options.name = id;
         options.model = viewer;
         options.args = viewer._urlargs[id] || null;
@@ -2207,12 +2229,12 @@ Viewer.prototype = {
         //add the div
         var newdiv = $('<div>');
         newdiv.attr('id', id);
-        newdiv.css(widget.div);
-        this._container.append(newdiv);
+        newdiv.css(widget.css);
         
         //Create the widget
         switch(widget.type){
         case 'spatial':            
+            this._container.append(newdiv);
             options.levels = levels || 25;
             return new Map(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
@@ -2222,6 +2244,7 @@ Viewer.prototype = {
             });
             
         case 'cat':
+            this._catoverlay.append(newdiv);
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
             },function(args,constraints){
@@ -2230,6 +2253,7 @@ Viewer.prototype = {
             });
             
         case 'id':
+            this._catoverlay.append(newdiv);
             return new GroupedBarChart(options, function(datasrc){
                 return viewer.getTopKData(id,datasrc,options.topk);
             },function(args,constraints){
@@ -2238,6 +2262,7 @@ Viewer.prototype = {
             });
             
         case 'time':
+            this._timeoverlay.append(newdiv);
             options.timerange = viewer.getTimeRange();
             return new Timeseries(options,function(datasrc,start,end,interval){
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
