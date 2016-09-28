@@ -1317,7 +1317,7 @@ Query.prototype = {
         this.query_elements[varname] = constraint;
 
         //record timeconst
-        this.timeconst={start:base, end:base+bucketsize*count,
+        this.timeconst={start:base, end:base+bucketsize*count-1,
                         bucketsize:bucketsize};
 
         var dfd = new $.Deferred();
@@ -1519,7 +1519,7 @@ Query.prototype = {
         endbin = Math.max(0,Math.floor(endbin+0.5));
 
         var count = (endbin - startbin) /bucketsize + 1 ;
-        count = Math.ceil(count);
+        count = Math.floor(count);
 
         var dfd = new $.Deferred();
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
@@ -2120,11 +2120,6 @@ Timeseries.prototype={
         if (path.empty()){
             path = widget.svg.append('path');
             path.attr('class', 'line '+colorid);
-
-            //var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
-            //if (!is_color){
-              //  color = '#f00'; //make it red as default
-           // }
             
             path.style('stroke-width','2px')
                 .style('fill','none')

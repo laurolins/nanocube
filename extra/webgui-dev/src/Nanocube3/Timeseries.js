@@ -184,8 +184,7 @@ Timeseries.prototype={
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
             var last = lines[k].data[lines[k].data.length-1];
-            lines[k].data.push(last); //add one last data point for step line
-            //.pop(); //avoid extreme values at the end?
+            lines[k].data.push(last); //dup the last point for step line
         });
 
         //update y axis
@@ -243,11 +242,6 @@ Timeseries.prototype={
         if (path.empty()){
             path = widget.svg.append('path');
             path.attr('class', 'line '+colorid);
-
-            //var is_color=/(^#[0-9A-Fa-f]{6}$)|(^#[0-9A-Fa-f]{3}$)/i.test(color);
-            //if (!is_color){
-              //  color = '#f00'; //make it red as default
-           // }
             
             path.style('stroke-width','2px')
                 .style('fill','none')
