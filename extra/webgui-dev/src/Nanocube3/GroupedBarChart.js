@@ -156,41 +156,12 @@ GroupedBarChart.prototype = {
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
-
-        function clickFunc(d){
-            if(!widget.selection.brush){
-                widget.selection.brush = [];
-            }
-            
-            var idx = widget.selection.brush.findIndex(function(b){
-                return (b.cat == d.cat);
-            });
-            
-            if (idx != -1){
-                widget.selection.brush.splice(idx,1);
-                }
-            else{
-                if(d3.event.shiftKey){
-                    widget.selection.brush.push({id:d.id, cat:d.cat});
-                }
-                else{
-                    widget.selection.brush = [{id:d.id, cat:d.cat}];
-                }                        
-            }
-            
-            if(widget.selection.brush.length < 1){
-                delete widget.selection.brush;
-            }            
-            
-            widget.update(); //redraw itself
-            widget.updateCallback(widget._encodeArgs());            
-        }
         
         //append new bars
         bars.enter()
             .append('rect')
             .attr('class', 'bar')
-            .on('click', clickFunc)//toggle callback
+            .on('click', function(d) { widget.clickFunc(d);})//toggle callback
             .append("svg:title"); //tooltip
 
         //set shape
@@ -226,6 +197,36 @@ GroupedBarChart.prototype = {
 
         //remove bars with no data
         bars.exit().remove();
+    },
+
+    clickFunc:function(d){
+        var widget = this;
+        if(!widget.selection.brush){
+            widget.selection.brush = [];
+        }
+            
+        var idx = widget.selection.brush.findIndex(function(b){
+            return (b.cat == d.cat);
+        });
+        
+        if (idx != -1){
+            widget.selection.brush.splice(idx,1);
+        }
+        else{
+            if(d3.event.shiftKey){
+                widget.selection.brush.push({id:d.id, cat:d.cat});
+            }
+            else{
+                widget.selection.brush = [{id:d.id, cat:d.cat}];
+            }                        
+        }
+        
+        if(widget.selection.brush.length < 1){
+            delete widget.selection.brush;
+        }            
+            
+        widget.update(); //redraw itself
+        widget.updateCallback(widget._encodeArgs());            
     },
 
     updateSVG : function(){
@@ -306,7 +307,7 @@ GroupedBarChart.prototype = {
         svg.select('.y.axis').selectAll('.tick')
             .on('click',function(d){
                 var obj = data.filter(function(e){return e.cat==d;})[0];
-                //widget.click_callback(obj);
+                widget.clickFunc(obj);
             });
         
         this.totalheight = totalheight;
