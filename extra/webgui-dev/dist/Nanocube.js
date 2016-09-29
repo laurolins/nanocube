@@ -1525,7 +1525,8 @@ Query.prototype = {
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record
             var nbins = res.timeconst.end - res.timeconst.start;
-            nbins = nbins/res.timeconst.bucketsize +1;
+            nbins = nbins/res.timeconst.bucketsize+1;
+            nbins = Math.floor(nbins);
             var datecount = new Array(nbins);
             for(var i=0; i < nbins; i++){
                 var t = q.nanocube.bucketToTime(i,res.timeconst.start,
@@ -2061,8 +2062,7 @@ Timeseries.prototype={
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
             var last = lines[k].data[lines[k].data.length-1];
-            lines[k].data.push(last); //add one last data point for step line
-            //.pop(); //avoid extreme values at the end?
+            lines[k].data.push(last); //dup the last point for step line
         });
 
         //update y axis

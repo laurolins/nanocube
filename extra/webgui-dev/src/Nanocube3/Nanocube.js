@@ -333,7 +333,8 @@ Query.prototype = {
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record
             var nbins = res.timeconst.end - res.timeconst.start;
-            nbins = nbins/res.timeconst.bucketsize +1;
+            nbins = nbins/res.timeconst.bucketsize+1;
+            nbins = Math.floor(nbins);
             var datecount = new Array(nbins);
             for(var i=0; i < nbins; i++){
                 var t = q.nanocube.bucketToTime(i,res.timeconst.start,
