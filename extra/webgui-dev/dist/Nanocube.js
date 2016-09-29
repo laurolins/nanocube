@@ -798,8 +798,10 @@ Map.prototype = {
             map.addLayer(this._layers[l]);
         }
 
-        //Layer 
-        L.control.layers(null,this._layers,{"collapsed":false}).addTo(map);
+        //Layer
+        if (Object.keys(this._layers).length > 1){
+            L.control.layers(null,this._layers,{"collapsed":false}).addTo(map);
+        }
 
         map.on('overlayadd', function (e) {
             widget._datasrc[e.layer._datasrc].disabled=false;
@@ -1154,7 +1156,8 @@ Map.prototype = {
                     }
                     
                     var startrender = window.performance.now();
-                    widget.drawCanvasLayer(res,canvas,layer._cmap,layer.options.opacity);
+                    widget.drawCanvasLayer(res,canvas,layer._cmap,
+                                           layer.options.opacity);
 
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
