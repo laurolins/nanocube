@@ -125,7 +125,7 @@ class NanocubeInput:
             reader = pd.read_csv(f,chunksize=csize,
                                  error_bad_lines=False,sep=self.sep,
                                  compression=comp,names=self.header,
-                                 usecols=coi)
+                                 usecols=coi,dtype=str)
 
             datarange = {}
             for i,data in enumerate(reader):
@@ -164,7 +164,7 @@ class NanocubeInput:
             reader = pd.read_csv(f,chunksize=csize,
                                  error_bad_lines=False,sep=self.sep,
                                  compression=comp,names=self.header,
-                                 usecols=coi)
+                                 usecols=coi,dtype=str)
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
