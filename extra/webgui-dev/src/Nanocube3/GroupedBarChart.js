@@ -189,7 +189,7 @@ GroupedBarChart.prototype = {
             .transition().duration(500)
             .attr('width',function(d){
                 var w = widget.x(d.val);
-                if(isNaN(w) && d.val===0 ){
+                if(isNaN(w) && d.val <=0 ){
                     w = 0;
                 }
                 return w;
