@@ -134,11 +134,18 @@ Timeseries.prototype={
             var results = arguments;
             var res = {};
             promkeys.forEach(function(d,i){
-                var label = d.split('-');
-                var colormap = widget._datasrc[label[1]].colormap;
-                var cidx = Math.floor(colormap.length/2);
                 res[d] = results[i];
-                res[d].color = colormap[cidx];
+
+                var label = d.split('-');
+                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+                if(isColor){
+                    res[d].color = label[0];
+                }
+                else{
+                    var colormap = widget._datasrc[label[1]].colormap;
+                    var cidx = Math.floor(colormap.length/2);
+                    res[d].color = colormap[cidx];
+                }
             });
 
             widget.redraw(res);
