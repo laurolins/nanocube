@@ -104,7 +104,7 @@ Query.prototype = {
 
 
     setIdConst: function(varname, idvalues) {
-        console.log(idvalues);
+        //console.log(idvalues);
         var values = idvalues.map(function(d){ return d.id; });
                                    
         if (values.length > 0){
@@ -143,6 +143,7 @@ Query.prototype = {
                 if(typeof(d.val.volume_count) != 'undefined'){
                     v = d.val.volume_count;
                 }
+
                 return { time: t, val: v };
             });
 
@@ -197,6 +198,7 @@ Query.prototype = {
                 d.x =  d.x + offset.x;
                 d.y = th-d.y + offset.y;
                 d.z = z;
+
                 return d;
             });
             
@@ -237,13 +239,13 @@ Query.prototype = {
 
         var dfd = $.Deferred();
         if (cache[query_string]){
-            console.log('cached');
+            //console.log('cached');
             var res = $.extend(true, {}, cache[query_string]);
             dfd.resolveWith(ctx, [res]);
             return dfd.promise();
         }
         else{
-            console.log(query_string);
+            //console.log(query_string);
             $.ajax({url: query_string, context: ctx}).done(function(res){
                 if(Object.keys(cache).length > 10){
                     var idx = Math.floor(Math.random() * (10+1)) ;
@@ -283,6 +285,8 @@ Query.prototype = {
             var catarray = data.map(function(d){
                 return { id: d.path[0], cat: valToName[d.path[0]], val: d.val };
             });
+            catarray = catarray.filter(function(d){ return d.val >= 25; });
+
             return dfd.resolve({type:'cat', data:catarray});
         });
         return dfd.promise();
@@ -307,6 +311,7 @@ Query.prototype = {
                 return {id:d.key,cat:d.word,val:d.count};
             });
             
+            idarray = idarray.filter(function(d){ return d.val >= 25; });
             return dfd.resolve({type:'id', data: idarray});
         });
         return dfd.promise();
@@ -346,6 +351,7 @@ Query.prototype = {
                 datecount[d.time].val = d.val;
             });
 
+            datecount = datecount.filter(function(d){ return d.val >= 25; });
             dfd.resolve({type:'temporal', data:datecount,
                          timeconst:res.timeconst });
         });
@@ -398,7 +404,7 @@ Query.prototype = {
 
             merged = merged.filter(function(d){
                 return (pb.min.x <= d.x  && d.x <= pb.max.x  &&
-                        pb.min.y <= d.y  && d.y <= pb.max.y);
+                        pb.min.y <= d.y  && d.y <= pb.max.y && d.val >= 25);
             });
 
             dfd.resolve({type: 'spatial', opts:{pb:pb}, data:merged});

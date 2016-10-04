@@ -94,7 +94,7 @@ L.CanvasOverlay = L.Class.extend({
         this._redraw();
         var topLeft = this._map.containerPointToLayerPoint([0, 0]);
         L.DomUtil.setPosition(this._canvas, topLeft);
-        console.log("canvas pos:",L.DomUtil.getPosition(this._canvas));
+        //console.log("canvas pos:",L.DomUtil.getPosition(this._canvas));
     },
     
     _move: function(){

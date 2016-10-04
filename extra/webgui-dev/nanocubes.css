@@ -2,7 +2,7 @@ html,body,#nc {
     height:100%;
     width:100%;
     margin:0;
-    font-family: 'Lato', sans-serif;
+    font: 10pt Lato, sans-serif;
 }
 
 canvas {
@@ -69,4 +69,13 @@ text {
     margin-top: 2px;
     margin-left: 5px;
     top: 1px;
+}
+
+.maptitle {
+    font: 10pt Lato, sans-serif;
+    z-index: 1;
+    color: white;
+    position: absolute;
+    top: 5px;
+    left: 50px;
 }

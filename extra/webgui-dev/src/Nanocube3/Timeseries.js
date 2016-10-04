@@ -3,11 +3,14 @@
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
+    this.lastres = null;
+    
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries resize-drag");
+    d3.select(id).style({"overflow-y":"hidden"});
     
-    d3.select(id).on("divresize",function(){ widget.redraw(); });
-
+    d3.select(id).on("divresize",function(){ widget.redraw(this.lastres); });
+    
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
         var currentheight = d3.select(id).style("height");
@@ -19,36 +22,40 @@ function Timeseries(opts,getDataCallback,updateCallback){
             d3.select(id).style('height',widget.restoreHeight);
         }
     });
-
+    
     this._datasrc = opts.datasrc;
-
+    
     widget.getDataCallback = getDataCallback;
     widget.updateCallback =  updateCallback;
-
-
+    
+    
     var margin = opts.margin;
     if (margin===undefined){
         margin = {top: 30, right: 10, bottom: 30, left: 70};
     }
-
+    
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
 
-    widget.x = d3.time.scale.utc().range([0, width]);
-    widget.y = d3.scale.linear().range([height, 0]);
-
-    widget.xAxis = d3.svg.axis().scale(widget.x)
-        .orient("bottom");
-    widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left").ticks(3,"s");
-
     //Zoom
-    widget.zoom=d3.behavior.zoom();
-    widget.zoom.size([width,height]);
+    function zooming() {
+        widget.svg.select(".x.axis").call(widget.xAxis);
+        widget.redraw(widget.lastres);
+    }
 
-    //Brush
-    widget.brush = d3.svg.brush().x(widget.x);
+    function zoomed() {
+        widget.update();
+        widget.updateCallback(widget._encodeArgs());
+        widget.brush.x(widget.x);
+    }
 
+    var zoom = d3.behavior.zoom()
+        .on("zoom", zooming)
+        .on("zoomend", zoomed);
+    
+        
+    //Set Brush
+    widget.brush = d3.svg.brush();    
     widget.brush.on('brushstart', function(){
         if(d3.event.sourceEvent){
             d3.event.sourceEvent.stopPropagation();
@@ -57,7 +64,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     widget.brush.on('brushend', function(){
         console.log(widget.brush.extent());
-
+        
         widget.updateCallback(widget._encodeArgs());
     });
 
@@ -67,33 +74,15 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
-              margin.top + ")").call(widget.zoom);
-
-    if(opts.args){
-        widget._decodeArgs(opts.args);
-    }
-    else{
-        //set initial domain    
-        widget.x.domain(opts.timerange);
-    }
-
-    //add svg stuffs    
+              margin.top + ")").call(zoom);
+    widget.svgwidth = width;
+    
     //add title
     widget.svg.append("text")
         .attr("x", -10)
         .attr("y", -10)
         .text(opts.title);
-
-    widget.svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + (height) + ")")
-        .call(widget.xAxis);
-
-    widget.svg.append("g")
-        .attr("class", "y axis")
-        .attr("transform", "translate(-3,0)")
-        .call(widget.yAxis);
-
+    
     //brush
     widget.svg.append("g").attr("class", "x brush")
         .call(widget.brush)
@@ -101,8 +90,38 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("y", 0)
         .attr("height", height);
 
-    widget.width = width;
+    //scales
+    widget.x = d3.time.scale.utc().range([0, width]);
+    widget.y = d3.scale.linear().range([height, 0]);
+
+/*    //set the scales
+    if(opts.args){
+        widget._decodeArgs(opts.args);
+    }
+    else{
+        //set initial domain    
+        widget.x.domain(opts.timerange);
+    }
+*/
+    
+    //add axis
+    widget.xAxis = d3.svg.axis().scale(widget.x)
+        .orient("bottom");
+    widget.yAxis = d3.svg.axis().scale(widget.y)
+        .orient("left").ticks(3,"s");
+
+    //svg axis
+    widget.svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + (height) + ")")
+        .call(widget.xAxis);
+    
+    widget.svg.append("g")
+        .attr("class", "y axis")
+        .attr("transform", "translate(-3,0)")
+        .call(widget.yAxis);
 }
+
 
 Timeseries.prototype={
     update: function(){
@@ -110,7 +129,9 @@ Timeseries.prototype={
         var sel = this.getSelection();
         var start = sel.global.start;
         var end = sel.global.end;
-        var interval = (end - start+1) / 1000 / this.width * 5;
+        var interval = (end - start+1) / 1000 / //millisec timestamp
+            widget.svgwidth  * //time / width of svg
+            10; //* min secs per bucket
 
         var promises = {};
 
@@ -148,6 +169,7 @@ Timeseries.prototype={
                 }
             });
 
+            widget.lastres = res;
             widget.redraw(res);
         });
     },
@@ -156,11 +178,11 @@ Timeseries.prototype={
         var sel = {};
         var timedom = this.x.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
-
-        if (!this.brush.empty()){
+        if (!this.brush.empty() && this.brush.extent() !== null){
             var bext = this.brush.extent();
             sel.brush = {start:bext[0], end:bext[1]};
         }
+        
         return sel;
     },
 
@@ -176,7 +198,7 @@ Timeseries.prototype={
         if(args.brush){
             this.brush.extent([new Date(args.brush.start),
                                new Date(args.brush.end)]);
-
+            
             this._updateBrush();
         }
     },
@@ -190,8 +212,10 @@ Timeseries.prototype={
     
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
-            var last = lines[k].data[lines[k].data.length-1];
-            lines[k].data.push(last); //dup the last point for step line
+            if(lines[k].data.length > 0){
+                var last = lines[k].data[lines[k].data.length-1];
+                lines[k].data.push(last); //dup the last point for step line
+            }
         });
 
         //update y axis
@@ -232,10 +256,6 @@ Timeseries.prototype={
     },
 
     drawLine:function(data,color){
-        /*
-         var colors = color.split('-');
-         color = colors[1];
-         */
         var colorid = 'color_'+color.replace('#','');
         
         if (data.length < 2){
@@ -256,7 +276,7 @@ Timeseries.prototype={
         }
 
 
-        //Transit to new data
+        //Transition to new data
         var lineFunc = d3.svg.line()
                 .x(function(d) { return widget.x(d.time); })
                 .y(function(d) { return widget.y(d.val); })
@@ -266,7 +286,7 @@ Timeseries.prototype={
                 .y(function(d) { return widget.y(0); });
 
         path.transition()
-            .duration(500)
+            .duration(250)
             .attr('d', lineFunc(data));
     }
 };

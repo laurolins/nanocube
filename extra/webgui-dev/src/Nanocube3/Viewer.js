@@ -147,7 +147,7 @@ Viewer.prototype = {
     },
 
     update: function(skip,constraints,name,args,datasrc){
-        console.log("skip: ",skip);
+        //console.log("skip: ",skip);
 
         skip = skip || [];
         constraints = constraints || [];
@@ -213,7 +213,7 @@ Viewer.prototype = {
             }
         });
         
-        console.log(queries.global,skip);
+        //console.log(queries.global,skip);
         
         if (Object.keys(queries).length > 1){
             delete queries.global;

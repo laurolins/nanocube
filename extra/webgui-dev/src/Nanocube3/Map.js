@@ -130,7 +130,7 @@ Map.prototype = {
         //add info
         //$('#'+this._name).append('<p class="info">info test</p>');
         //style
-        var infodiv = $('#'+this._name+" .info");
+        /*var infodiv = $('#'+this._name+" .info");
         infodiv.css({
             position: 'absolute',
             'z-index':1,
@@ -139,7 +139,14 @@ Map.prototype = {
             'top': '0.5em',
             'padding':'0px',
             'margin':'0px'
-        });
+        });*/
+
+        //add title
+        d3.select('#'+this._name)
+            .append('div')
+            .attr('class','maptitle')
+            .text(this._name);
+        
         return map;
     },
 
