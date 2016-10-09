@@ -21,7 +21,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     });
 
 
-    opts.ynumformat = opts.ynumformat || ",";
+    opts.numformat = opts.numformat || ",";
 
     this._datasrc = opts.datasrc;
 
@@ -45,7 +45,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.yAxis = d3.svg.axis().scale(widget.y)
         .orient("left")
         .ticks(3)
-        .tickFormat(d3.format(opts.ynumformat));
+        .tickFormat(d3.format(opts.numformat));
 
     //Zoom
     widget.zoom=d3.behavior.zoom()

@@ -452,12 +452,11 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var yAxis = d3.svg.axis();
 
     //set default values 
-    opts.xnumformat = opts.xnumformat || ",";    
+    opts.numformat = opts.numformat || ",";    
     opts.alpha_order = opts.alpha_order || true;
 
     xAxis.orient("bottom")
-        .ticks(3)
-        .tickFormat(d3.format(opts.xnumformat));
+        .ticks(3,opts.numformat);
     yAxis.orient("left");
 
     //Save vars to "this"
@@ -597,7 +596,7 @@ GroupedBarChart.prototype = {
         
         //add tool tip
         bars.select('title').text(function(d){
-            return d3.format(widget._opts.xnumformat)(d.val);
+            return d3.format(widget._opts.numformat)(d.val);
         });
 
         //remove bars with no data
@@ -1950,7 +1949,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     });
 
 
-    opts.ynumformat = opts.ynumformat || ",";
+    opts.numformat = opts.numformat || ",";
 
     this._datasrc = opts.datasrc;
 
@@ -1974,7 +1973,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.yAxis = d3.svg.axis().scale(widget.y)
         .orient("left")
         .ticks(3)
-        .tickFormat(d3.format(opts.ynumformat));
+        .tickFormat(d3.format(opts.numformat));
 
     //Zoom
     widget.zoom=d3.behavior.zoom()
