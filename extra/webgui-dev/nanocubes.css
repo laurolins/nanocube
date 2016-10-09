@@ -11,12 +11,6 @@ canvas {
     left:0px;
 }
 
-.resize-drag{
-    overflow-y:auto;
-    overflow-x:hidden;
-    pointer-events:visible;
-}
-
 .chart-overlay{
     position:absolute;
     height:100%;
@@ -26,18 +20,38 @@ canvas {
     z-index:1;
 }
 
+.resize-drag{
+    padding: 5px;
+}
+
 .barchart{
+    position: relative;
+    overflow-y:auto;
+    overflow-x:hidden;
     float:right;
     background-color: #555;
     margin: 5px;
     opacity:0.8;
+    pointer-events:visible;
+    border: 1px solid white;
+}
+
+.sort-btn{
+    position: absolute;
+    left: 5px;
+    top: 5px;
 }
 
 .timeseries{
+    position: relative;
+    overflow-y:hidden;
+    overflow-x:hidden;
     float:left;
     background-color: #555;
     margin: 5px;
+    border: 1px solid white;
     opacity:0.8;
+    pointer-events:visible;
 }
 
 .axis path,

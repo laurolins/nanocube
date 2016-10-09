@@ -22,12 +22,22 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         widget.update();
     });
 
+    //Add sort button
+    this.sortbtn = d3.select(id)
+        .append('button')
+        .attr('class','sort-btn')
+        .on('click',function(){
+            d3.event.stopPropagation();
+            widget._opts.alpha_order = !widget._opts.alpha_order;
+            widget.redraw(widget.lastres);
+        });
+    
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
         var currentheight = d3.select(id).style("height");
-        if ( currentheight != "20px"){
+        if ( currentheight != "40px"){
             widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','20px');
+            d3.select(id).style('height','40px');
         }
         else{
             d3.select(id).style("height",widget.restoreHeight);
@@ -39,7 +49,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var svg = d3.select(id).append("svg").append("g");
 
     //Title
-    svg.append("text").attr('y',-5);
+    svg.append('text').attr('y',-5);
     
     //Axes
     svg.append("g").attr("class", "y axis")
@@ -58,7 +68,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var xAxis = d3.svg.axis();
     var yAxis = d3.svg.axis();
 
-    xAxis.orient("bottom").ticks(3,",.1s");
+    //set default values 
+    opts.xnumformat = opts.xnumformat || ",";    
+    opts.alpha_order = opts.alpha_order || true;
+
+    xAxis.orient("bottom")
+        .ticks(3)
+        .tickFormat(d3.format(opts.xnumformat));
     yAxis.orient("left");
 
     //Save vars to "this"
@@ -116,12 +132,13 @@ GroupedBarChart.prototype = {
                 res[d] = results[i];
             });
             
+            widget.lastres = res;
             widget.redraw(res);
         });
     },
     
     flattenData: function(res){
-        var widget = this;
+        var widget = this;        
         return Object.keys(res).reduce(function(prev,curr){         
             var label = curr.split('-'); 
             var c = label[0];
@@ -144,13 +161,13 @@ GroupedBarChart.prototype = {
 
     redraw :function(res){
         var fdata = this.flattenData(res);
+        
         var x =this.x;
         var y0 =this.y0;
         var y1 =this.y1;
         var svg =this.svg;
         var selection = this.selection;
         
-        //svg.on('click', this.click_callback);
         
         //update the axis and svgframe
         this.updateYAxis(fdata);
@@ -197,7 +214,7 @@ GroupedBarChart.prototype = {
         
         //add tool tip
         bars.select('title').text(function(d){
-            return d3.format(',')(d.val);
+            return d3.format(widget._opts.xnumformat)(d.val);
         });
 
         //remove bars with no data
@@ -239,10 +256,11 @@ GroupedBarChart.prototype = {
         var margin = this.margin;
 
         var svgframe = d3.select(svg.node().parentNode);
-        var rect=svgframe.node().parentNode.getBoundingClientRect();
-
+        var width=d3.select(svgframe.node().parentNode).style('width');       
+        width = parseFloat(width);
+        
         //calculate width and height in side the margin
-        var width = rect.width-margin.left-margin.right;
+        width = width-margin.left-margin.right;
         var height = this.totalheight;
 
         //resize the frame
@@ -260,7 +278,6 @@ GroupedBarChart.prototype = {
         var x=this.x;
         var xAxis=this.xAxis;
         var svg=this.svg;
-
 
         var svgframe = d3.select(svg.node().parentNode);
         var rect=svgframe.node().parentNode.getBoundingClientRect();
@@ -292,13 +309,25 @@ GroupedBarChart.prototype = {
         var y1=this.y1;
         var yAxis=this.yAxis;
         var svg = this.svg;
+        var opts = this._opts;
+        var sortbtn = this.sortbtn;
         
-        y0.domain(data.map(function(d){return d.cat;}).sort());
-        if (y0.domain().every(function(d) {return !isNaN(d);})){
-            y0.domain(y0.domain().sort(function(a,b){return a-b;}));
+        
+        //Sort y axis
+        if (opts.alpha_order){            
+            y0.domain(data.map(function(d){return d.cat;}).sort());
+            if (y0.domain().every(function(d) {return !isNaN(d);})){
+                y0.domain(y0.domain().sort(function(a,b){return a-b;}));
+            }
+            sortbtn.html('A');
+        }
+        else{ //sort by data value
+            var d = data.sort(function(x,y){ return y.val - x.val;});
+            y0.domain(d.map(function(d){return d.cat;}));
+            sortbtn.html('#');
         }
         
-
+        
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
@@ -316,7 +345,7 @@ GroupedBarChart.prototype = {
             });
         
         this.totalheight = totalheight;
-        this.margin.left = svg.select('.y.axis').node().getBBox().width+10;
+        this.margin.left = svg.select('.y.axis').node().getBBox().width+3;
 
         //update title with cat count
         svg.select('text').text(this._name+' ('+y0.domain().length+')');

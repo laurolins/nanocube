@@ -11,14 +11,17 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
         var currentheight = d3.select(id).style("height");
-        if ( currentheight != "20px"){
+        if ( currentheight != "40px"){
             widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','20px');
+            d3.select(id).style('height','40px');
         }
         else{
             d3.select(id).style('height',widget.restoreHeight);
         }
     });
+
+
+    opts.ynumformat = opts.ynumformat || ",";
 
     this._datasrc = opts.datasrc;
 
@@ -40,7 +43,9 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.xAxis = d3.svg.axis().scale(widget.x)
         .orient("bottom");
     widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left").ticks(3,"s");
+        .orient("left")
+        .ticks(3)
+        .tickFormat(d3.format(opts.ynumformat));
 
     //Zoom
     widget.zoom=d3.behavior.zoom()
