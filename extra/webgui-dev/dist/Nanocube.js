@@ -367,7 +367,9 @@ Expression.prototype = {
     },
 
     _op: function(opfunc,left,right){
-        switch(left.type){
+        var type = left.type || right.type;
+
+        switch(type){
         case 'spatial':
             return this._opSpatial(opfunc,left,right);
         case 'temporal':
