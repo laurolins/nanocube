@@ -667,16 +667,20 @@ GroupedBarChart.prototype = {
         var rect=svgframe.node().parentNode.getBoundingClientRect();
         var width = rect.width - this.margin.left-this.margin.right;
 
-        x.domain([d3.min(data, function(d) {return +d.val;})*0.5,
-                  d3.max(data, function(d) {return +d.val;})]);
+        var d = [d3.min(data, function(d) {return +d.val;}),
+                 d3.max(data, function(d) {return +d.val;})];
 
         if(this._opts.logaxis){ // prevent zeros for log
-            var d = x.domain();
             d[0] = Math.max(d[0],1e-6);
             d[1] = Math.max(d[1],d[0]+1e-6);
-            x.domain(d);
         }
-
+        else{
+            d[0] = d[0]-0.1*(d[1]-d[0]);
+            d[0] = Math.min(d[0],d[1]/2);
+        }
+        
+        x.domain(d);
+        
         x.range([0,width]);
         
         xAxis.scale(x);
@@ -2161,7 +2165,9 @@ Timeseries.prototype={
         }, [Infinity,-Infinity]);
 
 
-        //yext = yext.map(function(d){ return d3.round(d,2); });
+        yext[0]= yext[0]-0.1*(yext[1]-yext[0]); //show the line around min
+        yext[0]= Math.min(yext[0],yext[1]*0.5);
+        
         this.y.domain(yext);
 
         //update the axis
