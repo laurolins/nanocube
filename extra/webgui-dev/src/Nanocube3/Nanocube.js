@@ -71,6 +71,8 @@ Query.prototype = {
         start = Math.floor(start);
         end = Math.ceil(end);
 
+        //Make sure start and end are valid
+        var tinfo  = this.nanocube.getTbinInfo();
 
         var constraint = 'r(\"' + varname + '\",interval(' +
                 start + ',' + end + '))';
@@ -320,8 +322,8 @@ Query.prototype = {
     //temporal queries, return an array of {date, val}
     temporalQuery: function(varname,start,end,interval_sec){
         var q = this;
-        var timeinfo = q.nanocube.timeinfo;
-
+        var timeinfo = q.nanocube.getTbinInfo();
+        
         var startbin = q.nanocube.timeToBin(start);
         startbin = Math.max(0,Math.floor(startbin+0.5));
         
@@ -330,10 +332,13 @@ Query.prototype = {
 
         var endbin = q.nanocube.timeToBin(end);
         endbin = Math.max(0,Math.floor(endbin+0.5));
-
+        
         var count = (endbin - startbin) /bucketsize + 1 ;
         count = Math.floor(count);
 
+
+
+        
         var dfd = new $.Deferred();
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record
@@ -492,10 +497,6 @@ Nanocube.prototype = {
 
     
     setTimeInfo: function() {
-        //var tvar = this.schema.fields.filter(function(f) {
-        //    return f.type.indexOf("nc_dim_time") === 0;
-        //});
-
         var dim = this.dimensions;
 
         var tvar = Object.keys(dim).filter(function(k){
@@ -638,9 +639,12 @@ Nanocube.prototype = {
     timeToBin: function(t){
         //translate time to bin
         var timeinfo = this.timeinfo;
-
         var sec = (t - timeinfo.date_offset) / 1000.0;
-        return sec / timeinfo.bin_sec;
+        var bin = sec / timeinfo.bin_sec;
+        bin = Math.max(bin,timeinfo.start);
+        bin = Math.min(bin,timeinfo.end);
+        return bin;
+        
     },
 
     bucketToTime: function(t, start, bucketsize){
