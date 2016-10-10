@@ -97,7 +97,12 @@ Map.prototype = {
 
         //Layer
         if (Object.keys(this._layers).length > 1){
-            L.control.layers(null,this._layers,{"collapsed":false}).addTo(map);
+            L.control.layers(null,this._layers,
+                             {
+                                 collapsed: false,
+                                 position: 'bottomright'
+                             })
+                .addTo(map);
         }
 
         map.on('overlayadd', function (e) {
