@@ -36,11 +36,11 @@ canvas {
     border: 1px solid white;
 }
 
-.sort-btn{
-    position: absolute;
-    right: 5px;
-    top: 5px;
+.sort-btn,.clear-btn{
+    float:right
 }
+
+
 
 .timeseries{
     position: relative;

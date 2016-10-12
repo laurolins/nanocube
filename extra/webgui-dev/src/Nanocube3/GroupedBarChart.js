@@ -22,6 +22,18 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         widget.update();
     });
 
+    //Add clear button
+    this.clearbtn = d3.select(id)
+        .append('button')
+        .attr('class','clear-btn')
+        .on('click',function(){
+            d3.event.stopPropagation();
+            
+            delete widget.selection.brush; //clear selection
+            widget.update(); //redraw itself
+            widget.updateCallback(widget._encodeArgs());            
+        }).html('clear');
+    
     //Add sort button
     this.sortbtn = d3.select(id)
         .append('button')
@@ -322,12 +334,12 @@ GroupedBarChart.prototype = {
             if (y0.domain().every(function(d) {return !isNaN(d);})){
                 y0.domain(y0.domain().sort(function(a,b){return a-b;}));
             }
-            sortbtn.html('A');
+            sortbtn.html('#');
         }
         else{ //sort by data value
             var d = data.sort(function(x,y){ return y.val - x.val;});
             y0.domain(d.map(function(d){return d.cat;}));
-            sortbtn.html('#');
+            sortbtn.html('A');
         }
         
         
