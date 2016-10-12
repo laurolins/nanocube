@@ -351,6 +351,6 @@ GroupedBarChart.prototype = {
         this.margin.left = svg.select('.y.axis').node().getBBox().width+3;
 
         //update title with cat count
-        svg.select('text').text(this._name+' ('+y0.domain().length+')');
+        svg.select('text').text(this._opts.title+' ('+y0.domain().length+')');
     }    
 };

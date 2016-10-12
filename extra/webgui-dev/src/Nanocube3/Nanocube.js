@@ -149,6 +149,7 @@ Query.prototype = {
                 return { time: t, val: v };
             });
 
+            
             dfd.resolve({timeconst: q.timeconst,
                          timearray: timearray});
             return;
@@ -287,7 +288,6 @@ Query.prototype = {
             var catarray = data.map(function(d){
                 return { id: d.path[0], cat: valToName[d.path[0]], val: d.val };
             });
-            //catarray = catarray.filter(function(d){ return d.val >= 25; });
 
             return dfd.resolve({type:'cat', data:catarray});
         });
@@ -313,7 +313,6 @@ Query.prototype = {
                 return {id:d.key,cat:d.word,val:d.count};
             });
             
-            //idarray = idarray.filter(function(d){ return d.val >= 25; });
             return dfd.resolve({type:'id', data: idarray});
         });
         return dfd.promise();
@@ -336,9 +335,6 @@ Query.prototype = {
         var count = (endbin - startbin) /bucketsize + 1 ;
         count = Math.floor(count);
 
-
-
-        
         var dfd = new $.Deferred();
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record
@@ -356,7 +352,9 @@ Query.prototype = {
                 datecount[d.time].val = d.val;
             });
 
-            //datecount = datecount.filter(function(d){ return d.val >= 25; });
+            //kill zeros
+            datecount = datecount.filter(function(d){return d.val !== 0;});
+            ///////
             dfd.resolve({type:'temporal', data:datecount,
                          timeconst:res.timeconst });
         });
@@ -406,12 +404,6 @@ Query.prototype = {
             var results = arguments;
             var merged = [];
             merged = merged.concat.apply(merged, results);
-
-            //merged = merged.filter(function(d){
-            //    return (pb.min.x <= d.x  && d.x <= pb.max.x  &&
-            //            pb.min.y <= d.y  && d.y <= pb.max.y && d.val >= 25);
-            //});
-
             dfd.resolve({type: 'spatial', opts:{pb:pb}, data:merged});
         });
         return dfd.promise();

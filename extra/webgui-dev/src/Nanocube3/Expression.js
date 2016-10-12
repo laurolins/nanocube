@@ -198,8 +198,7 @@ Expression.prototype = {
                 lefthash[d.time] = d.val;
             });
         }
-
-        var righthash = {};
+       var righthash = {};
         if (typeof right == 'number'){
             left.data.forEach(function(d,i){
                 righthash[d.time] = right;
@@ -227,7 +226,9 @@ Expression.prototype = {
         });
         res.data = res.data.filter(function(d){return isFinite(d.val);});
         res.data = res.data.filter(function(d){return d.val !== 0;});
-        res.type = left.type;
+        res.type = left.type || right.type;
+        //res.data = res.data.sort(function(a,b){return a.time - b.time;});
+
         return res;
     },
 
@@ -278,7 +279,7 @@ Expression.prototype = {
         });
         res.data = res.data.filter(function(d){return isFinite(d.val);});
         res.data = res.data.filter(function(d){return d.val !== 0;});
-        res.type = left.type;
+        res.type = left.type || right.type;
         return res;
     },
 
@@ -325,7 +326,7 @@ Expression.prototype = {
         });
         res.data = res.data.filter(function(d){return isFinite(d.val);});
         res.data = res.data.filter(function(d){return d.val !== 0;});
-        res.type = left.type;
+        res.type = left.type || right.type;
         return res;
     },
 

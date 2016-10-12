@@ -254,10 +254,6 @@ Timeseries.prototype={
     },
 
     drawLine:function(data,color){
-        /*
-         var colors = color.split('-');
-         color = colors[1];
-         */
         var colorid = 'color_'+color.replace('#','');
         
         if (data.length < 2){

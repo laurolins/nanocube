@@ -235,8 +235,7 @@ Expression.prototype = {
                 lefthash[d.time] = d.val;
             });
         }
-
-        var righthash = {};
+       var righthash = {};
         if (typeof right == 'number'){
             left.data.forEach(function(d,i){
                 righthash[d.time] = right;
@@ -264,7 +263,9 @@ Expression.prototype = {
         });
         res.data = res.data.filter(function(d){return isFinite(d.val);});
         res.data = res.data.filter(function(d){return d.val !== 0;});
-        res.type = left.type;
+        res.type = left.type || right.type;
+        //res.data = res.data.sort(function(a,b){return a.time - b.time;});
+
         return res;
     },
 
@@ -315,7 +316,7 @@ Expression.prototype = {
         });
         res.data = res.data.filter(function(d){return isFinite(d.val);});
         res.data = res.data.filter(function(d){return d.val !== 0;});
-        res.type = left.type;
+        res.type = left.type || right.type;
         return res;
     },
 
@@ -362,7 +363,7 @@ Expression.prototype = {
         });
         res.data = res.data.filter(function(d){return isFinite(d.val);});
         res.data = res.data.filter(function(d){return d.val !== 0;});
-        res.type = left.type;
+        res.type = left.type || right.type;
         return res;
     },
 
@@ -736,7 +737,7 @@ GroupedBarChart.prototype = {
         this.margin.left = svg.select('.y.axis').node().getBBox().width+3;
 
         //update title with cat count
-        svg.select('text').text(this._name+' ('+y0.domain().length+')');
+        svg.select('text').text(this._opts.title+' ('+y0.domain().length+')');
     }    
 };
 
@@ -1396,6 +1397,7 @@ Query.prototype = {
                 return { time: t, val: v };
             });
 
+            
             dfd.resolve({timeconst: q.timeconst,
                          timearray: timearray});
             return;
@@ -1534,7 +1536,6 @@ Query.prototype = {
             var catarray = data.map(function(d){
                 return { id: d.path[0], cat: valToName[d.path[0]], val: d.val };
             });
-            //catarray = catarray.filter(function(d){ return d.val >= 25; });
 
             return dfd.resolve({type:'cat', data:catarray});
         });
@@ -1560,7 +1561,6 @@ Query.prototype = {
                 return {id:d.key,cat:d.word,val:d.count};
             });
             
-            //idarray = idarray.filter(function(d){ return d.val >= 25; });
             return dfd.resolve({type:'id', data: idarray});
         });
         return dfd.promise();
@@ -1583,9 +1583,6 @@ Query.prototype = {
         var count = (endbin - startbin) /bucketsize + 1 ;
         count = Math.floor(count);
 
-
-
-        
         var dfd = new $.Deferred();
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record
@@ -1603,7 +1600,8 @@ Query.prototype = {
                 datecount[d.time].val = d.val;
             });
 
-            //datecount = datecount.filter(function(d){ return d.val >= 25; });
+            //kill zeros
+            datecount = datecount.filter(function(d){return d.val !== 0;});
             dfd.resolve({type:'temporal', data:datecount,
                          timeconst:res.timeconst });
         });
@@ -1653,12 +1651,6 @@ Query.prototype = {
             var results = arguments;
             var merged = [];
             merged = merged.concat.apply(merged, results);
-
-            //merged = merged.filter(function(d){
-            //    return (pb.min.x <= d.x  && d.x <= pb.max.x  &&
-            //            pb.min.y <= d.y  && d.y <= pb.max.y && d.val >= 25);
-            //});
-
             dfd.resolve({type: 'spatial', opts:{pb:pb}, data:merged});
         });
         return dfd.promise();
@@ -2197,10 +2189,6 @@ Timeseries.prototype={
     },
 
     drawLine:function(data,color){
-        /*
-         var colors = color.split('-');
-         color = colors[1];
-         */
         var colorid = 'color_'+color.replace('#','');
         
         if (data.length < 2){
