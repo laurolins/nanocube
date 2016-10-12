@@ -676,7 +676,7 @@ GroupedBarChart.prototype = {
             d[1] = Math.max(d[1],d[0]+1e-6);
         }
         else{
-            d[0] = d[0]-0.1*(d[1]-d[0]);
+            d[0] = d[0]-0.05*(d[1]-d[0]);
             d[0] = Math.min(d[0],d[1]/2);
         }
         
@@ -2161,7 +2161,7 @@ Timeseries.prototype={
         }, [Infinity,-Infinity]);
 
 
-        yext[0]= yext[0]-0.1*(yext[1]-yext[0]); //show the line around min
+        yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
         
         this.y.domain(yext);
