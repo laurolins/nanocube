@@ -290,7 +290,7 @@ GroupedBarChart.prototype = {
             d[1] = Math.max(d[1],d[0]+1e-6);
         }
         else{
-            d[0] = d[0]-0.1*(d[1]-d[0]);
+            d[0] = d[0]-0.05*(d[1]-d[0]);
             d[0] = Math.min(d[0],d[1]/2);
         }
         

@@ -222,7 +222,7 @@ Timeseries.prototype={
         }, [Infinity,-Infinity]);
 
 
-        yext[0]= yext[0]-0.1*(yext[1]-yext[0]); //show the line around min
+        yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
         
         this.y.domain(yext);
