@@ -349,6 +349,9 @@ Map.prototype = {
             var d = data[ii];
             var _i = d.x - origin.x;
             var _j = d.y - origin.y;
+            if(_i <0 || _j <0 || _i >=width || _j>=height){
+                continue;
+            }
             var _idx =  _j*width+_i;
             arr[_idx] = d.val;
         }
