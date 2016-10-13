@@ -766,16 +766,37 @@ var Map=function(opts,getDataCallback,updateCallback){
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
     this._layers = this._genLayers(this._datasrc);
-    this._map = this._initMap();
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
+
+
+    var map = this._initMap();
+    this._map = map;
 
     //set according to url
     if(opts.args){
         this._decodeArgs(opts.args);
     }
     else{
-        this.setSelection('global',opts.viewbox);
+        if ('viewbox' in opts){
+            this.setSelection('global',opts.viewbox);
+        }
+        else if ('view' in opts){
+            this.setSelection('global', opts.view);
+        }
+        else{
+            this.setSelection('global', {c:{lat:0,lng:0},z:0});
+        }
+    }
+
+    if('layers' in opts){
+        if ('markers' in opts.layers){
+            opts.layers.markers.forEach(function(d){
+                var m = L.marker(d.coordinate);
+                m.bindPopup(d.popup);
+                m.addTo(map);
+            });
+        }                        
     }
 };
 
@@ -840,7 +861,11 @@ Map.prototype = {
         $('.leaflet-container').css('background','#000');
 
         //add an OpenStreetMap tile layer
-        var mapt = L.tileLayer(this._tilesurl,{noWrap:true,opacity:0.4});
+        var mapt = L.tileLayer(this._tilesurl,{
+            noWrap:true,
+            opacity:0.4,
+            maxZoom: Math.min(this._maxlevels-8, 18)
+        });
 
         //add base layer
         map.addLayer(mapt);
@@ -1036,10 +1061,17 @@ Map.prototype = {
         this._drawnItems.addLayer(shape);
     },
 
-    setSelection: function(key,viewbbox){
+    setSelection: function(key,v){
+        var map =this._map;
+
         if (key == 'global'){
-            //set the view
-            this._map.fitBounds(viewbbox);
+            if('c' in v && 'z' in v){
+                //set the view
+                map.setView(v.c,v.z);
+            }
+            else if (v.length==2){  //viewbox
+                map.fitBounds(v);
+            }
         }
     },
 
