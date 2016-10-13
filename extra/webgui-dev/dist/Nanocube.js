@@ -2112,7 +2112,7 @@ Timeseries.prototype={
         var sel = this.getSelection();
         var start = sel.global.start;
         var end = sel.global.end;
-        var interval = (end - start+1) / 1000 / this.width * 5;
+        var interval = (end - start+1) / 1000 / this.width * 2;
 
         var promises = {};
 
