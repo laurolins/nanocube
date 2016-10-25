@@ -768,11 +768,19 @@ var Map=function(opts,getDataCallback,updateCallback){
     this._layers = this._genLayers(this._datasrc);
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
-
-
+    this._opts = opts;
+    
+    
     var map = this._initMap();
+
     this._map = map;
 
+    //add Legend
+    if (opts.legend){
+        this._addLegend(map);
+    }
+
+    
     //set according to url
     if(opts.args){
         this._decodeArgs(opts.args);
@@ -1252,6 +1260,27 @@ Map.prototype = {
                                                             widget._logheatmap);
                         layer._cmap = cmap;
                         widget._renormalize = false;
+
+
+                        if(widget._opts.legend){
+                            //update the legend
+                            var ext = d3.extent(res.data,function(d){
+                                return d.val;
+                            });
+                            
+                            if (widget._logheatmap){ //log
+                                ext = ext.map(function(d){ return Math.log(d); });
+                            }
+                            var valcolor = Array.apply(null, Array(5)).map(function (_, i) {return ext[0]+i * (ext[1]-ext[0])/5;});
+                            
+                            if (widget._logheatmap){ //anti log
+                                valcolor = valcolor.map(function(d){ return Math.floor(Math.exp(d)+0.5); });
+                            }
+                            
+                            valcolor = valcolor.map(function(d) {return {val:d, color: JSON.parse(JSON.stringify(cmap(d)))};});
+                            widget.updateLegend(widget._map,valcolor);
+                            console.log(widget._map);
+                        }
                     }
                     
                     var startrender = window.performance.now();
@@ -1290,6 +1319,25 @@ Map.prototype = {
 
     updateInfo: function(html_str){
         $('#'+this._name+" .info").html(html_str);
+    },
+
+    _addLegend: function(map){
+        var legend = L.control({position: 'bottomleft'});
+        
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'legendinfo legend');
+            return div;
+        };          
+
+        legend.addTo(map);
+    },
+    updateLegend: function(map,valcolor){
+        var legend = d3.select(map._container).select('.legend');
+        var htmlstr= valcolor.map(function(d) {
+            var colorstr = 'rgb('+parseInt(d.color.r) +','+parseInt(d.color.g)+','+parseInt(d.color.b)+')';
+            return '<i style="background:'+colorstr+'"></i>' + d.val;
+        });
+        legend.html(htmlstr.join('<br />'));
     }
 };
 
@@ -1428,7 +1476,7 @@ Query.prototype = {
         var dfd = new $.Deferred();
         this._run_query(this).done(function(data){
             var q = this;
-            if (!data.root.children){
+            if (!('children' in data.root)){
                 dfd.resolve({timeconst:q.timeconst, timearray:[]});
                 return;
             }
@@ -2112,7 +2160,7 @@ Timeseries.prototype={
         var sel = this.getSelection();
         var start = sel.global.start;
         var end = sel.global.end;
-        var interval = (end - start+1) / 1000 / this.width * 2;
+        var interval = (end - start+1) / 1000 / this.width * 1;
 
         var promises = {};
 
@@ -2193,13 +2241,17 @@ Timeseries.prototype={
     
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
-            var last = lines[k].data[lines[k].data.length-1];
-            lines[k].data.push(last); //dup the last point for step line
+            if(lines[k].data.length > 1){ 
+                var last = lines[k].data[lines[k].data.length-1];
+                lines[k].data.push(last); //dup the last point for step line
+            }
         });
 
         //update y axis
         var yext = Object.keys(lines).reduce(function(p,c){
-            var e = d3.extent(lines[c].data, function(d){ return d.val; });
+            var e = d3.extent(lines[c].data, function(d){
+                return (d.val || 0);
+            });
             return [ Math.min(p[0],e[0]),
                      Math.max(p[1],e[1])];
         }, [Infinity,-Infinity]);

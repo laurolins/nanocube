@@ -133,7 +133,7 @@ Query.prototype = {
         var dfd = new $.Deferred();
         this._run_query(this).done(function(data){
             var q = this;
-            if (!data.root.children){
+            if (!('children' in data.root)){
                 dfd.resolve({timeconst:q.timeconst, timearray:[]});
                 return;
             }

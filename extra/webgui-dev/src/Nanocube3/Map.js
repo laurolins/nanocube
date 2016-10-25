@@ -13,11 +13,19 @@ var Map=function(opts,getDataCallback,updateCallback){
     this._layers = this._genLayers(this._datasrc);
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
-
-
+    this._opts = opts;
+    
+    
     var map = this._initMap();
+
     this._map = map;
 
+    //add Legend
+    if (opts.legend){
+        this._addLegend(map);
+    }
+
+    
     //set according to url
     if(opts.args){
         this._decodeArgs(opts.args);
@@ -497,6 +505,27 @@ Map.prototype = {
                                                             widget._logheatmap);
                         layer._cmap = cmap;
                         widget._renormalize = false;
+
+
+                        if(widget._opts.legend){
+                            //update the legend
+                            var ext = d3.extent(res.data,function(d){
+                                return d.val;
+                            });
+                            
+                            if (widget._logheatmap){ //log
+                                ext = ext.map(function(d){ return Math.log(d); });
+                            }
+                            var valcolor = Array.apply(null, Array(5)).map(function (_, i) {return ext[0]+i * (ext[1]-ext[0])/5;});
+                            
+                            if (widget._logheatmap){ //anti log
+                                valcolor = valcolor.map(function(d){ return Math.floor(Math.exp(d)+0.5); });
+                            }
+                            
+                            valcolor = valcolor.map(function(d) {return {val:d, color: JSON.parse(JSON.stringify(cmap(d)))};});
+                            widget.updateLegend(widget._map,valcolor);
+                            console.log(widget._map);
+                        }
                     }
                     
                     var startrender = window.performance.now();
@@ -535,5 +564,24 @@ Map.prototype = {
 
     updateInfo: function(html_str){
         $('#'+this._name+" .info").html(html_str);
+    },
+
+    _addLegend: function(map){
+        var legend = L.control({position: 'bottomleft'});
+        
+        legend.onAdd = function (map) {
+            var div = L.DomUtil.create('div', 'legendinfo legend');
+            return div;
+        };          
+
+        legend.addTo(map);
+    },
+    updateLegend: function(map,valcolor){
+        var legend = d3.select(map._container).select('.legend');
+        var htmlstr= valcolor.map(function(d) {
+            var colorstr = 'rgb('+parseInt(d.color.r) +','+parseInt(d.color.g)+','+parseInt(d.color.b)+')';
+            return '<i style="background:'+colorstr+'"></i>' + d.val;
+        });
+        legend.html(htmlstr.join('<br />'));
     }
 };

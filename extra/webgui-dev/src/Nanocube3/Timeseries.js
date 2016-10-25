@@ -129,7 +129,7 @@ Timeseries.prototype={
         var sel = this.getSelection();
         var start = sel.global.start;
         var end = sel.global.end;
-        var interval = (end - start+1) / 1000 / this.width * 2;
+        var interval = (end - start+1) / 1000 / this.width * 1;
 
         var promises = {};
 
@@ -210,13 +210,17 @@ Timeseries.prototype={
     
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
-            var last = lines[k].data[lines[k].data.length-1];
-            lines[k].data.push(last); //dup the last point for step line
+            if(lines[k].data.length > 1){ 
+                var last = lines[k].data[lines[k].data.length-1];
+                lines[k].data.push(last); //dup the last point for step line
+            }
         });
 
         //update y axis
         var yext = Object.keys(lines).reduce(function(p,c){
-            var e = d3.extent(lines[c].data, function(d){ return d.val; });
+            var e = d3.extent(lines[c].data, function(d){
+                return (d.val || 0);
+            });
             return [ Math.min(p[0],e[0]),
                      Math.max(p[1],e[1])];
         }, [Infinity,-Infinity]);
