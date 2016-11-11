@@ -1,7 +1,7 @@
 /*global d3 */
 
 function GroupedBarChart(name,logaxis){
-    var id = '#'+name;
+    var id = "#"+name.replace(/\./g,'\\.');
     var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
     //Add CSS to the div
@@ -10,10 +10,12 @@ function GroupedBarChart(name,logaxis){
         "overflow-x":"hidden"
     });
 
-    //Make draggable
-    d3.select(id).attr("class","draggable");
-
     var widget = this;
+    //Make draggable and resizable
+    d3.select(id).attr("class","resize-drag");
+    
+    d3.select(id).on("divresize",function(){ widget.redraw(); });
+
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
         var currentheight = d3.select(id).style("height");
@@ -34,7 +36,8 @@ function GroupedBarChart(name,logaxis){
     svg.append("text").attr('y',-5).text(name);
 
     //Axes
-    svg.append("g").attr("class", "y axis");
+    svg.append("g").attr("class", "y axis")
+        .attr("transform", "translate(-3,0)");
     svg.append("g").attr("class", "x axis");
    
     //Scales
@@ -97,7 +100,7 @@ GroupedBarChart.prototype.redraw = function(){
         .attr('y', function(d){
             return y0(d.cat) + y1(d.color);
         }) //selection group
-        .attr('height',function(d){ return y1.rangeBand(); })
+        .attr('height',function(d){ return y1.rangeBand()-1;})
         .attr('width',function(d){
             return x(d.value);
         })
@@ -178,7 +181,7 @@ GroupedBarChart.prototype.updateYAxis=function(data){
     y1.domain(data.map(function(d){return d.color;}));
     var totalheight = y0.domain().length* y1.domain().length * 18;
 
-    y0.rangeRoundBands([0, totalheight],0.05);
+    y0.rangeRoundBands([0, totalheight]);
     y1.rangeRoundBands([0, y0.rangeBand()]);
     yAxis.scale(y0);
     svg.select('.y.axis').call(yAxis);
@@ -192,7 +195,7 @@ GroupedBarChart.prototype.updateYAxis=function(data){
         });
     
     this.totalheight = totalheight;
-    this.margin.left = svg.select('.y.axis').node().getBBox().width+5;
+    this.margin.left = svg.select('.y.axis').node().getBBox().width+10;
 };
 
 

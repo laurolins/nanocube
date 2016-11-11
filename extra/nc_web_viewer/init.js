@@ -7,7 +7,7 @@ function initPage(config){
 	//insert the divs
 	$("#maincontent").prepend("<div id="+ d +"></div>");
 
-	var div = $("#"+d);
+	var div = $("#"+d.replace(/\./g,'\\.'));
 	//set CSS
 	div.css(config.div[d]);
 
