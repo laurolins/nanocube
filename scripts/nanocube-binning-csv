@@ -222,7 +222,7 @@ class NanocubeInput:
             data[self.countcol]=1
 
         #get NaN's for errors
-        data[self.countcol] = pd.to_numeric(data[self.countcol]);
+        data[self.countcol] = pd.to_numeric(data[self.countcol],errors='coerce');
         
         #drop bad data
         data = data.dropna()
@@ -282,8 +282,8 @@ class NanocubeInput:
             lat = self.latcol[i]
             lon = self.loncol[i]
             lvl = self.levels
-            data[lon] = pd.to_numeric(data[lon])
-            data[lat] = pd.to_numeric(data[lat])
+            data[lon] = pd.to_numeric(data[lon],errors='coerce')
+            data[lat] = pd.to_numeric(data[lat],errors='coerce')
             data = data.dropna()
 
             data = data[data[lon] > -180]
@@ -359,7 +359,7 @@ class NanocubeInput:
 
             #for int type
             if data.dtypes[c] == int:
-                self.valname[c] = {}
+                data[c] = data[c].apply(lambda x : str(x))
             
             #no binning
             if c not in self.valname:
