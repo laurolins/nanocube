@@ -68,12 +68,16 @@ Query.prototype = {
     setTimeConst: function(varname, timeconst) {
         var start = this.nanocube.timeToBin(timeconst.start);
         var end = this.nanocube.timeToBin(timeconst.end);
+
+        
         start = Math.floor(start);
         end = Math.ceil(end);
+        if(end < 0){
+            end=1;
+            start=2;
+        }
 
-        //Make sure start and end are valid
-        var tinfo  = this.nanocube.getTbinInfo();
-
+        start = Math.max(start,0);
         var constraint = 'r(\"' + varname + '\",interval(' +
                 start + ',' + end + '))';
         this.query_elements[varname] = constraint;
@@ -131,6 +135,15 @@ Query.prototype = {
                         bucketsize:bucketsize};
 
         var dfd = new $.Deferred();
+        
+        if((base+count) < 0){
+            dfd.resolve({timeconst: this.timeconst,
+                         timearray: []});
+            return dfd.promise();
+        }
+        base = Math.max(0,base);
+
+        
         this._run_query(this).done(function(data){
             var q = this;
             if (!('children' in data.root)){
@@ -248,7 +261,7 @@ Query.prototype = {
             return dfd.promise();
         }
         else{
-            //console.log(query_string);
+            console.log(query_string);
             $.ajax({url: query_string, context: ctx}).done(function(res){
                 if(Object.keys(cache).length > 10){
                     var idx = Math.floor(Math.random() * (10+1)) ;
@@ -324,18 +337,24 @@ Query.prototype = {
         var timeinfo = q.nanocube.getTbinInfo();
         
         var startbin = q.nanocube.timeToBin(start);
-        startbin = Math.max(0,Math.floor(startbin+0.5));
         
         var bucketsize = interval_sec / timeinfo.bin_sec;
         bucketsize = Math.max(1,Math.floor(bucketsize+0.5));
 
         var endbin = q.nanocube.timeToBin(end);
-        endbin = Math.max(0,Math.floor(endbin+0.5));
+
+        startbin = Math.floor(startbin);
+        endbin = Math.floor(endbin);
         
         var count = (endbin - startbin) /bucketsize + 1 ;
         count = Math.floor(count);
 
         var dfd = new $.Deferred();
+        if(endbin==startbin){
+            dfd.resolved(null);
+            return dfd.promise();
+        }
+
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record
             var nbins = res.timeconst.end - res.timeconst.start;
@@ -595,6 +614,10 @@ Nanocube.prototype = {
     },
 
     getTbinInfo: function() {
+        if (this.timeinfo){
+            return this.timeinfo;
+        }
+        
         var tbininfo = this.schema.metadata.filter(function(f) {
             return ( f.key === 'tbin') ;
         });
@@ -633,8 +656,8 @@ Nanocube.prototype = {
         var timeinfo = this.timeinfo;
         var sec = (t - timeinfo.date_offset) / 1000.0;
         var bin = sec / timeinfo.bin_sec;
-        bin = Math.max(bin,timeinfo.start);
-        bin = Math.min(bin,timeinfo.end);
+        bin = Math.max(bin,timeinfo.start-1);
+        bin = Math.min(bin,timeinfo.end+1);
         return bin;
         
     },
