@@ -298,16 +298,17 @@ GroupedBarChart.prototype = {
                  d3.max(data, function(d) {return +d.val;})];
 
         if(this._opts.logaxis){ // prevent zeros for log
-            d[0] = Math.max(d[0],1e-6);
-            d[1] = Math.max(d[1],d[0]+1e-6);
+            d[0] = Math.max(d[0]-1e-6,1e-6);
         }
         else{
-            d[0] = d[0]-0.05*(d[1]-d[0]);
-            d[0] = Math.min(d[0],d[1]/2);
+            d[0] = Math.min(d[0],d[1]-Math.abs(d[1]/2));
+            d[0] = d[0]-0.1*Math.abs(d[0]);
         }
+
+        console.log('d',d);
         
-        x.domain(d);
         
+        x.domain(d);        
         x.range([0,width]);
         
         xAxis.scale(x);
