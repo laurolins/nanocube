@@ -58,6 +58,11 @@ canvas {
     stroke: #fff;
     shape-rendering: crispEdges;
 }
+
+.axis line{
+    stroke-opacity:0.3;
+}
+
 .axis text {
     fill: #fff;
     stroke:none;

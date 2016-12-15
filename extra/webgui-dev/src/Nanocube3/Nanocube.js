@@ -354,6 +354,7 @@ Query.prototype = {
             dfd.resolved(null);
             return dfd.promise();
         }
+        startbin = Math.max(startbin,0);
 
         q.queryTime(varname,startbin,bucketsize,count).done(function(res){
             //make date and count for each record

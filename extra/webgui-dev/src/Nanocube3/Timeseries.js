@@ -41,12 +41,27 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.y = d3.scale.linear().range([height, 0]);
 
     widget.xAxis = d3.svg.axis().scale(widget.x)
-        .orient("bottom");
+        .orient("bottom")
+        .innerTickSize(-height);
+
     widget.yAxis = d3.svg.axis().scale(widget.y)
         .orient("left")
         .ticks(3)
-        .tickFormat(d3.format(opts.numformat));
+        .tickFormat(d3.format(opts.numformat))
+        .innerTickSize(-width-3);
+    
+    // gridlines in x axis function
+    function make_x_gridlines() {		
+        return d3.axisBottom(widget.x);
+    }
 
+    // gridlines in y axis function
+    function make_y_gridlines() {		
+        return d3.axisLeft(widget.y)
+            .ticks(3);
+    }
+
+    
     //Zoom
     widget.zoom=d3.behavior.zoom()
         .x(widget.x)
@@ -113,6 +128,18 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("transform", "translate(-3,0)")
         .call(widget.yAxis);
 
+    //add the X gridlines
+    //widget.svg.append("g")			
+        //.attr("class", "grid")
+      //  .attr("transform", "translate(0," + height + ")")
+        //.call(make_x_gridlines().tickSize(-height).tickFormat(""));
+    
+    // add the Y gridlines
+    //widget.append("g")			
+    //    .attr("class", "grid")
+    //    .call(make_y_gridlines()
+    //          .tickSize(-width).tickFormat(""));
+    
     //brush
     widget.svg.append("g").attr("class", "x brush")
         .call(widget.brush)
