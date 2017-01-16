@@ -171,6 +171,28 @@ GroupedBarChart.prototype = {
     },
 
     redraw :function(res){
+        var topn = this._opts.topn;
+        if(topn !== undefined ){
+            var agg = {};
+            Object.keys(res).forEach(function(k){
+                res[k].data.forEach(function(d){
+                    agg[d.cat]= (agg[d.cat] + d.val) || d.val;
+                });
+            });
+            var kvlist =Object.keys(agg)
+                .map(function(d){return {cat: d, val:agg[d]};});
+            kvlist.sort(function(x,y) { return y.val - x.val; });
+            kvlist = kvlist.slice(0,topn);
+            var kvhash = {};
+            kvlist.forEach(function(d){ kvhash[d.cat] = d.val; });
+            Object.keys(res).forEach(function(k){
+                res[k].data = res[k].data.filter(function(d){
+                    return (d.cat in kvhash);
+                });
+            });
+            console.log(res);
+        }
+
         var fdata = this.flattenData(res);
         
         var x =this.x;
@@ -304,10 +326,19 @@ GroupedBarChart.prototype = {
             d[0] = Math.min(d[0],d[1]-Math.abs(d[1]/2));
             d[0] = d[0]-0.1*Math.abs(d[0]);
         }
-
-        console.log('d',d);
         
+        //set domain from options
+        if(this._opts.domain){
+            if(this._opts.domain.min !== undefined){
+                d[0] = this._opts.domain.min;
+            }
+                
+            if(this._opts.domain.max !== undefined){
+                d[1] = this._opts.domain.max;
+            }
+        }
         
+        //set domain
         x.domain(d);        
         x.range([0,width]);
         
