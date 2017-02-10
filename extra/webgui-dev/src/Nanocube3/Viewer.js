@@ -1,8 +1,14 @@
-/*global $ jsep colorbrewer Expression Map Timeseries GroupedBarChart */
+/*global $ d3 jsep colorbrewer Expression Map Timeseries GroupedBarChart */
 
 var Viewer = function(opts){
     var container = $(opts.div_id);
-
+    //set title
+    if(opts.config.title){
+        d3.select('head')
+            .append('title')
+            .html(opts.config.title);
+    }
+    
     //overlays
     var catdiv = $('<div>');
     catdiv.addClass('chart-overlay');
