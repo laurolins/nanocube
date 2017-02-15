@@ -82,7 +82,9 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 
     //set default values 
     opts.numformat = opts.numformat || ",";    
-    opts.alpha_order = opts.alpha_order || true;
+    if(!opts.hasOwnProperty('alpha_order')) {
+        opts.alpha_order = true;
+    }
 
     xAxis.orient("bottom")
         .ticks(3,opts.numformat);
