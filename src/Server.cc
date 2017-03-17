@@ -163,20 +163,21 @@ void Server::init(int mongoose_threads, std::string pemfile) // blocks current t
     // Serve current directory
     mg_set_option(srv, "listening_port", (std::to_string(port)).c_str());
     // Open port
-
               
     __mongoose_server = srv;
     
-    mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop
-    auto listening_socket = mg_get_listening_socket(srv);
-    if (listening_socket == -1) { // -1 is INVALID_SOCKET on mongoose
-        mg_destroy_server(&srv);
-        throw ServerException("Problem starting mongoose server");
+    //mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop
+    //auto listening_socket = mg_get_listening_socket(srv);
+    //if (listening_socket == -1) { // -1 is INVALID_SOCKET on mongoose
+    //    mg_destroy_server(&srv);
+
+    if(__mongoose_server == NULL){
+      mg_destroy_server(&srv);
+      throw ServerException("Problem starting mongoose server");
     }
 }
 
-void Server::run() {
-    
+void Server::run() {    
     if (!__mongoose_server)
         throw ServerException("No mongoose server initialized");
     

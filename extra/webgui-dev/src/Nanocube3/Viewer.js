@@ -253,7 +253,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         var expr = data[datasrc].expr;
         Object.keys(selq).forEach(function(s){
-            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] = expr.getData(selq[s],function(q){
                 return q.spatialQuery(varname,bbox,zoom,maptilesize);
             });
         });
@@ -285,7 +285,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){            
             var expr = data[datasrc].expr;
-            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] = expr.getData(selq[s],function(q){
                 return q.temporalQuery(varname,start,end,intervalsec);
             });
         });
@@ -318,7 +318,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){
             var expr = data[datasrc].expr;
-            res[s+'-'+datasrc] =expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] =expr.getData(selq[s],function(q){
                 return q.topKQuery(varname,n);
             });
         });
@@ -350,7 +350,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){
             var expr = data[datasrc].expr;
-            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] = expr.getData(selq[s],function(q){
                 return q.categorialQuery(varname);
             });
         });

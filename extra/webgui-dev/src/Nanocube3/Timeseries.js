@@ -182,7 +182,7 @@ Timeseries.prototype={
             promkeys.forEach(function(d,i){
                 res[d] = results[i];
 
-                var label = d.split('-');
+                var label = d.split('&-&');
                 var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
                 if(isColor){
                     res[d].color = label[0];

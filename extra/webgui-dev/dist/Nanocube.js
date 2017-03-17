@@ -468,7 +468,9 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 
     //set default values 
     opts.numformat = opts.numformat || ",";    
-    opts.alpha_order = opts.alpha_order || true;
+    if(!opts.hasOwnProperty('alpha_order')) {
+        opts.alpha_order = true;
+    }
 
     xAxis.orient("bottom")
         .ticks(3,opts.numformat);
@@ -537,7 +539,7 @@ GroupedBarChart.prototype = {
     flattenData: function(res){
         var widget = this;        
         return Object.keys(res).reduce(function(prev,curr){         
-            var label = curr.split('-'); 
+            var label = curr.split('&-&'); 
             var c = label[0];
 
             var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
@@ -2269,7 +2271,7 @@ Timeseries.prototype={
             promkeys.forEach(function(d,i){
                 res[d] = results[i];
 
-                var label = d.split('-');
+                var label = d.split('&-&');
                 var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
                 if(isColor){
                     res[d].color = label[0];
@@ -2662,7 +2664,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         var expr = data[datasrc].expr;
         Object.keys(selq).forEach(function(s){
-            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] = expr.getData(selq[s],function(q){
                 return q.spatialQuery(varname,bbox,zoom,maptilesize);
             });
         });
@@ -2694,7 +2696,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){            
             var expr = data[datasrc].expr;
-            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] = expr.getData(selq[s],function(q){
                 return q.temporalQuery(varname,start,end,intervalsec);
             });
         });
@@ -2727,7 +2729,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){
             var expr = data[datasrc].expr;
-            res[s+'-'+datasrc] =expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] =expr.getData(selq[s],function(q){
                 return q.topKQuery(varname,n);
             });
         });
@@ -2759,7 +2761,7 @@ Viewer.prototype = {
         var data = viewer._datasrc;
         Object.keys(selq).forEach(function(s){
             var expr = data[datasrc].expr;
-            res[s+'-'+datasrc] = expr.getData(selq[s],function(q){
+            res[s+'&-&'+datasrc] = expr.getData(selq[s],function(q){
                 return q.categorialQuery(varname);
             });
         });

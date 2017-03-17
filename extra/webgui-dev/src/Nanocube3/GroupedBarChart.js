@@ -153,7 +153,7 @@ GroupedBarChart.prototype = {
     flattenData: function(res){
         var widget = this;        
         return Object.keys(res).reduce(function(prev,curr){         
-            var label = curr.split('-'); 
+            var label = curr.split('&-&'); 
             var c = label[0];
 
             var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                

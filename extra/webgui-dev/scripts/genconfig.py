@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 
-import json,sys,argparse
+import json,sys,argparse,requests
 
 try:
     from urllib.request import urlopen
@@ -30,8 +30,13 @@ def main():
     #download the schema
     url = args.server
     try:
-        response = urlopen(url+'/schema')
-        schema = json.loads(response.read())
+        #ctx = ssl.create_default_context()
+        #ctx.check_hostname = False
+        #ctx.verify_mode = ssl.CERT_NONE
+        #response = urlopen(url+'/schema',context=ctx)
+        #schema = json.loads(response.read())
+        r = requests.get(url+'/schema', allow_redirects=False,verify=False)
+        schema = r.json() #json.loads(r.read())
     except:
         print ('Fail to read schema from %s'%(url),file=sys.stderr)
         sys.exit(1)
