@@ -455,26 +455,23 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     svg.append("g").attr("class", "x axis");
     
     //Scales
-    var y0 = d3.scale.ordinal();
-    var y1 = d3.scale.ordinal();
-    var x = d3.scale.linear();
+    var y0 = d3.scaleBand();
+    var y1 = d3.scaleBand();
+    var x = d3.scaleLinear();
     if (opts.logaxis){
-        x = d3.scale.log();
+        x = d3.scaleLog();
     }
 
     //Axis
-    var xAxis = d3.svg.axis();
-    var yAxis = d3.svg.axis();
+    var xAxis = d3.axisBottom()
+        .ticks(3,opts.numformat);
+    var yAxis = d3.axisLeft();
 
     //set default values 
     opts.numformat = opts.numformat || ",";    
     if(!opts.hasOwnProperty('alpha_order')) {
         opts.alpha_order = true;
     }
-
-    xAxis.orient("bottom")
-        .ticks(3,opts.numformat);
-    yAxis.orient("left");
 
     //Save vars to "this"
     this.margin = margin;
@@ -622,7 +619,7 @@ GroupedBarChart.prototype = {
                 }
             })
             .attr('height',function(d){
-                return widget.y1.rangeBand()-1;
+                return widget.y1.bandwidth()-1;
             })
             .transition().duration(250)
             .attr('width',function(d){
@@ -766,8 +763,8 @@ GroupedBarChart.prototype = {
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
-        y0.rangeRoundBands([0, totalheight]);
-        y1.rangeRoundBands([0, y0.rangeBand()]);
+        y0.rangeRound([0, totalheight]);
+        y1.rangeRound([0, y0.bandwidth()]);
         yAxis.scale(y0);
         svg.select('.y.axis').call(yAxis);
 
@@ -1207,7 +1204,7 @@ Map.prototype = {
             domain = domain.map(function(d){return Math.exp(d)+minv-2;});
         }
 
-        return d3.scale.linear().domain(domain).range(colors);
+        return d3.scaleLinear().domain(domain).range(colors);
     },
 
     render: function(arr,pb,colormap,canvas,opacity){
@@ -2093,15 +2090,15 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","timeseries");
+    d3.select(id).attr("class","timeseries resize"); //add resize later
     
-    d3.select(id).on("divresize",function(){ widget.redraw(); });
+    d3.select(id).on("divresize",function(){ widget.update(); });
 
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
         var currentheight = d3.select(id).style("height");
         if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
+            widget.restoreHeight = currentheight ;
             d3.select(id).style('height','40px');
         }
         else{
@@ -2126,18 +2123,16 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
 
-    widget.x = d3.time.scale.utc().range([0, width]);
-    widget.y = d3.scale.linear().range([height, 0]);
+    widget.x = d3.scaleUtc().range([0, width]);
+    widget.y = d3.scaleLinear().range([height, 0]);
 
-    widget.xAxis = d3.svg.axis().scale(widget.x)
-        .orient("bottom")
-        .innerTickSize(-height);
+    widget.xAxis = d3.axisBottom(widget.x)
+        .tickSizeInner(-height);
 
-    widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left")
+    widget.yAxis = d3.axisLeft(widget.y)
         .ticks(3)
         .tickFormat(d3.format(opts.numformat))
-        .innerTickSize(-width-3);
+        .tickSizeInner(-width-3);
     
     // gridlines in x axis function
     function make_x_gridlines() {		
@@ -2152,33 +2147,109 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     
     //Zoom
-    widget.zoom=d3.behavior.zoom()
-        .x(widget.x)
+    widget.zoom = d3.zoom()
+        .extent([[0,0], [width,height]])
         .on('zoom', function(){
-            widget.svg.select(".x.axis").call(widget.xAxis);
+            var t = d3.event.transform.rescaleX(widget.x);
+            widget.svg.select(".x.axis").call(widget.xAxis.scale(t));
+            widget.x.domain(t.domain());
+            if(brushtime !== undefined)
+                widget.brush.move(brushg, brushtime.map(widget.x));
             widget.redraw(widget.lastres);
         })
-        .on('zoomend', function(){
+        .on('end', function(){
             widget.update();
             widget.updateCallback(widget._encodeArgs());
-            widget.brush.x(widget.x);
         });
 
     
     //Brush
-    widget.brush = d3.svg.brush().x(widget.x);
 
-    widget.brush.on('brushstart', function(){
-        if(d3.event.sourceEvent){
-            d3.event.sourceEvent.stopPropagation();
-        }
-    });
+    var brushtime;
 
-    widget.brush.on('brushend', function(){
-        console.log(widget.brush.extent());
+    widget.brush = d3.brushX()
+        .extent([0,0], [width, height])
+        .on('start', function(){
+            if(d3.event.sourceEvent){
+                d3.event.sourceEvent.stopPropagation();
+            }
+        })
+        .on('end', function(){
+            if(!d3.event.sourceEvent || !d3.event.selection) {
+                widget.updateCallback(widget._encodeArgs());
+                return;
+            }
+            var d0 = d3.event.selection.map(widget.x.invert);
+            var d1 = d0.map(d3.utcDay.round);
+            if(d1[0] >= d1[1]){
+                d1[0] = d3.utcDay.floor(d0[0]);
+                d1[1] = d3.utcDay.offset(d1[0]);
+            }
+            brushtime = d1;
+            d3.select(this).call(d3.event.target.move, d1.map(widget.x));
+            widget.updateCallback(widget._encodeArgs());
+        });
 
-        widget.updateCallback(widget._encodeArgs());
-    });
+    //Brush play button
+    var play_stop = false;
+    var ref = {};
+    this.playbtn = d3.select(id)
+        .append('button')
+        .attr('class', 'play-btn')
+        .on('click',function(){
+            if(d3.brushSelection(brushg.node()) !== null){
+                play_stop = !play_stop;
+                widget.playTime(play_stop, 0, ref);
+            }
+        }).html("Play");
+
+    //Speed slider
+    //https://bl.ocks.org/mbostock/6452972
+    // var x = d3.scale.linear()
+    //     .domain([0,999])
+    //     .range([0,50])
+    //     .clamp(true);
+
+    // var slider = d3.select(id)
+    //     .append("g")
+    //     .attr("class", "slider");
+    //     // .attr("transform", "translate(" + margin.left + "," + height / 2 + ")")
+
+    // slider.append("line")
+    //     .attr("class", "track")
+    //     .attr("x1", x.range()[0])
+    //     .attr("x2", x.range()[1])
+    //   .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    //     .attr("class", "track-inset")
+    //   .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    //     .attr("class", "track-overlay")
+    //     .call(d3.drag()
+    //         .on("start.interrupt", function() { slider.interrupt(); })
+    //         .on("start drag", function() { playTime(play_stop, x.invert(d3.event.x), ref); }));
+
+    // slider.insert("g", ".track-overlay")
+    //     .attr("class", "ticks")
+    //     .attr("transform", "translate(0," + 18 + ")")
+    //   .selectAll("text")
+    //   .data(x.ticks(10))
+    //   .enter().append("text")
+    //     .attr("x", x)
+    //     .attr("text-anchor", "middle")
+    //     .text(function(d) { return d + "°"; });
+
+    // var handle = slider.insert("circle", ".track-overlay")
+    //     .attr("class", "handle")
+    //     .attr("r", 9);
+
+    // widget.slider.hide();
+
+    // slider.transition() // Gratuitous intro!
+    //     .duration(750)
+    //     .tween("hue", function() {
+    //       var i = d3.interpolate(0, 70);
+    //       return function(t) { hue(i(t)); };
+    //     });
+
 
     //SVG
     widget.svg = d3.select(id).append("svg")
@@ -2186,7 +2257,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
-              margin.top + ")").call(widget.zoom);
+              margin.top + ")")
+        .call(widget.zoom);
 
     //Load config
     if(opts.args){
@@ -2197,8 +2269,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
         widget.x.domain(opts.timerange);
     }
     //Update scales
-    widget.zoom.x(widget.x);
-    widget.brush.x(widget.x);
+    // widget.zoom.x(widget.x);
+    // widget.brush.x(widget.x);
     
     //add svg stuffs    
     //add title
@@ -2217,6 +2289,13 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("transform", "translate(-3,0)")
         .call(widget.yAxis);
 
+    //brush
+    var brushg = widget.svg.append("g").attr("class", "x brush")
+        .selectAll("rect")
+        .attr("y", 0)
+        .attr("height", height)
+        .call(widget.brush);
+
     //add the X gridlines
     //widget.svg.append("g")			
         //.attr("class", "grid")
@@ -2229,14 +2308,10 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //    .call(make_y_gridlines()
     //          .tickSize(-width).tickFormat(""));
     
-    //brush
-    widget.svg.append("g").attr("class", "x brush")
-        .call(widget.brush)
-        .selectAll("rect")
-        .attr("y", 0)
-        .attr("height", height);
+    
 
     widget.width = width;
+    widget.brushg = brushg;
 }
 
 Timeseries.prototype={
@@ -2293,8 +2368,9 @@ Timeseries.prototype={
         var timedom = this.x.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
-        if (!this.brush.empty()){
-            var bext = this.brush.extent();
+        brushnode = this.brushg.node();
+        if (brushnode !== null && d3.brushSelection(brushnode) !== null){
+            var bext = d3.brushSelection(brushnode).map(this.x.invert);
             sel.brush = {start:bext[0], end:bext[1]};
         }
         return sel;
@@ -2310,19 +2386,18 @@ Timeseries.prototype={
         this.x.domain([new Date(args.global.start),
                        new Date(args.global.end)]);
         if(args.brush){
-            this.brush.extent([new Date(args.brush.start),
-                               new Date(args.brush.end)]);
-
-            this._updateBrush();
+            this.brush.move(this.brushg, 
+                            [this.x(new Date(args.brush.start)),
+                             this.x(new Date(args.brush.end))]);
         }
     },
     
-    _updateBrush: function(){
-        //update brush
-        this.svg.select("g.x.brush")
-            .call(this.brush)
-            .call(this.brush.event);
-    },
+    // _updateBrush: function(){
+    //     //update brush
+    //     this.svg.select("g.x.brush")
+    //         .call(this.brush)
+    //         .call(this.brush.event);
+    // },
     
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
@@ -2365,7 +2440,6 @@ Timeseries.prototype={
             }
         });
         
-        
         //Draw Lines
         Object.keys(lines).forEach(function(k){
             lines[k].data.sort(function(a,b){return a.time - b.time;});
@@ -2395,17 +2469,37 @@ Timeseries.prototype={
 
 
         //Transit to new data
-        var lineFunc = d3.svg.line()
+        var lineFunc = d3.line()
                 .x(function(d) { return widget.x(d.time); })
                 .y(function(d) { return widget.y(d.val); })
-                .interpolate("step-before");
-        var zeroFunc = d3.svg.line()
+                .curve(d3.curveStepBefore);
+        var zeroFunc = d3.line()
                 .x(function(d) { return widget.x(d.time); })
                 .y(function(d) { return widget.y(0); });
 
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));
+    },
+
+    playTime:function(play_stop, speed, ref){
+        var widget = this;
+        if(play_stop){
+            widget.playbtn.html("Stop");
+            // widget.slider.show();
+            // if("repeat" in ref)
+            //     clearInterval(ref.repeat);
+            ref.repeat = setInterval(function(){
+                var bext = d3.brushSelection(brushg.node());
+                widget.brush.move(brushg, [bext[1], 2 * bext[1] - bext[0]]);
+                widget.updateCallback(widget._encodeArgs());
+            }, (1000 - speed));
+        }
+        else{
+            widget.playbtn.html("Play");
+            // widget.slider.hide();
+            clearInterval(ref.repeat);
+        }
     }
 };
 

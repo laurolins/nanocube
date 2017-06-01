@@ -43,7 +43,7 @@ canvas {
 .timeseries{
     position: relative;
     overflow-y:hidden;
-    overflow-x:hidden;
+    overflow-x:auto;
     float:left;
     background-color: #555;
     margin: 5px;

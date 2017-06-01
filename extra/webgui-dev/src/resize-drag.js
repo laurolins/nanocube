@@ -9,6 +9,12 @@ define(['interact'],function(interact){
             edges: { left: true, right: true, bottom: true, top: true }
         })
         .on('resizemove', resizeMoveListener);
+
+    interact('.resize')
+        .resizable({
+            edges: { left: true, right: true, bottom: true, top: true }
+        })
+        .on('resizemove', resizeMoveListener);
     
     function dragMoveListener (event) {
         var target = event.target,
