@@ -238,7 +238,6 @@ GroupedBarChart.prototype = {
             .attr('height',function(d){
                 return widget.y1.rangeBand()-1;
             })
-            .transition().duration(250)
             .attr('width',function(d){
                 var w = widget.x(d.val);
                 if(isNaN(w) && d.val <=0 ){

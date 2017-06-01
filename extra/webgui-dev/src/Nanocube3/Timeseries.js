@@ -66,8 +66,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.zoom=d3.behavior.zoom()
         .x(widget.x)
         .on('zoom', function(){
-            if(brushtime !== undefined){
-                widget.brush.extent(brushtime);
+            if(widget.brushtime !== undefined){
+                widget.brush.extent(widget.brushtime);
                 widget._updateBrush();
             }
             widget.svg.select(".x.axis").call(widget.xAxis);
@@ -81,9 +81,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     
     //Brush
-
-    var brushtime;
-
     widget.brush = d3.svg.brush().x(widget.x);
         
     widget.brush.on('brushstart', function(){
@@ -104,7 +101,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
             d1[1] = d3.time.day.utc.offset(d1[0]);
         }
         widget.brush.extent(d1);
-        brushtime = d1;
+        widget.brushtime = d1;
         widget._updateBrush();
         console.log(widget.brush.extent());
         widget.updateCallback(widget._encodeArgs());
@@ -411,11 +408,12 @@ Timeseries.prototype={
             //     clearInterval(ref.repeat);
             ref.repeat = setInterval(function(){
                 var bext = widget.brush.extent();
-                widget.brush.extent([bext[1], 2 * bext[1] - bext[0]]);
+                widget.brushtime = [bext[1], 2 * bext[1] - bext[0]];
+                widget.brush.extent(widget.brushtime);
                 widget._updateBrush();
                 widget.update();
                 widget.updateCallback(widget._encodeArgs());
-            }, (1000 - speed));
+            }, (500 - speed));
         }
         else{
             widget.playbtn.html("Play");
