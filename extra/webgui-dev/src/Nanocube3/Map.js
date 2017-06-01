@@ -418,7 +418,7 @@ Map.prototype = {
             domain = domain.map(function(d){return Math.exp(d)+minv-2;});
         }
 
-        return d3.scaleLinear().domain(domain).range(colors);
+        return d3.scale.linear().domain(domain).range(colors);
     },
 
     render: function(arr,pb,colormap,canvas,opacity){

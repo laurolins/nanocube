@@ -4,9 +4,9 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","timeseries resize"); //add resize later
+    d3.select(id).attr("class","timeseries resize-drag"); //add resize later
     
-    d3.select(id).on("divresize",function(){ widget.update(); });
+    d3.select(id).on("divresize",function(){ widget.redraw(widget.lastres); });
 
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
@@ -37,16 +37,18 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
 
-    widget.x = d3.scaleUtc().range([0, width]);
-    widget.y = d3.scaleLinear().range([height, 0]);
+    widget.x = d3.time.scale.utc().range([0, width]);
+    widget.y = d3.scale.linear().range([height, 0]);
 
-    widget.xAxis = d3.axisBottom(widget.x)
-        .tickSizeInner(-height);
+    widget.xAxis = d3.svg.axis().scale(widget.x)
+        .orient("bottom")
+        .innerTickSize(-height);
 
-    widget.yAxis = d3.axisLeft(widget.y)
+    widget.yAxis = d3.svg.axis().scale(widget.y)
+        .orient("left")
         .ticks(3)
         .tickFormat(d3.format(opts.numformat))
-        .tickSizeInner(-width-3);
+        .innerTickSize(-width-3);
     
     // gridlines in x axis function
     function make_x_gridlines() {		
@@ -61,19 +63,20 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     
     //Zoom
-    widget.zoom = d3.zoom()
-        .extent([[0,0], [width,height]])
+    widget.zoom=d3.behavior.zoom()
+        .x(widget.x)
         .on('zoom', function(){
-            var t = d3.event.transform.rescaleX(widget.x);
-            widget.svg.select(".x.axis").call(widget.xAxis.scale(t));
-            widget.x.domain(t.domain());
-            if(brushtime !== undefined)
-                widget.brush.move(brushg, brushtime.map(widget.x));
+            if(brushtime !== undefined){
+                widget.brush.extent(brushtime);
+                widget._updateBrush();
+            }
+            widget.svg.select(".x.axis").call(widget.xAxis);
             widget.redraw(widget.lastres);
         })
-        .on('end', function(){
+        .on('zoomend', function(){
             widget.update();
             widget.updateCallback(widget._encodeArgs());
+            // widget.brush.x(widget.x);
         });
 
     
@@ -81,28 +84,31 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var brushtime;
 
-    widget.brush = d3.brushX()
-        .extent([0,0], [width, height])
-        .on('start', function(){
-            if(d3.event.sourceEvent){
-                d3.event.sourceEvent.stopPropagation();
-            }
-        })
-        .on('end', function(){
-            if(!d3.event.sourceEvent || !d3.event.selection) {
-                widget.updateCallback(widget._encodeArgs());
-                return;
-            }
-            var d0 = d3.event.selection.map(widget.x.invert);
-            var d1 = d0.map(d3.utcDay.round);
-            if(d1[0] >= d1[1]){
-                d1[0] = d3.utcDay.floor(d0[0]);
-                d1[1] = d3.utcDay.offset(d1[0]);
-            }
-            brushtime = d1;
-            d3.select(this).call(d3.event.target.move, d1.map(widget.x));
+    widget.brush = d3.svg.brush().x(widget.x);
+        
+    widget.brush.on('brushstart', function(){
+        if(d3.event.sourceEvent){
+            d3.event.sourceEvent.stopPropagation();
+        }
+    });
+        
+    widget.brush.on('brushend', function(){
+        if(!d3.event.sourceEvent || widget.brush.empty()) {
             widget.updateCallback(widget._encodeArgs());
-        });
+            return;
+        }
+        var d0 = widget.brush.extent();
+        var d1 = d0.map(d3.time.day.utc.round);
+        if(d1[0] >= d1[1]){
+            d1[0] = d3.time.day.utc.floor(d0[0]);
+            d1[1] = d3.time.day.utc.offset(d1[0]);
+        }
+        widget.brush.extent(d1);
+        brushtime = d1;
+        widget._updateBrush();
+        console.log(widget.brush.extent());
+        widget.updateCallback(widget._encodeArgs());
+    });
 
     //Brush play button
     var play_stop = false;
@@ -111,7 +117,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .append('button')
         .attr('class', 'play-btn')
         .on('click',function(){
-            if(d3.brushSelection(brushg.node()) !== null){
+            if(!widget.brush.empty()){
                 play_stop = !play_stop;
                 widget.playTime(play_stop, 0, ref);
             }
@@ -172,7 +178,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
               margin.top + ")")
-        .call(widget.zoom);
+        .call(widget.zoom)
+        .on("mousedown", function() { d3.event.stopPropagation(); });
 
     //Load config
     if(opts.args){
@@ -183,8 +190,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
         widget.x.domain(opts.timerange);
     }
     //Update scales
-    // widget.zoom.x(widget.x);
-    // widget.brush.x(widget.x);
+    widget.zoom.x(widget.x);
+    widget.brush.x(widget.x);
     
     //add svg stuffs    
     //add title
@@ -204,11 +211,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .call(widget.yAxis);
 
     //brush
-    var brushg = widget.svg.append("g").attr("class", "x brush")
+    widget.svg.append("g").attr("class", "x brush")
+        .call(widget.brush)
         .selectAll("rect")
         .attr("y", 0)
-        .attr("height", height)
-        .call(widget.brush);
+        .attr("height", height);
 
     //add the X gridlines
     //widget.svg.append("g")			
@@ -225,7 +232,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
     
 
     widget.width = width;
-    widget.brushg = brushg;
 }
 
 Timeseries.prototype={
@@ -282,9 +288,8 @@ Timeseries.prototype={
         var timedom = this.x.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
-        brushnode = this.brushg.node();
-        if (brushnode !== null && d3.brushSelection(brushnode) !== null){
-            var bext = d3.brushSelection(brushnode).map(this.x.invert);
+        if (!this.brush.empty()){
+            var bext = this.brush.extent();
             sel.brush = {start:bext[0], end:bext[1]};
         }
         return sel;
@@ -300,18 +305,19 @@ Timeseries.prototype={
         this.x.domain([new Date(args.global.start),
                        new Date(args.global.end)]);
         if(args.brush){
-            this.brush.move(this.brushg, 
-                            [this.x(new Date(args.brush.start)),
-                             this.x(new Date(args.brush.end))]);
+            this.brush.extent([new Date(args.brush.start),
+                               new Date(args.brush.end)]);
+
+            this._updateBrush();
         }
     },
     
-    // _updateBrush: function(){
-    //     //update brush
-    //     this.svg.select("g.x.brush")
-    //         .call(this.brush)
-    //         .call(this.brush.event);
-    // },
+    _updateBrush: function(){
+        //update brush
+        this.svg.select("g.x.brush")
+            .call(this.brush);
+            // .call(this.brush.event);
+    },
     
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
@@ -383,11 +389,11 @@ Timeseries.prototype={
 
 
         //Transit to new data
-        var lineFunc = d3.line()
+        var lineFunc = d3.svg.line()
                 .x(function(d) { return widget.x(d.time); })
                 .y(function(d) { return widget.y(d.val); })
-                .curve(d3.curveStepBefore);
-        var zeroFunc = d3.line()
+                .interpolate("step-before");
+        var zeroFunc = d3.svg.line()
                 .x(function(d) { return widget.x(d.time); })
                 .y(function(d) { return widget.y(0); });
 
@@ -404,8 +410,10 @@ Timeseries.prototype={
             // if("repeat" in ref)
             //     clearInterval(ref.repeat);
             ref.repeat = setInterval(function(){
-                var bext = d3.brushSelection(brushg.node());
-                widget.brush.move(brushg, [bext[1], 2 * bext[1] - bext[0]]);
+                var bext = widget.brush.extent();
+                widget.brush.extent([bext[1], 2 * bext[1] - bext[0]]);
+                widget._updateBrush();
+                widget.update();
                 widget.updateCallback(widget._encodeArgs());
             }, (1000 - speed));
         }
