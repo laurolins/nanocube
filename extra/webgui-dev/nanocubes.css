@@ -52,6 +52,10 @@ canvas {
     pointer-events:visible;
 }
 
+.play-btn{
+    float:left;
+}
+
 .axis path,
 .axis line{
     fill: none;

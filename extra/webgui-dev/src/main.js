@@ -6,7 +6,7 @@ require.config({
         leaflet: 'node_modules/leaflet/dist/leaflet',
         leafletdraw: 'node_modules/leaflet-draw/dist/leaflet.draw-src',
         jquery: 'node_modules/jquery/dist/jquery.min',
-        d3: 'node_modules/d3/d3.min',
+        d3: 'node_modules/d3/build/d3.min',
         interact: 'node_modules/interact.js/dist/interact.min',
         colorbrewer: 'node_modules/colorbrewer/colorbrewer',
         jsep: 'node_modules/jsep/build/jsep.min',

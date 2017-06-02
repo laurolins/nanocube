@@ -14,8 +14,8 @@
     "interact.js": "^1.2.8",
     "jquery": "^2.1.4",
     "jsep": "^0.3.0",
-    "leaflet": "^1",
-    "leaflet-draw": "^0.4",
+    "leaflet": "^0.7",
+    "leaflet-draw": "^0.2.3",
     "requirejs": "^2"
   }
 }
