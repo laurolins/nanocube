@@ -2115,7 +2115,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin === undefined)
-        margin = {top: 30, right: 30, bottom: 30, left: 30};
+        margin = {top: 10, right: 30, bottom: 30, left: 30};
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
@@ -2175,16 +2175,67 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	//Brush play button
     var play_stop = false;
     var ref = {};
+    var currentspeed = 0;
     this.playbtn = d3.select(id)
         .append('button')
         .attr('class', 'play-btn')
         .on('click',function(){
             if(d3.brushSelection(widget.gbrush.node()) !== null){
                 play_stop = !play_stop;
-                widget.playTime(play_stop, 0, ref);
+                widget.playTime(play_stop, currentspeed, ref);
             }
         }).html("Play");
 
+    //Speed Slider
+
+    var sliderWidth = 200;
+
+    var sx = d3.scaleLinear()
+    	.domain([0, 999])
+    	.range([0, sliderWidth])
+    	.clamp(true);
+
+    var slidersvg = d3.select(id).append("svg")
+    	.attr("width", 250)
+    	.attr("height", 30);
+
+    widget.slider = slidersvg.append("g")
+    	.attr("class", "slider")
+    	.attr("transform", "translate(" + 25 + "," + 10 + ")")
+    	.attr("visibility", "hidden");
+
+    widget.slider.append("line")
+    	.attr("class", "track")
+    	.attr("x1", sx.range()[0])
+    	.attr("x2", sx.range()[1])
+    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-inset")
+	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-overlay")
+    	.call(d3.drag()
+    		.on("start.interrupt", function(){widget.slider.interrupt(); })
+    		.on("drag", function(){
+    			var h = sx.invert(d3.event.x);
+    			currentspeed = h;
+    			handle.attr("cx", sx(h));
+    			widget.playTime(play_stop, h, ref);
+    		}));
+
+    widget.slider.insert("g", ".track-overlay")
+    	.attr("class", "ticks")
+    	.attr("transform", "translate(0," + 18 + ")")
+    .selectAll("text")
+    .data([999, 800, 600, 400, 200, 0])
+    .enter().append("text")
+    	.attr("x", sx)
+    	.attr("text-anchor", "middle")
+    	.text(function(d) { return (1000 - d) + " ms";});
+
+    var handle = widget.slider.insert("circle", ".track-overlay")
+    	.attr("class", "handle")
+    	.attr("r", 6);
+
+    // widget.slider.hide();
 
     widget.svg = d3.select(id).append("svg")
         .attr("width", width + margin.left + margin.right)
@@ -2393,11 +2444,13 @@ Timeseries.prototype={
     	var widget = this;
     	if(play_stop){
     		widget.playbtn.html("Stop");
-            // widget.slider.show();
-            // if("repeat" in ref)
-            //     clearInterval(ref.repeat);
+            widget.slider.attr("visibility", "visible");
+            if("repeat" in ref)
+                clearInterval(ref.repeat);
             ref.repeat = setInterval(function(){
                 var bsel = d3.brushSelection(widget.gbrush.node());
+                if(newbsel === null)
+                	return;
                 var newbsel = [bsel[1], 2 * bsel[1] - bsel[0]];
                 widget.brushtime = newbsel.map(widget.x_new.invert);
                 widget.brush.move(widget.gbrush, newbsel);
@@ -2408,7 +2461,7 @@ Timeseries.prototype={
     	}
     	else{
     		widget.playbtn.html("Play");
-            // widget.slider.hide();
+            widget.slider.attr("visibility", "hidden");
             clearInterval(ref.repeat);
     	}
     }
