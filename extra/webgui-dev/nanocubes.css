@@ -52,8 +52,8 @@ canvas {
     pointer-events:visible;
 }
 
-.play-btn{
-    float:left;
+.spd-slider, .play-btn, .as-slider{
+    float:right;
 }
 
 .ticks {

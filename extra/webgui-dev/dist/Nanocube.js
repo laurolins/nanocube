@@ -2115,10 +2115,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin === undefined)
-        margin = {top: 10, right: 30, bottom: 30, left: 30};
+        margin = {top: 10, right: 30, bottom: 20, left: 30};
 
     var width = $(id).width() - margin.left - margin.right;
-    var height = $(id).height() - margin.top - margin.bottom;
+    var height = $(id).height() - margin.top - margin.bottom - 60;
+    								//30 from sliders above and below
 
     widget.x = d3.scaleUtc().range([0, width]);
     widget.y = d3.scaleLinear().range([height, 0]);
@@ -2159,6 +2160,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
 		.extent([[0, 0], [width, height]])
 		.on("end", function(){
 			if(!(d3.event.sourceEvent instanceof MouseEvent)) return;
+			if(!d3.event.sourceEvent) return;
 			if(!d3.event.selection){
 				widget.brushtime = undefined;
 				widget.updateCallback(widget._encodeArgs());
@@ -2170,41 +2172,72 @@ function Timeseries(opts,getDataCallback,updateCallback){
 			// If empty when rounded, use floor & cbexteil instead.
 			if (d1[0] >= d1[1]) {
 				d1[0] = bsfunc[brushsnap].floor(d0[0]);
-				d1[1] = bsfunc[brushsnap].offset(d0[1]);
+				d1[1] = bsfunc[brushsnap].ceil(d0[1]);
 			}
 			widget.brushtime = d1;
 			d3.event.target.move(widget.gbrush, d1.map(widget.x_new));
 			widget.updateCallback(widget._encodeArgs());
 		});
 
-	//Brush play button
-    var play_stop = false;
-    var ref = {};
-    var currentspeed = 0;
-    this.playbtn = d3.select(id)
-        .append('button')
-        .attr('class', 'play-btn')
-        .on('click',function(){
-            if(d3.brushSelection(widget.gbrush.node()) !== null){
-                play_stop = !play_stop;
-                widget.playTime(play_stop, currentspeed, ref);
-            }
-        }).html("Play");
+	//Animation step slider
+	var asx = d3.scaleLinear()
+    	.domain([1, 0])
+    	.range([0, 150])
+    	.clamp(true);
 
-    //Speed Slider
+    widget.asslider = d3.select(id).append("svg")
+    	.attr("width", 200)
+    	.attr("height", 30)
+    	.attr("class", "as-slider")
+    	.append("g")
+    	.attr("transform", "translate(" + 25 + "," + 10 + ")");
+
+    widget.asslider.append("line")
+    	.attr("class", "track")
+    	.attr("x1", asx.range()[0])
+    	.attr("x2", asx.range()[1])
+    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-inset")
+	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-overlay")
+    	.call(d3.drag()
+    		.on("start.interrupt", function(){widget.asslider.interrupt(); })
+    		.on("drag", function(){                                                                   
+    			var h = asx.invert(d3.event.x);
+    			currentstep = h;
+    			ashandle.attr("cx", asx(h));
+    			widget.playTime(play_stop, currentspeed, h, ref);
+    		}));
+
+    widget.asslider.insert("g", ".track-overlay")
+    	.attr("class", "ticks")
+    	.attr("transform", "translate(0," + 18 + ")")
+    .selectAll("text")
+    .data([0, 0.5, 1])
+    .enter().append("text")
+    	.attr("x", asx)
+    	.attr("text-anchor", "middle")
+    	.text(function(d) { return d + " step";});
+
+    var ashandle = widget.asslider.insert("circle", ".track-overlay")
+    	.attr("class", "handle")
+    	.attr("r", 6);
+
+
+
+
+	//Speed Slider
     var sx = d3.scaleLinear()
     	.domain([0, 999])
     	.range([0, 200])
     	.clamp(true);
 
-    widget.slidersvg = d3.select(id).append("svg")
-    	.attr("width", 25)
-    	.attr("height", 30);
-
-    widget.slider = widget.slidersvg.append("g")
-    	.attr("class", "slider")
-    	.attr("transform", "translate(" + 25 + "," + 10 + ")")
-    	.attr("visibility", "hidden");
+    widget.slider = d3.select(id).append("svg")
+    	.attr("width", 250)
+    	.attr("height", 30)
+    	.attr("class", "spd-slider")
+    	.append("g")
+    	.attr("transform", "translate(" + 25 + "," + 10 + ")");
 
     widget.slider.append("line")
     	.attr("class", "track")
@@ -2216,11 +2249,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("class", "track-overlay")
     	.call(d3.drag()
     		.on("start.interrupt", function(){widget.slider.interrupt(); })
-    		.on("drag", function(){                                                                          
+    		.on("drag", function(){                                                            
     			var h = sx.invert(d3.event.x);
     			currentspeed = h;
     			handle.attr("cx", sx(h));
-    			widget.playTime(play_stop, h, ref);
+    			widget.playTime(play_stop, h, currentstep, ref);
     		}));
 
     widget.slider.insert("g", ".track-overlay")
@@ -2237,19 +2270,20 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("class", "handle")
     	.attr("r", 6);
 
-    //Brush Selection Text
-    widget.bstextsvg = d3.select(id).append("svg")
-    	.attr("width", 100)
-    	.attr("height", 30);
-
-    widget.bstext = widget.bstextsvg.append("text")
-    	.attr("x", 0)
-    	.attr("y", 15)
-    	.text("No Brush Selected")
-    	.attr("font-family", "sans-serif")
-    	.attr("font-size", "12px")
-    	.attr("text-anchor", "start")
-    	.attr("fill", "white");
+	//Brush play button
+    var play_stop = false;
+    var ref = {};
+    var currentspeed = 0;
+    var currentstep = 1;
+    this.playbtn = d3.select(id)
+        .append('button')
+        .attr('class', 'play-btn')
+        .on('click',function(){
+            if(d3.brushSelection(widget.gbrush.node()) !== null){
+                play_stop = !play_stop;
+                widget.playTime(play_stop, currentspeed, currentstep, ref);
+            }
+        }).html("Play");
 
     //Brush snapping slider
     var bslist = ["Hour", "Day", "Week", "Month", "Year"];
@@ -2296,6 +2330,20 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("class", "handle")
     	.attr("r", 6);
 
+    //Brush Selection Text
+    widget.bstextsvg = d3.select(id).append("svg")
+    	.attr("width", 400)
+    	.attr("height", 30);
+
+    widget.bstext = widget.bstextsvg.append("text")
+    	.attr("x", 10)
+    	.attr("y", 15)
+    	.text("No Brush Selected")
+    	.attr("font-family", "sans-serif")
+    	.attr("font-size", "12px")
+    	.attr("text-anchor", "start")
+    	.attr("fill", "white");
+
 
     // Timeline svg
     widget.svg = d3.select(id).append("svg")
@@ -2332,6 +2380,22 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.gbrush = widget.svg.append("g")
     	.attr("class", "brush")
     	.call(widget.brush);
+
+    widget.tatext = d3.select(id).append("svg")
+    	.attr("width", 400)
+    	.attr("height", 30)
+    	.append("text")
+    	.attr("x", 10)
+    	.attr("y", 15)
+    	.attr("font-family", "sans-serif")
+    	.attr("font-size", "12px")
+    	.attr("text-anchor", "start")
+    	.attr("fill", "white")
+    	.text(function(){
+    		return "Current time aggregation: ";
+    	});
+
+    
 
     widget.width = width;
     widget.gX = gX;
@@ -2384,6 +2448,7 @@ Timeseries.prototype={
             });
 
             widget.lastres = res;
+            console.log(res);
             widget.redraw(res);
         });
 
@@ -2398,15 +2463,12 @@ Timeseries.prototype={
         brushnode = this.gbrush.node();
         if (brushnode !== null && d3.brushSelection(brushnode) !== null){
             var bext = d3.brushSelection(brushnode).map(this.x_new.invert);
-            widget.bstextsvg.attr("width", 400);
             widget.bstext.text(function(){
 				return "(" + bext[0].toUTCString() + ", " + bext[1].toUTCString() + ")";
 			});
-			widget.update();
             sel.brush = {start:bext[0], end:bext[1]};
         }
         else{
-        	widget.bstextsvg.attr("width", 100);
         	widget.bstext.text("No Brush Selected");
         }
         return sel;
@@ -2512,19 +2574,18 @@ Timeseries.prototype={
     },
 
 
-    playTime: function(play_stop, speed, ref){
+    playTime: function(play_stop, speed, step, ref){
     	var widget = this;
     	if(play_stop){
     		widget.playbtn.html("Stop");
-    		widget.slidersvg.attr("width", 250);
-            widget.slider.attr("visibility", "visible");
             if("repeat" in ref)
                 clearInterval(ref.repeat);
             ref.repeat = setInterval(function(){
                 var bsel = d3.brushSelection(widget.gbrush.node());
                 if(newbsel === null)
                 	return;
-                var newbsel = [bsel[1], 2 * bsel[1] - bsel[0]];
+                var diff = (bsel[1] - bsel[0]) * step;
+                var newbsel = [bsel[0] + diff, bsel[1] + diff];
                 widget.brushtime = newbsel.map(widget.x_new.invert);
                 widget.brush.move(widget.gbrush, newbsel);
                 widget.update();
@@ -2534,8 +2595,6 @@ Timeseries.prototype={
     	}
     	else{
     		widget.playbtn.html("Play");
-    		widget.slidersvg.attr("width", 25);
-            widget.slider.attr("visibility", "hidden");
             clearInterval(ref.repeat);
     	}
     }

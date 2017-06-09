@@ -6,7 +6,7 @@
   "license": "EPL-1.0",
   "devDependencies": {
   "colorbrewer": "*",
-  "d3": "^3",
+  "d3": "^4",
   "grunt": "*",
   "grunt-cli": "*",
   "grunt-contrib-concat": "*",
