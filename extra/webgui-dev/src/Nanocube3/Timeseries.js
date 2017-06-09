@@ -64,6 +64,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
             widget.updateCallback(widget._encodeArgs());
         });
 
+    //Brush and Brushsnapping
+
+    var bsfunc = [d3.utcHour, d3.utcDay, d3.utcWeek, d3.utcMonth, d3.utcYear];
+    var brushsnap = 0;
+
     widget.brush = d3.brushX()
 		.extent([[0, 0], [width, height]])
 		.on("end", function(){
@@ -73,13 +78,13 @@ function Timeseries(opts,getDataCallback,updateCallback){
 				widget.updateCallback(widget._encodeArgs());
 				return;
 			}
-			var d0 = d3.event.selection.map(widget.x_new.invert),
-				d1 = d0.map(d3.utcDay.round);
+			var d0 = d3.event.selection.map(widget.x_new.invert);
+			var d1 = d0.map(bsfunc[brushsnap].round);
 
 			// If empty when rounded, use floor & cbexteil instead.
 			if (d1[0] >= d1[1]) {
-				d1[0] = d3.timeDay.floor(d0[0]);
-				d1[1] = d3.timeDay.offset(d1[0]);
+				d1[0] = bsfunc[brushsnap].floor(d0[0]);
+				d1[1] = bsfunc[brushsnap].offset(d0[1]);
 			}
 			widget.brushtime = d1;
 			d3.event.target.move(widget.gbrush, d1.map(widget.x_new));
@@ -101,19 +106,16 @@ function Timeseries(opts,getDataCallback,updateCallback){
         }).html("Play");
 
     //Speed Slider
-
-    var sliderWidth = 200;
-
     var sx = d3.scaleLinear()
     	.domain([0, 999])
-    	.range([0, sliderWidth])
+    	.range([0, 200])
     	.clamp(true);
 
-    var slidersvg = d3.select(id).append("svg")
-    	.attr("width", 250)
+    widget.slidersvg = d3.select(id).append("svg")
+    	.attr("width", 25)
     	.attr("height", 30);
 
-    widget.slider = slidersvg.append("g")
+    widget.slider = widget.slidersvg.append("g")
     	.attr("class", "slider")
     	.attr("transform", "translate(" + 25 + "," + 10 + ")")
     	.attr("visibility", "hidden");
@@ -128,7 +130,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("class", "track-overlay")
     	.call(d3.drag()
     		.on("start.interrupt", function(){widget.slider.interrupt(); })
-    		.on("drag", function(){
+    		.on("drag", function(){                                                                          
     			var h = sx.invert(d3.event.x);
     			currentspeed = h;
     			handle.attr("cx", sx(h));
@@ -149,11 +151,71 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("class", "handle")
     	.attr("r", 6);
 
-    // widget.slider.hide();
+    //Brush Selection Text
+    widget.bstextsvg = d3.select(id).append("svg")
+    	.attr("width", 100)
+    	.attr("height", 30);
 
+    widget.bstext = widget.bstextsvg.append("text")
+    	.attr("x", 0)
+    	.attr("y", 15)
+    	.text("No Brush Selected")
+    	.attr("font-family", "sans-serif")
+    	.attr("font-size", "12px")
+    	.attr("text-anchor", "start")
+    	.attr("fill", "white");
+
+    //Brush snapping slider
+    var bslist = ["Hour", "Day", "Week", "Month", "Year"];
+
+    var bsx = d3.scaleLinear()
+    	.domain([0, 4])
+    	.range([0, 150])
+    	.clamp(true);
+
+    widget.bsslider = d3.select(id).append("svg")
+    	.attr("width", 200)
+    	.attr("height", 30)
+		.append("g")
+    	.attr("class", "slider")
+    	.attr("transform", "translate(" + 25 + "," + 10 + ")");
+
+    widget.bsslider.append("line")
+    	.attr("class", "track")
+    	.attr("x1", bsx.range()[0])
+    	.attr("x2", bsx.range()[1])
+    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-inset")
+	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-overlay")
+    	.call(d3.drag()
+    		.on("start.interrupt", function(){widget.bsslider.interrupt(); })
+    		.on("drag", function(){                                                                       
+    			var h = Math.round(bsx.invert(d3.event.x));
+    			brushsnap = h;
+    			bshandle.attr("cx", bsx(h));
+    		}));
+
+    widget.bsslider.insert("g", ".track-overlay")
+    	.attr("class", "ticks")
+    	.attr("transform", "translate(0," + 18 + ")")
+    .selectAll("text")
+    .data([4, 3, 2, 1, 0])
+    .enter().append("text")
+    	.attr("x", bsx)
+    	.attr("text-anchor", "middle")
+    	.text(function(d) { return bslist[d];});
+
+    var bshandle = widget.bsslider.insert("circle", ".track-overlay")
+    	.attr("class", "handle")
+    	.attr("r", 6);
+
+
+    // Timeline svg
     widget.svg = d3.select(id).append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
+        .attr("class", "resize")
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
               margin.top + ")")
@@ -246,10 +308,20 @@ Timeseries.prototype={
         var timedom = this.x_new.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
+        widget = this;
         brushnode = this.gbrush.node();
         if (brushnode !== null && d3.brushSelection(brushnode) !== null){
             var bext = d3.brushSelection(brushnode).map(this.x_new.invert);
+            widget.bstextsvg.attr("width", 400);
+            widget.bstext.text(function(){
+				return "(" + bext[0].toUTCString() + ", " + bext[1].toUTCString() + ")";
+			});
+			widget.update();
             sel.brush = {start:bext[0], end:bext[1]};
+        }
+        else{
+        	widget.bstextsvg.attr("width", 100);
+        	widget.bstext.text("No Brush Selected");
         }
         return sel;
     },
@@ -358,6 +430,7 @@ Timeseries.prototype={
     	var widget = this;
     	if(play_stop){
     		widget.playbtn.html("Stop");
+    		widget.slidersvg.attr("width", 250);
             widget.slider.attr("visibility", "visible");
             if("repeat" in ref)
                 clearInterval(ref.repeat);
@@ -375,6 +448,7 @@ Timeseries.prototype={
     	}
     	else{
     		widget.playbtn.html("Play");
+    		widget.slidersvg.attr("width", 25);
             widget.slider.attr("visibility", "hidden");
             clearInterval(ref.repeat);
     	}
