@@ -2094,16 +2094,16 @@ function Timeseries(opts,getDataCallback,updateCallback){
     d3.select(id).attr("class","timeseries resize-drag"); //add resize-drag later
 
     //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight = currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style('height',widget.restoreHeight);
-        }
-    });
+    // d3.select(id).on('dblclick',function(d){
+    //     var currentheight = d3.select(id).style("height");
+    //     if ( currentheight != "40px"){
+    //         widget.restoreHeight = currentheight ;
+    //         d3.select(id).style('height','40px');
+    //     }
+    //     else{
+    //         d3.select(id).style('height',widget.restoreHeight);
+    //     }
+    // });
 
     opts.numformat = opts.numformat || ",";
 
@@ -2152,7 +2152,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
         });
 
     //Brush and Brushsnapping
-
     var bsfunc = [d3.utcHour, d3.utcDay, d3.utcWeek, d3.utcMonth, d3.utcYear];
     var brushsnap = 0;
 
@@ -2181,12 +2180,12 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
 	//Animation step slider
 	var asx = d3.scaleLinear()
-    	.domain([1, 0])
-    	.range([0, 150])
+    	.domain([0, 5])
+    	.range([0, 200])
     	.clamp(true);
 
     widget.asslider = d3.select(id).append("svg")
-    	.attr("width", 200)
+    	.attr("width", 250)
     	.attr("height", 30)
     	.attr("class", "as-slider")
     	.append("g")
@@ -2203,28 +2202,26 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.call(d3.drag()
     		.on("start.interrupt", function(){widget.asslider.interrupt(); })
     		.on("drag", function(){                                                                   
-    			var h = asx.invert(d3.event.x);
+    			var h = Math.round(asx.invert(d3.event.x));
     			currentstep = h;
     			ashandle.attr("cx", asx(h));
     			widget.playTime(play_stop, currentspeed, h, ref);
     		}));
 
+    var aslist = ["Auto", "Hour", "Day", "Week", "Month", "Year"];
     widget.asslider.insert("g", ".track-overlay")
     	.attr("class", "ticks")
     	.attr("transform", "translate(0," + 18 + ")")
     .selectAll("text")
-    .data([0, 0.5, 1])
+    .data([5, 4, 3, 2, 1, 0])
     .enter().append("text")
     	.attr("x", asx)
     	.attr("text-anchor", "middle")
-    	.text(function(d) { return d + " step";});
+    	.text(function(d) { return aslist[d];});
 
     var ashandle = widget.asslider.insert("circle", ".track-overlay")
     	.attr("class", "handle")
     	.attr("r", 6);
-
-
-
 
 	//Speed Slider
     var sx = d3.scaleLinear()
@@ -2274,7 +2271,17 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var play_stop = false;
     var ref = {};
     var currentspeed = 0;
-    var currentstep = 1;
+    var currentstep = 0;
+
+    this.forwardbtn = d3.select(id)
+        .append('button')
+        .attr('class', 'play-btn')
+        .on('click',function(){
+            if(d3.brushSelection(widget.gbrush.node()) !== null){
+                widget.iterateTime(currentstep, 1);
+            }
+        }).html(">");
+
     this.playbtn = d3.select(id)
         .append('button')
         .attr('class', 'play-btn')
@@ -2284,6 +2291,15 @@ function Timeseries(opts,getDataCallback,updateCallback){
                 widget.playTime(play_stop, currentspeed, currentstep, ref);
             }
         }).html("Play");
+
+    this.backbtn = d3.select(id)
+        .append('button')
+        .attr('class', 'play-btn')
+        .on('click',function(){
+            if(d3.brushSelection(widget.gbrush.node()) !== null){
+                widget.iterateTime(currentstep, -1);
+            }
+        }).html("<");
 
     //Brush snapping slider
     var bslist = ["Hour", "Day", "Week", "Month", "Year"];
@@ -2381,21 +2397,42 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("class", "brush")
     	.call(widget.brush);
 
+    //Time Aggregation
+    widget.unitTime = opts.binsec;
+
     widget.tatext = d3.select(id).append("svg")
-    	.attr("width", 400)
+    	.attr("width", 250)
     	.attr("height", 30)
+    	.attr("class", "tatext")
     	.append("text")
     	.attr("x", 10)
     	.attr("y", 15)
     	.attr("font-family", "sans-serif")
     	.attr("font-size", "12px")
     	.attr("text-anchor", "start")
-    	.attr("fill", "white")
-    	.text(function(){
-    		return "Current time aggregation: ";
-    	});
+    	.attr("fill", "white");
 
-    
+    widget.tapbtn = d3.select(id)
+        .append('button')
+        .attr('class', 'tap-btn')
+        .on('click',function(){
+            widget.tafactor = 1;
+            widget.update();
+        }).html("+");
+    widget.tambtn = d3.select(id)
+        .append('button')
+        .attr('class', 'tam-btn')
+        .on('click',function(){
+            widget.tafactor = -1;
+            widget.update();
+        }).html("-");
+    widget.tambtn = d3.select(id)
+        .append('button')
+        .attr('class', 'taa-btn')
+        .on('click',function(){
+            widget.tafactor = undefined;
+            widget.update();
+        }).html("auto");
 
     widget.width = width;
     widget.gX = gX;
@@ -2409,7 +2446,40 @@ Timeseries.prototype={
         var sel = this.getSelection();
         var start = sel.global.start;
         var end = sel.global.end;
-        var interval = (end - start+1) / 1000 / this.width * 1;
+
+        if(widget.tafactor === undefined)
+        	widget.interval = (end - start+1) / 1000 / this.width * 1;
+        else{
+        	widget.interval = widget.interval * Math.pow(2, widget.tafactor);
+        	if(widget.interval < widget.unitTime)
+        		widget.interval = widget.unitTime;
+        	widget.tafactor = 0;
+        }
+
+        //Round to nearest time unit
+        var i = widget.interval;
+        if(Math.floor(i / (3600 * 24 * 365)) > 0)
+        	widget.interval = Math.floor(i / (3600 * 24 * 365)) * (3600 * 24 * 365);
+        else if(Math.floor(i / (3600 * 24 * 7)) > 0)
+        	widget.interval = Math.floor(i / (3600 * 24 * 7)) * (3600 * 24 * 7);
+        else if(Math.floor(i / (3600 * 24)) > 0)
+        	widget.interval = Math.floor(i / (3600 * 24)) * (3600 * 24);
+        else if(Math.floor(i / 3600) > 0)
+        	widget.interval = Math.floor(i / 3600) * 3600;
+        else if(Math.floor(i / 60) > 0)
+        	widget.interval = Math.floor(i / 60) * 60;
+
+        //updating time aggregation text
+
+        widget.tatext.text(function(){
+    		// console.log(widget.interval);
+    		var bucketsize = widget.interval / widget.unitTime;
+        	bucketsize = Math.max(1,Math.floor(bucketsize+0.5));
+
+    		return "Unit Time: " + widget.timeUnit(widget.unitTime) + 
+    			" Current time aggregation: " + 
+    			widget.timeUnit(widget.unitTime * bucketsize);
+    	});
 
         var promises = {};
 
@@ -2418,7 +2488,7 @@ Timeseries.prototype={
             if (widget._datasrc[d].disabled){
                 continue;
             }
-            var p = this.getDataCallback(d,start, end, interval);
+            var p = this.getDataCallback(d,start, end, widget.interval);
             for (var k in p){
                 promises[k] = p[k];
             }
@@ -2448,7 +2518,6 @@ Timeseries.prototype={
             });
 
             widget.lastres = res;
-            console.log(res);
             widget.redraw(res);
         });
 
@@ -2581,15 +2650,7 @@ Timeseries.prototype={
             if("repeat" in ref)
                 clearInterval(ref.repeat);
             ref.repeat = setInterval(function(){
-                var bsel = d3.brushSelection(widget.gbrush.node());
-                if(newbsel === null)
-                	return;
-                var diff = (bsel[1] - bsel[0]) * step;
-                var newbsel = [bsel[0] + diff, bsel[1] + diff];
-                widget.brushtime = newbsel.map(widget.x_new.invert);
-                widget.brush.move(widget.gbrush, newbsel);
-                widget.update();
-                widget.updateCallback(widget._encodeArgs());
+                widget.iterateTime(step, 1);
             }, (1000 - speed));
 
     	}
@@ -2597,6 +2658,56 @@ Timeseries.prototype={
     		widget.playbtn.html("Play");
             clearInterval(ref.repeat);
     	}
+    },
+
+    iterateTime: function(step, direction){
+    	var bsel = d3.brushSelection(widget.gbrush.node());
+        if(bsel === null)
+        	return;
+        var asfunc = [d3.utcHour, d3.utcDay, d3.utcWeek, d3.utcMonth, d3.utcYear];
+        var newbsel;
+        if(step === 0){
+        	var diff = bsel[1] - bsel[0];
+        	newbsel = [bsel[0] + (diff * direction), bsel[1] + (diff * direction)];
+        }
+        else{
+        	bseldate = bsel.map(widget.x_new.invert);
+        	newbsel = [asfunc[step-1].offset(bseldate[0], direction),
+        			   asfunc[step-1].offset(bseldate[1], direction)]
+        			   .map(widget.x_new);
+        }
+        
+        widget.brushtime = newbsel.map(widget.x_new.invert);
+        widget.brush.move(widget.gbrush, newbsel);
+        widget.update();
+        widget.updateCallback(widget._encodeArgs());
+    },
+
+    timeUnit: function(t){
+    	var unit = 's';
+    	if((t % 60) === 0 && Math.floor(t / 60) > 0){
+    		t = t / 60;
+    		unit = 'm';
+    		if((t % 60) === 0 && Math.floor(t / 60) > 0){
+	    		t = t / 60;
+	    		unit = 'h';
+	    		if((t % 24) === 0 && Math.floor(t / 24) > 0){
+					t = t / 24;
+					unit = 'd';
+					if((t % 365) === 0 && Math.floor(t / 365) > 0){
+			    		t = t / 365;
+			    		unit = 'y';
+			    	}
+					else if((t % 7) === 0 && Math.floor(t / 7) > 0){
+			    		t = t / 7;
+			    		unit = 'w';
+			    	}
+			    	
+				}
+	    	}
+    	}
+    	
+    	return "" + t + unit;
     }
 
 };
@@ -2723,6 +2834,7 @@ Viewer.prototype = {
         case 'time':
             this._timeoverlay.append(newdiv);
             options.timerange = viewer.getTimeRange();
+            options.binsec = viewer.getBinTime();
             return new Timeseries(options,function(datasrc,start,end,interval){
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
@@ -2752,6 +2864,14 @@ Viewer.prototype = {
                     Math.max(p[1], nc[c].bucketToTime(e))];
         }, [Infinity, 0]);
         return [new Date(range[0]), new Date(range[1])];
+    },
+
+    getBinTime: function(){
+        var nc = this._nanocubes;
+        var binsec = Object.keys(nc).map(function(c){
+            return nc[c].timeinfo.bin_sec;
+        });
+        return binsec;
     },
 
     update: function(skip,constraints,name,args,datasrc){
@@ -2806,7 +2926,7 @@ Viewer.prototype = {
             }
         });
         
-        //then the rest
+        //then the restTimeseries.prototype={
         Object.keys(this._widget).forEach(function(d){
             if (skip.indexOf(d) == -1){
                 var sel = viewer._widget[d].getSelection();

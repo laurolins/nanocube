@@ -121,6 +121,7 @@ Viewer.prototype = {
         case 'time':
             this._timeoverlay.append(newdiv);
             options.timerange = viewer.getTimeRange();
+            options.binsec = viewer.getBinTime();
             return new Timeseries(options,function(datasrc,start,end,interval){
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
@@ -150,6 +151,14 @@ Viewer.prototype = {
                     Math.max(p[1], nc[c].bucketToTime(e))];
         }, [Infinity, 0]);
         return [new Date(range[0]), new Date(range[1])];
+    },
+
+    getBinTime: function(){
+        var nc = this._nanocubes;
+        var binsec = Object.keys(nc).map(function(c){
+            return nc[c].timeinfo.bin_sec;
+        });
+        return binsec;
     },
 
     update: function(skip,constraints,name,args,datasrc){
@@ -204,7 +213,7 @@ Viewer.prototype = {
             }
         });
         
-        //then the rest
+        //then the restTimeseries.prototype={
         Object.keys(this._widget).forEach(function(d){
             if (skip.indexOf(d) == -1){
                 var sel = viewer._widget[d].getSelection();
