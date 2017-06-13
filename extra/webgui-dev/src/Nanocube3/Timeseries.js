@@ -7,6 +7,10 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries resize-drag"); //add resize-drag later
 
+    d3.select(id).on("divresize",function(){
+        widget.update();
+    });
+
     //Collapse on dbl click
     // d3.select(id).on('dblclick',function(d){
     //     var currentheight = d3.select(id).style("height");
@@ -31,9 +35,237 @@ function Timeseries(opts,getDataCallback,updateCallback){
     if (margin === undefined)
         margin = {top: 10, right: 30, bottom: 20, left: 30};
 
-    var width = $(id).width() - margin.left - margin.right;
-    var height = $(id).height() - margin.top - margin.bottom - 60;
+    var width = $(id).width() - margin.left - margin.right - 60;
+    var height = $(id).height() - margin.top - margin.bottom - 70;
     								//30 from sliders above and below
+
+    //Nested SVG layers
+    widget.toplayer = d3.select(id).append("div")
+    	.style("width", $(id).width() + "px")
+    	.style("height", 40 + "px")
+    	.attr("class", "toplayer");
+
+    widget.midlayer = d3.select(id).append("div")
+    	.style("width", $(id).width() + "px")
+    	.style("height", height + margin.top + margin.bottom + "px")
+    	.attr("class", "midlayer");
+
+    widget.botlayer = d3.select(id).append("div")
+    	.style("width", $(id).width() + "px")
+    	.style("height", 30 + "px")
+    	.attr("class", "botlayer");
+
+
+	//Animation step slider
+	var asx = d3.scaleLinear()
+    	.domain([0, 5])
+    	.range([0, 200])
+    	.clamp(true);
+
+    widget.asslider = widget.toplayer.append("svg")
+    	.attr("width", 250)
+    	.attr("height", 40)
+    	.attr("class", "as-slider")
+    	.append("g")
+    	.attr("transform", "translate(" + 25 + "," + 20 + ")");
+
+    d3.select(widget.asslider.node().parentNode).append("text")
+    	.attr("x", 100)
+    	.attr("y", 12)
+    	.attr("font-family", "sans-serif")
+    	.attr("font-size", "10px")
+    	.attr("text-anchor", "center")
+    	.attr("fill", "white")
+    	.text("Animation Step");
+
+    widget.asslider.append("line")
+    	.attr("class", "track")
+    	.attr("x1", asx.range()[0])
+    	.attr("x2", asx.range()[1])
+    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-inset")
+	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-overlay")
+    	.call(d3.drag()
+    		.on("start.interrupt", function(){widget.asslider.interrupt(); })
+    		.on("drag", function(){                                                                   
+    			var h = Math.round(asx.invert(d3.event.x));
+    			currentstep = h;
+    			ashandle.attr("cx", asx(h));
+    			widget.playTime(play_stop, currentspeed, h, ref);
+    		}));
+
+    var aslist = ["Auto", "Hour", "Day", "Week", "Month", "Year"];
+    widget.asslider.insert("g", ".track-overlay")
+    	.attr("class", "ticks")
+    	.attr("transform", "translate(0," + 18 + ")")
+    .selectAll("text")
+    .data([5, 4, 3, 2, 1, 0])
+    .enter().append("text")
+    	.attr("x", asx)
+    	.attr("text-anchor", "middle")
+    	.attr("fill", "white")
+    	.text(function(d) { return aslist[d];});
+
+    var ashandle = widget.asslider.insert("circle", ".track-overlay")
+    	.attr("class", "handle")
+    	.attr("r", 6);
+
+
+	//Speed Slider
+    var sx = d3.scaleLinear()
+    	.domain([0, 999])
+    	.range([0, 200])
+    	.clamp(true);
+
+    widget.slider = widget.toplayer.append("svg")
+    	.attr("width", 250)
+    	.attr("height", 40)
+    	.attr("class", "spd-slider")
+    	.append("g")
+    	.attr("transform", "translate(" + 25 + "," + 20 + ")");
+
+    d3.select(widget.slider.node().parentNode).append("text")
+    	.attr("x", 110)
+    	.attr("y", 12)
+    	.attr("font-family", "sans-serif")
+    	.attr("font-size", "10px")
+    	.attr("text-anchor", "center")
+    	.attr("fill", "white")
+    	.text("Speed");
+
+    widget.slider.append("line")
+    	.attr("class", "track")
+    	.attr("x1", sx.range()[0])
+    	.attr("x2", sx.range()[1])
+    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-inset")
+	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-overlay")
+    	.call(d3.drag()
+    		.on("start.interrupt", function(){widget.slider.interrupt(); })
+    		.on("drag", function(){                                                            
+    			var h = sx.invert(d3.event.x);
+    			currentspeed = h;
+    			handle.attr("cx", sx(h));
+    			widget.playTime(play_stop, h, currentstep, ref);
+    		}));
+
+    widget.slider.insert("g", ".track-overlay")
+    	.attr("class", "ticks")
+    	.attr("transform", "translate(0," + 18 + ")")
+    .selectAll("text")
+    .data([999, 800, 600, 400, 200, 0])
+    .enter().append("text")
+    	.attr("x", sx)
+    	.attr("text-anchor", "middle")
+    	.attr("fill", "white")
+    	.text(function(d) { return (1000 - d) + " ms";});
+
+    var handle = widget.slider.insert("circle", ".track-overlay")
+    	.attr("class", "handle")
+    	.attr("r", 6);
+
+	//Brush play button
+    var play_stop = false;
+    var ref = {};
+    var currentspeed = 0;
+    var currentstep = 0;
+
+    this.forwardbtn = widget.toplayer.append('button')
+        .attr('class', 'play-btn')
+        .on('click',function(){
+            if(d3.brushSelection(widget.gbrush.node()) !== null){
+                widget.iterateTime(currentstep, 1);
+            }
+        }).html(">");
+
+    this.playbtn = widget.toplayer.append('button')
+        .attr('class', 'play-btn')
+        .on('click',function(){
+            if(d3.brushSelection(widget.gbrush.node()) !== null){
+                play_stop = !play_stop;
+                widget.playTime(play_stop, currentspeed, currentstep, ref);
+            }
+        }).html("Play");
+
+    this.backbtn = widget.toplayer.append('button')
+        .attr('class', 'play-btn')
+        .on('click',function(){
+            if(d3.brushSelection(widget.gbrush.node()) !== null){
+                widget.iterateTime(currentstep, -1);
+            }
+        }).html("<");
+
+    //Brush snapping slider
+    var bslist = ["Hour", "Day", "Week", "Month", "Year"];
+
+    var bsx = d3.scaleLinear()
+    	.domain([0, 4])
+    	.range([0, 150])
+    	.clamp(true);
+
+    widget.bsslider = widget.toplayer.append("svg")
+    	.attr("width", 200)
+    	.attr("height", 40)
+		.append("g")
+    	.attr("class", "slider")
+    	.attr("transform", "translate(" + 25 + "," + 20 + ")");
+
+    d3.select(widget.bsslider.node().parentNode).append("text")
+    	.attr("x", 75)
+    	.attr("y", 12)
+    	.attr("font-family", "sans-serif")
+    	.attr("font-size", "10px")
+    	.attr("text-anchor", "center")
+    	.attr("fill", "white")
+    	.text("Snap-to-grid");
+
+
+    widget.bsslider.append("line")
+    	.attr("class", "track")
+    	.attr("x1", bsx.range()[0])
+    	.attr("x2", bsx.range()[1])
+    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-inset")
+	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+    	.attr("class", "track-overlay")
+    	.call(d3.drag()
+    		.on("start.interrupt", function(){widget.bsslider.interrupt(); })
+    		.on("drag", function(){                                                                       
+    			var h = Math.round(bsx.invert(d3.event.x));
+    			brushsnap = h;
+    			bshandle.attr("cx", bsx(h));
+    		}));
+
+    widget.bsslider.insert("g", ".track-overlay")
+    	.attr("class", "ticks")
+    	.attr("transform", "translate(0," + 18 + ")")
+    .selectAll("text")
+    .data([4, 3, 2, 1, 0])
+    .enter().append("text")
+    	.attr("x", bsx)
+    	.attr("text-anchor", "middle")
+    	.attr("fill", "white")
+    	.text(function(d) { return bslist[d];});
+
+    var bshandle = widget.bsslider.insert("circle", ".track-overlay")
+    	.attr("class", "handle")
+    	.attr("r", 6);
+
+    //Brush Selection Text
+    widget.bstextsvg = widget.toplayer.append("svg")
+    	.attr("width", 400)
+    	.attr("height", 30);
+
+    widget.bstext = widget.bstextsvg.append("text")
+    	.attr("x", 10)
+    	.attr("y", 15)
+    	.text("No Brush Selected")
+    	.attr("font-family", "sans-serif")
+    	.attr("font-size", "12px")
+    	.attr("text-anchor", "start")
+    	.attr("fill", "white");
 
     widget.x = d3.scaleUtc().range([0, width]);
     widget.y = d3.scaleLinear().range([height, 0]);
@@ -47,6 +279,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .tickFormat(d3.format(opts.numformat))
         .tickSize(-width-3);
 
+    //Zoom
     widget.x_new = widget.x;
     widget.zoom=d3.zoom()
     	.extent([[0, 0], [width, height]])
@@ -92,199 +325,70 @@ function Timeseries(opts,getDataCallback,updateCallback){
 			widget.updateCallback(widget._encodeArgs());
 		});
 
-	//Animation step slider
-	var asx = d3.scaleLinear()
-    	.domain([0, 5])
-    	.range([0, 200])
-    	.clamp(true);
+    // Timeline Left Pan button
+    var arc = d3.symbol().type(d3.symbolDiamond)
+    	.size([height] * 20);
 
-    widget.asslider = d3.select(id).append("svg")
-    	.attr("width", 250)
-    	.attr("height", 30)
-    	.attr("class", "as-slider")
-    	.append("g")
-    	.attr("transform", "translate(" + 25 + "," + 10 + ")");
 
-    widget.asslider.append("line")
-    	.attr("class", "track")
-    	.attr("x1", asx.range()[0])
-    	.attr("x2", asx.range()[1])
-    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-    	.attr("class", "track-inset")
-	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-    	.attr("class", "track-overlay")
-    	.call(d3.drag()
-    		.on("start.interrupt", function(){widget.asslider.interrupt(); })
-    		.on("drag", function(){                                                                   
-    			var h = Math.round(asx.invert(d3.event.x));
-    			currentstep = h;
-    			ashandle.attr("cx", asx(h));
-    			widget.playTime(play_stop, currentspeed, h, ref);
-    		}));
+	var leftpan = widget.midlayer.append("svg")
+		.attr("width", 30)
+		.attr("height", height + margin.top + margin.bottom)
+		.append('path')
+		.attr('d', arc)
+		.attr('fill', 'gray')
+		.attr('stroke','#000')
+		.attr('stroke-width',1)
+		.attr('transform', 'translate(' + margin.left + ',' + 
+			(height + margin.top + margin.bottom)/2 + ')');
+	
+	var pan;
+	leftpan.on("mouseover", function(){
+		leftpan.attr('fill', 'blue');
+		pan = setInterval(function(){
+            widget.zoom.translateBy(widget.ts, 10, 0);
+        }, 1);
+	});
 
-    var aslist = ["Auto", "Hour", "Day", "Week", "Month", "Year"];
-    widget.asslider.insert("g", ".track-overlay")
-    	.attr("class", "ticks")
-    	.attr("transform", "translate(0," + 18 + ")")
-    .selectAll("text")
-    .data([5, 4, 3, 2, 1, 0])
-    .enter().append("text")
-    	.attr("x", asx)
-    	.attr("text-anchor", "middle")
-    	.text(function(d) { return aslist[d];});
-
-    var ashandle = widget.asslider.insert("circle", ".track-overlay")
-    	.attr("class", "handle")
-    	.attr("r", 6);
-
-	//Speed Slider
-    var sx = d3.scaleLinear()
-    	.domain([0, 999])
-    	.range([0, 200])
-    	.clamp(true);
-
-    widget.slider = d3.select(id).append("svg")
-    	.attr("width", 250)
-    	.attr("height", 30)
-    	.attr("class", "spd-slider")
-    	.append("g")
-    	.attr("transform", "translate(" + 25 + "," + 10 + ")");
-
-    widget.slider.append("line")
-    	.attr("class", "track")
-    	.attr("x1", sx.range()[0])
-    	.attr("x2", sx.range()[1])
-    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-    	.attr("class", "track-inset")
-	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-    	.attr("class", "track-overlay")
-    	.call(d3.drag()
-    		.on("start.interrupt", function(){widget.slider.interrupt(); })
-    		.on("drag", function(){                                                            
-    			var h = sx.invert(d3.event.x);
-    			currentspeed = h;
-    			handle.attr("cx", sx(h));
-    			widget.playTime(play_stop, h, currentstep, ref);
-    		}));
-
-    widget.slider.insert("g", ".track-overlay")
-    	.attr("class", "ticks")
-    	.attr("transform", "translate(0," + 18 + ")")
-    .selectAll("text")
-    .data([999, 800, 600, 400, 200, 0])
-    .enter().append("text")
-    	.attr("x", sx)
-    	.attr("text-anchor", "middle")
-    	.text(function(d) { return (1000 - d) + " ms";});
-
-    var handle = widget.slider.insert("circle", ".track-overlay")
-    	.attr("class", "handle")
-    	.attr("r", 6);
-
-	//Brush play button
-    var play_stop = false;
-    var ref = {};
-    var currentspeed = 0;
-    var currentstep = 0;
-
-    this.forwardbtn = d3.select(id)
-        .append('button')
-        .attr('class', 'play-btn')
-        .on('click',function(){
-            if(d3.brushSelection(widget.gbrush.node()) !== null){
-                widget.iterateTime(currentstep, 1);
-            }
-        }).html(">");
-
-    this.playbtn = d3.select(id)
-        .append('button')
-        .attr('class', 'play-btn')
-        .on('click',function(){
-            if(d3.brushSelection(widget.gbrush.node()) !== null){
-                play_stop = !play_stop;
-                widget.playTime(play_stop, currentspeed, currentstep, ref);
-            }
-        }).html("Play");
-
-    this.backbtn = d3.select(id)
-        .append('button')
-        .attr('class', 'play-btn')
-        .on('click',function(){
-            if(d3.brushSelection(widget.gbrush.node()) !== null){
-                widget.iterateTime(currentstep, -1);
-            }
-        }).html("<");
-
-    //Brush snapping slider
-    var bslist = ["Hour", "Day", "Week", "Month", "Year"];
-
-    var bsx = d3.scaleLinear()
-    	.domain([0, 4])
-    	.range([0, 150])
-    	.clamp(true);
-
-    widget.bsslider = d3.select(id).append("svg")
-    	.attr("width", 200)
-    	.attr("height", 30)
-		.append("g")
-    	.attr("class", "slider")
-    	.attr("transform", "translate(" + 25 + "," + 10 + ")");
-
-    widget.bsslider.append("line")
-    	.attr("class", "track")
-    	.attr("x1", bsx.range()[0])
-    	.attr("x2", bsx.range()[1])
-    .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-    	.attr("class", "track-inset")
-	.select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
-    	.attr("class", "track-overlay")
-    	.call(d3.drag()
-    		.on("start.interrupt", function(){widget.bsslider.interrupt(); })
-    		.on("drag", function(){                                                                       
-    			var h = Math.round(bsx.invert(d3.event.x));
-    			brushsnap = h;
-    			bshandle.attr("cx", bsx(h));
-    		}));
-
-    widget.bsslider.insert("g", ".track-overlay")
-    	.attr("class", "ticks")
-    	.attr("transform", "translate(0," + 18 + ")")
-    .selectAll("text")
-    .data([4, 3, 2, 1, 0])
-    .enter().append("text")
-    	.attr("x", bsx)
-    	.attr("text-anchor", "middle")
-    	.text(function(d) { return bslist[d];});
-
-    var bshandle = widget.bsslider.insert("circle", ".track-overlay")
-    	.attr("class", "handle")
-    	.attr("r", 6);
-
-    //Brush Selection Text
-    widget.bstextsvg = d3.select(id).append("svg")
-    	.attr("width", 400)
-    	.attr("height", 30);
-
-    widget.bstext = widget.bstextsvg.append("text")
-    	.attr("x", 10)
-    	.attr("y", 15)
-    	.text("No Brush Selected")
-    	.attr("font-family", "sans-serif")
-    	.attr("font-size", "12px")
-    	.attr("text-anchor", "start")
-    	.attr("fill", "white");
-
+	leftpan.on('mouseleave', function(){
+		leftpan.attr('fill', 'gray');
+		clearInterval(pan);
+	});
 
     // Timeline svg
-    widget.svg = d3.select(id).append("svg")
+    widget.tssvg = widget.midlayer.append("svg")
         .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-        .attr("class", "resize")
-        .append("g")
+        .attr("height", height + margin.top + margin.bottom);
+    widget.ts = widget.tssvg.append("g")
         .attr("transform", "translate(" + margin.left + "," +
               margin.top + ")")
         .call(widget.zoom)
         .on("mousedown", function() { d3.event.stopPropagation(); });
+
+    // Timeline Right Pan button
+
+	var rightpan = widget.midlayer.append("svg")
+		.attr("width", 30)
+		.attr("height", height + margin.top + margin.bottom)
+		.append('path')
+		.attr('d', arc)
+		.attr('fill', 'gray')
+		.attr('stroke','#000')
+		.attr('stroke-width',1)
+		.attr('transform', 'translate(' + 0 + ',' + 
+			(height + margin.top + margin.bottom)/2 + ')');
+	
+	var pan2;
+	rightpan.on("mouseover", function(){
+		rightpan.attr('fill', 'blue');
+		pan2 = setInterval(function(){
+            widget.zoom.translateBy(widget.ts, -10, 0);
+        }, 1);
+	});
+
+	rightpan.on('mouseleave', function(){
+		rightpan.attr('fill', 'gray');
+		clearInterval(pan2);
+	});
 
     if(opts.args){
     	widget._decodeArgs(opts.args);
@@ -293,28 +397,23 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	widget.x.domain(opts.timerange);
     }
 
-    // widget.svg.append("text")
-    //     .attr("x", -10)
-    //     .attr("y", -10)
-    //     .text(opts.title);
-
-    var gX = widget.svg.append("g")
+    var gX = widget.ts.append("g")
         .attr("class", "axis axis--x")
         .attr("transform", "translate(0," + height + ")")
         .call(widget.xAxis);
 
-    var gY = widget.svg.append("g")
+    var gY = widget.ts.append("g")
     	.attr("class", "axis axis--y")
     	.call(widget.yAxis);
 
-    widget.gbrush = widget.svg.append("g")
+    widget.gbrush = widget.ts.append("g")
     	.attr("class", "brush")
     	.call(widget.brush);
 
     //Time Aggregation
     widget.unitTime = opts.binsec;
 
-    widget.tatext = d3.select(id).append("svg")
+    widget.tatext = widget.botlayer.append("svg")
     	.attr("width", 250)
     	.attr("height", 30)
     	.attr("class", "tatext")
@@ -326,29 +425,28 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("text-anchor", "start")
     	.attr("fill", "white");
 
-    widget.tapbtn = d3.select(id)
-        .append('button')
+    widget.tapbtn = widget.botlayer.append('button')
         .attr('class', 'tap-btn')
         .on('click',function(){
             widget.tafactor = 1;
             widget.update();
         }).html("+");
-    widget.tambtn = d3.select(id)
-        .append('button')
+    widget.tambtn = widget.botlayer.append('button')
         .attr('class', 'tam-btn')
         .on('click',function(){
             widget.tafactor = -1;
             widget.update();
         }).html("-");
-    widget.tambtn = d3.select(id)
-        .append('button')
+    widget.tambtn = widget.botlayer.append('button')
         .attr('class', 'taa-btn')
         .on('click',function(){
             widget.tafactor = undefined;
             widget.update();
         }).html("auto");
 
+    widget.margin = margin;
     widget.width = width;
+    widget.height = height;
     widget.gX = gX;
     widget.gY = gY;
 
@@ -494,16 +592,41 @@ Timeseries.prototype={
         yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
         
-        this.y.domain(yext);
-
-        //update the axis
-        this.gX.call(this.xAxis);
-        this.gY.call(this.yAxis);
 
         var widget = this;
 
+        widget.y.domain(yext);
+
+        widget.updateSVG();
+
+        widget.x.range([0, widget.width]);
+        widget.x_new.range([0, widget.width]);
+		widget.y.range([widget.height, 0]);
+
+		widget.xAxis.scale(widget.x_new)
+			.tickSize(-widget.height);
+			
+		widget.yAxis.scale(widget.y)
+		    .tickSize(-widget.width-3);
+
+        //update the axis
+        widget.gX.call(widget.xAxis)
+        	.attr("transform", "translate(0," + this.height + ")");
+        widget.gY.call(widget.yAxis);
+
+        widget.brush.extent([[0,0], [this.width, this.height]]);
+        widget.gbrush.call(widget.brush);
+
+        if(widget.brushtime !== undefined){
+    		widget.brush.move(widget.gbrush, widget.brushtime.map(widget.x_new));
+    	}
+
+        
+
+        
+
         //Remove paths obsolete paths
-        var paths = widget.svg.selectAll('path.line');
+        var paths = widget.ts.selectAll('path.line');
         paths.each(function(){
             var p = this;
             var exists = Object.keys(lines).some(function(d){
@@ -531,9 +654,9 @@ Timeseries.prototype={
         var widget = this;
         
         //create unexisted paths
-        var path = widget.svg.select('path.line.'+colorid);
+        var path = widget.ts.select('path.line.'+colorid);
         if (path.empty()){
-            path = widget.svg.append('path');
+            path = widget.ts.append('path');
             path.attr('class', 'line '+colorid);
             
             path.style('stroke-width','2px')
@@ -554,6 +677,37 @@ Timeseries.prototype={
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));
+    },
+
+    updateSVG: function(){
+
+    	var widget = this;
+
+    	var idwidth = parseFloat(d3.select(widget.toplayer.node().parentNode)
+    		.style('width'));
+    	var idheight = parseFloat(d3.select(widget.toplayer.node().parentNode)
+    		.style('height'));
+    	var width = idwidth - this.margin.left - this.margin.right - 60;
+    	var height;
+
+    	if(idwidth < 1200){
+    		widget.toplayer.style("height", 80 + "px");
+    		height = idheight - this.margin.top - this.margin.bottom - 110;
+    	}
+    	else{
+    		widget.toplayer.style("height", 30 + "px");
+    		height = idheight - this.margin.top - this.margin.bottom - 70;
+    	}
+
+    	widget.toplayer.style("width", idwidth + "px");
+    	widget.midlayer.style("width", idwidth + "px");
+    	widget.midlayer.style("height", height + this.margin.top + this.margin.bottom + "px");
+    	widget.botlayer.style("width", idwidth + "px");
+
+    	widget.tssvg.attr("width", width + this.margin.left + this.margin.right);
+    	widget.tssvg.attr("height", height + this.margin.top + this.margin.bottom);
+    	this.width = width;
+    	this.height = height;
     },
 
 

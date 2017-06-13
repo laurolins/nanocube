@@ -9,12 +9,6 @@ define(['interact'],function(interact){
             edges: { left: true, right: true, bottom: true, top: true }
         })
         .on('resizemove', resizeMoveListener);
-
-    interact('.resize')
-        .resizable({
-            edges: { left: true, right: true, bottom: true, top: true }
-        })
-        .on('resizemove', resizeMoveListener);
     
     function dragMoveListener (event) {
         var target = event.target,
@@ -41,9 +35,9 @@ define(['interact'],function(interact){
         target.style.width  = event.rect.width + 'px';
         target.style.height = event.rect.height + 'px';
         
-        // translate when resizing from top or left edges
-        x += event.deltaRect.left;
-        y += event.deltaRect.top;
+        // translate when resizing from top or left edges; not sure if I like this
+        // x += event.deltaRect.left;
+        // y += event.deltaRect.top;
         
         target.style.webkitTransform = target.style.transform =
             'translate(' + x + 'px,' + y + 'px)';

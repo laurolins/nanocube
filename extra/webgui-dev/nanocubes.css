@@ -43,7 +43,7 @@ canvas {
 .timeseries{
     position: relative;
     overflow-y:hidden;
-    overflow-x:auto;
+    overflow-x:hidden;
     float:left;
     background-color: #555;
     margin: 5px;
@@ -52,8 +52,23 @@ canvas {
     pointer-events:visible;
 }
 
+.toplayer, .midlayer, .botlayer{
+    position: relative;
+    pointer-events:visible;
+}
+
+.midlayer{
+    display: flex;
+    align-items: center;
+}
+
+
 .spd-slider, .play-btn, .as-slider{
     float:right;
+}
+
+.play-btn{
+    height: 40px;
 }
 
 .tatext, .tap-btn, .tam-btn, .taa-btn{
@@ -112,10 +127,10 @@ canvas {
     stroke:none;
 }
 
-text {
+/*text {
     fill: #fff;
     stroke:none;
-}
+}*/
 
 .brush {
     stroke: #fff;
