@@ -345,7 +345,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	leftpan.on("mouseover", function(){
 		leftpan.attr('fill', 'blue');
 		pan = setInterval(function(){
-            widget.zoom.translateBy(widget.ts, 10, 0);
+			var sel = widget.getSelection();
+		    var start = sel.global.start;
+		    var end = sel.global.end;
+		    var t = (end - start) / 500000000;
+            widget.zoom.translateBy(widget.ts, t, 0);
         }, 1);
 	});
 
@@ -381,7 +385,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	rightpan.on("mouseover", function(){
 		rightpan.attr('fill', 'blue');
 		pan2 = setInterval(function(){
-            widget.zoom.translateBy(widget.ts, -10, 0);
+            var sel = widget.getSelection();
+		    var start = sel.global.start;
+		    var end = sel.global.end;
+		    var t = (end - start) / 500000000;
+            widget.zoom.translateBy(widget.ts, -t, 0);
         }, 1);
 	});
 
@@ -444,6 +452,67 @@ function Timeseries(opts,getDataCallback,updateCallback){
             widget.update();
         }).html("auto");
 
+    var rst = {
+    	x_new: widget.x_new,
+    	x: widget.x,
+    	y: widget.y,
+    	playstop: false,
+    	ref: {},
+    	currentstep: 0,
+    	currentspeed: 0,
+    	brushsnap: 0,
+    	brushselection: null,
+    	brushtime: undefined,
+    	tainterval: null,
+    	tafactor: undefined,
+    	zoomtransform: d3.zoomTransform(widget.ts.node())
+    };
+
+    widget.resetbtn = widget.botlayer.append('button')
+    	.attr('class', 'rst-btn')
+    	.on('click', function(){
+    		play_stop = rst.playstop;
+    		ref = rst.ref;
+    		widget.x = rst.x;
+    		widget.x_new = rst.x_new;
+    		widget.y = rst.y;
+    		currentstep = rst.currentstep;
+    		currentspeed = rst.currentspeed;
+    		brushsnap = rst.brushsnap;
+    		widget.brushtime = rst.brushtime;
+    		if(rst.tainterval !== null)
+    			widget.interval = rst.tainterval;
+    		widget.tafactor = rst.tafactor;
+    		ashandle.attr("cx", asx(currentstep));
+    		handle.attr("cx", sx(currentspeed));
+    		bshandle.attr("cx", bsx(brushsnap));
+
+    		widget.zoom.transform(widget.ts, rst.zoomtransform);
+    		widget.brush.move(widget.gbrush, rst.brushselection);
+
+    		widget.update();
+    		widget.playTime(play_stop, currentspeed, currentstep, ref);
+    	}).html("Reset");
+
+    widget.sdbtn = widget.botlayer.append('button')
+    	.attr('class', 'rst-btn')
+    	.on('click', function(){
+    		rst.x_new = widget.x_new;
+    		rst.x = widget.x;
+    		rst.y = widget.y;
+    		rst.playstop = play_stop;
+    		rst.ref = ref;
+    		rst.currentstep = currentstep;
+    		rst.currentspeed = currentspeed;
+    		rst.brushsnap = brushsnap;
+    		rst.brushselection = d3.brushSelection(widget.gbrush.node());
+    		rst.brushtime = widget.brushtime;
+    		rst.tainterval = widget.interval;
+    		rst.tafactor = widget.tafactor;
+    		rst.zoomtransform = d3.zoomTransform(widget.ts.node());
+
+    	}).html("Set default");
+
     widget.margin = margin;
     widget.width = width;
     widget.height = height;
@@ -459,8 +528,9 @@ Timeseries.prototype={
         var start = sel.global.start;
         var end = sel.global.end;
 
-        if(widget.tafactor === undefined)
+        if(widget.tafactor === undefined){
         	widget.interval = (end - start+1) / 1000 / this.width * 1;
+        }
         else{
         	widget.interval = widget.interval * Math.pow(2, widget.tafactor);
         	if(widget.interval < widget.unitTime)
@@ -500,7 +570,13 @@ Timeseries.prototype={
             if (widget._datasrc[d].disabled){
                 continue;
             }
-            var p = this.getDataCallback(d,start, end, widget.interval);
+            var p;
+            try{
+            	p = this.getDataCallback(d,start, end, widget.interval);
+            }
+            catch(err){
+            	return;
+            }
             for (var k in p){
                 promises[k] = p[k];
             }

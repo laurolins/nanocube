@@ -101,6 +101,8 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this._opts = opts;
     this._logaxis = opts.logaxis;
     this._name = name;
+
+    widget.update();
 }
 
 GroupedBarChart.prototype = {

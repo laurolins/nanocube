@@ -75,6 +75,10 @@ canvas {
     float:left;
 }
 
+.rst-btn{
+    float:right;
+}
+
 .ticks {
   font: 10px sans-serif;
   
