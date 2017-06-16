@@ -307,8 +307,8 @@ class NanocubeInput:
 
     def processDate(self, data):
         for i,d in enumerate(self.timecol):
-            if self.datefmt is None and data[d].dtype == 'int64' :
-                data[d] *= 1e9
+            if self.datefmt is None and pd.isnumeric(data[d]).all():
+                data[d] = pd.to_numeric(data[d])*1e9
 
             if (self.datefmt):
                 data[d] = pd.to_datetime(data[d].astype(str),
