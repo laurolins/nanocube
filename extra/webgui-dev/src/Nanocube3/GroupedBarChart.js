@@ -210,16 +210,21 @@ GroupedBarChart.prototype = {
         this.updateSVG();
 
         var widget = this;
-        
+
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
+
+        console.log(this.svg.selectAll('.bar'));
         
-        //append new bars and style them
+        //append new bars
         bars.enter()
             .append('rect')
             .attr('class', 'bar')
             .on('click', function(d) { widget.clickFunc(d);})//toggle callback
-            .attr('x', 0)
+            .append("svg:title"); //tooltip
+
+        //set shape
+        bars.attr('x', 0)
             .attr('y', function(d){return widget.y0(d.cat) + //category
                                    widget.y1(d.color);}) //selection group
             .style('fill', function(d){
@@ -241,9 +246,7 @@ GroupedBarChart.prototype = {
                     w = 0;
                 }
                 return w;
-            })
-            .append("svg:title"); //tooltip
-
+            });
         
         //add tool tip
         bars.select('title').text(function(d){
