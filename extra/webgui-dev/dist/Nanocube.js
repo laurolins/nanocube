@@ -596,6 +596,8 @@ GroupedBarChart.prototype = {
         this.updateSVG();
 
         var widget = this;
+
+        // this.svg.selectAll('.bar').data([]).exit().remove();
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
@@ -2350,8 +2352,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("x", 10)
     	.attr("y", 15)
     	.text("No Brush Selected")
-    	.attr("font-family", "sans-serif")
-    	.attr("font-size", "12px")
+    	.attr("font-family", "Courier New, monospace")
+    	.attr("font-size", "10px")
     	.attr("text-anchor", "start")
     	.attr("fill", "white");
 
@@ -2436,9 +2438,9 @@ function Timeseries(opts,getDataCallback,updateCallback){
 			var sel = widget.getSelection();
 		    var start = sel.global.start;
 		    var end = sel.global.end;
-		    var t = (end - start) / 500000000;
+		    var t = (end - start) / 1000000000;
             widget.zoom.translateBy(widget.ts, t, 0);
-        }, 1);
+        }, 10);
 	});
 
 	leftpan.on('mouseleave', function(){
@@ -2476,9 +2478,9 @@ function Timeseries(opts,getDataCallback,updateCallback){
             var sel = widget.getSelection();
 		    var start = sel.global.start;
 		    var end = sel.global.end;
-		    var t = (end - start) / 500000000;
+		    var t = (end - start) / 1000000000;
             widget.zoom.translateBy(widget.ts, -t, 0);
-        }, 1);
+        }, 10);
 	});
 
 	rightpan.on('mouseleave', function(){
@@ -2606,8 +2608,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.height = height;
     widget.gX = gX;
     widget.gY = gY;
-
-    widget.update();
 
 }
 

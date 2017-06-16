@@ -210,6 +210,8 @@ GroupedBarChart.prototype = {
         this.updateSVG();
 
         var widget = this;
+
+        // this.svg.selectAll('.bar').data([]).exit().remove();
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);

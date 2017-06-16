@@ -98,7 +98,7 @@ def timeseriesWidget(v,w):
         'css':{
             'opacity': 0.8,
             'bottom': '30px',
-            'height': '100px',
+            'height': '150px',
             'width': '%dpx'%(int(w)),
             'position': 'absolute',
             'background-color': '#555',
