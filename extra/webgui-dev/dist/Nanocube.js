@@ -596,8 +596,6 @@ GroupedBarChart.prototype = {
         this.updateSVG();
 
         var widget = this;
-
-        // this.svg.selectAll('.bar').data([]).exit().remove();
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
@@ -607,10 +605,7 @@ GroupedBarChart.prototype = {
             .append('rect')
             .attr('class', 'bar')
             .on('click', function(d) { widget.clickFunc(d);})//toggle callback
-            .append("svg:title"); //tooltip
-
-        //set shape
-        bars.attr('x', 0)
+            .attr('x', 0)
             .attr('y', function(d){return widget.y0(d.cat) + //category
                                    widget.y1(d.color);}) //selection group
             .style('fill', function(d){
@@ -632,7 +627,9 @@ GroupedBarChart.prototype = {
                     w = 0;
                 }
                 return w;
-            });
+            })
+            .append("svg:title"); //tooltip
+
         
         //add tool tip
         bars.select('title').text(function(d){
@@ -2395,6 +2392,10 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.brush = d3.brushX()
 		.extent([[0, 0], [width, height]])
 		.on("end", function(){
+			if(widget.iterating){
+				widget.iterating = false;
+				return;
+			}
 			if(!(d3.event.sourceEvent instanceof MouseEvent)) return;
 			if(!d3.event.sourceEvent) return;
 			if(!d3.event.selection){
@@ -2608,6 +2609,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.height = height;
     widget.gX = gX;
     widget.gY = gY;
+    widget.iterating = false;
 
 }
 
@@ -2910,10 +2912,9 @@ Timeseries.prototype={
         			   asfunc[step-1].offset(bseldate[1], direction)]
         			   .map(widget.x_new);
         }
-        
+        widget.iterating = true;
         widget.brushtime = newbsel.map(widget.x_new.invert);
         widget.brush.move(widget.gbrush, newbsel);
-        widget.update();
         widget.updateCallback(widget._encodeArgs());
     },
 

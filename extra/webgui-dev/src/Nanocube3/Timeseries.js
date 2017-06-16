@@ -305,6 +305,10 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.brush = d3.brushX()
 		.extent([[0, 0], [width, height]])
 		.on("end", function(){
+			if(widget.iterating){
+				widget.iterating = false;
+				return;
+			}
 			if(!(d3.event.sourceEvent instanceof MouseEvent)) return;
 			if(!d3.event.sourceEvent) return;
 			if(!d3.event.selection){
@@ -518,6 +522,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.height = height;
     widget.gX = gX;
     widget.gY = gY;
+    widget.iterating = false;
 
 }
 
@@ -820,10 +825,9 @@ Timeseries.prototype={
         			   asfunc[step-1].offset(bseldate[1], direction)]
         			   .map(widget.x_new);
         }
-        
+        widget.iterating = true;
         widget.brushtime = newbsel.map(widget.x_new.invert);
         widget.brush.move(widget.gbrush, newbsel);
-        widget.update();
         widget.updateCallback(widget._encodeArgs());
     },
 
