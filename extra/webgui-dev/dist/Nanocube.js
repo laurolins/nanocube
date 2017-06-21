@@ -600,14 +600,17 @@ GroupedBarChart.prototype = {
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
 
-        console.log(this.svg.selectAll('.bar'));
-        
+        // if(bars._groups[0].length === 0)
+        //     return;
+
         //append new bars
         bars.enter()
             .append('rect')
             .attr('class', 'bar')
             .on('click', function(d) { widget.clickFunc(d);})//toggle callback
             .append("svg:title"); //tooltip
+
+        bars = this.svg.selectAll('.bar').data(fdata);
 
         //set shape
         bars.attr('x', 0)
@@ -841,6 +844,10 @@ var Map=function(opts,getDataCallback,updateCallback){
             });
         }                        
     }
+
+    this.colorsUsed = [];
+    this.colorNumber = {};
+    this.newLayerColors = {};
 };
 
 //Setup static variables and functions
@@ -1050,8 +1057,24 @@ Map.prototype = {
 
         map.addControl(map.drawControl);
 
+        var firstShape = true;
+        var firstEdit = true;
+        var latlng;
+
         map.on('draw:created', function (e) {
             drawnItems.addLayer(e.layer);
+
+            if(firstShape){
+                console.log(e.layer);
+                var p1 = e.layer._latlngs[0];
+                var p2 = e.layer._latlngs[1];
+                var p3 = e.layer._latlngs[2];
+                latlng = [2 * (p1.lat + p2.lat) / 3, (p2.lng + p3.lng) / 2];
+                firstShape = false;
+            }
+
+            widget.colorNumber[e.layer.options.color] = widget.colorsUsed.length;
+            widget.colorsUsed.push(e.layer.options.color);
 
             //add constraints to the other maps
             widget.updateCallback(widget._encodeArgs(),
@@ -1066,9 +1089,50 @@ Map.prototype = {
             map.drawControl.setDrawingOptions(options);
         });
 
-        map.on('draw:edited', function (e) {
-            widget.updateCallback(widget._encodeArgs()) ;          
+        
+
+        map.on('draw:editstart', function(e){
+
+            if(firstEdit){
+                var popup = L.popup()
+                    .setLatLng(latlng)
+                    .setContent('<p>Double click inside a polygon to change its color!</p>')
+                    .openOn(map);
+                firstEdit = false;
+            }
+
+            drawnItems.on('dblclick', function(e){
+                var cn = widget.colorNumber[e.layer.options.color] + 1;
+                if(cn >= widget.colorsUsed.length)
+                    cn = 0;
+
+                e.layer.setStyle({color: widget.colorsUsed[cn]});
+                widget.newLayerColors[e.layer._leaflet_id] = e.layer.options.color;
+                widget.updateCallback(widget._encodeArgs(),
+                                  [{
+                                      type:"SPATIAL",
+                                      key:e.layer.options.color
+                                  }]);
+            });
+
         });
+
+        map.on('draw:edited', function (e) {
+            widget.updateCallback(widget._encodeArgs());
+        });
+
+        map.on('draw:editstop', function (e) {
+            drawnItems.eachLayer(function (layer) {
+                var c = widget.newLayerColors[layer._leaflet_id];
+                if(c !== undefined){
+                    layer.setStyle({color: c});
+                }
+            });
+            drawnItems.off('dblclick');
+            widget.updateCallback(widget._encodeArgs());
+        });
+
+                    
 
         map.on('draw:editing', function (e) {
             widget.updateCallback(widget._encodeArgs()) ;          
@@ -1314,7 +1378,7 @@ Map.prototype = {
                             
                             valcolor = valcolor.map(function(d) {return {val:d, color: JSON.parse(JSON.stringify(cmap(d)))};});
                             widget.updateLegend(widget._map,valcolor);
-                            console.log(widget._map);
+                            console.log(widget._map); 
                         }
                     }
                     
@@ -2437,13 +2501,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	
 	var pan;
 	leftpan.on("mouseover", function(){
+		console.log("Mouseover");
 		leftpan.attr('fill', 'blue');
 		pan = setInterval(function(){
-			var sel = widget.getSelection();
-		    var start = sel.global.start;
-		    var end = sel.global.end;
-		    var t = (end - start) / 1000000000;
-            widget.zoom.translateBy(widget.ts, t, 0);
+			var transform = d3.zoomTransform(widget.ts.node());
+            widget.zoom.translateBy(widget.ts, 20 / transform.k, 0);
         }, 10);
 	});
 
@@ -2479,11 +2541,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	rightpan.on("mouseover", function(){
 		rightpan.attr('fill', 'blue');
 		pan2 = setInterval(function(){
-            var sel = widget.getSelection();
-		    var start = sel.global.start;
-		    var end = sel.global.end;
-		    var t = (end - start) / 1000000000;
-            widget.zoom.translateBy(widget.ts, -t, 0);
+            var transform = d3.zoomTransform(widget.ts.node());
+            widget.zoom.translateBy(widget.ts, -20 / transform.k, 0);
         }, 10);
 	});
 
@@ -2949,6 +3008,7 @@ Timeseries.prototype={
     }
 
 };
+
 /*global $ d3 jsep colorbrewer Expression Map Timeseries GroupedBarChart */
 
 var Viewer = function(opts){

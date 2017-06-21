@@ -347,13 +347,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	
 	var pan;
 	leftpan.on("mouseover", function(){
+		console.log("Mouseover");
 		leftpan.attr('fill', 'blue');
 		pan = setInterval(function(){
-			var sel = widget.getSelection();
-		    var start = sel.global.start;
-		    var end = sel.global.end;
-		    var t = (end - start) / 1000000000;
-            widget.zoom.translateBy(widget.ts, t, 0);
+			var transform = d3.zoomTransform(widget.ts.node());
+            widget.zoom.translateBy(widget.ts, 20 / transform.k, 0);
         }, 10);
 	});
 
@@ -389,11 +387,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	rightpan.on("mouseover", function(){
 		rightpan.attr('fill', 'blue');
 		pan2 = setInterval(function(){
-            var sel = widget.getSelection();
-		    var start = sel.global.start;
-		    var end = sel.global.end;
-		    var t = (end - start) / 1000000000;
-            widget.zoom.translateBy(widget.ts, -t, 0);
+            var transform = d3.zoomTransform(widget.ts.node());
+            widget.zoom.translateBy(widget.ts, -20 / transform.k, 0);
         }, 10);
 	});
 

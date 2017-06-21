@@ -214,14 +214,17 @@ GroupedBarChart.prototype = {
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
 
-        console.log(this.svg.selectAll('.bar'));
-        
+        // if(bars._groups[0].length === 0)
+        //     return;
+
         //append new bars
         bars.enter()
             .append('rect')
             .attr('class', 'bar')
             .on('click', function(d) { widget.clickFunc(d);})//toggle callback
             .append("svg:title"); //tooltip
+
+        bars = this.svg.selectAll('.bar').data(fdata);
 
         //set shape
         bars.attr('x', 0)
