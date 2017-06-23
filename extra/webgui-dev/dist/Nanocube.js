@@ -1069,7 +1069,8 @@ Map.prototype = {
                 var p1 = e.layer._latlngs[0];
                 var p2 = e.layer._latlngs[1];
                 var p3 = e.layer._latlngs[2];
-                latlng = [2 * (p1.lat + p2.lat) / 3, (p2.lng + p3.lng) / 2];
+                latlng = [2 * Math.abs(p1.lat - p2.lat) / 3 + Math.min(p1.lat, p2.lat), 
+                          (p2.lng + p3.lng) / 2];
                 firstShape = false;
             }
 
