@@ -40,6 +40,7 @@ var Viewer = function(opts){
     for (var d in datasrc){
         var exp = datasrc[d].expr;
         var colormap = datasrc[d].colormap;
+        var colormap2 = datasrc[d].colormap2;
         try{
             //make an expression
             datasrc[d].expr = new Expression(datasrc[d].expr);
@@ -47,6 +48,11 @@ var Viewer = function(opts){
                 //make a copy of the colormap
                 datasrc[d].colormap = colorbrewer[colormap][9].slice(0);
                 datasrc[d].colormap.reverse();
+            }
+            if(typeof colormap2 == 'string'){
+                //make a copy of the colormap
+                datasrc[d].colormap2 = colorbrewer[colormap2][9].slice(0);
+                datasrc[d].colormap2.reverse();
             }
         }
         catch(err){

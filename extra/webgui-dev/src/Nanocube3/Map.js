@@ -55,6 +55,7 @@ var Map=function(opts,getDataCallback,updateCallback){
     this.colorsUsed = [];
     this.colorNumber = {};
     this.newLayerColors = {};
+
 };
 
 //Setup static variables and functions
@@ -281,6 +282,7 @@ Map.prototype = {
                 firstShape = false;
             }
 
+            //keep track of color
             widget.colorNumber[e.layer.options.color] = widget.colorsUsed.length;
             widget.colorsUsed.push(e.layer.options.color);
 
@@ -310,6 +312,7 @@ Map.prototype = {
             }
 
             drawnItems.on('dblclick', function(e){
+                console.log(e.layer);
                 var cn = widget.colorNumber[e.layer.options.color] + 1;
                 if(cn >= widget.colorsUsed.length)
                     cn = 0;
@@ -351,8 +354,79 @@ Map.prototype = {
             widget.updateCallback(widget._encodeArgs());
         });
 
+        $(document).on('dragenter', function (e) 
+        {
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        $(document).on('dragover', function (e) 
+        {
+          e.stopPropagation();
+          e.preventDefault();
+        });
+        $(document).on('drop', function (e) 
+        {
+            e.stopPropagation();
+            e.preventDefault();
+        }); 
+
+        var obj = $('#'+this._name);
+        console.log(obj);
+        obj.on('dragenter', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        obj.on('dragover', function (e) {
+             e.stopPropagation();
+             e.preventDefault();
+        });
+        obj.on('drop', function (e) {
+            e.preventDefault();
+            var files = e.originalEvent.dataTransfer.files;
+            var r = new FileReader();
+            r.onload = function(e) {
+                try{
+                    var gj = L.geoJson(JSON.parse(e.target.result), {
+                        style: {
+                            "color": Map.nextcolor(),
+                            "opacity": 0.7
+                        }
+                    });
+                    var col;
+                    Object.keys(gj._layers).map(function(k){
+                        if(gj._layers[k]._layers){
+                            Object.keys(gj._layers[k]._layers).map(function(l){
+                                drawnItems.addLayer(gj._layers[k]._layers[l]);
+                                col = gj._layers[k]._layers[l].options.color;
+                            });
+                        }
+                        else{
+                            drawnItems.addLayer(gj._layers[k]);
+
+                            col = gj._layers[k].options.color;
+                        }
+                    });
+                    //keep track of color
+                    widget.colorNumber[col] = widget.colorsUsed.length;
+                    widget.colorsUsed.push(col);
+
+                    widget.updateCallback(widget._encodeArgs(),
+                        [{
+                            type:"SPATIAL",
+                            key:col
+                        }]);
+                }
+                catch(err){
+                    console.log(err);
+                }
+            };
+            for (var i = 0; i < files.length; i++){
+                r.readAsText(files[i]);
+            }
+        });
 
         this._drawnItems = drawnItems;
+
     },
 
     addConstraint:function(constraint){
