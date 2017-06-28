@@ -1267,22 +1267,30 @@ Map.prototype = {
 
 
         res.global = {};
-        res.global.coord = [[sw.lat,sw.lng],
+        res.global.coord = [[[sw.lat,sw.lng],
                             [sw.lat,ne.lng],
                             [ne.lat,ne.lng],
-                            [ne.lat,sw.lng]];
+                            [ne.lat,sw.lng]]];
 
         res.global.zoom = map.getZoom() + 8;
 
         //add polygonal constraints  
         this._drawnItems.getLayers().forEach(function(d){
-            res[d.options.color]={};
-            res[d.options.color] = {
-                coord: d._latlngs.map(function(d){
-                    return [d.lat,d.lng];
-                }),
-                zoom: map.getZoom() + 8
-            };                                     
+            if(res[d.options.color] && res[d.options.color].coord){
+                res[d.options.color].coord
+                    .push(d._latlngs.map(function(d){
+                        return [d.lat,d.lng];
+                    }));
+            }
+            else{
+                res[d.options.color] = {};
+                res[d.options.color] = {
+                    coord: [d._latlngs.map(function(d){
+                        return [d.lat,d.lng];
+                    })],
+                    zoom: map.getZoom() + 8
+                };
+            }                               
         });
         return res;
     },
@@ -1560,14 +1568,31 @@ Query.prototype = {
 
         });
 
-        var coordstr = sel.coord.map(function(c){
-            c[0] = Math.max(-85,c[0]);
-            c[0] = Math.min(85,c[0]);
-            c[1] = Math.max(-180,c[1]);
-            c[1] = Math.min(180,c[1]);
-            return c[1].toFixed(4) +","+ c[0].toFixed(4);
-        });
-        coordstr = coordstr.join(',');
+        var coordstr;
+        if(sel.coord.length > 1){
+            coordstr = sel.coord.map(function(p){
+                var cs = p.map(function(c){
+                    c[0] = Math.max(-85,c[0]);
+                    c[0] = Math.min(85,c[0]);
+                    c[1] = Math.max(-180,c[1]);
+                    c[1] = Math.min(180,c[1]);
+                    return c[1].toFixed(4) +","+ c[0].toFixed(4);
+                });
+                cs = cs.join(',');
+                return cs;
+            });
+            coordstr = coordstr.join(';');
+        }
+        else{
+            coordstr = sel.coord[0].map(function(c){
+                c[0] = Math.max(-85,c[0]);
+                c[0] = Math.min(85,c[0]);
+                c[1] = Math.max(-180,c[1]);
+                c[1] = Math.min(180,c[1]);
+                return c[1].toFixed(4) +","+ c[0].toFixed(4);
+            });
+            coordstr = coordstr.join(',');
+        }
 
         var zoom = sel.zoom;
         var constraint = 'r(\"' + varname + '\",degrees_mask(\"' +
@@ -2816,6 +2841,7 @@ Timeseries.prototype={
         });
 
         var promkeys = Object.keys(promises);
+        console.log(promkeys);
         $.when.apply($,promarray).done(function(){
             var results = arguments;
             var res = {};
@@ -3254,7 +3280,7 @@ Viewer.prototype = {
     },
 
     update: function(skip,constraints,name,args,datasrc){
-        //console.log("skip: ",skip);
+        // console.log("skip: ",skip);
 
         skip = skip || [];
         constraints = constraints || [];
@@ -3286,9 +3312,13 @@ Viewer.prototype = {
     constructQuery: function(nc,skip){
         skip = skip || [];
 
+        console.log("skip: ",skip);
+
         var viewer = this;
         var queries = {};
         queries.global = nc.query();
+
+        console.log(Object.keys(this._widget));
 
         //brush
         Object.keys(this._widget).forEach(function(d){
@@ -3371,6 +3401,7 @@ Viewer.prototype = {
             var nc = viewer._nanocubes[d];
             cq[d]=viewer.constructQuery(nc,[varname]);
         });
+
 
         //organize the queries by selection
         var selq = {};

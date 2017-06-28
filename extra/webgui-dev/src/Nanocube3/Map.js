@@ -474,22 +474,30 @@ Map.prototype = {
 
 
         res.global = {};
-        res.global.coord = [[sw.lat,sw.lng],
+        res.global.coord = [[[sw.lat,sw.lng],
                             [sw.lat,ne.lng],
                             [ne.lat,ne.lng],
-                            [ne.lat,sw.lng]];
+                            [ne.lat,sw.lng]]];
 
         res.global.zoom = map.getZoom() + 8;
 
         //add polygonal constraints  
         this._drawnItems.getLayers().forEach(function(d){
-            res[d.options.color]={};
-            res[d.options.color] = {
-                coord: d._latlngs.map(function(d){
-                    return [d.lat,d.lng];
-                }),
-                zoom: map.getZoom() + 8
-            };                                     
+            if(res[d.options.color] && res[d.options.color].coord){
+                res[d.options.color].coord
+                    .push(d._latlngs.map(function(d){
+                        return [d.lat,d.lng];
+                    }));
+            }
+            else{
+                res[d.options.color] = {};
+                res[d.options.color] = {
+                    coord: [d._latlngs.map(function(d){
+                        return [d.lat,d.lng];
+                    })],
+                    zoom: map.getZoom() + 8
+                };
+            }                               
         });
         return res;
     },

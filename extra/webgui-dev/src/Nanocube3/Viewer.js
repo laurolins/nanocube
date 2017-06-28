@@ -168,7 +168,7 @@ Viewer.prototype = {
     },
 
     update: function(skip,constraints,name,args,datasrc){
-        //console.log("skip: ",skip);
+        // console.log("skip: ",skip);
 
         skip = skip || [];
         constraints = constraints || [];
@@ -200,9 +200,13 @@ Viewer.prototype = {
     constructQuery: function(nc,skip){
         skip = skip || [];
 
+        // console.log("skip: ",skip);
+
         var viewer = this;
         var queries = {};
         queries.global = nc.query();
+
+        // console.log(Object.keys(this._widget));
 
         //brush
         Object.keys(this._widget).forEach(function(d){
@@ -285,6 +289,7 @@ Viewer.prototype = {
             var nc = viewer._nanocubes[d];
             cq[d]=viewer.constructQuery(nc,[varname]);
         });
+
 
         //organize the queries by selection
         var selq = {};

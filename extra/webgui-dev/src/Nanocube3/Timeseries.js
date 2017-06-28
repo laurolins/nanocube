@@ -587,6 +587,7 @@ Timeseries.prototype={
         });
 
         var promkeys = Object.keys(promises);
+        console.log(promkeys);
         $.when.apply($,promarray).done(function(){
             var results = arguments;
             var res = {};

@@ -43,14 +43,31 @@ Query.prototype = {
 
         });
 
-        var coordstr = sel.coord.map(function(c){
-            c[0] = Math.max(-85,c[0]);
-            c[0] = Math.min(85,c[0]);
-            c[1] = Math.max(-180,c[1]);
-            c[1] = Math.min(180,c[1]);
-            return c[1].toFixed(4) +","+ c[0].toFixed(4);
-        });
-        coordstr = coordstr.join(',');
+        var coordstr;
+        if(sel.coord.length > 1){
+            coordstr = sel.coord.map(function(p){
+                var cs = p.map(function(c){
+                    c[0] = Math.max(-85,c[0]);
+                    c[0] = Math.min(85,c[0]);
+                    c[1] = Math.max(-180,c[1]);
+                    c[1] = Math.min(180,c[1]);
+                    return c[1].toFixed(4) +","+ c[0].toFixed(4);
+                });
+                cs = cs.join(',');
+                return cs;
+            });
+            coordstr = coordstr.join(';');
+        }
+        else{
+            coordstr = sel.coord[0].map(function(c){
+                c[0] = Math.max(-85,c[0]);
+                c[0] = Math.min(85,c[0]);
+                c[1] = Math.max(-180,c[1]);
+                c[1] = Math.min(180,c[1]);
+                return c[1].toFixed(4) +","+ c[0].toFixed(4);
+            });
+            coordstr = coordstr.join(',');
+        }
 
         var zoom = sel.zoom;
         var constraint = 'r(\"' + varname + '\",degrees_mask(\"' +
