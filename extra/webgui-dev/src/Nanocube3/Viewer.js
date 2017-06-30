@@ -82,6 +82,7 @@ Viewer.prototype = {
     
     setupWidget:function(id, widget, levels){
         var options = $.extend(true, {}, widget);
+        // console.log(typeof options);
         var viewer = this;
         
         options.name = id;
@@ -107,12 +108,13 @@ Viewer.prototype = {
             });
             
         case 'cat':
+            options.compare = true;
             this._catoverlay.append(newdiv);
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
-            },function(args,constraints){
+            },function(args,constraints,compare){
                 return viewer.update([id],constraints,
-                                     id,args);
+                                     id,args, false, compare);
             });
             
         case 'id':
@@ -167,7 +169,7 @@ Viewer.prototype = {
         return binsec;
     },
 
-    update: function(skip,constraints,name,args,datasrc){
+    update: function(skip,constraints,name,args,datasrc,compare){
         // console.log("skip: ",skip);
 
         skip = skip || [];
@@ -179,6 +181,15 @@ Viewer.prototype = {
             for (var d in viewer._datasrc){
                 viewer._datasrc[d].disabled = datasrc[d].disabled;
             }
+        }
+
+        if(compare !== undefined){
+            Object.keys(viewer._widget).forEach(function(d){
+                if (skip.indexOf(d) == -1){
+                    viewer._widget[d].compare = compare;
+                    viewer._widget[d].adjustToCompare();
+                }
+            });
         }
         
         //update the url

@@ -429,6 +429,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
             widget._opts.alpha_order = !widget._opts.alpha_order;
             widget.redraw(widget.lastres);
         });
+
+    this.cmpbtn = d3.select(id)
+        .append('button')
+        .attr('class','cmp-btn')
+        .on('click',function(){
+            widget.runCompare();
+        }).html('Compare');
     
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
@@ -482,6 +489,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.x=x;
     this.xAxis = xAxis;
     this.yAxis = yAxis;
+    this.compare = false;
     
     this._datasrc = opts.datasrc;
     this._opts = opts;
@@ -548,9 +556,26 @@ GroupedBarChart.prototype = {
                 var cidx = Math.floor(colormap.length/2);
                 c = colormap[cidx];
             }
-            
+
+            var c1, c2;
+            if(widget.compare){
+                var cm = widget._datasrc[label[1]].colormap;
+                c1 = cm[Math.floor(cm.length/2)];
+                cm = widget._datasrc[label[1]].colormap2;
+                c2 = cm[Math.floor(cm.length/2)];
+            }
             //Add color
             var row = res[curr].data.map(function(d){
+                if(widget.compare){
+                    if(widget.selection.first.findIndex(function(b){
+                        return (b.cat == d.cat); }) != -1){
+                        d.color2 = c1;
+                    }
+                    else if(widget.selection.second.findIndex(function(b){
+                        return (b.cat == d.cat); }) != -1){
+                        d.color2 = c2;
+                    }
+                }
                 d.color = c;
                 return d;
             });
@@ -582,7 +607,7 @@ GroupedBarChart.prototype = {
         }
 
         var fdata = this.flattenData(res);
-        
+
         var x =this.x;
         var y0 =this.y0;
         var y1 =this.y1;
@@ -636,6 +661,24 @@ GroupedBarChart.prototype = {
                 }
                 return w;
             });
+
+        if(widget.compare){
+            bars.style('fill', function(d){
+                if(widget.selection.first == [] || 
+                   widget.selection.first.findIndex(function(b){
+                        return (b.cat == d.cat);}) != -1){
+                    return d.color2;
+                }
+                else if(widget.selection.second == [] || 
+                   widget.selection.second.findIndex(function(b){
+                        return (b.cat == d.cat);}) != -1){
+                    return d.color2;
+                }
+                else{
+                    return 'gray';
+                }
+            });
+        }
         
         //add tool tip
         bars.select('title').text(function(d){
@@ -788,7 +831,51 @@ GroupedBarChart.prototype = {
 
         //update title with cat count
         svg.select('text').text(this._opts.title+' ('+y0.domain().length+')');
-    }    
+    },
+
+    runCompare: function(){
+        var widget = this;
+        d3.event.stopPropagation();
+        if(widget.cmpbtn.html() == "Compare"){
+            delete widget.selection.brush;
+            widget.update();
+            widget.cmpbtn.html("1st Selection");
+        }
+        else if (widget.cmpbtn.html() == "1st Selection"){
+            widget.selection.first = widget.selection.brush;
+            if(widget.selection.first === undefined)
+                widget.selection.first = [];
+            widget.cmpbtn.html("2nd Selection");
+            widget.first = widget.selection.first;
+            delete widget.selection.first;
+            delete widget.selection.brush;
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());
+        }
+        else if (widget.cmpbtn.html() == "2nd Selection"){
+            widget.selection.first = widget.first;
+            delete widget.first;
+            widget.compare = true;
+            widget.selection.second = widget.selection.brush;
+            if(widget.selection.second === undefined)
+                widget.selection.second = [];
+            widget.cmpbtn.html("Reset");
+            delete widget.selection.brush;
+            widget.update();
+            widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+        }
+        else{
+            widget.compare = false;
+            delete widget.selection.first;
+            delete widget.selection.second;
+            widget.cmpbtn.html("Compare");
+            widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+        }
+    },
+
+    adjustToCompare: function(){
+        return;
+    }
 };
 
 /*global $ L colorbrewer d3 window */
@@ -807,6 +894,8 @@ var Map=function(opts,getDataCallback,updateCallback){
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
     this._opts = opts;
+    this.compare = false;
+
     
     
     var map = this._initMap();
@@ -891,6 +980,7 @@ Map.prototype = {
             
             //set colormap
             layer._colormap = widget._datasrc[d].colormap.map(colorfunc);
+            layer._colormap2 = widget._datasrc[d].colormap2.map(colorfunc);
 
             //htmllabel
             var htmllabel='<i style="background:'+
@@ -1078,6 +1168,7 @@ Map.prototype = {
             //keep track of color
             widget.colorNumber[e.layer.options.color] = widget.colorsUsed.length;
             widget.colorsUsed.push(e.layer.options.color);
+            widget.newLayerColors[e.layer._leaflet_id] = e.layer.options.color;
 
             //add constraints to the other maps
             widget.updateCallback(widget._encodeArgs(),
@@ -1105,7 +1196,7 @@ Map.prototype = {
             }
 
             drawnItems.on('dblclick', function(e){
-                console.log(e.layer);
+                // console.log(e.layer);
                 var cn = widget.colorNumber[e.layer.options.color] + 1;
                 if(cn >= widget.colorsUsed.length)
                     cn = 0;
@@ -1164,7 +1255,6 @@ Map.prototype = {
         }); 
 
         var obj = $('#'+this._name);
-        console.log(obj);
         obj.on('dragenter', function (e) {
             e.stopPropagation();
             e.preventDefault();
@@ -1274,6 +1364,24 @@ Map.prototype = {
 
         res.global.zoom = map.getZoom() + 8;
 
+        if(this.compare){
+            if(this._drawnItems.getLayers().length === 0){
+                return res;
+            }
+            else{
+                res.brush = {};
+                res.brush.coord = [];
+                this._drawnItems.getLayers().forEach(function(d){
+                    res.brush.coord.push(d._latlngs.map(function(d){
+                        return [d.lat,d.lng];
+                    }));
+                });
+                res.brush.zoom = map.getZoom() + 8;
+                res.global = undefined;
+                return res;
+            }
+        }
+
         //add polygonal constraints  
         this._drawnItems.getLayers().forEach(function(d){
             if(res[d.options.color] && res[d.options.color].coord){
@@ -1307,20 +1415,29 @@ Map.prototype = {
         }
     },
 
-    drawCanvasLayer: function(res,canvas,cmap,opacity){
-        var arr = this.dataToArray(res.opts.pb,res.data);
-        this.render(arr,res.opts.pb,cmap,canvas,opacity);
+    drawCanvasLayer: function(res,canvas,cmap,opacity,res2,cmap2){
+        var arr;
+        if(res2){
+            arr = this.dataToArray(res.opts.pb,res.data,res2.data);
+            this.render(arr,res.opts.pb,cmap,canvas,opacity,cmap2);
+        }
+        else{
+            arr = this.dataToArray(res.opts.pb,res.data);
+            this.render(arr,res.opts.pb,cmap,canvas,opacity);
+        }
     },
 
-    dataToArray: function(pb,data){
+    dataToArray: function(pb,data,data2){
         var origin = pb.min;
         var width = pb.max.x-pb.min.x+1;
         var height = pb.max.y-pb.min.y+1;
 
         //var arr = new Array(width*height).map(function () { return 0;});
         var arr = [];
+
         //Explicit Loop for better performance
         var idx = Object.keys(data);
+        
         for (var i = 0, len = idx.length; i < len; i++) {
             var ii= idx[i];
             var d = data[ii];
@@ -1331,6 +1448,24 @@ Map.prototype = {
             }
             var _idx =  _j*width+_i;
             arr[_idx] = d.val;
+        }
+
+        if(data2){
+            var idx2 = Object.keys(data2);
+            for (var j = 0, len2 = idx2.length; j < len2; j++){
+                var jj = idx2[j];
+                var d2 = data2[jj];
+                var _i2 = d2.x - origin.x;
+                var _j2 = d2.y - origin.y;
+                if(_i2 <0 || _j2 <0 || _i2 >=width || _j2>=height){
+                    continue;
+                }
+                var _idx2 = _j2 * width + _i2;
+                if(arr[_idx2])
+                    arr[_idx2] = arr[_idx2] - d2.val;
+                else
+                    arr[_idx2] = -d2.val;
+            }
         }
         return arr;
     },
@@ -1358,7 +1493,7 @@ Map.prototype = {
         return d3.scaleLinear().domain(domain).range(colors);
     },
 
-    render: function(arr,pb,colormap,canvas,opacity){
+    render: function(arr,pb,colormap,canvas,opacity,colormap2){
         var realctx = canvas.getContext("2d");        
         var width = pb.max.x-pb.min.x+1;
         var height = pb.max.y-pb.min.y+1;
@@ -1375,13 +1510,41 @@ Map.prototype = {
         //Explicit Loop for better performance
         var idx = Object.keys(arr);
         var dom = d3.extent(colormap.domain());
+        var dom2;
+        if(colormap2)
+            dom2 = d3.extent(colormap2.domain());
 
         for (var i = 0, len = idx.length; i < len; i++) {
             var ii= idx[i];
             var v = arr[ii];
-            v = Math.max(v,dom[0]);
-            v = Math.min(v,dom[1]);            
-            var color = colormap(v);
+            if(colormap2){
+                if(v >= 0){
+                    v = Math.max(v,dom[0]);
+                    v = Math.min(v,dom[1]);
+                }
+                else{
+                    v = -v;
+                    v = Math.max(v,dom2[0]);
+                    v = Math.min(v,dom2[1]);
+                    v = -v;
+                }
+            }
+            else{
+                v = Math.max(v,dom[0]);
+                v = Math.min(v,dom[1]);
+            }
+            var color;
+            if(colormap2){
+                if(v >= 0)
+                    color = colormap(v);
+                else{
+                    v = -v;
+                    color = colormap2(v);
+                }
+            }
+            else{
+                color = colormap(v);
+            }
             color.a *= opacity;
             pixels[ii] =
                 (color.a << 24) |         // alpha
@@ -1432,15 +1595,30 @@ Map.prototype = {
                 var results = arguments;
                 promkeys.forEach(function(d,i){
                     console.log('tiletime:',window.performance.now()-startdata);
-                    
+                    if(widget.compare){
+                        var label = d.split('&-&');
+                        if(label[0] == "second")
+                            return;
+                    }
                     var res = results[i];
+                    var res2;
+                    if(widget.compare) res2 = results[i + 1];
+
                     widget._renormalize= true;
 
                     if(widget._renormalize){
                         var cmap = widget.normalizeColorMap(res.data,
                                                             layer._colormap,
                                                             widget._logheatmap);
+                        var cmap2;
+                        if(widget.compare){
+                            cmap2 = widget.normalizeColorMap(res2.data,
+                                                             layer._colormap2,
+                                                             widget._logheatmap);
+                        }
                         layer._cmap = cmap;
+                        if(widget.compare) layer._cmap2 = cmap2;
+
                         widget._renormalize = false;
 
 
@@ -1466,8 +1644,15 @@ Map.prototype = {
                     }
                     
                     var startrender = window.performance.now();
-                    widget.drawCanvasLayer(res,canvas,layer._cmap,
-                                           layer.options.opacity);
+                    if(widget.compare){
+                        widget.drawCanvasLayer(res,canvas,layer._cmap,
+                                               layer.options.opacity,
+                                               res2, layer._cmap2);
+                    }
+                    else{
+                        widget.drawCanvasLayer(res,canvas,layer._cmap,
+                                               layer.options.opacity);
+                    }
 
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
@@ -1520,6 +1705,28 @@ Map.prototype = {
             return '<i style="background:'+colorstr+'"></i>' + d.val;
         });
         legend.html(htmlstr.join('<br />'));
+    },
+    adjustToCompare: function(){
+        var map = this._map;
+        var widget = this;
+        if(this.compare){
+            map.drawControl.removeFrom(map);
+            widget._drawnItems.eachLayer(function (layer) {
+                layer.setStyle({color: '#ffffff'});
+            });
+            widget.updateCallback(widget._encodeArgs());
+        }
+        else{
+            map.drawControl.addTo(map);
+            widget._drawnItems.eachLayer(function (layer) {
+                console.log(widget.newLayerColors);
+                var c = widget.newLayerColors[layer._leaflet_id];
+                if(c !== undefined){
+                    layer.setStyle({color: c});
+                }
+            });
+            widget.updateCallback(widget._encodeArgs());
+        }
     }
 };
 
@@ -2772,6 +2979,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.gX = gX;
     widget.gY = gY;
     widget.iterating = false;
+    widget.compare = false;
 
 }
 
@@ -2841,7 +3049,6 @@ Timeseries.prototype={
         });
 
         var promkeys = Object.keys(promises);
-        console.log(promkeys);
         $.when.apply($,promarray).done(function(){
             var results = arguments;
             var res = {};
@@ -2849,14 +3056,27 @@ Timeseries.prototype={
                 res[d] = results[i];
 
                 var label = d.split('&-&');
-                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);
+
                 if(isColor){
                     res[d].color = label[0];
                 }
                 else{
-                    var colormap = widget._datasrc[label[1]].colormap;
-                    var cidx = Math.floor(colormap.length/2);
-                    res[d].color = colormap[cidx];
+                	var colormap;
+                	var cidx;
+                	if(widget.compare){
+                		if(label[0] == "first")
+                			colormap = widget._datasrc[label[1]].colormap;
+                		else
+                			colormap = widget._datasrc[label[1]].colormap2;
+		                cidx = Math.floor(colormap.length/2);
+		                res[d].color = colormap[cidx];
+                	}
+                	else{
+	                    colormap = widget._datasrc[label[1]].colormap;
+	                    cidx = Math.floor(colormap.length/2);
+	                    res[d].color = colormap[cidx];
+	                }
                 }
             });
 
@@ -3106,6 +3326,10 @@ Timeseries.prototype={
     	}
     	
     	return "" + t + unit;
+    },
+
+    adjustToCompare: function(){
+    	return;
     }
 
 };
@@ -3194,6 +3418,7 @@ Viewer.prototype = {
     
     setupWidget:function(id, widget, levels){
         var options = $.extend(true, {}, widget);
+        // console.log(typeof options);
         var viewer = this;
         
         options.name = id;
@@ -3219,12 +3444,13 @@ Viewer.prototype = {
             });
             
         case 'cat':
+            options.compare = true;
             this._catoverlay.append(newdiv);
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
-            },function(args,constraints){
+            },function(args,constraints,compare){
                 return viewer.update([id],constraints,
-                                     id,args);
+                                     id,args, false, compare);
             });
             
         case 'id':
@@ -3279,7 +3505,7 @@ Viewer.prototype = {
         return binsec;
     },
 
-    update: function(skip,constraints,name,args,datasrc){
+    update: function(skip,constraints,name,args,datasrc,compare){
         // console.log("skip: ",skip);
 
         skip = skip || [];
@@ -3291,6 +3517,15 @@ Viewer.prototype = {
             for (var d in viewer._datasrc){
                 viewer._datasrc[d].disabled = datasrc[d].disabled;
             }
+        }
+
+        if(compare !== undefined){
+            Object.keys(viewer._widget).forEach(function(d){
+                if (skip.indexOf(d) == -1){
+                    viewer._widget[d].compare = compare;
+                    viewer._widget[d].adjustToCompare();
+                }
+            });
         }
         
         //update the url
@@ -3312,13 +3547,13 @@ Viewer.prototype = {
     constructQuery: function(nc,skip){
         skip = skip || [];
 
-        console.log("skip: ",skip);
+        // console.log("skip: ",skip);
 
         var viewer = this;
         var queries = {};
         queries.global = nc.query();
 
-        console.log(Object.keys(this._widget));
+        // console.log(Object.keys(this._widget));
 
         //brush
         Object.keys(this._widget).forEach(function(d){

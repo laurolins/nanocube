@@ -518,6 +518,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.gX = gX;
     widget.gY = gY;
     widget.iterating = false;
+    widget.compare = false;
 
 }
 
@@ -587,7 +588,6 @@ Timeseries.prototype={
         });
 
         var promkeys = Object.keys(promises);
-        console.log(promkeys);
         $.when.apply($,promarray).done(function(){
             var results = arguments;
             var res = {};
@@ -595,14 +595,27 @@ Timeseries.prototype={
                 res[d] = results[i];
 
                 var label = d.split('&-&');
-                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);
+
                 if(isColor){
                     res[d].color = label[0];
                 }
                 else{
-                    var colormap = widget._datasrc[label[1]].colormap;
-                    var cidx = Math.floor(colormap.length/2);
-                    res[d].color = colormap[cidx];
+                	var colormap;
+                	var cidx;
+                	if(widget.compare){
+                		if(label[0] == "first")
+                			colormap = widget._datasrc[label[1]].colormap;
+                		else
+                			colormap = widget._datasrc[label[1]].colormap2;
+		                cidx = Math.floor(colormap.length/2);
+		                res[d].color = colormap[cidx];
+                	}
+                	else{
+	                    colormap = widget._datasrc[label[1]].colormap;
+	                    cidx = Math.floor(colormap.length/2);
+	                    res[d].color = colormap[cidx];
+	                }
                 }
             });
 
@@ -852,6 +865,10 @@ Timeseries.prototype={
     	}
     	
     	return "" + t + unit;
+    },
+
+    adjustToCompare: function(){
+    	return;
     }
 
 };

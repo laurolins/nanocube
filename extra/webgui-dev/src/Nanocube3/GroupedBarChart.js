@@ -43,6 +43,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
             widget._opts.alpha_order = !widget._opts.alpha_order;
             widget.redraw(widget.lastres);
         });
+
+    this.cmpbtn = d3.select(id)
+        .append('button')
+        .attr('class','cmp-btn')
+        .on('click',function(){
+            widget.runCompare();
+        }).html('Compare');
     
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
@@ -96,6 +103,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.x=x;
     this.xAxis = xAxis;
     this.yAxis = yAxis;
+    this.compare = false;
     
     this._datasrc = opts.datasrc;
     this._opts = opts;
@@ -162,9 +170,26 @@ GroupedBarChart.prototype = {
                 var cidx = Math.floor(colormap.length/2);
                 c = colormap[cidx];
             }
-            
+
+            var c1, c2;
+            if(widget.compare){
+                var cm = widget._datasrc[label[1]].colormap;
+                c1 = cm[Math.floor(cm.length/2)];
+                cm = widget._datasrc[label[1]].colormap2;
+                c2 = cm[Math.floor(cm.length/2)];
+            }
             //Add color
             var row = res[curr].data.map(function(d){
+                if(widget.compare){
+                    if(widget.selection.first.findIndex(function(b){
+                        return (b.cat == d.cat); }) != -1){
+                        d.color2 = c1;
+                    }
+                    else if(widget.selection.second.findIndex(function(b){
+                        return (b.cat == d.cat); }) != -1){
+                        d.color2 = c2;
+                    }
+                }
                 d.color = c;
                 return d;
             });
@@ -196,7 +221,7 @@ GroupedBarChart.prototype = {
         }
 
         var fdata = this.flattenData(res);
-        
+
         var x =this.x;
         var y0 =this.y0;
         var y1 =this.y1;
@@ -250,6 +275,24 @@ GroupedBarChart.prototype = {
                 }
                 return w;
             });
+
+        if(widget.compare){
+            bars.style('fill', function(d){
+                if(widget.selection.first == [] || 
+                   widget.selection.first.findIndex(function(b){
+                        return (b.cat == d.cat);}) != -1){
+                    return d.color2;
+                }
+                else if(widget.selection.second == [] || 
+                   widget.selection.second.findIndex(function(b){
+                        return (b.cat == d.cat);}) != -1){
+                    return d.color2;
+                }
+                else{
+                    return 'gray';
+                }
+            });
+        }
         
         //add tool tip
         bars.select('title').text(function(d){
@@ -402,5 +445,49 @@ GroupedBarChart.prototype = {
 
         //update title with cat count
         svg.select('text').text(this._opts.title+' ('+y0.domain().length+')');
-    }    
+    },
+
+    runCompare: function(){
+        var widget = this;
+        d3.event.stopPropagation();
+        if(widget.cmpbtn.html() == "Compare"){
+            delete widget.selection.brush;
+            widget.update();
+            widget.cmpbtn.html("1st Selection");
+        }
+        else if (widget.cmpbtn.html() == "1st Selection"){
+            widget.selection.first = widget.selection.brush;
+            if(widget.selection.first === undefined)
+                widget.selection.first = [];
+            widget.cmpbtn.html("2nd Selection");
+            widget.first = widget.selection.first;
+            delete widget.selection.first;
+            delete widget.selection.brush;
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());
+        }
+        else if (widget.cmpbtn.html() == "2nd Selection"){
+            widget.selection.first = widget.first;
+            delete widget.first;
+            widget.compare = true;
+            widget.selection.second = widget.selection.brush;
+            if(widget.selection.second === undefined)
+                widget.selection.second = [];
+            widget.cmpbtn.html("Reset");
+            delete widget.selection.brush;
+            widget.update();
+            widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+        }
+        else{
+            widget.compare = false;
+            delete widget.selection.first;
+            delete widget.selection.second;
+            widget.cmpbtn.html("Compare");
+            widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+        }
+    },
+
+    adjustToCompare: function(){
+        return;
+    }
 };
