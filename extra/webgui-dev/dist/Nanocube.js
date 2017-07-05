@@ -1151,9 +1151,21 @@ Map.prototype = {
         var firstShape = true;
         var firstEdit = true;
         var latlng;
+        widget.compareShapes = [];
 
         map.on('draw:created', function (e) {
             drawnItems.addLayer(e.layer);
+
+            if(widget.compare){
+                widget.compareShapes.push(e.layer._leaflet_id);
+                e.layer.setStyle({color: '#ffffff'});
+                widget.updateCallback(widget._encodeArgs(),
+                                  [{
+                                      type:"SPATIAL",
+                                      key:"#ffffff"
+                                  }]);
+                return;
+            }
 
             if(firstShape){
                 console.log(e.layer);
@@ -1186,6 +1198,10 @@ Map.prototype = {
         
 
         map.on('draw:editstart', function(e){
+
+            if(widget.compare){
+                return;
+            }
 
             if(firstEdit){
                 var popup = L.popup()
@@ -1280,6 +1296,35 @@ Map.prototype = {
             var r = new FileReader();
             r.onload = function(e) {
                 try{
+                    if(widget.compare){
+                        var gjw = L.geoJson(JSON.parse(e.target.result), {
+                            style: {
+                                "color": '#ffffff',
+                                "opacity": 0.7
+                            }
+                        });
+                        Object.keys(gjw._layers).map(function(k){
+                            if(gjw._layers[k]._layers){
+                                var lids = gjw._layers[k].getLayers().map(function(k){
+                                    return k._leaflet_id;
+                                });
+                                Object.keys(gjw._layers[k]._layers).map(function(l){
+                                    drawnItems.addLayer(gjw._layers[k]._layers[l]);
+                                    widget.compareShapes.push(gjw._layers[k]._layers[l]._leaflet_id);
+                                });
+                            }
+                            else{
+                                drawnItems.addLayer(gjw._layers[k]);
+                                widget.compareShapes.push(gjw._layers[k]._leaflet_id);
+                            }
+                        });
+                        widget.updateCallback(widget._encodeArgs(),
+                            [{
+                                type:"SPATIAL",
+                                key:'#ffffff'
+                            }]);
+
+                    }
                     var gj = L.geoJson(JSON.parse(e.target.result), {
                         style: {
                             "color": Map.nextcolor(),
@@ -1732,14 +1777,18 @@ Map.prototype = {
         var map = this._map;
         var widget = this;
         if(this.compare){
-            map.drawControl.removeFrom(map);
             widget._drawnItems.eachLayer(function (layer) {
                 layer.setStyle({color: '#ffffff'});
             });
             widget.updateCallback(widget._encodeArgs());
         }
         else{
-            map.drawControl.addTo(map);
+            widget.compareShapes.map(function(k){
+                widget._drawnItems.removeLayer(widget._drawnItems._layers[k]);
+                // delete widget._drawnItems._layers[k];
+                // map.removeLayer(widget._drawnItems._layers[k]);
+            });
+            console.log(widget._drawnItems);
             widget._drawnItems.eachLayer(function (layer) {
                 console.log(widget.newLayerColors);
                 var c = widget.newLayerColors[layer._leaflet_id];
