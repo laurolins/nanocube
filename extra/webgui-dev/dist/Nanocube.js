@@ -1196,13 +1196,23 @@ Map.prototype = {
             }
 
             drawnItems.on('dblclick', function(e){
+                console.log(drawnItems);
                 // console.log(e.layer);
                 var cn = widget.colorNumber[e.layer.options.color] + 1;
                 if(cn >= widget.colorsUsed.length)
                     cn = 0;
+                if(e.layer.lids){
+                    e.layer.lids.map(function(k){
+                        drawnItems._layers[k].setStyle({color: widget.colorsUsed[cn]});
+                        widget.newLayerColors[k] = e.layer.options.color;
+                    });
 
-                e.layer.setStyle({color: widget.colorsUsed[cn]});
-                widget.newLayerColors[e.layer._leaflet_id] = e.layer.options.color;
+                }
+                else{
+                    e.layer.setStyle({color: widget.colorsUsed[cn]});
+                    widget.newLayerColors[e.layer._leaflet_id] = e.layer.options.color;
+                }
+                
                 widget.updateCallback(widget._encodeArgs(),
                                   [{
                                       type:"SPATIAL",
@@ -1266,6 +1276,7 @@ Map.prototype = {
         obj.on('drop', function (e) {
             e.preventDefault();
             var files = e.originalEvent.dataTransfer.files;
+            //console.log(files);
             var r = new FileReader();
             r.onload = function(e) {
                 try{
@@ -1275,10 +1286,19 @@ Map.prototype = {
                             "opacity": 0.7
                         }
                     });
+                    if(firstShape){
+                        var center = gj.getBounds().getCenter();
+                        latlng = [center.lat, center.lng];
+                        firstShape = false;
+                    }
                     var col;
                     Object.keys(gj._layers).map(function(k){
                         if(gj._layers[k]._layers){
+                            var lids = gj._layers[k].getLayers().map(function(k){
+                                return k._leaflet_id;
+                            });
                             Object.keys(gj._layers[k]._layers).map(function(l){
+                                gj._layers[k]._layers[l].lids = lids;
                                 drawnItems.addLayer(gj._layers[k]._layers[l]);
                                 col = gj._layers[k]._layers[l].options.color;
                                 widget.newLayerColors[gj._layers[k]._layers[l]._leaflet_id] = col;

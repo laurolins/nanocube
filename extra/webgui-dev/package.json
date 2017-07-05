@@ -5,18 +5,21 @@
   "repository": "https://github.research.att.com/ipcy/nanocube-web",
   "license": "EPL-1.0",
   "devDependencies": {
-  "colorbrewer": "*",
-  "d3": "^4",
-  "grunt": "*",
-  "grunt-cli": "*",
-  "grunt-contrib-concat": "*",
-  "grunt-contrib-jshint": "*",
-  "http-server": "*",
-  "interact.js": "*",
-  "jquery": "^2",
-  "jsep": "*",
-  "leaflet": "^0.7",
-  "leaflet-draw": "^0.2",
-  "requirejs": "*"
+    "colorbrewer": "*",
+    "d3": "^4",
+    "grunt": "*",
+    "grunt-cli": "*",
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-jshint": "*",
+    "http-server": "*",
+    "interact.js": "*",
+    "jquery": "^2",
+    "jsep": "*",
+    "leaflet": "^0.7",
+    "leaflet-draw": "^0.2",
+    "requirejs": "*"
+  },
+  "dependencies": {
+    "shpjs": "^3.4.0"
   }
 }
