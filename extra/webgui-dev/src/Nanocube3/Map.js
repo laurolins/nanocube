@@ -401,17 +401,19 @@ Map.prototype = {
                             Object.keys(gj._layers[k]._layers).map(function(l){
                                 drawnItems.addLayer(gj._layers[k]._layers[l]);
                                 col = gj._layers[k]._layers[l].options.color;
+                                widget.newLayerColors[gj._layers[k]._layers[l]._leaflet_id] = col;
                             });
                         }
                         else{
                             drawnItems.addLayer(gj._layers[k]);
-
                             col = gj._layers[k].options.color;
+                            widget.newLayerColors[gj._layers[k]._leaflet_id] = col;
                         }
                     });
                     //keep track of color
                     widget.colorNumber[col] = widget.colorsUsed.length;
                     widget.colorsUsed.push(col);
+                    
 
                     widget.updateCallback(widget._encodeArgs(),
                         [{
@@ -665,7 +667,7 @@ Map.prototype = {
             else{
                 color = colormap(v);
             }
-            color.a *= opacity;
+            // color.a *= opacity;
             pixels[ii] =
                 (color.a << 24) |         // alpha
                 (color.b << 16) |         // blue
