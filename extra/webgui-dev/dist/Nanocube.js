@@ -895,6 +895,9 @@ var Map=function(opts,getDataCallback,updateCallback){
     this._logheatmap = true;
     this._opts = opts;
     this.compare = false;
+    this.colorsUsed = [];
+    this.colorNumber = {};
+    this.newLayerColors = {};
 
     
     
@@ -934,9 +937,7 @@ var Map=function(opts,getDataCallback,updateCallback){
         }                        
     }
 
-    this.colorsUsed = [];
-    this.colorNumber = {};
-    this.newLayerColors = {};
+    
 
 };
 
@@ -1126,8 +1127,10 @@ Map.prototype = {
         map.addLayer(drawnItems);
         var widget = this;
         
+        var initColor = Map.nextcolor();
+
         var drawingoptions = function(){
-            return { shapeOptions:{ color: Map.nextcolor() } };
+            return { shapeOptions:{ color: initColor } };
         };
 
         map.drawControl = new L.Control.Draw({
@@ -1175,11 +1178,17 @@ Map.prototype = {
                 latlng = [2 * Math.abs(p1.lat - p2.lat) / 3 + Math.min(p1.lat, p2.lat), 
                           (p2.lng + p3.lng) / 2];
                 firstShape = false;
+                widget.colorNumber[initColor] = 0;
+                widget.colorsUsed.push(initColor);
+            }
+
+            else{
+                var nextColor = Map.nextcolor();
+                widget.colorNumber[nextColor] = widget.colorsUsed.length;
+                widget.colorsUsed.push(nextColor);
             }
 
             //keep track of color
-            widget.colorNumber[e.layer.options.color] = widget.colorsUsed.length;
-            widget.colorsUsed.push(e.layer.options.color);
             widget.newLayerColors[e.layer._leaflet_id] = e.layer.options.color;
 
             //add constraints to the other maps
@@ -1190,9 +1199,9 @@ Map.prototype = {
                                   }]);
             
             //Set color for the next shape
-            var options = {};
-            options[e.layerType] = drawingoptions();
-            map.drawControl.setDrawingOptions(options);
+            // var options = {};
+            // options[e.layerType] = drawingoptions();
+            // map.drawControl.setDrawingOptions(options);
         });
 
         
@@ -1264,6 +1273,21 @@ Map.prototype = {
             widget.updateCallback(widget._encodeArgs());
         });
 
+        map.on('draw:deletestart', function(e){
+            drawnItems.on('click', function(e){
+                if(e.layer.lids){
+                    e.layer.lids.map(function(k){
+                        widget._drawnItems.removeLayer(widget._drawnItems._layers[k]);
+                    });
+
+                }
+            });
+        });
+
+        map.on('draw:deletestop', function(e){
+            drawnItems.off('click');
+        });
+
         $(document).on('dragenter', function (e) 
         {
             e.stopPropagation();
@@ -1303,6 +1327,7 @@ Map.prototype = {
                                 "opacity": 0.7
                             }
                         });
+                        console.log(gjw);
                         Object.keys(gjw._layers).map(function(k){
                             if(gjw._layers[k]._layers){
                                 var lids = gjw._layers[k].getLayers().map(function(k){
@@ -1323,11 +1348,12 @@ Map.prototype = {
                                 type:"SPATIAL",
                                 key:'#ffffff'
                             }]);
+                        return;
 
                     }
                     var gj = L.geoJson(JSON.parse(e.target.result), {
                         style: {
-                            "color": Map.nextcolor(),
+                            "color": initColor,
                             "opacity": 0.7
                         }
                     });
@@ -1335,6 +1361,13 @@ Map.prototype = {
                         var center = gj.getBounds().getCenter();
                         latlng = [center.lat, center.lng];
                         firstShape = false;
+                        widget.colorNumber[initColor] = 0;
+                        widget.colorsUsed.push(initColor);
+                    }
+                    else{
+                        var nextColor = Map.nextcolor();
+                        widget.colorNumber[nextColor] = widget.colorsUsed.length;
+                        widget.colorsUsed.push(nextColor);
                     }
                     var col;
                     Object.keys(gj._layers).map(function(k){
@@ -1355,10 +1388,6 @@ Map.prototype = {
                             widget.newLayerColors[gj._layers[k]._leaflet_id] = col;
                         }
                     });
-                    //keep track of color
-                    widget.colorNumber[col] = widget.colorsUsed.length;
-                    widget.colorsUsed.push(col);
-                    
 
                     widget.updateCallback(widget._encodeArgs(),
                         [{
