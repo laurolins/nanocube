@@ -12,7 +12,8 @@ require.config({
         jsep: 'node_modules/jsep/build/jsep.min',
         canvaslayer: 'src/L.CanvasOverlay',
         'resize-drag': 'src/resize-drag',
-        nanocube: 'dist/Nanocube'
+        nanocube: 'dist/Nanocube',
+        shpjs: 'node_modules/shpjs/dist/shp.min'
     },
 
     shim: {
@@ -48,11 +49,10 @@ function getArgFromUrl() {
 }
 
 var viewer ;
-define(['jquery','nanocube','colorbrewer','resize-drag'],
-       function($,Nanocube3,colorbrewer){
+define(['jquery','nanocube','colorbrewer', 'shpjs', 'resize-drag'],
+       function($,Nanocube3,colorbrewer,shp){
     'use strict';
     //read config and pass it to start viewer
-
     var urlargs = getArgFromUrl();
     urlargs.config = urlargs.config || './config.json';
 

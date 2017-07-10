@@ -17,9 +17,7 @@
     "jsep": "*",
     "leaflet": "^0.7",
     "leaflet-draw": "^0.2",
-    "requirejs": "*"
-  },
-  "dependencies": {
+    "requirejs": "*",
     "shpjs": "^3.4.0"
   }
 }

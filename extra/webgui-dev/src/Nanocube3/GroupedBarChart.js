@@ -180,6 +180,13 @@ GroupedBarChart.prototype = {
             }
             //Add color
             var row = res[curr].data.map(function(d){
+                if(widget.adjust){
+                    if(label[0] == "first")
+                        d.color = c1;
+                    else if (label[0] == "second")
+                        d.color = c2;
+                    return d;
+                }
                 if(widget.compare){
                     if(widget.selection.first.findIndex(function(b){
                         return (b.cat == d.cat); }) != -1){
@@ -276,7 +283,7 @@ GroupedBarChart.prototype = {
                 return w;
             });
 
-        if(widget.compare){
+        if(widget.compare && !widget.adjust){
             bars.style('fill', function(d){
                 if(widget.selection.first == [] || 
                    widget.selection.first.findIndex(function(b){
@@ -451,6 +458,8 @@ GroupedBarChart.prototype = {
         var widget = this;
         d3.event.stopPropagation();
         if(widget.cmpbtn.html() == "Compare"){
+            if(widget.compare)
+                return;
             delete widget.selection.brush;
             widget.update();
             widget.cmpbtn.html("1st Selection");
@@ -470,6 +479,7 @@ GroupedBarChart.prototype = {
             widget.selection.first = widget.first;
             delete widget.first;
             widget.compare = true;
+            widget.adjust = false;
             widget.selection.second = widget.selection.brush;
             if(widget.selection.second === undefined)
                 widget.selection.second = [];

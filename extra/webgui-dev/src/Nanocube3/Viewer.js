@@ -187,6 +187,7 @@ Viewer.prototype = {
             Object.keys(viewer._widget).forEach(function(d){
                 if (skip.indexOf(d) == -1){
                     viewer._widget[d].compare = compare;
+                    viewer._widget[d].adjust = compare;
                     viewer._widget[d].adjustToCompare();
                 }
             });

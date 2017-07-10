@@ -68,6 +68,7 @@ Map.nextcolor = function(){
     Map.brushcolors.push(c);
     return c;
 };
+Map.shp = shp;
 
 Map.prototype = {
     _genLayers: function(data){
@@ -439,14 +440,36 @@ Map.prototype = {
             //console.log(files);
             var r = new FileReader();
             r.onload = function(e) {
+                var gjw;
+                var gj;
+                console.log(typeof e.target.result);
+                if((typeof e.target.result) == 'object'){
+                    var geojson = shp.parseZip(e.target.result);
+                    gjw = L.geoJson(geojson, {
+                        style: {
+                            "color": "#ffffff",
+                            "opacity": 0.7
+                        }
+                    });
+                    gj = L.geoJson(geojson, {
+                        style: {
+                            "color": initColor,
+                            "opacity": 0.7
+                        }
+                    });
+                    console.log(gj);
+                }
+                console.log(gj);
                 try{
                     if(widget.compare){
-                        var gjw = L.geoJson(JSON.parse(e.target.result), {
-                            style: {
-                                "color": '#ffffff',
-                                "opacity": 0.7
-                            }
-                        });
+                        if(gjw === undefined){
+                            gjw = L.geoJson(JSON.parse(e.target.result), {
+                                style: {
+                                    "color": '#ffffff',
+                                    "opacity": 0.7
+                                }
+                            });
+                        }
                         console.log(gjw);
                         Object.keys(gjw._layers).map(function(k){
                             if(gjw._layers[k]._layers){
@@ -471,12 +494,14 @@ Map.prototype = {
                         return;
 
                     }
-                    var gj = L.geoJson(JSON.parse(e.target.result), {
-                        style: {
-                            "color": initColor,
-                            "opacity": 0.7
-                        }
-                    });
+                    if(gj === undefined){
+                        gj = L.geoJson(JSON.parse(e.target.result), {
+                            style: {
+                                "color": initColor,
+                                "opacity": 0.7
+                            }
+                        });
+                    }
                     if(firstShape){
                         var center = gj.getBounds().getCenter();
                         latlng = [center.lat, center.lng];
@@ -520,7 +545,22 @@ Map.prototype = {
                 }
             };
             for (var i = 0; i < files.length; i++){
-                r.readAsText(files[i]);
+                if(files[i].name.endsWith('.zip'))
+                    try{
+                        r.readAsArrayBuffer(files[i]);
+                    }
+                    catch(err){
+                        console.log(err);
+                    }
+
+                else{
+                    try{
+                        r.readAsText(files[i]);
+                    }
+                    catch(err){
+                        console.log(err);
+                    }
+                }
             }
         });
 

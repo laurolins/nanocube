@@ -11,13 +11,14 @@ function loadCss(url) {
 (function(root, factory) {    
     if (typeof define === 'function' && define.amd) {
 	// AMD. Register as an anonymous module.
-	define(['jquery','colorbrewer','d3',
+	define(['jquery','shpjs','colorbrewer','d3',
 		'jsep','leafletdraw','canvaslayer'], factory);
     } else if (typeof exports === 'object') {
 	// Node. Does not work with strict CommonJS, but
 	// only CommonJS-like environments that support module.exports,
 	// like Node.
 	module.exports = factory(require('jquery'),
+				 require('shpjs'),
 				 require('colorbrewer'),
 				 require('d3'),
 				 require('jsep'),
@@ -26,10 +27,10 @@ function loadCss(url) {
 				 require('canvaslayer'));
     } else {
 	// Browser globals (root is window)
-	root.Nanocube3 = factory(root.$,root.colorbrewer,root.d3,
+	root.Nanocube3 = factory(root.$,root.shp,root.colorbrewer,root.d3,
 				 root.jsep,root.L);
     }
-} (this, function($,colorbrewer,d3,jsep,L) {
+} (this, function($,shp,colorbrewer,d3,jsep,L) {
     loadCss('node_modules/leaflet/dist/leaflet.css');
     loadCss('node_modules/leaflet-draw/dist/leaflet.draw.css');
 
@@ -566,6 +567,13 @@ GroupedBarChart.prototype = {
             }
             //Add color
             var row = res[curr].data.map(function(d){
+                if(widget.adjust){
+                    if(label[0] == "first")
+                        d.color = c1;
+                    else if (label[0] == "second")
+                        d.color = c2;
+                    return d;
+                }
                 if(widget.compare){
                     if(widget.selection.first.findIndex(function(b){
                         return (b.cat == d.cat); }) != -1){
@@ -662,7 +670,7 @@ GroupedBarChart.prototype = {
                 return w;
             });
 
-        if(widget.compare){
+        if(widget.compare && !widget.adjust){
             bars.style('fill', function(d){
                 if(widget.selection.first == [] || 
                    widget.selection.first.findIndex(function(b){
@@ -837,6 +845,8 @@ GroupedBarChart.prototype = {
         var widget = this;
         d3.event.stopPropagation();
         if(widget.cmpbtn.html() == "Compare"){
+            if(widget.compare)
+                return;
             delete widget.selection.brush;
             widget.update();
             widget.cmpbtn.html("1st Selection");
@@ -856,6 +866,7 @@ GroupedBarChart.prototype = {
             widget.selection.first = widget.first;
             delete widget.first;
             widget.compare = true;
+            widget.adjust = false;
             widget.selection.second = widget.selection.brush;
             if(widget.selection.second === undefined)
                 widget.selection.second = [];
@@ -948,6 +959,7 @@ Map.nextcolor = function(){
     Map.brushcolors.push(c);
     return c;
 };
+Map.shp = shp;
 
 Map.prototype = {
     _genLayers: function(data){
@@ -1319,14 +1331,36 @@ Map.prototype = {
             //console.log(files);
             var r = new FileReader();
             r.onload = function(e) {
+                var gjw;
+                var gj;
+                console.log(typeof e.target.result);
+                if((typeof e.target.result) == 'object'){
+                    var geojson = shp.parseZip(e.target.result);
+                    gjw = L.geoJson(geojson, {
+                        style: {
+                            "color": "#ffffff",
+                            "opacity": 0.7
+                        }
+                    });
+                    gj = L.geoJson(geojson, {
+                        style: {
+                            "color": initColor,
+                            "opacity": 0.7
+                        }
+                    });
+                    console.log(gj);
+                }
+                console.log(gj);
                 try{
                     if(widget.compare){
-                        var gjw = L.geoJson(JSON.parse(e.target.result), {
-                            style: {
-                                "color": '#ffffff',
-                                "opacity": 0.7
-                            }
-                        });
+                        if(gjw === undefined){
+                            gjw = L.geoJson(JSON.parse(e.target.result), {
+                                style: {
+                                    "color": '#ffffff',
+                                    "opacity": 0.7
+                                }
+                            });
+                        }
                         console.log(gjw);
                         Object.keys(gjw._layers).map(function(k){
                             if(gjw._layers[k]._layers){
@@ -1351,12 +1385,14 @@ Map.prototype = {
                         return;
 
                     }
-                    var gj = L.geoJson(JSON.parse(e.target.result), {
-                        style: {
-                            "color": initColor,
-                            "opacity": 0.7
-                        }
-                    });
+                    if(gj === undefined){
+                        gj = L.geoJson(JSON.parse(e.target.result), {
+                            style: {
+                                "color": initColor,
+                                "opacity": 0.7
+                            }
+                        });
+                    }
                     if(firstShape){
                         var center = gj.getBounds().getCenter();
                         latlng = [center.lat, center.lng];
@@ -1400,7 +1436,22 @@ Map.prototype = {
                 }
             };
             for (var i = 0; i < files.length; i++){
-                r.readAsText(files[i]);
+                if(files[i].name.endsWith('.zip'))
+                    try{
+                        r.readAsArrayBuffer(files[i]);
+                    }
+                    catch(err){
+                        console.log(err);
+                    }
+
+                else{
+                    try{
+                        r.readAsText(files[i]);
+                    }
+                    catch(err){
+                        console.log(err);
+                    }
+                }
             }
         });
 
@@ -3623,6 +3674,7 @@ Viewer.prototype = {
             Object.keys(viewer._widget).forEach(function(d){
                 if (skip.indexOf(d) == -1){
                     viewer._widget[d].compare = compare;
+                    viewer._widget[d].adjust = compare;
                     viewer._widget[d].adjustToCompare();
                 }
             });
