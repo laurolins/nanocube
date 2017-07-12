@@ -11,7 +11,7 @@ function loadCss(url) {
 (function(root, factory) {    
     if (typeof define === 'function' && define.amd) {
 	// AMD. Register as an anonymous module.
-	define(['jquery','shpjs','colorbrewer','d3',
+	define(['jquery','shpjs', 'interact','colorbrewer','d3',
 		'jsep','leafletdraw','canvaslayer'], factory);
     } else if (typeof exports === 'object') {
 	// Node. Does not work with strict CommonJS, but
@@ -19,6 +19,7 @@ function loadCss(url) {
 	// like Node.
 	module.exports = factory(require('jquery'),
 				 require('shpjs'),
+				 require('interact'),
 				 require('colorbrewer'),
 				 require('d3'),
 				 require('jsep'),
@@ -27,10 +28,10 @@ function loadCss(url) {
 				 require('canvaslayer'));
     } else {
 	// Browser globals (root is window)
-	root.Nanocube3 = factory(root.$,root.shp,root.colorbrewer,root.d3,
-				 root.jsep,root.L);
+	root.Nanocube3 = factory(root.$,root.shp,root.interact,root.colorbrewer,
+			root.d3,root.jsep,root.L);
     }
-} (this, function($,shp,colorbrewer,d3,jsep,L) {
+} (this, function($,shp,interact,colorbrewer,d3,jsep,L) {
     loadCss('node_modules/leaflet/dist/leaflet.css');
     loadCss('node_modules/leaflet-draw/dist/leaflet.draw.css');
 

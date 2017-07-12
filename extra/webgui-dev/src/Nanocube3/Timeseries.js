@@ -30,6 +30,12 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.getDataCallback = getDataCallback;
     widget.updateCallback =  updateCallback;
 
+    this.retbrush = {
+    	color:'',
+    	x:'',
+    	y:''
+    };
+
 
     var margin = opts.margin;
     if (margin === undefined)

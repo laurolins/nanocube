@@ -19,6 +19,11 @@ var Map=function(opts,getDataCallback,updateCallback){
     this.colorNumber = {};
     this.newLayerColors = {};
 
+    this.retbrush = {
+        color:'',
+        x:'',
+        y:''
+    };
     
     
     var map = this._initMap();
@@ -843,6 +848,7 @@ Map.prototype = {
 
         try{
             var promises = widget.getDataCallback(layer._datasrc,bbox,z);
+            console.log(promises);
             var promarray = Object.keys(promises).map(function(k){
                 return promises[k];
             });

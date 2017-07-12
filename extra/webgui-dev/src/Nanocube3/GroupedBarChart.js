@@ -5,14 +5,22 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.updateCallback=updateCallback;
 
     var name=opts.name;
+    console.log(name);
     var id = "#"+name.replace(/\./g,'\\.');
     var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
     //set param
     this.selection = {global:[]};
+    this.tempselection = {};
     if(opts.args){ // set selection from arguments
         this._decodeArgs(opts.args);
     }
+
+    this.retbrush = {
+        color:'',
+        x:'',
+        y:''
+    };
     
     var widget = this;
     //Make draggable and resizable
@@ -50,6 +58,25 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         .on('click',function(){
             widget.runCompare();
         }).html('Compare');
+
+    this.finbtn = d3.select(id)
+        .append('button')
+        .attr('id',(name + 'fin'))
+        .on('click',function(){
+            Object.keys(widget.tempselection).map(function(k){
+                widget.selection[k] = widget.tempselection[k];
+                delete widget.tempselection[k];
+            });
+            widget.compare = true;
+            widget.adjust = false;
+            widget.cmpbtn.html("Reset");
+            delete widget.selection.brush;
+            $('#' + name + 'fin').hide();
+            widget.update();
+            widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+        }).html('Compare!');
+
+    $('#' + name + 'fin').hide();
     
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
@@ -113,6 +140,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     widget.update();
 }
 
+GroupedBarChart.brushcolors = colorbrewer.Set1[5].slice(0);
+// GroupedBarChart.nextcolor = function(){
+//     var c = GroupedBarChart.brushcolors.shift();
+//     GroupedBarChart.brushcolors.push(c);
+//     return c;
+// };
+
 GroupedBarChart.prototype = {
     getSelection: function(){        
         return this.selection;
@@ -126,7 +160,7 @@ GroupedBarChart.prototype = {
         this.selection = JSON.parse(s);
     },
     
-    update: function(){        
+    update: function(){
         var widget = this;        
         var promises = {};
         
@@ -160,43 +194,24 @@ GroupedBarChart.prototype = {
     
     flattenData: function(res){
         var widget = this;        
-        return Object.keys(res).reduce(function(prev,curr){         
-            var label = curr.split('&-&'); 
-            var c = label[0];
+        return Object.keys(res).reduce(function(prev,curr){
+            var label = curr.split('&-&');
+            var xyc = label[0].split('&');
+            var ret = {};
+            xyc.map(function(k){
+                ret[k.charAt(0)] = k.substring(1);
+            });
+            var c = ret.c || '';
 
-            var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+            var isColor  = /^#[0-9A-F]{6}$/i.test(c);                
             if(!isColor){
                 var colormap = widget._datasrc[label[1]].colormap;
                 var cidx = Math.floor(colormap.length/2);
                 c = colormap[cidx];
             }
 
-            var c1, c2;
-            if(widget.compare){
-                var cm = widget._datasrc[label[1]].colormap;
-                c1 = cm[Math.floor(cm.length/2)];
-                cm = widget._datasrc[label[1]].colormap2;
-                c2 = cm[Math.floor(cm.length/2)];
-            }
             //Add color
             var row = res[curr].data.map(function(d){
-                if(widget.adjust){
-                    if(label[0] == "first")
-                        d.color = c1;
-                    else if (label[0] == "second")
-                        d.color = c2;
-                    return d;
-                }
-                if(widget.compare){
-                    if(widget.selection.first.findIndex(function(b){
-                        return (b.cat == d.cat); }) != -1){
-                        d.color2 = c1;
-                    }
-                    else if(widget.selection.second.findIndex(function(b){
-                        return (b.cat == d.cat); }) != -1){
-                        d.color2 = c2;
-                    }
-                }
                 d.color = c;
                 return d;
             });
@@ -285,19 +300,19 @@ GroupedBarChart.prototype = {
 
         if(widget.compare && !widget.adjust){
             bars.style('fill', function(d){
-                if(widget.selection.first == [] || 
-                   widget.selection.first.findIndex(function(b){
-                        return (b.cat == d.cat);}) != -1){
-                    return d.color2;
-                }
-                else if(widget.selection.second == [] || 
-                   widget.selection.second.findIndex(function(b){
-                        return (b.cat == d.cat);}) != -1){
-                    return d.color2;
-                }
-                else{
-                    return 'gray';
-                }
+                var col;
+                Object.keys(widget.selection).filter(function(n){
+                    return (n != 'brush') && (n != 'global');
+                }).forEach(function(s){
+                    if(widget.selection[s] == [] || 
+                       widget.selection[s].findIndex(function(b){
+                            return (b.cat == d.cat);}) != -1){
+                        col = s;
+                    }
+                    
+                });
+
+                return col || 'gray';
             });
         }
         
@@ -457,41 +472,49 @@ GroupedBarChart.prototype = {
     runCompare: function(){
         var widget = this;
         d3.event.stopPropagation();
-        if(widget.cmpbtn.html() == "Compare"){
-            if(widget.compare)
-                return;
+        if(widget.cmpbtn.html() == "Compare" && 
+            (widget.retbrush.color == widget._name || 
+             widget.retbrush.x == widget._name ||
+             widget.rebrush.y == widget._name)){
             delete widget.selection.brush;
             widget.update();
-            widget.cmpbtn.html("1st Selection");
+            widget.cmpbtn.html("Selection 1");
+            $('#' + widget._name + 'fin').show();
         }
-        else if (widget.cmpbtn.html() == "1st Selection"){
-            widget.selection.first = widget.selection.brush;
-            if(widget.selection.first === undefined)
-                widget.selection.first = [];
-            widget.cmpbtn.html("2nd Selection");
-            widget.first = widget.selection.first;
-            delete widget.selection.first;
-            delete widget.selection.brush;
-            widget.update();
-            widget.updateCallback(widget._encodeArgs());
-        }
-        else if (widget.cmpbtn.html() == "2nd Selection"){
-            widget.selection.first = widget.first;
-            delete widget.first;
+
+        else if(widget.cmpbtn.html() == "Selection 5"){
+            widget.tempselection[GroupedBarChart.brushcolors[4]] = widget.selection.brush || [];
+            Object.keys(widget.tempselection).map(function(k){
+                widget.selection[k] = widget.tempselection[k];
+                delete widget.tempselection[k];
+            });
             widget.compare = true;
             widget.adjust = false;
-            widget.selection.second = widget.selection.brush;
-            if(widget.selection.second === undefined)
-                widget.selection.second = [];
             widget.cmpbtn.html("Reset");
+            $('#' + widget._name + 'fin').hide();
             delete widget.selection.brush;
             widget.update();
             widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+
+        }
+
+        else if (widget.cmpbtn.html().startsWith("Selection")){
+            var sel = parseInt(widget.cmpbtn.html().split(' ')[1]);
+            widget.tempselection[GroupedBarChart.brushcolors[sel - 1]] = widget.selection.brush;
+            if(widget.selection.brush === undefined)
+                widget.tempselection[GroupedBarChart.brushcolors[sel - 1]] = [];
+            widget.cmpbtn.html("Selection " + (sel + 1));
+            delete widget.selection.brush;
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());
+
         }
         else{
+            //reset
+            GroupedBarChart.brushcolors.map(function(k){
+                delete widget.selection[k];
+            });
             widget.compare = false;
-            delete widget.selection.first;
-            delete widget.selection.second;
             widget.cmpbtn.html("Compare");
             widget.updateCallback(widget._encodeArgs(), [], widget.compare);
         }

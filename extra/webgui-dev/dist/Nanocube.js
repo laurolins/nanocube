@@ -11,7 +11,7 @@ function loadCss(url) {
 (function(root, factory) {    
     if (typeof define === 'function' && define.amd) {
 	// AMD. Register as an anonymous module.
-	define(['jquery','shpjs','colorbrewer','d3',
+	define(['jquery','shpjs', 'interact','colorbrewer','d3',
 		'jsep','leafletdraw','canvaslayer'], factory);
     } else if (typeof exports === 'object') {
 	// Node. Does not work with strict CommonJS, but
@@ -19,6 +19,7 @@ function loadCss(url) {
 	// like Node.
 	module.exports = factory(require('jquery'),
 				 require('shpjs'),
+				 require('interact'),
 				 require('colorbrewer'),
 				 require('d3'),
 				 require('jsep'),
@@ -27,10 +28,10 @@ function loadCss(url) {
 				 require('canvaslayer'));
     } else {
 	// Browser globals (root is window)
-	root.Nanocube3 = factory(root.$,root.shp,root.colorbrewer,root.d3,
-				 root.jsep,root.L);
+	root.Nanocube3 = factory(root.$,root.shp,root.interact,root.colorbrewer,
+			root.d3,root.jsep,root.L);
     }
-} (this, function($,shp,colorbrewer,d3,jsep,L) {
+} (this, function($,shp,interact,colorbrewer,d3,jsep,L) {
     loadCss('node_modules/leaflet/dist/leaflet.css');
     loadCss('node_modules/leaflet-draw/dist/leaflet.draw.css');
 
@@ -392,14 +393,22 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.updateCallback=updateCallback;
 
     var name=opts.name;
+    console.log(name);
     var id = "#"+name.replace(/\./g,'\\.');
     var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
     //set param
     this.selection = {global:[]};
+    this.tempselection = {};
     if(opts.args){ // set selection from arguments
         this._decodeArgs(opts.args);
     }
+
+    this.retbrush = {
+        color:'',
+        x:'',
+        y:''
+    };
     
     var widget = this;
     //Make draggable and resizable
@@ -437,6 +446,25 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         .on('click',function(){
             widget.runCompare();
         }).html('Compare');
+
+    this.finbtn = d3.select(id)
+        .append('button')
+        .attr('id',(name + 'fin'))
+        .on('click',function(){
+            Object.keys(widget.tempselection).map(function(k){
+                widget.selection[k] = widget.tempselection[k];
+                delete widget.tempselection[k];
+            });
+            widget.compare = true;
+            widget.adjust = false;
+            widget.cmpbtn.html("Reset");
+            delete widget.selection.brush;
+            $('#' + name + 'fin').hide();
+            widget.update();
+            widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+        }).html('Compare!');
+
+    $('#' + name + 'fin').hide();
     
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
@@ -500,6 +528,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     widget.update();
 }
 
+GroupedBarChart.brushcolors = colorbrewer.Set1[5].slice(0);
+// GroupedBarChart.nextcolor = function(){
+//     var c = GroupedBarChart.brushcolors.shift();
+//     GroupedBarChart.brushcolors.push(c);
+//     return c;
+// };
+
 GroupedBarChart.prototype = {
     getSelection: function(){        
         return this.selection;
@@ -513,7 +548,7 @@ GroupedBarChart.prototype = {
         this.selection = JSON.parse(s);
     },
     
-    update: function(){        
+    update: function(){
         var widget = this;        
         var promises = {};
         
@@ -547,43 +582,24 @@ GroupedBarChart.prototype = {
     
     flattenData: function(res){
         var widget = this;        
-        return Object.keys(res).reduce(function(prev,curr){         
-            var label = curr.split('&-&'); 
-            var c = label[0];
+        return Object.keys(res).reduce(function(prev,curr){
+            var label = curr.split('&-&');
+            var xyc = label[0].split('&');
+            var ret = {};
+            xyc.map(function(k){
+                ret[k.charAt(0)] = k.substring(1);
+            });
+            var c = ret.c || '';
 
-            var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+            var isColor  = /^#[0-9A-F]{6}$/i.test(c);                
             if(!isColor){
                 var colormap = widget._datasrc[label[1]].colormap;
                 var cidx = Math.floor(colormap.length/2);
                 c = colormap[cidx];
             }
 
-            var c1, c2;
-            if(widget.compare){
-                var cm = widget._datasrc[label[1]].colormap;
-                c1 = cm[Math.floor(cm.length/2)];
-                cm = widget._datasrc[label[1]].colormap2;
-                c2 = cm[Math.floor(cm.length/2)];
-            }
             //Add color
             var row = res[curr].data.map(function(d){
-                if(widget.adjust){
-                    if(label[0] == "first")
-                        d.color = c1;
-                    else if (label[0] == "second")
-                        d.color = c2;
-                    return d;
-                }
-                if(widget.compare){
-                    if(widget.selection.first.findIndex(function(b){
-                        return (b.cat == d.cat); }) != -1){
-                        d.color2 = c1;
-                    }
-                    else if(widget.selection.second.findIndex(function(b){
-                        return (b.cat == d.cat); }) != -1){
-                        d.color2 = c2;
-                    }
-                }
                 d.color = c;
                 return d;
             });
@@ -672,19 +688,19 @@ GroupedBarChart.prototype = {
 
         if(widget.compare && !widget.adjust){
             bars.style('fill', function(d){
-                if(widget.selection.first == [] || 
-                   widget.selection.first.findIndex(function(b){
-                        return (b.cat == d.cat);}) != -1){
-                    return d.color2;
-                }
-                else if(widget.selection.second == [] || 
-                   widget.selection.second.findIndex(function(b){
-                        return (b.cat == d.cat);}) != -1){
-                    return d.color2;
-                }
-                else{
-                    return 'gray';
-                }
+                var col;
+                Object.keys(widget.selection).filter(function(n){
+                    return (n != 'brush') && (n != 'global');
+                }).forEach(function(s){
+                    if(widget.selection[s] == [] || 
+                       widget.selection[s].findIndex(function(b){
+                            return (b.cat == d.cat);}) != -1){
+                        col = s;
+                    }
+                    
+                });
+
+                return col || 'gray';
             });
         }
         
@@ -844,41 +860,49 @@ GroupedBarChart.prototype = {
     runCompare: function(){
         var widget = this;
         d3.event.stopPropagation();
-        if(widget.cmpbtn.html() == "Compare"){
-            if(widget.compare)
-                return;
+        if(widget.cmpbtn.html() == "Compare" && 
+            (widget.retbrush.color == widget._name || 
+             widget.retbrush.x == widget._name ||
+             widget.rebrush.y == widget._name)){
             delete widget.selection.brush;
             widget.update();
-            widget.cmpbtn.html("1st Selection");
+            widget.cmpbtn.html("Selection 1");
+            $('#' + widget._name + 'fin').show();
         }
-        else if (widget.cmpbtn.html() == "1st Selection"){
-            widget.selection.first = widget.selection.brush;
-            if(widget.selection.first === undefined)
-                widget.selection.first = [];
-            widget.cmpbtn.html("2nd Selection");
-            widget.first = widget.selection.first;
-            delete widget.selection.first;
-            delete widget.selection.brush;
-            widget.update();
-            widget.updateCallback(widget._encodeArgs());
-        }
-        else if (widget.cmpbtn.html() == "2nd Selection"){
-            widget.selection.first = widget.first;
-            delete widget.first;
+
+        else if(widget.cmpbtn.html() == "Selection 5"){
+            widget.tempselection[GroupedBarChart.brushcolors[4]] = widget.selection.brush || [];
+            Object.keys(widget.tempselection).map(function(k){
+                widget.selection[k] = widget.tempselection[k];
+                delete widget.tempselection[k];
+            });
             widget.compare = true;
             widget.adjust = false;
-            widget.selection.second = widget.selection.brush;
-            if(widget.selection.second === undefined)
-                widget.selection.second = [];
             widget.cmpbtn.html("Reset");
+            $('#' + widget._name + 'fin').hide();
             delete widget.selection.brush;
             widget.update();
             widget.updateCallback(widget._encodeArgs(), [], widget.compare);
+
+        }
+
+        else if (widget.cmpbtn.html().startsWith("Selection")){
+            var sel = parseInt(widget.cmpbtn.html().split(' ')[1]);
+            widget.tempselection[GroupedBarChart.brushcolors[sel - 1]] = widget.selection.brush;
+            if(widget.selection.brush === undefined)
+                widget.tempselection[GroupedBarChart.brushcolors[sel - 1]] = [];
+            widget.cmpbtn.html("Selection " + (sel + 1));
+            delete widget.selection.brush;
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());
+
         }
         else{
+            //reset
+            GroupedBarChart.brushcolors.map(function(k){
+                delete widget.selection[k];
+            });
             widget.compare = false;
-            delete widget.selection.first;
-            delete widget.selection.second;
             widget.cmpbtn.html("Compare");
             widget.updateCallback(widget._encodeArgs(), [], widget.compare);
         }
@@ -910,6 +934,11 @@ var Map=function(opts,getDataCallback,updateCallback){
     this.colorNumber = {};
     this.newLayerColors = {};
 
+    this.retbrush = {
+        color:'',
+        x:'',
+        y:''
+    };
     
     
     var map = this._initMap();
@@ -1734,6 +1763,7 @@ Map.prototype = {
 
         try{
             var promises = widget.getDataCallback(layer._datasrc,bbox,z);
+            console.log(promises);
             var promarray = Object.keys(promises).map(function(k){
                 return promises[k];
             });
@@ -2161,7 +2191,7 @@ Query.prototype = {
             return dfd.promise();
         }
         else{
-            console.log(query_string);
+            // console.log(query_string);
             $.ajax({url: query_string, context: ctx}).done(function(res){
                 if(Object.keys(cache).length > 10){
                     var idx = Math.floor(Math.random() * (10+1)) ;
@@ -2610,6 +2640,95 @@ function latlong2tile(latlong,zoom) {
              z: zoom};
 }
 
+/*global d3 $ */
+function RetinalBrushes(opts, updateCallback){
+    this.updateCallback=updateCallback;
+
+    var name=opts.name;
+    var id = "#"+name.replace(/\./g,'\\.');
+
+    var margin = {top: 20, right: 20, bottom: 20, left: 20};
+
+    if(opts.args){
+    	console.log(opts.args);
+    	this._decodeArgs(opts.args);
+    }
+
+    var widget = this;
+    //Make draggable and resizable
+    d3.select(id).attr("class","retbrush resize-drag");
+
+    this.coldrop = d3.select(id).append("div")
+    	.attr("class", "retoptions dropzone")
+    	.html("color");
+
+    this.xdrop = d3.select(id).append("div")
+    	.attr("class", "retoptions dropzone")
+    	.html("x");
+
+    this.ydrop = d3.select(id).append("div")
+    	.attr("class", "retoptions dropzone")
+    	.html("y");
+
+    var labelNames = Object.keys(opts.model._widget);
+    this.labels = labelNames.map(function(k, i){
+    	var label = d3.select(id).append("div")
+    		.style("width", k.length * 8 + "px")
+	    	.style("height", 20 + "px")
+	    	.style("left", ((i % 3) * 100  + 10) + "px")
+	    	.style("top", (Math.floor(i / 4) * 25 + 50) + "px")
+	    	.attr("class", "retlabels draggable")
+	    	.html(k);
+
+		return label;
+    });
+
+    this.retbrush = {
+    	color:'',
+    	x:'',
+    	y:''
+    };
+
+    
+    interact('.dropzone').dropzone({
+        overlap: 0.51,
+        ondrop: function(event) {
+            event.relatedTarget.classList.add('dropped');
+            widget.retbrush[event.target.textContent] = event.relatedTarget.textContent;
+            widget.update();
+        },
+        ondragleave: function(event) {
+            event.relatedTarget.classList.remove('dropped');
+            widget.retbrush[event.target.textContent] = '';
+            widget.update();
+        }
+    });
+
+
+}
+
+RetinalBrushes.prototype={
+	update: function(){
+		var widget = this;
+		// console.log(this.retbrush);
+		this.updateCallback(widget._encodeArgs(), widget.retbrush);
+	},
+
+	getSelection: function(){
+		return this.retbrush;
+	},
+
+	_encodeArgs: function(){
+        var args= this.getSelection();
+        return JSON.stringify(args);
+    },
+    
+    _decodeArgs: function(s){
+        var args = JSON.parse(s);
+        this.retbrush = args;
+    },
+};
+
 /*global $,d3 */
 
 function Timeseries(opts,getDataCallback,updateCallback){
@@ -2641,6 +2760,12 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     widget.getDataCallback = getDataCallback;
     widget.updateCallback =  updateCallback;
+
+    this.retbrush = {
+    	color:'',
+    	x:'',
+    	y:''
+    };
 
 
     var margin = opts.margin;
@@ -3506,6 +3631,11 @@ var Viewer = function(opts){
     timediv.addClass('chart-overlay');
     timediv.attr('id', 'time_overlay');
     container.append(timediv);
+
+    var retdiv = $('<div>');
+    retdiv.addClass('chart-overlay');
+    retdiv.attr('id', 'ret-overlay');
+    container.append(retdiv);
     
 
     //setup
@@ -3515,6 +3645,7 @@ var Viewer = function(opts){
     this._container = container;
     this._catoverlay = catdiv;
     this._timeoverlay = timediv;
+    this._retoverlay = retdiv;
 
     this._nanocubes = nanocubes;
     this._urlargs = opts.urlargs;
@@ -3552,6 +3683,22 @@ var Viewer = function(opts){
         viewer._widget[w] = viewer.setupWidget(w,opts.config.widget[w],
                                                opts.config.widget[w].levels);
     }
+
+    var retwidget = {
+        "type": 'ret', 
+        "css": {
+            "opacity": 0.8, 
+            "height": "150px", 
+            "width": "300px",
+            "position": "absolute",
+            "left": "50px",
+            "top": "20px"
+        }, 
+        "title": "Retinal Brush"
+    };
+
+    viewer._widget.ret = viewer.setupWidget('ret', retwidget);
+
 };
 
 
@@ -3590,7 +3737,7 @@ Viewer.prototype = {
             return new Map(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
             },function(args,constraints,datasrc){
-                return viewer.update([id],constraints,
+                return viewer.update([id, 'ret'],constraints,
                                      id,args,datasrc);
             });
             
@@ -3600,7 +3747,7 @@ Viewer.prototype = {
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
             },function(args,constraints,compare){
-                return viewer.update([id],constraints,
+                return viewer.update([id, 'ret'],constraints,
                                      id,args, false, compare);
             });
             
@@ -3609,7 +3756,7 @@ Viewer.prototype = {
             return new GroupedBarChart(options, function(datasrc){
                 return viewer.getTopKData(id,datasrc,options.topk);
             },function(args,constraints){
-                return viewer.update([id],constraints,
+                return viewer.update([id, 'ret'],constraints,
                                      id,args);
             });
             
@@ -3620,8 +3767,15 @@ Viewer.prototype = {
             return new Timeseries(options,function(datasrc,start,end,interval){
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
-                return viewer.update([id],constraints,id,args);
+                return viewer.update([id, 'ret'],constraints,id,args);
             });
+
+        case 'ret':
+            this._retoverlay.append(newdiv);
+            return new RetinalBrushes(options, function(args,retbrush){
+                return viewer.update([id],false,id,args,false,undefined,retbrush);
+            });
+
         default:
             return null;
         }
@@ -3656,7 +3810,7 @@ Viewer.prototype = {
         return binsec;
     },
 
-    update: function(skip,constraints,name,args,datasrc,compare){
+    update: function(skip,constraints,name,args,datasrc,compare,retbrush){
         // console.log("skip: ",skip);
 
         skip = skip || [];
@@ -3679,6 +3833,15 @@ Viewer.prototype = {
                 }
             });
         }
+
+        // console.log(retbrush);
+        if(retbrush){
+            Object.keys(viewer._widget).forEach(function(d){
+                if(skip.indexOf(d) == -1){
+                    viewer._widget[d].retbrush = retbrush;
+                }
+            });
+        }
         
         //update the url
         viewer.updateURL(name,args);
@@ -3698,12 +3861,27 @@ Viewer.prototype = {
 
     constructQuery: function(nc,skip){
         skip = skip || [];
+        skip.push('ret');
 
         // console.log("skip: ",skip);
 
         var viewer = this;
         var queries = {};
         queries.global = nc.query();
+
+        var retbrush;
+        if(this._widget.ret)
+            retbrush = this._widget.ret.getSelection();
+        else{
+            retbrush = {
+                color:'',
+                x:'',
+                y:''
+            };
+        }
+        var retarray = Object.keys(retbrush).map(function(k){
+            return retbrush[k];
+        });
 
         // console.log(Object.keys(this._widget));
 
@@ -3721,23 +3899,104 @@ Viewer.prototype = {
                 }                
             }
         });
+
+        var xqueries = {};
+        var yqueries = {};
+        var cqueries = {};
         
         //then the restTimeseries.prototype={
         Object.keys(this._widget).forEach(function(d){
-            if (skip.indexOf(d) == -1){
+            if (skip.indexOf(d) == -1 && retarray.indexOf(d) != -1){
                 var sel = viewer._widget[d].getSelection();
                 Object.keys(sel).filter(function(d){
                     return (d != 'brush') && (d != 'global');
                 }).forEach(function(s){
                     //get an appropriate query
-                    var q = queries[s] || $.extend(true,{},queries.global);
+                    // var q = queries[s] || $.extend(true,{},queries.global);
+                    
                     //add a constraint
-                    queries[s] = q.setConstraint(d,sel[s]);
+                    if(retbrush.x == d)
+                        xqueries[s] = [d, sel[s]];
+                    else if (retbrush.y == d)
+                        yqueries[s] = [d, sel[s]];
+                    else //color
+                        cqueries[s] = [d, sel[s]];
                 });
             }
         });
+        // console.log(retbrush);
+        // console.log(xqueries, yqueries, cqueries);
+
+        if(!jQuery.isEmptyObject(xqueries)){
+            Object.keys(xqueries).forEach(function(s){
+                var str1 = '&x' + s;
+                var q1 = $.extend(true,{},queries.global);
+                q1 = q1.setConstraint(xqueries[s][0], xqueries[s][1]);
+                if(!jQuery.isEmptyObject(yqueries)){
+                    Object.keys(yqueries).forEach(function(s){
+                        var str2 = str1 + '&y' + s;
+                        var q2 = $.extend(true,{},q1);
+                        q2 = q2.setConstraint(yqueries[s][0], yqueries[s][1]);
+                        if(!jQuery.isEmptyObject(cqueries)){
+                            Object.keys(cqueries).forEach(function(s){
+                                var str3 = str2 + '&c' + s;
+                                var q3 = $.extend(true,{},q2);
+                                queries[str3] = q3.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                            });
+                        }
+                        else{
+                            queries[str2] = q2;
+                        }
+                    });
+                }
+                else{
+                    if(!jQuery.isEmptyObject(cqueries)){
+                        Object.keys(cqueries).forEach(function(s){
+                            var str2 = str1 + '&c' + s;
+                            var q2 = $.extend(true,{},q1);
+                            queries[str2] = q2.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                        });
+                    }
+                    else{
+                        queries[str1] = q1;
+                    }
+                }
+            });
+        }
+        else{
+            if(!jQuery.isEmptyObject(yqueries)){
+                Object.keys(yqueries).forEach(function(s){
+                    var str1 = '&y' + s;
+                    var q1 = $.extend(true,{},queries.global);
+                    q1 = q1.setConstraint(yqueries[s][0], yqueries[s][1]);
+                    if(!jQuery.isEmptyObject(cqueries)){
+                        Object.keys(cqueries).forEach(function(s){
+                            var str2 = str1 + '&c' + s;
+                            var q2 = $.extend(true,{},q1);
+                            queries[str2] = q2.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                        });
+                    }
+                    else{
+                        queries[str1] = q1;
+                    }
+                });
+            }
+            else{
+                if(!jQuery.isEmptyObject(cqueries)){
+                    Object.keys(cqueries).forEach(function(s){
+                        var str1 = '&c' + s;
+                        var q1 = $.extend(true,{},queries.global);
+                        queries[str1] = q1.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                    });
+                }
+                else{
+                    // console.log("Do nothing");
+                }
+            }
+        }
         
         //console.log(queries.global,skip);
+
         
         if (Object.keys(queries).length > 1){
             delete queries.global;

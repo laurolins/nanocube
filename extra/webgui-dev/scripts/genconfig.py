@@ -38,7 +38,7 @@ def main():
         r = requests.get(url+'/schema', allow_redirects=False,verify=False)
         schema = r.json() #json.loads(r.read())
     except:
-        print ('Fail to read schema from %s'%(url),file=sys.stderr)
+        print ('Faitl to read schema from %s'%(url),file=sys.stderr)
         sys.exit(1)
 
     spatialvars = [ x for x in schema['fields'] if

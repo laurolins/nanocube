@@ -24,6 +24,39 @@ canvas {
     padding: 5px;
 }
 
+.retoptions{
+    width: 90px;
+    height: 20px;
+    background: white;
+    color: black;
+    text-align: center;
+    float: left;
+    border: 1px solid black;
+}
+
+.retbrush{
+    float:right;
+    background-color: #555;
+    margin: 5px;
+    opacity:0.8;
+    pointer-events:visible;
+    border: 1px solid white;
+}
+
+.retlabels{
+    background: #add8e6;
+    position: absolute;
+    color: white;
+    text-align: center;
+    border: 1px solid black;
+}
+
+.dropped{
+    background: yellow;
+    color: black;
+}
+
+
 .barchart{
     position: relative;
     overflow-y:auto;
@@ -179,3 +212,4 @@ canvas {
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
 }
+

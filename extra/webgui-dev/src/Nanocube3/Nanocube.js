@@ -278,7 +278,7 @@ Query.prototype = {
             return dfd.promise();
         }
         else{
-            console.log(query_string);
+            // console.log(query_string);
             $.ajax({url: query_string, context: ctx}).done(function(res){
                 if(Object.keys(cache).length > 10){
                     var idx = Math.floor(Math.random() * (10+1)) ;

@@ -19,6 +19,11 @@ var Viewer = function(opts){
     timediv.addClass('chart-overlay');
     timediv.attr('id', 'time_overlay');
     container.append(timediv);
+
+    var retdiv = $('<div>');
+    retdiv.addClass('chart-overlay');
+    retdiv.attr('id', 'ret-overlay');
+    container.append(retdiv);
     
 
     //setup
@@ -28,6 +33,7 @@ var Viewer = function(opts){
     this._container = container;
     this._catoverlay = catdiv;
     this._timeoverlay = timediv;
+    this._retoverlay = retdiv;
 
     this._nanocubes = nanocubes;
     this._urlargs = opts.urlargs;
@@ -65,6 +71,22 @@ var Viewer = function(opts){
         viewer._widget[w] = viewer.setupWidget(w,opts.config.widget[w],
                                                opts.config.widget[w].levels);
     }
+
+    var retwidget = {
+        "type": 'ret', 
+        "css": {
+            "opacity": 0.8, 
+            "height": "150px", 
+            "width": "300px",
+            "position": "absolute",
+            "left": "50px",
+            "top": "20px"
+        }, 
+        "title": "Retinal Brush"
+    };
+
+    viewer._widget.ret = viewer.setupWidget('ret', retwidget);
+
 };
 
 
@@ -103,7 +125,7 @@ Viewer.prototype = {
             return new Map(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
             },function(args,constraints,datasrc){
-                return viewer.update([id],constraints,
+                return viewer.update([id, 'ret'],constraints,
                                      id,args,datasrc);
             });
             
@@ -113,7 +135,7 @@ Viewer.prototype = {
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
             },function(args,constraints,compare){
-                return viewer.update([id],constraints,
+                return viewer.update([id, 'ret'],constraints,
                                      id,args, false, compare);
             });
             
@@ -122,7 +144,7 @@ Viewer.prototype = {
             return new GroupedBarChart(options, function(datasrc){
                 return viewer.getTopKData(id,datasrc,options.topk);
             },function(args,constraints){
-                return viewer.update([id],constraints,
+                return viewer.update([id, 'ret'],constraints,
                                      id,args);
             });
             
@@ -133,8 +155,15 @@ Viewer.prototype = {
             return new Timeseries(options,function(datasrc,start,end,interval){
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
-                return viewer.update([id],constraints,id,args);
+                return viewer.update([id, 'ret'],constraints,id,args);
             });
+
+        case 'ret':
+            this._retoverlay.append(newdiv);
+            return new RetinalBrushes(options, function(args,retbrush){
+                return viewer.update([id],false,id,args,false,undefined,retbrush);
+            });
+
         default:
             return null;
         }
@@ -169,7 +198,7 @@ Viewer.prototype = {
         return binsec;
     },
 
-    update: function(skip,constraints,name,args,datasrc,compare){
+    update: function(skip,constraints,name,args,datasrc,compare,retbrush){
         // console.log("skip: ",skip);
 
         skip = skip || [];
@@ -192,6 +221,15 @@ Viewer.prototype = {
                 }
             });
         }
+
+        // console.log(retbrush);
+        if(retbrush){
+            Object.keys(viewer._widget).forEach(function(d){
+                if(skip.indexOf(d) == -1){
+                    viewer._widget[d].retbrush = retbrush;
+                }
+            });
+        }
         
         //update the url
         viewer.updateURL(name,args);
@@ -211,12 +249,27 @@ Viewer.prototype = {
 
     constructQuery: function(nc,skip){
         skip = skip || [];
+        skip.push('ret');
 
         // console.log("skip: ",skip);
 
         var viewer = this;
         var queries = {};
         queries.global = nc.query();
+
+        var retbrush;
+        if(this._widget.ret)
+            retbrush = this._widget.ret.getSelection();
+        else{
+            retbrush = {
+                color:'',
+                x:'',
+                y:''
+            };
+        }
+        var retarray = Object.keys(retbrush).map(function(k){
+            return retbrush[k];
+        });
 
         // console.log(Object.keys(this._widget));
 
@@ -234,23 +287,104 @@ Viewer.prototype = {
                 }                
             }
         });
+
+        var xqueries = {};
+        var yqueries = {};
+        var cqueries = {};
         
         //then the restTimeseries.prototype={
         Object.keys(this._widget).forEach(function(d){
-            if (skip.indexOf(d) == -1){
+            if (skip.indexOf(d) == -1 && retarray.indexOf(d) != -1){
                 var sel = viewer._widget[d].getSelection();
                 Object.keys(sel).filter(function(d){
                     return (d != 'brush') && (d != 'global');
                 }).forEach(function(s){
                     //get an appropriate query
-                    var q = queries[s] || $.extend(true,{},queries.global);
+                    // var q = queries[s] || $.extend(true,{},queries.global);
+                    
                     //add a constraint
-                    queries[s] = q.setConstraint(d,sel[s]);
+                    if(retbrush.x == d)
+                        xqueries[s] = [d, sel[s]];
+                    else if (retbrush.y == d)
+                        yqueries[s] = [d, sel[s]];
+                    else //color
+                        cqueries[s] = [d, sel[s]];
                 });
             }
         });
+        // console.log(retbrush);
+        // console.log(xqueries, yqueries, cqueries);
+
+        if(!jQuery.isEmptyObject(xqueries)){
+            Object.keys(xqueries).forEach(function(s){
+                var str1 = '&x' + s;
+                var q1 = $.extend(true,{},queries.global);
+                q1 = q1.setConstraint(xqueries[s][0], xqueries[s][1]);
+                if(!jQuery.isEmptyObject(yqueries)){
+                    Object.keys(yqueries).forEach(function(s){
+                        var str2 = str1 + '&y' + s;
+                        var q2 = $.extend(true,{},q1);
+                        q2 = q2.setConstraint(yqueries[s][0], yqueries[s][1]);
+                        if(!jQuery.isEmptyObject(cqueries)){
+                            Object.keys(cqueries).forEach(function(s){
+                                var str3 = str2 + '&c' + s;
+                                var q3 = $.extend(true,{},q2);
+                                queries[str3] = q3.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                            });
+                        }
+                        else{
+                            queries[str2] = q2;
+                        }
+                    });
+                }
+                else{
+                    if(!jQuery.isEmptyObject(cqueries)){
+                        Object.keys(cqueries).forEach(function(s){
+                            var str2 = str1 + '&c' + s;
+                            var q2 = $.extend(true,{},q1);
+                            queries[str2] = q2.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                        });
+                    }
+                    else{
+                        queries[str1] = q1;
+                    }
+                }
+            });
+        }
+        else{
+            if(!jQuery.isEmptyObject(yqueries)){
+                Object.keys(yqueries).forEach(function(s){
+                    var str1 = '&y' + s;
+                    var q1 = $.extend(true,{},queries.global);
+                    q1 = q1.setConstraint(yqueries[s][0], yqueries[s][1]);
+                    if(!jQuery.isEmptyObject(cqueries)){
+                        Object.keys(cqueries).forEach(function(s){
+                            var str2 = str1 + '&c' + s;
+                            var q2 = $.extend(true,{},q1);
+                            queries[str2] = q2.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                        });
+                    }
+                    else{
+                        queries[str1] = q1;
+                    }
+                });
+            }
+            else{
+                if(!jQuery.isEmptyObject(cqueries)){
+                    Object.keys(cqueries).forEach(function(s){
+                        var str1 = '&c' + s;
+                        var q1 = $.extend(true,{},queries.global);
+                        queries[str1] = q1.setConstraint(cqueries[s][0], cqueries[s][1]); 
+                    });
+                }
+                else{
+                    // console.log("Do nothing");
+                }
+            }
+        }
         
         //console.log(queries.global,skip);
+
         
         if (Object.keys(queries).length > 1){
             delete queries.global;

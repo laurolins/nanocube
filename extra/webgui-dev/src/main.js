@@ -49,8 +49,8 @@ function getArgFromUrl() {
 }
 
 var viewer ;
-define(['jquery','nanocube','colorbrewer', 'shpjs', 'resize-drag'],
-       function($,Nanocube3,colorbrewer,shp){
+define(['jquery','nanocube','colorbrewer', 'shpjs', 'interact', 'resize-drag'],
+       function($,Nanocube3,colorbrewer,shp,interact){
     'use strict';
     //read config and pass it to start viewer
     var urlargs = getArgFromUrl();
