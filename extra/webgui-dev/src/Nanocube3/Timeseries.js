@@ -601,27 +601,23 @@ Timeseries.prototype={
                 res[d] = results[i];
 
                 var label = d.split('&-&');
-                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);
+                var xyc = label[0].split('&');
+                var ret = {};
+                xyc.map(function(k){
+                    ret[k.charAt(0)] = k.substring(1);
+                });
 
-                if(isColor){
-                    res[d].color = label[0];
+                //check ret.x, ret.y
+
+                if(ret.c){
+                	res[ret.c] = results[i];
+                	res[ret.c].color = ret.c;
                 }
                 else{
-                	var colormap;
-                	var cidx;
-                	if(widget.compare){
-                		if(label[0] == "first")
-                			colormap = widget._datasrc[label[1]].colormap;
-                		else
-                			colormap = widget._datasrc[label[1]].colormap2;
-		                cidx = Math.floor(colormap.length/2);
-		                res[d].color = colormap[cidx];
-                	}
-                	else{
-	                    colormap = widget._datasrc[label[1]].colormap;
-	                    cidx = Math.floor(colormap.length/2);
-	                    res[d].color = colormap[cidx];
-	                }
+                	res.global = results[i];
+                	var colormap = widget._datasrc[label[1]].colormap;
+                    var cidx = Math.floor(colormap.length/2);
+                    res.global.color = colormap[cidx];
                 }
             });
 

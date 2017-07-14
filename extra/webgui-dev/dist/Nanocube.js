@@ -529,6 +529,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 }
 
 GroupedBarChart.brushcolors = colorbrewer.Set1[5].slice(0);
+console.log(GroupedBarChart.brushcolors);
 // GroupedBarChart.nextcolor = function(){
 //     var c = GroupedBarChart.brushcolors.shift();
 //     GroupedBarChart.brushcolors.push(c);
@@ -989,6 +990,14 @@ Map.nextcolor = function(){
     return c;
 };
 Map.shp = shp;
+Map.heatcolormaps = {
+    "#e41a1c": colorbrewer.Reds[9].slice(0).reverse(),
+    "#377eb8": colorbrewer.Blues[9].slice(0).reverse(),
+    "#4daf4a": colorbrewer.Greens[9].slice(0).reverse(),
+    "#984ea3": colorbrewer.Purples[9].slice(0).reverse(),
+    "#ff7f00": colorbrewer.Oranges[9].slice(0).reverse()
+};
+
 
 Map.prototype = {
     _genLayers: function(data){
@@ -1009,6 +1018,11 @@ Map.prototype = {
                 return {r:d.r, g:d.g, b:d.b, a:i/array.length*255};
             }
         }
+
+        var hcmaps = {};
+        Object.keys(Map.heatcolormaps).map(function(h){
+            hcmaps[h] = Map.heatcolormaps[h].map(colorfunc);
+        });
         
         for (var d in data){
             var layer = L.canvasOverlay(drawfunc,{opacity:0.7});
@@ -1022,7 +1036,8 @@ Map.prototype = {
             
             //set colormap
             layer._colormap = widget._datasrc[d].colormap.map(colorfunc);
-            layer._colormap2 = widget._datasrc[d].colormap2.map(colorfunc);
+
+            layer._hcmaps = hcmaps;
 
             //htmllabel
             var htmllabel='<i style="background:'+
@@ -1591,59 +1606,77 @@ Map.prototype = {
         }
     },
 
-    drawCanvasLayer: function(res,canvas,cmap,opacity,res2,cmap2){
-        var arr;
-        if(res2){
-            arr = this.dataToArray(res.opts.pb,res.data,res2.data);
-            this.render(arr,res.opts.pb,cmap,canvas,opacity,cmap2);
-        }
-        else{
-            arr = this.dataToArray(res.opts.pb,res.data);
-            this.render(arr,res.opts.pb,cmap,canvas,opacity);
-        }
+    drawCanvasLayer: function(res,canvas,cmaps,opacity){
+        var keys = Object.keys(res);
+        var pb = res[keys[0]].opts.pb;
+        var data = {};
+        Object.keys(res).map(function(k){
+            data[k] = res[k].data;
+        });
+        var arr = this.dataToArray(pb,data);
+        // console.log(data, arr);
+        this.render(arr[0],arr[1],pb,cmaps,canvas,opacity);
     },
 
-    dataToArray: function(pb,data,data2){
+    dataToArray: function(pb,data){
         var origin = pb.min;
         var width = pb.max.x-pb.min.x+1;
         var height = pb.max.y-pb.min.y+1;
 
         //var arr = new Array(width*height).map(function () { return 0;});
-        var arr = [];
+        var tarr = [];
+        var max = [];
 
         //Explicit Loop for better performance
-        var idx = Object.keys(data);
+        Object.keys(data).map(function(k){
+            var idx = Object.keys(data[k]);
         
-        for (var i = 0, len = idx.length; i < len; i++) {
-            var ii= idx[i];
-            var d = data[ii];
-            var _i = d.x - origin.x;
-            var _j = d.y - origin.y;
-            if(_i <0 || _j <0 || _i >=width || _j>=height){
-                continue;
-            }
-            var _idx =  _j*width+_i;
-            arr[_idx] = d.val;
-        }
-
-        if(data2){
-            var idx2 = Object.keys(data2);
-            for (var j = 0, len2 = idx2.length; j < len2; j++){
-                var jj = idx2[j];
-                var d2 = data2[jj];
-                var _i2 = d2.x - origin.x;
-                var _j2 = d2.y - origin.y;
-                if(_i2 <0 || _j2 <0 || _i2 >=width || _j2>=height){
+            for (var i = 0, len = idx.length; i < len; i++) {
+                var ii= idx[i];
+                var d = data[k][ii];
+                var _i = d.x - origin.x;
+                var _j = d.y - origin.y;
+                if(_i <0 || _j <0 || _i >=width || _j>=height){
                     continue;
                 }
-                var _idx2 = _j2 * width + _i2;
-                if(arr[_idx2])
-                    arr[_idx2] = arr[_idx2] - d2.val;
-                else
-                    arr[_idx2] = -d2.val;
+                var _idx =  _j*width+_i;
+                if(tarr[_idx]){
+                    if(Math.max.apply(null,tarr[_idx]) < d.val)
+                        max[_idx] = k;
+                    tarr[_idx].push(d.val);
+                }
+                else{
+                    tarr[_idx] = [d.val];
+                    max[_idx] = k;
+                }
+            }
+        });
+
+        console.log(tarr);
+
+        var arr = [];
+
+        function add(a,b){
+            return a + b;
+        }
+
+        var idx2 = Object.keys(tarr);
+        for (var j = 0, len = idx2.length; j < len; j++) {
+            var jj= idx2[j];
+            var values = tarr[jj];
+            var m = Math.max.apply(null, values);
+            if(values.length == 1)
+                arr[jj] = m;
+            else{
+                var rest = values.reduce(add, 0);
+                rest -= m;
+                rest /= (values.length - 1);
+                arr[jj] = m - rest;
             }
         }
-        return arr;
+        console.log(arr);
+
+        return [arr, max];
     },
 
     normalizeColorMap: function(data,colors,log){
@@ -1669,7 +1702,7 @@ Map.prototype = {
         return d3.scaleLinear().domain(domain).range(colors);
     },
 
-    render: function(arr,pb,colormap,canvas,opacity,colormap2){
+    render: function(arr,max,pb,colormaps,canvas,opacity){
         var realctx = canvas.getContext("2d");        
         var width = pb.max.x-pb.min.x+1;
         var height = pb.max.y-pb.min.y+1;
@@ -1685,42 +1718,21 @@ Map.prototype = {
 
         //Explicit Loop for better performance
         var idx = Object.keys(arr);
-        var dom = d3.extent(colormap.domain());
-        var dom2;
-        if(colormap2)
-            dom2 = d3.extent(colormap2.domain());
+        var dom = {};
+
+        Object.keys(colormaps).map(function(k){
+            dom[k] = d3.extent(colormaps[k].domain());
+        });
 
         for (var i = 0, len = idx.length; i < len; i++) {
             var ii= idx[i];
             var v = arr[ii];
-            if(colormap2){
-                if(v >= 0){
-                    v = Math.max(v,dom[0]);
-                    v = Math.min(v,dom[1]);
-                }
-                else{
-                    v = -v;
-                    v = Math.max(v,dom2[0]);
-                    v = Math.min(v,dom2[1]);
-                    v = -v;
-                }
-            }
-            else{
-                v = Math.max(v,dom[0]);
-                v = Math.min(v,dom[1]);
-            }
+            var k = max[ii];
+            v = Math.max(v, dom[k][0]);
+            v = Math.min(v, dom[k][1]);
             var color;
-            if(colormap2){
-                if(v >= 0)
-                    color = colormap(v);
-                else{
-                    v = -v;
-                    color = colormap2(v);
-                }
-            }
-            else{
-                color = colormap(v);
-            }
+            color = colormaps[k](v);
+
             // color.a *= opacity;
             pixels[ii] =
                 (color.a << 24) |         // alpha
@@ -1763,84 +1775,57 @@ Map.prototype = {
 
         try{
             var promises = widget.getDataCallback(layer._datasrc,bbox,z);
-            console.log(promises);
+            // console.log(promises);
             var promarray = Object.keys(promises).map(function(k){
                 return promises[k];
             });
             var promkeys = Object.keys(promises);
             $.when.apply($,promarray).done(function(){
                 var results = arguments;
+                var res = {};
                 promkeys.forEach(function(d,i){
                     console.log('tiletime:',window.performance.now()-startdata);
-                    if(widget.compare){
-                        var label = d.split('&-&');
-                        if(label[0] == "second")
-                            return;
-                    }
-                    var res = results[i];
-                    var res2;
-                    if(widget.compare) res2 = results[i + 1];
+                    var label = d.split('&-&');
+                    var xyc = label[0].split('&');
+                    var ret = {};
+                    xyc.map(function(k){
+                        ret[k.charAt(0)] = k.substring(1);
+                    });
 
-                    widget._renormalize= true;
+                    //check ret.x, ret.y
 
-                    if(widget._renormalize){
-                        var cmap = widget.normalizeColorMap(res.data,
-                                                            layer._colormap,
-                                                            widget._logheatmap);
-                        var cmap2;
-                        if(widget.compare){
-                            cmap2 = widget.normalizeColorMap(res2.data,
-                                                             layer._colormap2,
-                                                             widget._logheatmap);
-                        }
-                        layer._cmap = cmap;
-                        if(widget.compare) layer._cmap2 = cmap2;
-
-                        widget._renormalize = false;
-
-
-                        if(widget._opts.legend){
-                            //update the legend
-                            var ext = d3.extent(res.data,function(d){
-                                return d.val;
-                            });
-                            
-                            if (widget._logheatmap){ //log
-                                ext = ext.map(function(d){ return Math.log(d); });
-                            }
-                            var valcolor = Array.apply(null, Array(5)).map(function (_, i) {return ext[0]+i * (ext[1]-ext[0])/5;});
-                            
-                            if (widget._logheatmap){ //anti log
-                                valcolor = valcolor.map(function(d){ return Math.floor(Math.exp(d)+0.5); });
-                            }
-                            
-                            valcolor = valcolor.map(function(d) {return {val:d, color: JSON.parse(JSON.stringify(cmap(d)))};});
-                            widget.updateLegend(widget._map,valcolor);
-                            console.log(widget._map); 
-                        }
-                    }
-                    
-                    var startrender = window.performance.now();
-                    if(widget.compare){
-                        widget.drawCanvasLayer(res,canvas,layer._cmap,
-                                               layer.options.opacity,
-                                               res2, layer._cmap2);
+                    if(ret.c){
+                        res[ret.c] = results[i];
                     }
                     else{
-                        widget.drawCanvasLayer(res,canvas,layer._cmap,
-                                               layer.options.opacity);
+                        res.global = results[i];
                     }
-
-                    console.log('rendertime:',
-                                window.performance.now()-startrender);
-
-                    //res.total_count =  res.data.reduce(function(p,c){
-                    //    return p+c.val;
-                    //},0);
-                    //widget.updateInfo('Total: '+
-                    //                  d3.format(',')(res.total_count));
-                    
                 });
+                widget._renormalize = true;
+                if(widget._renormalize){
+                    var cmaps = {};
+                    Object.keys(res).map(function(c){
+                        if(c == 'global'){
+                            cmaps.global = widget.normalizeColorMap(res.global.data,
+                                                                    layer._colormap,
+                                                                    widget._logheatmap);
+                        }
+                        else{
+                            cmaps[c] = widget.normalizeColorMap(res[c].data,
+                                                                layer._hcmaps[c],
+                                                                widget._logheatmap);
+                        }
+                    });
+                    layer._cmaps = cmaps;
+                    widget._renormalize = false;
+
+                    if(widget._opts.legend){
+                        //idk
+                    }
+                }
+                var startrender = window.performance.now();
+                widget.drawCanvasLayer(res,canvas,layer._cmaps,layer.options.opacity);
+                console.log('rendertime:', window.performance.now()-startrender);
             });
         }
         catch(err){
@@ -1898,9 +1883,9 @@ Map.prototype = {
                 // delete widget._drawnItems._layers[k];
                 // map.removeLayer(widget._drawnItems._layers[k]);
             });
-            console.log(widget._drawnItems);
+            // console.log(widget._drawnItems);
             widget._drawnItems.eachLayer(function (layer) {
-                console.log(widget.newLayerColors);
+                // console.log(widget.newLayerColors);
                 var c = widget.newLayerColors[layer._leaflet_id];
                 if(c !== undefined){
                     layer.setStyle({color: c});
@@ -3332,27 +3317,23 @@ Timeseries.prototype={
                 res[d] = results[i];
 
                 var label = d.split('&-&');
-                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);
+                var xyc = label[0].split('&');
+                var ret = {};
+                xyc.map(function(k){
+                    ret[k.charAt(0)] = k.substring(1);
+                });
 
-                if(isColor){
-                    res[d].color = label[0];
+                //check ret.x, ret.y
+
+                if(ret.c){
+                	res[ret.c] = results[i];
+                	res[ret.c].color = ret.c;
                 }
                 else{
-                	var colormap;
-                	var cidx;
-                	if(widget.compare){
-                		if(label[0] == "first")
-                			colormap = widget._datasrc[label[1]].colormap;
-                		else
-                			colormap = widget._datasrc[label[1]].colormap2;
-		                cidx = Math.floor(colormap.length/2);
-		                res[d].color = colormap[cidx];
-                	}
-                	else{
-	                    colormap = widget._datasrc[label[1]].colormap;
-	                    cidx = Math.floor(colormap.length/2);
-	                    res[d].color = colormap[cidx];
-	                }
+                	res.global = results[i];
+                	var colormap = widget._datasrc[label[1]].colormap;
+                    var cidx = Math.floor(colormap.length/2);
+                    res.global.color = colormap[cidx];
                 }
             });
 

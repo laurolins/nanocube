@@ -141,6 +141,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 }
 
 GroupedBarChart.brushcolors = colorbrewer.Set1[5].slice(0);
+console.log(GroupedBarChart.brushcolors);
 // GroupedBarChart.nextcolor = function(){
 //     var c = GroupedBarChart.brushcolors.shift();
 //     GroupedBarChart.brushcolors.push(c);
