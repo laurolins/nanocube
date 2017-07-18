@@ -20,8 +20,5 @@
     "leaflet-draw": "^0.2",
     "requirejs": "*",
     "shpjs": "^3.4.0"
-  },
-  "dependencies": {
-    "jquery-ui": "^1.12.1"
   }
 }

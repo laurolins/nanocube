@@ -1,8 +1,9 @@
 /*global d3 $ */
 
-function GroupedBarChart(opts, getDataCallback, updateCallback){
+function GroupedBarChart(opts, getDataCallback, updateCallback, getXYCallback){
     this.getDataCallback=getDataCallback;
     this.updateCallback=updateCallback;
+    this.getXYCallback = getXYCallback;
 
     var name=opts.name;
     console.log(name);
@@ -141,7 +142,6 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 }
 
 GroupedBarChart.brushcolors = colorbrewer.Set1[5].slice(0);
-console.log(GroupedBarChart.brushcolors);
 // GroupedBarChart.nextcolor = function(){
 //     var c = GroupedBarChart.brushcolors.shift();
 //     GroupedBarChart.brushcolors.push(c);
@@ -476,7 +476,7 @@ GroupedBarChart.prototype = {
         if(widget.cmpbtn.html() == "Compare" && 
             (widget.retbrush.color == widget._name || 
              widget.retbrush.x == widget._name ||
-             widget.rebrush.y == widget._name)){
+             widget.retbrush.y == widget._name)){
             delete widget.selection.brush;
             widget.update();
             widget.cmpbtn.html("Selection 1");
@@ -517,6 +517,7 @@ GroupedBarChart.prototype = {
             });
             widget.compare = false;
             widget.cmpbtn.html("Compare");
+            widget.update();
             widget.updateCallback(widget._encodeArgs(), [], widget.compare);
         }
     },

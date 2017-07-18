@@ -127,6 +127,8 @@ Viewer.prototype = {
             },function(args,constraints,datasrc){
                 return viewer.update([id, 'ret'],constraints,
                                      id,args,datasrc);
+            },function(){
+                return viewer.getXYData([id]);
             });
             
         case 'cat':
@@ -137,6 +139,8 @@ Viewer.prototype = {
             },function(args,constraints,compare){
                 return viewer.update([id, 'ret'],constraints,
                                      id,args, false, compare);
+            },function(){
+                return viewer.getXYData([id]);
             });
             
         case 'id':
@@ -146,6 +150,8 @@ Viewer.prototype = {
             },function(args,constraints){
                 return viewer.update([id, 'ret'],constraints,
                                      id,args);
+            },function(){
+                return viewer.getXYData([id]);
             });
             
         case 'time':
@@ -156,6 +162,8 @@ Viewer.prototype = {
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
                 return viewer.update([id, 'ret'],constraints,id,args);
+            },function(){
+                return viewer.getXYData([id]);
             });
 
         case 'ret':
@@ -288,6 +296,7 @@ Viewer.prototype = {
             }
         });
 
+        console.log(retarray);
         var xqueries = {};
         var yqueries = {};
         var cqueries = {};
@@ -312,8 +321,9 @@ Viewer.prototype = {
                 });
             }
         });
+
         // console.log(retbrush);
-        // console.log(xqueries, yqueries, cqueries);
+        console.log(xqueries, yqueries, cqueries);
 
         if(!jQuery.isEmptyObject(xqueries)){
             Object.keys(xqueries).forEach(function(s){
@@ -391,6 +401,46 @@ Viewer.prototype = {
         }
 
         return queries;
+    },
+
+    getXYData: function(skip){
+        skip.push('ret');
+        var retbrush;
+        if(this._widget.ret)
+            retbrush = this._widget.ret.getSelection();
+        else{
+            retbrush = {
+                color:'',
+                x:'',
+                y:''
+            };
+        }
+        var retarray = Object.keys(retbrush).map(function(k){
+            return retbrush[k];
+        });
+
+        var x = [];
+        var y = [];
+        
+        //then the restTimeseries.prototype={
+        Object.keys(this._widget).forEach(function(d){
+            if (skip.indexOf(d) == -1 && retarray.indexOf(d) != -1){
+                var sel = viewer._widget[d].getSelection();
+                Object.keys(sel).filter(function(d){
+                    return (d != 'brush') && (d != 'global');
+                }).forEach(function(s){
+                    if(retbrush.x == d)
+                        x.push(s);
+                    else if (retbrush.y == d)
+                        y.push(s);
+                });
+            }
+        });
+        if(y.length === 0)
+            y = ['default'];
+        if(x.length === 0)
+            x = ['default'];
+        return [x,y];
     },
 
     getSpatialData:function(varname, datasrc, bbox, zoom, maptilesize){

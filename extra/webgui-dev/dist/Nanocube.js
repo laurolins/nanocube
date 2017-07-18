@@ -388,9 +388,10 @@ Expression.prototype = {
 
 /*global d3 $ */
 
-function GroupedBarChart(opts, getDataCallback, updateCallback){
+function GroupedBarChart(opts, getDataCallback, updateCallback, getXYCallback){
     this.getDataCallback=getDataCallback;
     this.updateCallback=updateCallback;
+    this.getXYCallback = getXYCallback;
 
     var name=opts.name;
     console.log(name);
@@ -529,7 +530,6 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
 }
 
 GroupedBarChart.brushcolors = colorbrewer.Set1[5].slice(0);
-console.log(GroupedBarChart.brushcolors);
 // GroupedBarChart.nextcolor = function(){
 //     var c = GroupedBarChart.brushcolors.shift();
 //     GroupedBarChart.brushcolors.push(c);
@@ -864,7 +864,7 @@ GroupedBarChart.prototype = {
         if(widget.cmpbtn.html() == "Compare" && 
             (widget.retbrush.color == widget._name || 
              widget.retbrush.x == widget._name ||
-             widget.rebrush.y == widget._name)){
+             widget.retbrush.y == widget._name)){
             delete widget.selection.brush;
             widget.update();
             widget.cmpbtn.html("Selection 1");
@@ -905,6 +905,7 @@ GroupedBarChart.prototype = {
             });
             widget.compare = false;
             widget.cmpbtn.html("Compare");
+            widget.update();
             widget.updateCallback(widget._encodeArgs(), [], widget.compare);
         }
     },
@@ -916,9 +917,10 @@ GroupedBarChart.prototype = {
 
 /*global $ L colorbrewer d3 window */
 
-var Map=function(opts,getDataCallback,updateCallback){
+var Map=function(opts,getDataCallback,updateCallback, getXYCallback){
     this.getDataCallback = getDataCallback;
     this.updateCallback = updateCallback;
+    this.getXYCallback = getXYCallback;
 
     this._datasrc = opts.datasrc;
     this._coarse_offset = opts.coarse_offset || 0;
@@ -1210,21 +1212,21 @@ Map.prototype = {
         var firstShape = true;
         var firstEdit = true;
         var latlng;
-        widget.compareShapes = [];
+        // widget.compareShapes = [];
 
         map.on('draw:created', function (e) {
             drawnItems.addLayer(e.layer);
 
-            if(widget.compare){
-                widget.compareShapes.push(e.layer._leaflet_id);
-                e.layer.setStyle({color: '#ffffff'});
-                widget.updateCallback(widget._encodeArgs(),
-                                  [{
-                                      type:"SPATIAL",
-                                      key:"#ffffff"
-                                  }]);
-                return;
-            }
+            // if(widget.compare){
+            //     widget.compareShapes.push(e.layer._leaflet_id);
+            //     e.layer.setStyle({color: '#ffffff'});
+            //     widget.updateCallback(widget._encodeArgs(),
+            //                       [{
+            //                           type:"SPATIAL",
+            //                           key:"#ffffff"
+            //                       }]);
+            //     return;
+            // }
 
             if(firstShape){
                 console.log(e.layer);
@@ -1264,9 +1266,9 @@ Map.prototype = {
 
         map.on('draw:editstart', function(e){
 
-            if(widget.compare){
-                return;
-            }
+            // if(widget.compare){
+            //     return;
+            // }
 
             if(firstEdit){
                 var popup = L.popup()
@@ -1375,60 +1377,59 @@ Map.prototype = {
             //console.log(files);
             var r = new FileReader();
             r.onload = function(e) {
-                var gjw;
+                // var gjw;
                 var gj;
-                console.log(typeof e.target.result);
                 if((typeof e.target.result) == 'object'){
                     var geojson = shp.parseZip(e.target.result);
-                    gjw = L.geoJson(geojson, {
-                        style: {
-                            "color": "#ffffff",
-                            "opacity": 0.7
-                        }
-                    });
+                    // gjw = L.geoJson(geojson, {
+                    //     style: {
+                    //         "color": "#ffffff",
+                    //         "opacity": 0.7
+                    //     }
+                    // });
                     gj = L.geoJson(geojson, {
                         style: {
                             "color": initColor,
                             "opacity": 0.7
                         }
                     });
-                    console.log(gj);
+                    // console.log(gj);
                 }
-                console.log(gj);
+                // console.log(gj);
                 try{
-                    if(widget.compare){
-                        if(gjw === undefined){
-                            gjw = L.geoJson(JSON.parse(e.target.result), {
-                                style: {
-                                    "color": '#ffffff',
-                                    "opacity": 0.7
-                                }
-                            });
-                        }
-                        console.log(gjw);
-                        Object.keys(gjw._layers).map(function(k){
-                            if(gjw._layers[k]._layers){
-                                var lids = gjw._layers[k].getLayers().map(function(k){
-                                    return k._leaflet_id;
-                                });
-                                Object.keys(gjw._layers[k]._layers).map(function(l){
-                                    drawnItems.addLayer(gjw._layers[k]._layers[l]);
-                                    widget.compareShapes.push(gjw._layers[k]._layers[l]._leaflet_id);
-                                });
-                            }
-                            else{
-                                drawnItems.addLayer(gjw._layers[k]);
-                                widget.compareShapes.push(gjw._layers[k]._leaflet_id);
-                            }
-                        });
-                        widget.updateCallback(widget._encodeArgs(),
-                            [{
-                                type:"SPATIAL",
-                                key:'#ffffff'
-                            }]);
-                        return;
+                    // if(widget.compare){
+                    //     if(gjw === undefined){
+                    //         gjw = L.geoJson(JSON.parse(e.target.result), {
+                    //             style: {
+                    //                 "color": '#ffffff',
+                    //                 "opacity": 0.7
+                    //             }
+                    //         });
+                    //     }
+                    //     console.log(gjw);
+                    //     Object.keys(gjw._layers).map(function(k){
+                    //         if(gjw._layers[k]._layers){
+                    //             var lids = gjw._layers[k].getLayers().map(function(k){
+                    //                 return k._leaflet_id;
+                    //             });
+                    //             Object.keys(gjw._layers[k]._layers).map(function(l){
+                    //                 drawnItems.addLayer(gjw._layers[k]._layers[l]);
+                    //                 widget.compareShapes.push(gjw._layers[k]._layers[l]._leaflet_id);
+                    //             });
+                    //         }
+                    //         else{
+                    //             drawnItems.addLayer(gjw._layers[k]);
+                    //             widget.compareShapes.push(gjw._layers[k]._leaflet_id);
+                    //         }
+                    //     });
+                    //     widget.updateCallback(widget._encodeArgs(),
+                    //         [{
+                    //             type:"SPATIAL",
+                    //             key:'#ffffff'
+                    //         }]);
+                    //     return;
 
-                    }
+                    // }
                     if(gj === undefined){
                         gj = L.geoJson(JSON.parse(e.target.result), {
                             style: {
@@ -1555,7 +1556,7 @@ Map.prototype = {
 
         res.global.zoom = map.getZoom() + 8;
 
-        if(this.compare){
+        if(!this.checkRet()){
             if(this._drawnItems.getLayers().length === 0){
                 return res;
             }
@@ -1652,7 +1653,7 @@ Map.prototype = {
             }
         });
 
-        console.log(tarr);
+        // console.log(tarr);
 
         var arr = [];
 
@@ -1674,7 +1675,7 @@ Map.prototype = {
                 arr[jj] = m - rest;
             }
         }
-        console.log(arr);
+        // console.log(arr);
 
         return [arr, max];
     },
@@ -1756,7 +1757,7 @@ Map.prototype = {
     _canvasDraw: function(layer,options){
         var canvas = options.canvas;
         var ctx = canvas.getContext('2d');
-        ctx.clearRect(0,0,canvas.width,canvas.height);
+        
 
         var map = this._map;
 
@@ -1780,6 +1781,7 @@ Map.prototype = {
                 return promises[k];
             });
             var promkeys = Object.keys(promises);
+            ctx.clearRect(0,0,canvas.width,canvas.height);
             $.when.apply($,promarray).done(function(){
                 var results = arguments;
                 var res = {};
@@ -1829,6 +1831,7 @@ Map.prototype = {
             });
         }
         catch(err){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
             console.log(err);
         }
     },
@@ -1868,31 +1871,35 @@ Map.prototype = {
         });
         legend.html(htmlstr.join('<br />'));
     },
+    checkRet: function(){
+        return this.retbrush.color == this._name || this.retbrush.x == this._name ||
+            this.retbrush.y == this._name;
+    },
     adjustToCompare: function(){
-        var map = this._map;
-        var widget = this;
-        if(this.compare){
-            widget._drawnItems.eachLayer(function (layer) {
-                layer.setStyle({color: '#ffffff'});
-            });
-            widget.updateCallback(widget._encodeArgs());
-        }
-        else{
-            widget.compareShapes.map(function(k){
-                widget._drawnItems.removeLayer(widget._drawnItems._layers[k]);
-                // delete widget._drawnItems._layers[k];
-                // map.removeLayer(widget._drawnItems._layers[k]);
-            });
-            // console.log(widget._drawnItems);
-            widget._drawnItems.eachLayer(function (layer) {
-                // console.log(widget.newLayerColors);
-                var c = widget.newLayerColors[layer._leaflet_id];
-                if(c !== undefined){
-                    layer.setStyle({color: c});
-                }
-            });
-            widget.updateCallback(widget._encodeArgs());
-        }
+        // var map = this._map;
+        // var widget = this;
+        // if(this.compare){
+        //     widget._drawnItems.eachLayer(function (layer) {
+        //         layer.setStyle({color: '#ffffff'});
+        //     });
+        //     widget.updateCallback(widget._encodeArgs());
+        // }
+        // else{
+        //     widget.compareShapes.map(function(k){
+        //         widget._drawnItems.removeLayer(widget._drawnItems._layers[k]);
+        //         // delete widget._drawnItems._layers[k];
+        //         // map.removeLayer(widget._drawnItems._layers[k]);
+        //     });
+        //     // console.log(widget._drawnItems);
+        //     widget._drawnItems.eachLayer(function (layer) {
+        //         // console.log(widget.newLayerColors);
+        //         var c = widget.newLayerColors[layer._leaflet_id];
+        //         if(c !== undefined){
+        //             layer.setStyle({color: c});
+        //         }
+        //     });
+        //     widget.updateCallback(widget._encodeArgs());
+        // }
     }
 };
 
@@ -2248,6 +2255,7 @@ Query.prototype = {
     
     //temporal queries, return an array of {date, val}
     temporalQuery: function(varname,start,end,interval_sec){
+        // console.log(start, end);
         var q = this;
         var timeinfo = q.nanocube.getTbinInfo();
         
@@ -2257,7 +2265,7 @@ Query.prototype = {
         bucketsize = Math.max(1,Math.floor(bucketsize+0.5));
 
         var endbin = q.nanocube.timeToBin(end);
-
+        // console.log(endbin, startbin);
         startbin = Math.floor(startbin);
         endbin = Math.floor(endbin);
         
@@ -2265,8 +2273,9 @@ Query.prototype = {
         count = Math.floor(count);
 
         var dfd = new $.Deferred();
+
         if(endbin==startbin){
-            dfd.resolved(null);
+            dfd.resolve(null);
             return dfd.promise();
         }
         startbin = Math.max(startbin,0);
@@ -2716,7 +2725,7 @@ RetinalBrushes.prototype={
 
 /*global $,d3 */
 
-function Timeseries(opts,getDataCallback,updateCallback){
+function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
 	var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
 
@@ -2739,18 +2748,26 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //     }
     // });
 
+    this._opts = opts;
+
     opts.numformat = opts.numformat || ",";
 
     this._datasrc = opts.datasrc;
 
     widget.getDataCallback = getDataCallback;
     widget.updateCallback =  updateCallback;
+    widget.getXYCallback = getXYCallback;
 
     this.retbrush = {
     	color:'',
     	x:'',
     	y:''
     };
+
+    this.retx = ['default'];
+    this.rety = ['default'];
+
+    // console.log(this.retx, this.rety);
 
 
     var margin = opts.margin;
@@ -2771,6 +2788,21 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.style("width", $(id).width() + "px")
     	.style("height", height + margin.top + margin.bottom + "px")
     	.attr("class", "midlayer");
+
+    widget.midleft = widget.midlayer.append("div")
+    	.style("width", 30)
+    	.style("height", height + margin.top + margin.bottom + "px")
+    	.attr("class", "midleft");
+
+    widget.timespace = widget.midlayer.append("div")
+    	.style("width", width + margin.left + margin.right + "px")
+    	.style("height", height + margin.top + margin.bottom + "px")
+    	.attr("class", "timespace");
+
+    widget.midright = widget.midlayer.append("div")
+    	.style("width", 30)
+    	.style("height", height + margin.top + margin.bottom + "px")
+    	.attr("class", "midright");
 
     widget.botlayer = d3.select(id).append("div")
     	.style("width", $(id).width() + "px")
@@ -2897,7 +2929,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     this.forwardbtn = widget.toplayer.append('button')
         .attr('class', 'play-btn')
         .on('click',function(){
-            if(d3.brushSelection(widget.gbrush.node()) !== null){
+            if(d3.brushSelection(widget.anygbrush.node()) !== null){
                 widget.iterateTime(currentstep, 1);
             }
         }).html(">");
@@ -2905,7 +2937,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     this.playbtn = widget.toplayer.append('button')
         .attr('class', 'play-btn')
         .on('click',function(){
-            if(d3.brushSelection(widget.gbrush.node()) !== null){
+            if(d3.brushSelection(widget.anygbrush.node()) !== null){
                 play_stop = !play_stop;
                 widget.playTime(play_stop, currentspeed, currentstep, ref);
             }
@@ -2914,7 +2946,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     this.backbtn = widget.toplayer.append('button')
         .attr('class', 'play-btn')
         .on('click',function(){
-            if(d3.brushSelection(widget.gbrush.node()) !== null){
+            if(d3.brushSelection(widget.anygbrush.node()) !== null){
                 widget.iterateTime(currentstep, -1);
             }
         }).html("<");
@@ -2989,17 +3021,22 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	.attr("text-anchor", "start")
     	.attr("fill", "white");
 
-    widget.x = d3.scaleUtc().range([0, width]);
-    widget.y = d3.scaleLinear().range([height, 0]);
+    width = (width + margin.left + margin.right) - 
+			(margin.left + margin.right) * widget.retx.length;
+	height = (height + margin.top + margin.bottom) - 
+			(margin.top + margin.bottom) * widget.rety.length;
+
+    widget.x = d3.scaleUtc().range([0, width / widget.retx.length]);
+    widget.y = d3.scaleLinear().range([height / widget.rety.length, 0]);
 
     widget.xAxis = d3.axisBottom(widget.x)
-    	.tickSize(-height);
+    	.tickSize(-height / widget.rety.length);
     	
 
     widget.yAxis = d3.axisLeft(widget.y)
     	.ticks(3)
         .tickFormat(d3.format(opts.numformat))
-        .tickSize(-width-3);
+        .tickSize(-(width / widget.retx.length)-3);
 
     //Zoom
     widget.x_new = widget.x;
@@ -3008,9 +3045,18 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .on('zoom', function(){
         	var t = d3.event.transform;
         	widget.x_new = t.rescaleX(widget.x);
-        	gX.call(widget.xAxis.scale(widget.x_new));
+        	Object.keys(widget.gX).map(function(i){
+        		Object.keys(widget.gX[i]).map(function(j){
+        			widget.gX[i][j].call(widget.xAxis.scale(widget.x_new));
+        		});
+        	});
         	if(widget.brushtime !== undefined){
-        		widget.brush.move(widget.gbrush, widget.brushtime.map(widget.x_new));
+        		Object.keys(widget.gbrush).map(function(i){
+        			Object.keys(widget.gbrush[i]).map(function(j){
+        				widget.brush.move(widget.gbrush[i][j], widget.brushtime.map(widget.x_new));
+        			});
+        		});
+        		// widget.brush.move(widget.gbrush, widget.brushtime.map(widget.x_new));
         	}
             widget.redraw(widget.lastres);
         })
@@ -3047,7 +3093,12 @@ function Timeseries(opts,getDataCallback,updateCallback){
 				d1[1] = bsfunc[brushsnap].ceil(d0[1]);
 			}
 			widget.brushtime = d1;
-			d3.event.target.move(widget.gbrush, d1.map(widget.x_new));
+			Object.keys(widget.gbrush).map(function(i){
+    			Object.keys(widget.gbrush[i]).map(function(j){
+    				widget.brush.move(widget.gbrush[i][j], d1.map(widget.x_new));
+    			});
+    		});
+			// d3.event.target.move(widget.gbrush, d1.map(widget.x_new));
 			widget.updateCallback(widget._encodeArgs());
 		});
 
@@ -3055,8 +3106,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var arc = d3.symbol().type(d3.symbolDiamond)
     	.size([height] * 20);
 
-
-	var leftpan = widget.midlayer.append("svg")
+	var leftpan = widget.midleft.append("svg")
 		.attr("width", 30)
 		.attr("height", height + margin.top + margin.bottom)
 		.append('path')
@@ -3072,8 +3122,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
 		console.log("Mouseover");
 		leftpan.attr('fill', 'blue');
 		pan = setInterval(function(){
-			var transform = d3.zoomTransform(widget.ts.node());
-            widget.zoom.translateBy(widget.ts, 20 / transform.k, 0);
+			var transform = d3.zoomTransform(widget.anyts.node());
+			widget.zoom.translateBy(widget.anyts, 20 / transform.k, 0);
         }, 10);
 	});
 
@@ -3082,19 +3132,67 @@ function Timeseries(opts,getDataCallback,updateCallback){
 		clearInterval(pan);
 	});
 
-    // Timeline svg
-    widget.tssvg = widget.midlayer.append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom);
-    widget.ts = widget.tssvg.append("g")
-        .attr("transform", "translate(" + margin.left + "," +
-              margin.top + ")")
-        .call(widget.zoom)
-        .on("mousedown", function() { d3.event.stopPropagation(); });
+	// Timeline svg
+	widget.tssvg = {};
+	widget.ts = {};
+	widget.gX = {};
+	widget.gY = {};
+	widget.gbrush = {};
+	for (var j in widget.rety){
+		var rj = widget.rety[j];
+		widget.tssvg[rj] = {};
+		widget.ts[rj] = {};
+		widget.gX[rj] = {};
+		widget.gY[rj] = {};
+		widget.gbrush[rj] = {};
+		for (var i in widget.retx){
+			var ri = widget.retx[i];
+			widget.tssvg[rj][ri] = widget.timespace.append("svg")
+				.attr("width", (width/widget.retx.length) + margin.left + margin.right)
+        		.attr("height", (height/widget.rety.length) + margin.top + margin.bottom)
+        		.attr("class", "tssvg");
+
+        	widget.ts[rj][ri] = widget.tssvg[rj][ri].append("g")
+        		.attr("transform", "translate(" + (margin.left) + "," +
+		              (margin.top)+ ")")
+		        .call(widget.zoom);
+
+		    widget.gX[rj][ri] = widget.ts[rj][ri].append("g")
+		        .attr("class", "axis axis--x")
+		        .attr("transform", "translate(0," + (height/widget.rety.length) + ")")
+		        .call(widget.xAxis);
+
+		    widget.gY[rj][ri] = widget.ts[rj][ri].append("g")
+		    	.attr("class", "axis axis--y")
+		    	.call(widget.yAxis);
+
+		    widget.gbrush[rj][ri] = widget.ts[rj][ri].append("g")
+		    	.attr("class", "brush")
+		    	.call(widget.brush);
+		}
+	}
+
+	Object.keys(widget.ts).map(function(i){
+		Object.keys(widget.ts[i]).map(function(j){
+			widget.ts[i][j].on("mousedown", function(){d3.event.stopPropagation();});
+		});
+	});
+
+	widget.anygbrush = widget.getAny(widget.gbrush);
+	widget.anyts = widget.getAny(widget.ts);
+
+    // widget.tssvg = widget.midlayer.append("svg")
+    //     .attr("width", width + margin.left + margin.right)
+    //     .attr("height", height + margin.top + margin.bottom);
+    // widget.ts = widget.tssvg.append("g")
+    //     .attr("transform", "translate(" + margin.left + "," +
+    //           margin.top + ")")
+    //     .call(widget.zoom)
+    //     .on("mousedown", function() { d3.event.stopPropagation(); });
 
     // Timeline Right Pan button
 
-	var rightpan = widget.midlayer.append("svg")
+	var rightpan = widget.midright.append("svg")
 		.attr("width", 30)
 		.attr("height", height + margin.top + margin.bottom)
 		.append('path')
@@ -3109,8 +3207,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
 	rightpan.on("mouseover", function(){
 		rightpan.attr('fill', 'blue');
 		pan2 = setInterval(function(){
-            var transform = d3.zoomTransform(widget.ts.node());
-            widget.zoom.translateBy(widget.ts, -20 / transform.k, 0);
+            var transform = d3.zoomTransform(widget.anyts.node());
+			widget.zoom.translateBy(widget.anyts, -20 / transform.k, 0);
         }, 10);
 	});
 
@@ -3126,18 +3224,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	widget.x.domain(opts.timerange);
     }
 
-    var gX = widget.ts.append("g")
-        .attr("class", "axis axis--x")
-        .attr("transform", "translate(0," + height + ")")
-        .call(widget.xAxis);
-
-    var gY = widget.ts.append("g")
-    	.attr("class", "axis axis--y")
-    	.call(widget.yAxis);
-
-    widget.gbrush = widget.ts.append("g")
-    	.attr("class", "brush")
-    	.call(widget.brush);
+    
 
     //Time Aggregation
     widget.unitTime = opts.binsec;
@@ -3186,7 +3273,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     	brushtime: undefined,
     	tainterval: null,
     	tafactor: undefined,
-    	zoomtransform: d3.zoomTransform(widget.ts.node())
+    	zoomtransform: d3.zoomTransform(widget.anyts.node())
     };
 
     widget.resetbtn = widget.botlayer.append('button')
@@ -3208,8 +3295,13 @@ function Timeseries(opts,getDataCallback,updateCallback){
     		handle.attr("cx", sx(currentspeed));
     		bshandle.attr("cx", bsx(brushsnap));
 
-    		widget.zoom.transform(widget.ts, rst.zoomtransform);
-    		widget.brush.move(widget.gbrush, rst.brushselection);
+    		widget.zoom.transform(widget.anyts, rst.zoomtransform);
+    		Object.keys(widget.gbrush).map(function(i){
+    			Object.keys(widget.gbrush[i]).map(function(j){
+    				widget.brush.move(widget.gbrush[i][j], rst.brushselection);
+    			});
+    		});
+    		
 
     		widget.update();
     		widget.playTime(play_stop, currentspeed, currentstep, ref);
@@ -3226,22 +3318,33 @@ function Timeseries(opts,getDataCallback,updateCallback){
     		rst.currentstep = currentstep;
     		rst.currentspeed = currentspeed;
     		rst.brushsnap = brushsnap;
-    		rst.brushselection = d3.brushSelection(widget.gbrush.node());
+    		// rst.brushselection = d3.brushSelection(widget.gbrush.node());
     		rst.brushtime = widget.brushtime;
     		rst.tainterval = widget.interval;
     		rst.tafactor = widget.tafactor;
-    		rst.zoomtransform = d3.zoomTransform(widget.ts.node());
+    		// rst.zoomtransform = d3.zoomTransform(widget.ts.node());
 
     	}).html("Set default");
 
     widget.margin = margin;
     widget.width = width;
     widget.height = height;
-    widget.gX = gX;
-    widget.gY = gY;
+    // widget.gX = gX;
+    // widget.gY = gY;
     widget.iterating = false;
     widget.compare = false;
 
+}
+
+function arraysEqual(arr1, arr2) {
+    if(arr1.length !== arr2.length)
+        return false;
+    for(var i = arr1.length; i--;) {
+        if(arr1[i] !== arr2[i])
+            return false;
+    }
+
+    return true;
 }
 
 Timeseries.prototype={
@@ -3262,17 +3365,17 @@ Timeseries.prototype={
         }
 
         //Round to nearest time unit
-        var i = widget.interval;
-        if(Math.floor(i / (3600 * 24 * 365)) > 0)
-        	widget.interval = Math.floor(i / (3600 * 24 * 365)) * (3600 * 24 * 365);
-        else if(Math.floor(i / (3600 * 24 * 7)) > 0)
-        	widget.interval = Math.floor(i / (3600 * 24 * 7)) * (3600 * 24 * 7);
-        else if(Math.floor(i / (3600 * 24)) > 0)
-        	widget.interval = Math.floor(i / (3600 * 24)) * (3600 * 24);
-        else if(Math.floor(i / 3600) > 0)
-        	widget.interval = Math.floor(i / 3600) * 3600;
-        else if(Math.floor(i / 60) > 0)
-        	widget.interval = Math.floor(i / 60) * 60;
+        var wi = widget.interval;
+        if(Math.floor(wi / (3600 * 24 * 365)) > 0)
+        	widget.interval = Math.floor(wi / (3600 * 24 * 365)) * (3600 * 24 * 365);
+        else if(Math.floor(wi / (3600 * 24 * 7)) > 0)
+        	widget.interval = Math.floor(wi / (3600 * 24 * 7)) * (3600 * 24 * 7);
+        else if(Math.floor(wi / (3600 * 24)) > 0)
+        	widget.interval = Math.floor(wi / (3600 * 24)) * (3600 * 24);
+        else if(Math.floor(wi / 3600) > 0)
+        	widget.interval = Math.floor(wi / 3600) * 3600;
+        else if(Math.floor(wi / 60) > 0)
+        	widget.interval = Math.floor(wi / 60) * 60;
 
         //updating time aggregation text
 
@@ -3286,6 +3389,128 @@ Timeseries.prototype={
     			widget.timeUnit(widget.unitTime * bucketsize);
     	});
 
+    	var xydata = this.getXYCallback();
+    	console.log(xydata);
+    	console.log(this.retx, this.rety);
+
+	    if(!arraysEqual(this.retx,xydata[0]) || !arraysEqual(this.rety,xydata[1])){
+	    	console.log("Rebuilding..");
+	    	this.retx = xydata[0];
+	    	this.rety = xydata[1];
+
+	    	widget.width = (widget.width + widget.margin.left + widget.margin.right) - 
+	    					(widget.margin.left + widget.margin.right) * widget.retx.length;
+	    	widget.height = (widget.height + widget.margin.top + widget.margin.bottom) - 
+	    					(widget.margin.top + widget.margin.bottom) * widget.rety.length;
+	    	widget.x.range([0, widget.width / widget.retx.length]);
+	    	widget.x_new = widget.x;
+		    widget.y.range([widget.height / widget.rety.length, 0]);
+
+		    widget.xAxis = d3.axisBottom(widget.x)
+		    	.tickSize(-(widget.height / widget.rety.length));
+		    	
+
+		    widget.yAxis = d3.axisLeft(widget.y)
+		    	.ticks(3)
+		        .tickFormat(d3.format(widget._opts.numformat))
+		        .tickSize(-(widget.width / widget.retx.length));
+
+
+	    	widget.timespace.selectAll("*").remove();
+	    	widget.tssvg = {};
+			widget.ts = {};
+			widget.gX = {};
+			widget.gY = {};
+			widget.gbrush = {};
+			console.log(widget.retx, widget.rety);
+			widget.zoom.extent([[0,0], [widget.width/widget.retx.length,
+										widget.height/widget.rety.length]]);
+			widget.brush.extent([[0,0], [widget.width/widget.retx.length,
+										 widget.height/widget.rety.length]]);
+			for (var j in widget.rety){
+				var rj = widget.rety[j];
+				widget.tssvg[rj] = {};
+				widget.ts[rj] = {};
+				widget.gX[rj] = {};
+				widget.gY[rj] = {};
+				widget.gbrush[rj] = {};
+				for (var i in widget.retx){
+					var ri = widget.retx[i];
+					// console.log(ri);
+					widget.tssvg[rj][ri] = widget.timespace.append("svg")
+						.attr("width", (widget.width/widget.retx.length) + 
+								widget.margin.left + widget.margin.right)
+		        		.attr("height", (widget.height/widget.rety.length) +
+		        					widget.margin.top + widget.margin.bottom)
+		        		.attr("class", "tssvg");
+
+		        	var xtext = widget.tssvg[rj][ri].append("text")
+				    	.attr("x", (widget.margin.left + widget.margin.right + 
+				    				widget.width/widget.retx.length) / 2)
+				    	.attr("y", 10)
+				    	.attr("font-family", "sans-serif")
+				    	.attr("font-size", "10px")
+				    	.attr("text-anchor", "end")
+				    	.text("X COLOR    .");
+
+				    if(ri != 'default')
+				    	xtext.attr("fill", ri);
+				    else
+				    	xtext.attr("fill", "#ffffff");
+
+				    var ytext = widget.tssvg[rj][ri].append("text")
+				    	.attr("x", (widget.margin.left + widget.margin.right + 
+				    				widget.width/widget.retx.length) / 2)
+				    	.attr("y", 10)
+				    	.attr("font-family", "sans-serif")
+				    	.attr("font-size", "10px")
+				    	.attr("text-anchor", "start")
+				    	.text(".     Y COLOR");
+
+				    if(rj != 'default')
+				    	ytext.attr("fill", rj);
+				    else
+				    	ytext.attr("fill", "#ffffff");
+
+
+
+		        	widget.ts[rj][ri] = widget.tssvg[rj][ri].append("g")
+		        		.attr("transform", "translate(" + (widget.margin.left) + "," +
+				              (widget.margin.top) + ")")
+				        .call(widget.zoom);
+
+				    widget.gX[rj][ri] = widget.ts[rj][ri].append("g")
+				        .attr("class", "axis axis--x")
+				        .attr("transform", "translate(0," + (widget.height/widget.rety.length) + ")")
+				        .call(widget.xAxis);
+				    // if(ri != "global")
+				    // 	widget.gX[rj][ri].selectAll("path").style("stroke", ri);
+
+				    widget.gY[rj][ri] = widget.ts[rj][ri].append("g")
+				    	.attr("class", "axis axis--y")
+				    	.call(widget.yAxis);
+
+
+				    widget.gbrush[rj][ri] = widget.ts[rj][ri].append("g")
+				    	.attr("class", "brush")
+				    	.call(widget.brush);
+				}
+			}
+
+			// console.log(widget.ts);
+
+			Object.keys(widget.ts).map(function(a){
+				Object.keys(widget.ts[a]).map(function(b){
+					widget.ts[a][b].on("mousedown", function(){d3.event.stopPropagation();});
+				});
+			});
+
+			widget.anygbrush = widget.getAny(widget.gbrush);
+			widget.anyts = widget.getAny(widget.ts);
+	    }
+
+	    // console.log("what");
+
         var promises = {};
 
         //generate promise for each expr
@@ -3294,10 +3519,13 @@ Timeseries.prototype={
                 continue;
             }
             var p;
+            // console.log(d, start, end, widget.interval);
             try{
             	p = this.getDataCallback(d,start, end, widget.interval);
+            	// console.log(p);
             }
             catch(err){
+            	console.log(err);
             	return;
             }
             for (var k in p){
@@ -3309,36 +3537,50 @@ Timeseries.prototype={
             return promises[k];
         });
 
+        console.log(promises);
+
         var promkeys = Object.keys(promises);
         $.when.apply($,promarray).done(function(){
             var results = arguments;
             var res = {};
-            promkeys.forEach(function(d,i){
-                res[d] = results[i];
+            Object.keys(widget.ts).map(function(a){
+            	res[a] = {};
+            	Object.keys(widget.ts[a]).map(function(b){
+            		res[a][b] = {};
+		            promkeys.forEach(function(d,i){
+		                // res[d] = results[i];
 
-                var label = d.split('&-&');
-                var xyc = label[0].split('&');
-                var ret = {};
-                xyc.map(function(k){
-                    ret[k.charAt(0)] = k.substring(1);
-                });
+		                var label = d.split('&-&');
+		                var xyc = label[0].split('&');
+		                var ret = {};
+		                xyc.map(function(k){
+		                    ret[k.charAt(0)] = k.substring(1);
+		                });
 
-                //check ret.x, ret.y
+		                //check ret.x, ret.y
+		                if(ret.x != b && b != 'default')
+		                	return;
+		                if(ret.y != a && a != 'default')
+		                	return;
 
-                if(ret.c){
-                	res[ret.c] = results[i];
-                	res[ret.c].color = ret.c;
-                }
-                else{
-                	res.global = results[i];
-                	var colormap = widget._datasrc[label[1]].colormap;
-                    var cidx = Math.floor(colormap.length/2);
-                    res.global.color = colormap[cidx];
-                }
+		                if(ret.c){
+		                	res[a][b][ret.c] = results[i];
+		                	res[a][b][ret.c].color = ret.c;
+		                }
+		                else{
+		                	res[a][b].global = results[i];
+		                	var colormap = widget._datasrc[label[1]].colormap;
+		                    var cidx = Math.floor(colormap.length/2);
+		                    res[a][b].global.color = colormap[cidx];
+		                }
+		            });
+            	});
             });
 
+            console.log(res);
             widget.lastres = res;
             widget.redraw(res);
+            
         });
 
     },
@@ -3349,7 +3591,7 @@ Timeseries.prototype={
         sel.global = {start:timedom[0], end:timedom[1]};
 
         widget = this;
-        brushnode = this.gbrush.node();
+        brushnode = this.anygbrush.node();
         if (brushnode !== null && d3.brushSelection(brushnode) !== null){
             var bext = d3.brushSelection(brushnode).map(this.x_new.invert);
             widget.bstext.text(function(){
@@ -3369,32 +3611,61 @@ Timeseries.prototype={
     },
     
     _decodeArgs: function(s){
+    	var widget = this;
         var args = JSON.parse(s);
         this.x.domain([new Date(args.global.start),
                        new Date(args.global.end)]);
         if(args.brush){
-            this.brush.move(this.brushg, 
-                            [this.x(new Date(args.brush.start)),
-                             this.x(new Date(args.brush.end))]);
+        	Object.keys(widget.gbrush).map(function(i){
+        		Object.keys(widget.gbrush[i]).map(function(j){
+        			widget.brush.move(widget.gbrush[i][j], 
+		                            [widget.x(new Date(args.brush.start)),
+		                             widget.x(new Date(args.brush.end))]);
+        		});
+        	});
+            
         }
     },
 
-    redraw: function(lines){            
-        Object.keys(lines).forEach(function(k){
-            if(lines[k].data.length > 1){ 
-                var last = lines[k].data[lines[k].data.length-1];
-                lines[k].data.push(last); //dup the last point for step line
-            }
-        });
+    redraw: function(res){
+    	console.log(res);
+    	Object.keys(res).map(function(i){
+    		Object.keys(res[i]).map(function(j){
+    			var lines = res[i][j];
+    			Object.keys(lines).forEach(function(k){
+		            if(lines[k].data.length > 1){ 
+		                var last = lines[k].data[lines[k].data.length-1];
+		                lines[k].data.push(last); //dup the last point for step line
+		            }
+		        });
+    		});
+    	});
 
-        //update y axis
-        var yext = Object.keys(lines).reduce(function(p,c){
-            var e = d3.extent(lines[c].data, function(d){
-                return (d.val || 0);
-            });
-            return [ Math.min(p[0],e[0]),
-                     Math.max(p[1],e[1])];
-        }, [Infinity,-Infinity]);
+    	//update y axis
+    	var yext = Object.keys(res).reduce(function(p1,c1){
+    		var g = Object.keys(res[c1]).reduce(function(p2,c2){
+    			var f = Object.keys(res[c1][c2]).reduce(function(p3,c3){
+    				var e = d3.extent(res[c1][c2][c3].data, function (d){
+    					return (d.val || 0);
+    				});
+    				return [Math.min(p3[0],e[0]),
+                     		Math.max(p3[1],e[1])];
+    			}, [Infinity,-Infinity]);
+    			return [Math.min(p2[0],f[0]),
+                 		Math.max(p2[1],f[1])];
+    		}, [Infinity,-Infinity]);
+    		return [Math.min(p1[0],g[0]),
+             		Math.max(p1[1],g[1])];	
+    	}, [Infinity,-Infinity]);
+
+        
+        // var yext = Object.keys(lines).reduce(function(p,c){
+        //     var e = d3.extent(lines[c].data, function(d){
+        //         return (d.val || 0);
+        //     });
+        //     return [ Math.min(p[0],e[0]),
+        //              Math.max(p[1],e[1])];
+        // }, [Infinity,-Infinity]);
 
 
         yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
@@ -3403,56 +3674,59 @@ Timeseries.prototype={
 
         var widget = this;
 
-        widget.y.domain(yext);
-
         widget.updateSVG();
 
-        widget.x.range([0, widget.width]);
-        widget.x_new.range([0, widget.width]);
-		widget.y.range([widget.height, 0]);
+        widget.x.range([0, widget.width / widget.retx.length]);
+        widget.x_new.range([0, widget.width / widget.retx.length]);
+		widget.y.range([widget.height / widget.rety.length, 0]);
+		widget.y.domain(yext);
 
 		widget.xAxis.scale(widget.x_new)
-			.tickSize(-widget.height);
+			.tickSize(-widget.height / widget.rety.length);
 			
 		widget.yAxis.scale(widget.y)
-		    .tickSize(-widget.width-3);
-
-        //update the axis
-        widget.gX.call(widget.xAxis)
-        	.attr("transform", "translate(0," + this.height + ")");
-        widget.gY.call(widget.yAxis);
-
-        widget.brush.extent([[0,0], [this.width, this.height]]);
-        widget.gbrush.call(widget.brush);
-
-        if(widget.brushtime !== undefined){
-    		widget.brush.move(widget.gbrush, widget.brushtime.map(widget.x_new));
-    	}
+		    .tickSize(-(widget.width / widget.retx.length)-3);
 
         
+        Object.keys(widget.ts).map(function(i){
+        	Object.keys(widget.ts[i]).map(function(j){
+        		//update the axis
+        		widget.gX[i][j].call(widget.xAxis)
+		        	.attr("transform", "translate(0," + (widget.height / widget.rety.length) + ")");
+		        widget.gY[i][j].call(widget.yAxis);
 
-        
+		        widget.brush.extent([[0,0], [widget.width / widget.retx.length, 
+		        							 widget.height/ widget.rety.length]]);
+		        widget.gbrush[i][j].call(widget.brush);
 
-        //Remove paths obsolete paths
-        var paths = widget.ts.selectAll('path.line');
-        paths.each(function(){
-            var p = this;
-            var exists = Object.keys(lines).some(function(d){
-                return d3.select(p).classed(d);
-            });
-            if (!exists){ // remove obsolete
-                d3.select(p).remove();
-            }
+		        if(widget.brushtime !== undefined){
+		    		widget.brush.move(widget.gbrush[i][j], widget.brushtime.map(widget.x_new));
+		    	}
+
+		    	//Remove paths obsolete paths
+		        var paths = widget.ts[i][j].selectAll('path.line');
+		        paths.each(function(){
+		            var p = this;
+		            var exists = Object.keys(res[i][j]).some(function(d){
+		                return d3.select(p).classed(d);
+		            });
+		            if (!exists){ // remove obsolete
+		                d3.select(p).remove();
+		            }
+		        });
+		        console.log(res[i][j]);
+		        //Draw Lines
+		        Object.keys(res[i][j]).forEach(function(k){
+		            res[i][j][k].data.sort(function(a,b){return a.time - b.time;});
+		            widget.drawLine(res[i][j][k].data,res[i][j][k].color,i,j);
+		        });
+
+        	});
         });
         
-        //Draw Lines
-        Object.keys(lines).forEach(function(k){
-            lines[k].data.sort(function(a,b){return a.time - b.time;});
-            widget.drawLine(lines[k].data,lines[k].color);
-        });
     },
 
-    drawLine:function(data,color){
+    drawLine:function(data,color,i,j){
         var colorid = 'color_'+color.replace('#','');
         
         if (data.length < 2){
@@ -3462,9 +3736,9 @@ Timeseries.prototype={
         var widget = this;
         
         //create unexisted paths
-        var path = widget.ts.select('path.line.'+colorid);
+        var path = widget.ts[i][j].select('path.line.'+colorid);
         if (path.empty()){
-            path = widget.ts.append('path');
+            path = widget.ts[i][j].append('path');
             path.attr('class', 'line '+colorid);
             
             path.style('stroke-width','2px')
@@ -3495,25 +3769,42 @@ Timeseries.prototype={
     		.style('width'));
     	var idheight = parseFloat(d3.select(widget.toplayer.node().parentNode)
     		.style('height'));
-    	var width = idwidth - this.margin.left - this.margin.right - 60;
+    	var width = idwidth - (this.margin.left + this.margin.right) * this.retx.length - 60;
     	var height;
 
     	if(idwidth < 1200){
     		widget.toplayer.style("height", 80 + "px");
-    		height = idheight - this.margin.top - this.margin.bottom - 110;
+    		height = idheight - ((this.margin.top + this.margin.bottom) * this.rety.length) - 110;
     	}
     	else{
-    		widget.toplayer.style("height", 30 + "px");
-    		height = idheight - this.margin.top - this.margin.bottom - 70;
+    		widget.toplayer.style("height", 40 + "px");
+    		height = idheight - ((this.margin.top + this.margin.bottom) * this.rety.length) - 70;
     	}
 
     	widget.toplayer.style("width", idwidth + "px");
     	widget.midlayer.style("width", idwidth + "px");
-    	widget.midlayer.style("height", height + this.margin.top + this.margin.bottom + "px");
+    	widget.midlayer.style("height", height +
+    						((this.margin.top + this.margin.bottom) * this.rety.length) + "px");
+    	widget.midleft.style("height", height +
+    						((this.margin.top + this.margin.bottom) * this.rety.length) + "px");
+    	widget.midright.style("height", height +
+    						((this.margin.top + this.margin.bottom) * this.rety.length) + "px");
+    	widget.timespace.style("width", idwidth - 60 + "px");
+    	widget.timespace.style("height", height + 
+    						((this.margin.top + this.margin.bottom) * this.rety.length) + "px");
     	widget.botlayer.style("width", idwidth + "px");
 
-    	widget.tssvg.attr("width", width + this.margin.left + this.margin.right);
-    	widget.tssvg.attr("height", height + this.margin.top + this.margin.bottom);
+    	Object.keys(widget.tssvg).map(function(i){
+    		Object.keys(widget.tssvg[i]).map(function(j){
+
+    			widget.tssvg[i][j].attr("width", (width/widget.retx.length) + 
+    									widget.margin.left + widget.margin.right);
+    			widget.tssvg[i][j].attr("height", (height/widget.rety.length) + 
+    									widget.margin.top + widget.margin.bottom);
+
+    		});
+    	});
+    	
     	this.width = width;
     	this.height = height;
     },
@@ -3537,7 +3828,7 @@ Timeseries.prototype={
     },
 
     iterateTime: function(step, direction){
-    	var bsel = d3.brushSelection(widget.gbrush.node());
+    	var bsel = d3.brushSelection(widget.anygbrush.node());
         if(bsel === null)
         	return;
         var asfunc = [d3.utcHour, d3.utcDay, d3.utcWeek, d3.utcMonth, d3.utcYear];
@@ -3554,7 +3845,12 @@ Timeseries.prototype={
         }
         widget.iterating = true;
         widget.brushtime = newbsel.map(widget.x_new.invert);
-        widget.brush.move(widget.gbrush, newbsel);
+        Object.keys(widget.gbrush).map(function(i){
+        	Object.keys(widget.gbrush[i]).map(function(j){
+        		widget.brush.move(widget.gbrush[i][j], newbsel);
+        	});
+        });
+        
         widget.updateCallback(widget._encodeArgs());
     },
 
@@ -3583,6 +3879,11 @@ Timeseries.prototype={
     	}
     	
     	return "" + t + unit;
+    },
+
+    getAny: function(obj){
+    	var temp = obj[Object.keys(obj)[0]];
+    	return temp[Object.keys(temp)[0]];
     },
 
     adjustToCompare: function(){
@@ -3720,6 +4021,8 @@ Viewer.prototype = {
             },function(args,constraints,datasrc){
                 return viewer.update([id, 'ret'],constraints,
                                      id,args,datasrc);
+            },function(){
+                return viewer.getXYData([id]);
             });
             
         case 'cat':
@@ -3730,6 +4033,8 @@ Viewer.prototype = {
             },function(args,constraints,compare){
                 return viewer.update([id, 'ret'],constraints,
                                      id,args, false, compare);
+            },function(){
+                return viewer.getXYData([id]);
             });
             
         case 'id':
@@ -3739,6 +4044,8 @@ Viewer.prototype = {
             },function(args,constraints){
                 return viewer.update([id, 'ret'],constraints,
                                      id,args);
+            },function(){
+                return viewer.getXYData([id]);
             });
             
         case 'time':
@@ -3749,6 +4056,8 @@ Viewer.prototype = {
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
                 return viewer.update([id, 'ret'],constraints,id,args);
+            },function(){
+                return viewer.getXYData([id]);
             });
 
         case 'ret':
@@ -3881,6 +4190,7 @@ Viewer.prototype = {
             }
         });
 
+        console.log(retarray);
         var xqueries = {};
         var yqueries = {};
         var cqueries = {};
@@ -3905,8 +4215,9 @@ Viewer.prototype = {
                 });
             }
         });
+
         // console.log(retbrush);
-        // console.log(xqueries, yqueries, cqueries);
+        console.log(xqueries, yqueries, cqueries);
 
         if(!jQuery.isEmptyObject(xqueries)){
             Object.keys(xqueries).forEach(function(s){
@@ -3984,6 +4295,46 @@ Viewer.prototype = {
         }
 
         return queries;
+    },
+
+    getXYData: function(skip){
+        skip.push('ret');
+        var retbrush;
+        if(this._widget.ret)
+            retbrush = this._widget.ret.getSelection();
+        else{
+            retbrush = {
+                color:'',
+                x:'',
+                y:''
+            };
+        }
+        var retarray = Object.keys(retbrush).map(function(k){
+            return retbrush[k];
+        });
+
+        var x = [];
+        var y = [];
+        
+        //then the restTimeseries.prototype={
+        Object.keys(this._widget).forEach(function(d){
+            if (skip.indexOf(d) == -1 && retarray.indexOf(d) != -1){
+                var sel = viewer._widget[d].getSelection();
+                Object.keys(sel).filter(function(d){
+                    return (d != 'brush') && (d != 'global');
+                }).forEach(function(s){
+                    if(retbrush.x == d)
+                        x.push(s);
+                    else if (retbrush.y == d)
+                        y.push(s);
+                });
+            }
+        });
+        if(y.length === 0)
+            y = ['default'];
+        if(x.length === 0)
+            x = ['default'];
+        return [x,y];
     },
 
     getSpatialData:function(varname, datasrc, bbox, zoom, maptilesize){

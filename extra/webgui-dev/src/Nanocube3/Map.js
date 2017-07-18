@@ -1,8 +1,9 @@
 /*global $ L colorbrewer d3 window */
 
-var Map=function(opts,getDataCallback,updateCallback){
+var Map=function(opts,getDataCallback,updateCallback, getXYCallback){
     this.getDataCallback = getDataCallback;
     this.updateCallback = updateCallback;
+    this.getXYCallback = getXYCallback;
 
     this._datasrc = opts.datasrc;
     this._coarse_offset = opts.coarse_offset || 0;
@@ -294,21 +295,21 @@ Map.prototype = {
         var firstShape = true;
         var firstEdit = true;
         var latlng;
-        widget.compareShapes = [];
+        // widget.compareShapes = [];
 
         map.on('draw:created', function (e) {
             drawnItems.addLayer(e.layer);
 
-            if(widget.compare){
-                widget.compareShapes.push(e.layer._leaflet_id);
-                e.layer.setStyle({color: '#ffffff'});
-                widget.updateCallback(widget._encodeArgs(),
-                                  [{
-                                      type:"SPATIAL",
-                                      key:"#ffffff"
-                                  }]);
-                return;
-            }
+            // if(widget.compare){
+            //     widget.compareShapes.push(e.layer._leaflet_id);
+            //     e.layer.setStyle({color: '#ffffff'});
+            //     widget.updateCallback(widget._encodeArgs(),
+            //                       [{
+            //                           type:"SPATIAL",
+            //                           key:"#ffffff"
+            //                       }]);
+            //     return;
+            // }
 
             if(firstShape){
                 console.log(e.layer);
@@ -348,9 +349,9 @@ Map.prototype = {
 
         map.on('draw:editstart', function(e){
 
-            if(widget.compare){
-                return;
-            }
+            // if(widget.compare){
+            //     return;
+            // }
 
             if(firstEdit){
                 var popup = L.popup()
@@ -459,60 +460,59 @@ Map.prototype = {
             //console.log(files);
             var r = new FileReader();
             r.onload = function(e) {
-                var gjw;
+                // var gjw;
                 var gj;
-                console.log(typeof e.target.result);
                 if((typeof e.target.result) == 'object'){
                     var geojson = shp.parseZip(e.target.result);
-                    gjw = L.geoJson(geojson, {
-                        style: {
-                            "color": "#ffffff",
-                            "opacity": 0.7
-                        }
-                    });
+                    // gjw = L.geoJson(geojson, {
+                    //     style: {
+                    //         "color": "#ffffff",
+                    //         "opacity": 0.7
+                    //     }
+                    // });
                     gj = L.geoJson(geojson, {
                         style: {
                             "color": initColor,
                             "opacity": 0.7
                         }
                     });
-                    console.log(gj);
+                    // console.log(gj);
                 }
-                console.log(gj);
+                // console.log(gj);
                 try{
-                    if(widget.compare){
-                        if(gjw === undefined){
-                            gjw = L.geoJson(JSON.parse(e.target.result), {
-                                style: {
-                                    "color": '#ffffff',
-                                    "opacity": 0.7
-                                }
-                            });
-                        }
-                        console.log(gjw);
-                        Object.keys(gjw._layers).map(function(k){
-                            if(gjw._layers[k]._layers){
-                                var lids = gjw._layers[k].getLayers().map(function(k){
-                                    return k._leaflet_id;
-                                });
-                                Object.keys(gjw._layers[k]._layers).map(function(l){
-                                    drawnItems.addLayer(gjw._layers[k]._layers[l]);
-                                    widget.compareShapes.push(gjw._layers[k]._layers[l]._leaflet_id);
-                                });
-                            }
-                            else{
-                                drawnItems.addLayer(gjw._layers[k]);
-                                widget.compareShapes.push(gjw._layers[k]._leaflet_id);
-                            }
-                        });
-                        widget.updateCallback(widget._encodeArgs(),
-                            [{
-                                type:"SPATIAL",
-                                key:'#ffffff'
-                            }]);
-                        return;
+                    // if(widget.compare){
+                    //     if(gjw === undefined){
+                    //         gjw = L.geoJson(JSON.parse(e.target.result), {
+                    //             style: {
+                    //                 "color": '#ffffff',
+                    //                 "opacity": 0.7
+                    //             }
+                    //         });
+                    //     }
+                    //     console.log(gjw);
+                    //     Object.keys(gjw._layers).map(function(k){
+                    //         if(gjw._layers[k]._layers){
+                    //             var lids = gjw._layers[k].getLayers().map(function(k){
+                    //                 return k._leaflet_id;
+                    //             });
+                    //             Object.keys(gjw._layers[k]._layers).map(function(l){
+                    //                 drawnItems.addLayer(gjw._layers[k]._layers[l]);
+                    //                 widget.compareShapes.push(gjw._layers[k]._layers[l]._leaflet_id);
+                    //             });
+                    //         }
+                    //         else{
+                    //             drawnItems.addLayer(gjw._layers[k]);
+                    //             widget.compareShapes.push(gjw._layers[k]._leaflet_id);
+                    //         }
+                    //     });
+                    //     widget.updateCallback(widget._encodeArgs(),
+                    //         [{
+                    //             type:"SPATIAL",
+                    //             key:'#ffffff'
+                    //         }]);
+                    //     return;
 
-                    }
+                    // }
                     if(gj === undefined){
                         gj = L.geoJson(JSON.parse(e.target.result), {
                             style: {
@@ -639,7 +639,7 @@ Map.prototype = {
 
         res.global.zoom = map.getZoom() + 8;
 
-        if(this.compare){
+        if(!this.checkRet()){
             if(this._drawnItems.getLayers().length === 0){
                 return res;
             }
@@ -840,7 +840,7 @@ Map.prototype = {
     _canvasDraw: function(layer,options){
         var canvas = options.canvas;
         var ctx = canvas.getContext('2d');
-        ctx.clearRect(0,0,canvas.width,canvas.height);
+        
 
         var map = this._map;
 
@@ -864,6 +864,7 @@ Map.prototype = {
                 return promises[k];
             });
             var promkeys = Object.keys(promises);
+            ctx.clearRect(0,0,canvas.width,canvas.height);
             $.when.apply($,promarray).done(function(){
                 var results = arguments;
                 var res = {};
@@ -913,6 +914,7 @@ Map.prototype = {
             });
         }
         catch(err){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
             console.log(err);
         }
     },
@@ -952,30 +954,34 @@ Map.prototype = {
         });
         legend.html(htmlstr.join('<br />'));
     },
+    checkRet: function(){
+        return this.retbrush.color == this._name || this.retbrush.x == this._name ||
+            this.retbrush.y == this._name;
+    },
     adjustToCompare: function(){
-        var map = this._map;
-        var widget = this;
-        if(this.compare){
-            widget._drawnItems.eachLayer(function (layer) {
-                layer.setStyle({color: '#ffffff'});
-            });
-            widget.updateCallback(widget._encodeArgs());
-        }
-        else{
-            widget.compareShapes.map(function(k){
-                widget._drawnItems.removeLayer(widget._drawnItems._layers[k]);
-                // delete widget._drawnItems._layers[k];
-                // map.removeLayer(widget._drawnItems._layers[k]);
-            });
-            // console.log(widget._drawnItems);
-            widget._drawnItems.eachLayer(function (layer) {
-                // console.log(widget.newLayerColors);
-                var c = widget.newLayerColors[layer._leaflet_id];
-                if(c !== undefined){
-                    layer.setStyle({color: c});
-                }
-            });
-            widget.updateCallback(widget._encodeArgs());
-        }
+        // var map = this._map;
+        // var widget = this;
+        // if(this.compare){
+        //     widget._drawnItems.eachLayer(function (layer) {
+        //         layer.setStyle({color: '#ffffff'});
+        //     });
+        //     widget.updateCallback(widget._encodeArgs());
+        // }
+        // else{
+        //     widget.compareShapes.map(function(k){
+        //         widget._drawnItems.removeLayer(widget._drawnItems._layers[k]);
+        //         // delete widget._drawnItems._layers[k];
+        //         // map.removeLayer(widget._drawnItems._layers[k]);
+        //     });
+        //     // console.log(widget._drawnItems);
+        //     widget._drawnItems.eachLayer(function (layer) {
+        //         // console.log(widget.newLayerColors);
+        //         var c = widget.newLayerColors[layer._leaflet_id];
+        //         if(c !== undefined){
+        //             layer.setStyle({color: c});
+        //         }
+        //     });
+        //     widget.updateCallback(widget._encodeArgs());
+        // }
     }
 };

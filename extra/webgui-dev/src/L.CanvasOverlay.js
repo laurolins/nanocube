@@ -117,6 +117,7 @@ L.CanvasOverlay = L.Class.extend({
         //ctx.fillRect(p.x,p.y,150,75);
 
         
+    
         if (this._userDrawFunc) {
             this._userDrawFunc(this,{
                 canvas   :this._canvas,

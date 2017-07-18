@@ -350,6 +350,7 @@ Query.prototype = {
     
     //temporal queries, return an array of {date, val}
     temporalQuery: function(varname,start,end,interval_sec){
+        // console.log(start, end);
         var q = this;
         var timeinfo = q.nanocube.getTbinInfo();
         
@@ -359,7 +360,7 @@ Query.prototype = {
         bucketsize = Math.max(1,Math.floor(bucketsize+0.5));
 
         var endbin = q.nanocube.timeToBin(end);
-
+        // console.log(endbin, startbin);
         startbin = Math.floor(startbin);
         endbin = Math.floor(endbin);
         
@@ -367,8 +368,9 @@ Query.prototype = {
         count = Math.floor(count);
 
         var dfd = new $.Deferred();
+
         if(endbin==startbin){
-            dfd.resolved(null);
+            dfd.resolve(null);
             return dfd.promise();
         }
         startbin = Math.max(startbin,0);
