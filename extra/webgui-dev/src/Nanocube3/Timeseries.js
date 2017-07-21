@@ -356,6 +356,11 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
 			if(!d3.event.sourceEvent) return;
 			if(!d3.event.selection){
 				widget.brushtime = undefined;
+				Object.keys(widget.gbrush).map(function(i){
+	    			Object.keys(widget.gbrush[i]).map(function(j){
+	    				widget.brush.move(widget.gbrush[i][j], null);
+	    			});
+	    		});
 				widget.updateCallback(widget._encodeArgs());
 				return;
 			}
@@ -674,9 +679,9 @@ Timeseries.prototype={
 	    	this.rety = xydata[1];
 
 	    	widget.width = (widget.width + widget.margin.left + widget.margin.right) - 
-	    					(widget.margin.left + widget.margin.right) * widget.retx.length;
+	    					((widget.margin.left + widget.margin.right) * widget.retx.length);
 	    	widget.height = (widget.height + widget.margin.top + widget.margin.bottom) - 
-	    					(widget.margin.top + widget.margin.bottom) * widget.rety.length;
+	    					((widget.margin.top + widget.margin.bottom) * widget.rety.length);
 	    	widget.x.range([0, widget.width / widget.retx.length]);
 	    	widget.x_new = widget.x;
 		    widget.y.range([widget.height / widget.rety.length, 0]);

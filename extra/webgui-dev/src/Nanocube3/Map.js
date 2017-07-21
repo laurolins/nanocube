@@ -8,9 +8,17 @@ var Map=function(opts,getDataCallback,updateCallback, getXYCallback){
     this._datasrc = opts.datasrc;
     this._coarse_offset = opts.coarse_offset || 0;
     this._name = opts.name || 'defaultmap';
+
     this._tilesurl = opts.tilesurl ||
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
+    this.retx = ['default'];
+    this.rety = ['default'];
+    this.retbrush = {
+        color:'',
+        x:'',
+        y:''
+    };
     this._layers = this._genLayers(this._datasrc);
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
@@ -20,11 +28,7 @@ var Map=function(opts,getDataCallback,updateCallback, getXYCallback){
     this.colorNumber = {};
     this.newLayerColors = {};
 
-    this.retbrush = {
-        color:'',
-        x:'',
-        y:''
-    };
+    
     
     
     var map = this._initMap();
@@ -83,6 +87,25 @@ Map.heatcolormaps = {
     "#ff7f00": colorbrewer.Oranges[9].slice(0).reverse()
 };
 
+function arraysEqual(arr1, arr2) {
+    if(arr1.length !== arr2.length)
+        return false;
+    for(var i = arr1.length; i--;) {
+        if(arr1[i] !== arr2[i])
+            return false;
+    }
+
+    return true;
+}
+
+function hexToColor(color){
+    var colors = {"#e41a1c":"Red", "#377eb8":"Blue","#4daf4a":"Green",
+                  "#984ea3":"Purple","#ff7f00":"Orange"};
+    if(typeof colors[color] != 'undefined')
+        return colors[color];
+    return color;
+}
+
 
 Map.prototype = {
     _genLayers: function(data){
@@ -108,27 +131,35 @@ Map.prototype = {
         Object.keys(Map.heatcolormaps).map(function(h){
             hcmaps[h] = Map.heatcolormaps[h].map(colorfunc);
         });
-        
+        console.log(widget.retx,widget.rety);
         for (var d in data){
-            var layer = L.canvasOverlay(drawfunc,{opacity:0.7});
+            for (var i in widget.retx){
+                for(var j in widget.rety){
+                    var layer = L.canvasOverlay(drawfunc,{opacity:0.7});
 
-            //set datasrc
-            layer._datasrc = d;
+                    console.log(layer);
 
-            //set color
-            var midx = Math.floor(widget._datasrc[d].colormap.length /2);
-            layer._color = widget._datasrc[d].colormap[midx];
-            
-            //set colormap
-            layer._colormap = widget._datasrc[d].colormap.map(colorfunc);
+                    layer.zIndex = -100;
+                    //set datasrc
+                    layer._datasrc = d;
 
-            layer._hcmaps = hcmaps;
+                    //set color
+                    var midx = Math.floor(widget._datasrc[d].colormap.length /2);
+                    layer._color = widget._datasrc[d].colormap[midx];
+                    
+                    //set colormap
+                    layer._colormap = widget._datasrc[d].colormap.map(colorfunc);
 
-            //htmllabel
-            var htmllabel='<i style="background:'+
-                    layer._color+'"> </i>' + d;
-            
-            layers[htmllabel] = layer;
+                    layer._hcmaps = hcmaps;
+
+                    layer._xy = [widget.retx[i],widget.rety[j]];
+
+                    var label='X: '+hexToColor(widget.retx[i])+
+                              ' Y: '+hexToColor(widget.rety[j]);
+                    
+                    layers[label] = layer;
+                }
+            }
         }
         return layers;
     },
@@ -147,7 +178,8 @@ Map.prototype = {
         var mapt = L.tileLayer(this._tilesurl,{
             noWrap:true,
             opacity:0.4,
-            maxZoom: Math.min(this._maxlevels-8, 18)
+            maxZoom: Math.min(this._maxlevels-8, 18),
+            zIndex: -1000
         });
 
         //add base layer
@@ -159,14 +191,22 @@ Map.prototype = {
         }
 
         //Layer
-        if (Object.keys(this._layers).length > 1){
-            L.control.layers(null,this._layers,
-                             {
-                                 collapsed: false,
-                                 position: 'bottomright'
-                             })
-                .addTo(map);
-        }
+        map.layercontrol = L.control.layers(this._layers, null,
+                                             {
+                                                 collapsed: false,
+                                                 position: 'bottomright'
+                                             });
+        map.layercontrol.addTo(map);
+
+        map.on('baselayerchange', function(e){
+            console.log("what");
+            e.layer._reset();
+            // e.layer.bringToBack();
+            // mapt.bringToBack();
+            widget.updateCallback(widget._encodeArgs(),[],
+                                  widget._datasrc);
+        });
+
 
         map.on('overlayadd', function (e) {
             widget._datasrc[e.layer._datasrc].disabled=false;
@@ -349,6 +389,10 @@ Map.prototype = {
 
         map.on('draw:editstart', function(e){
 
+            var overlay = $('.leaflet-overlay-pane');
+            console.log(overlay.first(), overlay.last());
+            // map.addLayer(drawnItems);
+
             // if(widget.compare){
             //     return;
             // }
@@ -393,6 +437,7 @@ Map.prototype = {
         });
 
         map.on('draw:editstop', function (e) {
+            map.addLayer(drawnItems);
             drawnItems.eachLayer(function (layer) {
                 var c = widget.newLayerColors[layer._leaflet_id];
                 if(c !== undefined){
@@ -679,15 +724,39 @@ Map.prototype = {
     },
 
     update: function(){
-        //force redraw
-        this._map.fire('resize');        
-        
-        for(var l in this._layers){
-            var layer = this._layers[l];
-            if (!this._datasrc[layer._datasrc].disabled){
-                layer._reset();
+        var map = this._map;
+        var widget = this;
+        var xydata = this.getXYCallback();
+         if(!arraysEqual(this.retx,xydata[0]) || !arraysEqual(this.rety,xydata[1])){
+            console.log("Rebuilding..");
+            this.retx = xydata[0];
+            this.rety = xydata[1];
+            for (var l1 in this._layers){
+                map.removeLayer(this._layers[l1]);
+                map.layercontrol.removeLayer(this._layers[l1]);
+
+            }
+
+            this._layers = this._genLayers(this._datasrc);
+            for (var l2 in this._layers){
+
+                map.layercontrol.addBaseLayer(this._layers[l2],l2);
             }
         }
+        //force redraw
+        this._map.fire('resize');
+        this._map.fire('moveend');
+
+
+
+        // for(var l in this._layers){
+        //     var layer = this._layers[l];
+        //     if (!this._datasrc[layer._datasrc].disabled){
+        //         layer._reset();
+        //     }
+        // }
+
+
     },
 
     drawCanvasLayer: function(res,canvas,cmaps,opacity){
@@ -700,6 +769,7 @@ Map.prototype = {
         var arr = this.dataToArray(pb,data);
         // console.log(data, arr);
         this.render(arr[0],arr[1],pb,cmaps,canvas,opacity);
+
     },
 
     dataToArray: function(pb,data){
@@ -838,8 +908,12 @@ Map.prototype = {
     },
 
     _canvasDraw: function(layer,options){
+        // console.log(layer);
         var canvas = options.canvas;
+
+        // canvas.attr("transform", "translate3d(0px, 0px, -5px)");
         var ctx = canvas.getContext('2d');
+        // console.log(ctx);
         
 
         var map = this._map;
@@ -878,6 +952,10 @@ Map.prototype = {
                     });
 
                     //check ret.x, ret.y
+                    if(ret.x != layer._xy[0] && layer._xy[0] != 'default')
+                        return;
+                    if(ret.y != layer._xy[1] && layer._xy[1] != 'default')
+                        return;
 
                     if(ret.c){
                         res[ret.c] = results[i];

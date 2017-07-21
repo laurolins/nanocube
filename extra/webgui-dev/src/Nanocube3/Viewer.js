@@ -116,10 +116,12 @@ Viewer.prototype = {
         var newdiv = $('<div>');
         newdiv.attr('id', id);
         newdiv.css(widget.css);
+
+        // console.log(newdiv);
         
         //Create the widget
         switch(widget.type){
-        case 'spatial':            
+        case 'spatial':
             this._container.append(newdiv);
             options.levels = levels || 25;
             return new Map(options,function(datasrc,bbox,zoom,maptilesize){
@@ -136,9 +138,9 @@ Viewer.prototype = {
             this._catoverlay.append(newdiv);
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
-            },function(args,constraints,compare){
+            },function(args,constraints){
                 return viewer.update([id, 'ret'],constraints,
-                                     id,args, false, compare);
+                                     id,args);
             },function(){
                 return viewer.getXYData([id]);
             });
@@ -169,7 +171,7 @@ Viewer.prototype = {
         case 'ret':
             this._retoverlay.append(newdiv);
             return new RetinalBrushes(options, function(args,retbrush){
-                return viewer.update([id],false,id,args,false,undefined,retbrush);
+                return viewer.update([id],false,id,args,false,retbrush);
             });
 
         default:
@@ -206,7 +208,7 @@ Viewer.prototype = {
         return binsec;
     },
 
-    update: function(skip,constraints,name,args,datasrc,compare,retbrush){
+    update: function(skip,constraints,name,args,datasrc,retbrush){
         // console.log("skip: ",skip);
 
         skip = skip || [];
@@ -220,15 +222,15 @@ Viewer.prototype = {
             }
         }
 
-        if(compare !== undefined){
-            Object.keys(viewer._widget).forEach(function(d){
-                if (skip.indexOf(d) == -1){
-                    viewer._widget[d].compare = compare;
-                    viewer._widget[d].adjust = compare;
-                    viewer._widget[d].adjustToCompare();
-                }
-            });
-        }
+        // if(compare !== undefined){
+        //     Object.keys(viewer._widget).forEach(function(d){
+        //         if (skip.indexOf(d) == -1){
+        //             viewer._widget[d].compare = compare;
+        //             viewer._widget[d].adjust = compare;
+        //             viewer._widget[d].adjustToCompare();
+        //         }
+        //     });
+        // }
 
         // console.log(retbrush);
         if(retbrush){
@@ -296,7 +298,7 @@ Viewer.prototype = {
             }
         });
 
-        console.log(retarray);
+        // console.log(retarray);
         var xqueries = {};
         var yqueries = {};
         var cqueries = {};
@@ -323,7 +325,7 @@ Viewer.prototype = {
         });
 
         // console.log(retbrush);
-        console.log(xqueries, yqueries, cqueries);
+        // console.log(xqueries, yqueries, cqueries);
 
         if(!jQuery.isEmptyObject(xqueries)){
             Object.keys(xqueries).forEach(function(s){
