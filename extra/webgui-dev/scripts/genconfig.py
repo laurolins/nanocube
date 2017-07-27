@@ -10,7 +10,7 @@ except ImportError:
 def initConfig(name,url):
     config = {}
     config['nanocube'] = {name: {'url':url}}
-    config['datasrc'] = {name:{'expr':name, 'colormap': 'Reds', 'colormap2': 'Blues'}}
+    config['datasrc'] = {name:{'expr':name, 'colormap': 'Reds'}}
     config['widget'] = {}
     return config
 

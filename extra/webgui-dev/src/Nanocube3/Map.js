@@ -72,7 +72,8 @@ var Map=function(opts,getDataCallback,updateCallback, getXYCallback){
 };
 
 //Setup static variables and functions
-Map.brushcolors = colorbrewer.Paired[12].slice(0);
+Map.brushcolors = colorbrewer.Accent[8].slice(0);
+console.log(Map.brushcolors);
 Map.nextcolor = function(){
     var c = Map.brushcolors.shift();
     Map.brushcolors.push(c);
@@ -84,7 +85,17 @@ Map.heatcolormaps = {
     "#377eb8": colorbrewer.Blues[9].slice(0).reverse(),
     "#4daf4a": colorbrewer.Greens[9].slice(0).reverse(),
     "#984ea3": colorbrewer.Purples[9].slice(0).reverse(),
-    "#ff7f00": colorbrewer.Oranges[9].slice(0).reverse()
+    "#ff7f00": colorbrewer.Oranges[9].slice(0).reverse(),
+
+    "#7fc97f": colorbrewer.Greens[9].slice(0).reverse(),
+    "#beaed4": colorbrewer.Purples[9].slice(0).reverse(),
+    "#fdc086": colorbrewer.Oranges[9].slice(0).reverse(),
+    "#ffff99": colorbrewer.YlOrRd[9].slice(0).reverse(),
+    "#386cb0": colorbrewer.Blues[9].slice(0).reverse(),
+    "#f0027f": colorbrewer.Reds[9].slice(0).reverse(),
+    "#bf5b17": colorbrewer.YlOrBr[9].slice(0),
+    "#666666": colorbrewer.Greys[9].slice(0).reverse()
+
 };
 
 function arraysEqual(arr1, arr2) {
@@ -100,7 +111,10 @@ function arraysEqual(arr1, arr2) {
 
 function hexToColor(color){
     var colors = {"#e41a1c":"Red", "#377eb8":"Blue","#4daf4a":"Green",
-                  "#984ea3":"Purple","#ff7f00":"Orange"};
+                  "#984ea3":"Purple","#ff7f00":"Orange", "#7fc97f":"Green", 
+                  "#beaed4":"Purple", "#fdc086":"Orange", "#ffff99":"Yellow", 
+                  "#386cb0":"Blue", "#f0027f":"Red", "#bf5b17":"Brown", 
+                  "#666666":"Gray"};
     if(typeof colors[color] != 'undefined')
         return colors[color];
     return color;

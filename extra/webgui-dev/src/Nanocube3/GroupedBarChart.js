@@ -421,6 +421,8 @@ GroupedBarChart.prototype = {
 
         Object.keys(fdata).map(function(i){
             Object.keys(fdata[i]).map(function(j){
+
+
                 //bind data
                 var bars = widget.svg[i][j].selectAll('.bar').data(fdata[i][j]);
 
@@ -461,22 +463,37 @@ GroupedBarChart.prototype = {
                         return w;
                     });
 
-                if(widget.compare && !widget.adjust){
-                    bars.style('fill', function(d){
-                        var col;
-                        Object.keys(widget.selection).filter(function(n){
-                            return (n != 'brush') && (n != 'global');
-                        }).forEach(function(s){
-                            if(widget.selection[s] == [] || 
-                               widget.selection[s].findIndex(function(b){
-                                    return (b.cat == d.cat);}) != -1){
-                                col = s;
-                            }
-                            
+                if(widget.compare){
+                    Object.keys(widget.selection).filter(function(n){
+                        return (n != 'brush') && (n != 'global');
+                    }).forEach(function(s){
+                        var cats = Object.keys(widget.selection[s]).map(function(k){
+                            return widget.selection[s][k].cat;
                         });
-
-                        return col || 'gray';
+                        svg[i][j].select('.y.axis')
+                            .selectAll("text")
+                            .filter(function(n){
+                                return (cats.indexOf(n) != -1);
+                            })
+                            .style("fill", s);
                     });
+
+                    
+                    // bars.style('fill', function(d){
+                    //     var col;
+                    //     Object.keys(widget.selection).filter(function(n){
+                    //         return (n != 'brush') && (n != 'global');
+                    //     }).forEach(function(s){
+                    //         if(widget.selection[s] == [] || 
+                    //            widget.selection[s].findIndex(function(b){
+                    //                 return (b.cat == d.cat);}) != -1){
+                    //             col = s;
+                    //         }
+                            
+                    //     });
+
+                    //     return col || 'gray';
+                    // });
                 }
                 
                 //add tool tip
@@ -530,14 +547,13 @@ GroupedBarChart.prototype = {
         this.toplayer.style("width", $(this.id).width() + "px");
         this.botlayer.style("width", $(this.id).width() + "px");
 
-
         Object.keys(svg).map(function(i){
             Object.keys(svg[i]).map(function(j){
                 var svgframe = d3.select(svg[i][j].node().parentNode);
                 //resize the frame
-                svgframe.attr("width", width + margin.left[i][j] + margin.right);
+                svgframe.attr("width", width + widget.maxLeft + margin.right);
                 svgframe.attr("height", height + margin.top + margin.bottom);
-                svg[i][j].attr("transform", "translate("+margin.left[i][j]+","+margin.top+")");
+                svg[i][j].attr("transform", "translate("+widget.maxLeft+","+margin.top+")");
             });
         });
     },
@@ -660,7 +676,10 @@ GroupedBarChart.prototype = {
                 y0[i][j].rangeRound([0, totalheight]);
                 y1[i][j].rangeRound([0, y0[i][j].bandwidth()]);
                 yAxis[i][j].scale(y0[i][j]);
+
                 svg[i][j].select('.y.axis').call(yAxis[i][j]);
+
+
 
                 //enable axis click
                 svg[i][j].select('.y.axis').selectAll('.tick')
@@ -741,6 +760,12 @@ GroupedBarChart.prototype = {
         }
         else{
             //reset
+            Object.keys(widget.svg).map(function(i){
+                Object.keys(widget.svg[i]).map(function(j){
+                    widget.svg[i][j].select('.y.axis').selectAll("text").style("fill", "#fff");
+                });
+            });
+            
             GroupedBarChart.brushcolors.map(function(k){
                 delete widget.selection[k];
             });

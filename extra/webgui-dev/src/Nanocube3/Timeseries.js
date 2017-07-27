@@ -47,7 +47,9 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
 
     var margin = opts.margin;
     if (margin === undefined)
-        margin = {top: 10, right: 30, bottom: 20, left: 30};
+        margin = {top: 10, right: 30, bottom: 20, left: 50};
+
+    widget.permleft = margin.left;
 
     var width = $(id).width() - margin.left - margin.right - 60;
     var height = $(id).height() - margin.top - margin.bottom - 70;
@@ -394,7 +396,7 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
 		.attr('fill', 'gray')
 		.attr('stroke','#000')
 		.attr('stroke-width',1)
-		.attr('transform', 'translate(' + margin.left + ',' + 
+		.attr('transform', 'translate(' + 30 + ',' + 
 			(height + margin.top + margin.bottom)/2 + ')');
 	
 	var pan;
@@ -445,6 +447,9 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
 		    widget.gY[rj][ri] = widget.ts[rj][ri].append("g")
 		    	.attr("class", "axis axis--y")
 		    	.call(widget.yAxis);
+
+		    // margin.left = widget.ts[rj][ri].select('.axis--y').node().getBBox().width+3;
+		    // console.log(margin.left);
 
 		    widget.gbrush[rj][ri] = widget.ts[rj][ri].append("g")
 		    	.attr("class", "brush")
@@ -613,6 +618,7 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
     // widget.gY = gY;
     widget.iterating = false;
     widget.compare = false;
+    
 
 }
 
@@ -675,10 +681,14 @@ Timeseries.prototype={
 
 	    if(!arraysEqual(this.retx,xydata[0]) || !arraysEqual(this.rety,xydata[1])){
 	    	console.log("Rebuilding..");
+
+	    	if(widget.yext){
+	    		widget.margin.left = widget.yext.toString().length * 3.5;
+	    	}
 	    	this.retx = xydata[0];
 	    	this.rety = xydata[1];
 
-	    	widget.width = (widget.width + widget.margin.left + widget.margin.right) - 
+	    	widget.width = (widget.width + widget.permleft + widget.margin.right) - 
 	    					((widget.margin.left + widget.margin.right) * widget.retx.length);
 	    	widget.height = (widget.height + widget.margin.top + widget.margin.bottom) - 
 	    					((widget.margin.top + widget.margin.bottom) * widget.rety.length);
@@ -694,7 +704,6 @@ Timeseries.prototype={
 		    	.ticks(3)
 		        .tickFormat(d3.format(widget._opts.numformat))
 		        .tickSize(-(widget.width / widget.retx.length));
-
 
 	    	widget.timespace.selectAll("*").remove();
 	    	widget.tssvg = {};
@@ -906,12 +915,19 @@ Timeseries.prototype={
     	Object.keys(res).map(function(i){
     		Object.keys(res[i]).map(function(j){
     			var lines = res[i][j];
+    			var empty = true;
     			Object.keys(lines).forEach(function(k){
 		            if(lines[k].data.length > 1){ 
 		                var last = lines[k].data[lines[k].data.length-1];
 		                lines[k].data.push(last); //dup the last point for step line
+		                empty = false;
+		            }
+		            else{
+		            	delete res[i][j][k];
 		            }
 		        });
+		        if(empty)
+		        	delete res[i][j];
     		});
     	});
 
@@ -944,9 +960,11 @@ Timeseries.prototype={
 
         yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
-        
 
         var widget = this;
+
+
+        widget.yext = yext;
 
         widget.updateSVG();
 
@@ -954,6 +972,7 @@ Timeseries.prototype={
         widget.x_new.range([0, widget.width / widget.retx.length]);
 		widget.y.range([widget.height / widget.rety.length, 0]);
 		widget.y.domain(yext);
+
 
 		widget.xAxis.scale(widget.x_new)
 			.tickSize(-widget.height / widget.rety.length);
@@ -964,6 +983,7 @@ Timeseries.prototype={
         
         Object.keys(widget.ts).map(function(i){
         	Object.keys(widget.ts[i]).map(function(j){
+
         		//update the axis
         		widget.gX[i][j].call(widget.xAxis)
 		        	.attr("transform", "translate(0," + (widget.height / widget.rety.length) + ")");
@@ -981,36 +1001,48 @@ Timeseries.prototype={
 		        var paths = widget.ts[i][j].selectAll('path.line');
 		        paths.each(function(){
 		            var p = this;
-		            var exists = Object.keys(res[i][j]).some(function(d){
-		                return d3.select(p).classed(d);
-		            });
+		            var exists;
+		            if(res[i][j] === undefined)
+		            	exists = false;
+		            else{
+			            exists = Object.keys(res[i][j]).some(function(d){
+			                return d3.select(p).classed(d);
+			            });
+			        }
 		            if (!exists){ // remove obsolete
 		                d3.select(p).remove();
 		            }
 		        });
-		        // console.log(res[i][j]);
-		        //Draw Lines
-		        Object.keys(res[i][j]).forEach(function(k){
-		            res[i][j][k].data.sort(function(a,b){return a.time - b.time;});
-		            widget.drawLine(res[i][j][k].data,res[i][j][k].color,i,j);
-		        });
+
+		        if(res[i][j] !== undefined){
+		        	//Draw Lines
+			        Object.keys(res[i][j]).forEach(function(k){
+			        	// console.log(res[i][j][k].data);
+			            res[i][j][k].data.sort(function(a,b){return a.time - b.time;});
+			            widget.drawLine(res[i][j][k].data,res[i][j][k].color,i,j);
+			        });
+			    }
+
 
         	});
         });
+
+        // console.log(d3.select('path'));
         
     },
 
     drawLine:function(data,color,i,j){
         var colorid = 'color_'+color.replace('#','');
-        
-        if (data.length < 2){
-            return;
-        }
+
 
         var widget = this;
+
+        if (data.length < 2)
+        	return;
         
         //create unexisted paths
         var path = widget.ts[i][j].select('path.line.'+colorid);
+
         if (path.empty()){
             path = widget.ts[i][j].append('path');
             path.attr('class', 'line '+colorid);
@@ -1030,9 +1062,10 @@ Timeseries.prototype={
                 .x(function(d) { return widget.x_new(d.time); })
                 .y(function(d) { return widget.y(0); });
 
-        path.transition()
-            .duration(500)
-            .attr('d', lineFunc(data));
+    	path.transition()
+        	.duration(500)
+        	.attr('d', lineFunc(data));
+
     },
 
     updateSVG: function(){
