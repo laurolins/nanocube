@@ -17,5 +17,8 @@
     "leaflet": "^0.7",
     "leaflet-draw": "^0.2.3",
     "requirejs": "^2"
+  },
+  "dependencies": {
+    "http-server": "^0.10.0"
   }
 }

@@ -897,7 +897,7 @@ Map.prototype = {
         
         //Leaflet stuffs
         var map = L.map(this._name,{detectRetina:true,
-                                    attribution: '<a href="https://www.mapbox.com/about/maps/">Terms and Feedback</a>'});
+                                    attribution: '<a href="https://www.research.att.com"> Powered by AT&amp;T Nanocubes</a>'});
 
         //make the background black
         $('.leaflet-container').css('background','#000');
