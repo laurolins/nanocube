@@ -60,6 +60,8 @@ L.CanvasOverlay = L.Class.extend({
         //map.on('move', this._move, this);
         map.on('resize',  this._resize, this);
 
+        map.on('layerreset', this._reset, this);
+
         if (map.options.zoomAnimation && L.Browser.any3d) {
             map.on('zoomanim', this._animateZoom, this);
         }

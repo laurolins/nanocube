@@ -28,8 +28,11 @@ var Map=function(opts,getDataCallback,updateCallback, getXYCallback){
     this.colorNumber = {};
     this.newLayerColors = {};
 
-    
-    
+    var colors = colorbrewer.Accent[8].slice(0);
+    var yellow = colors.splice(3,1);
+    colors.push(yellow);
+
+    this.brushcolors = colors;
     
     var map = this._initMap();
 
@@ -122,6 +125,11 @@ function hexToColor(color){
 
 
 Map.prototype = {
+    colornext: function(){
+        var c = this.brushcolors.shift();
+        this.brushcolors.push(c);
+        return c;
+    },
     _genLayers: function(data){
         var widget = this;
         var layers = {};
@@ -211,7 +219,7 @@ Map.prototype = {
         map.layercontrol.addTo(map);
 
         map.on('baselayerchange', function(e){
-            console.log("what");
+            // console.log("what");
             e.layer._reset();
             // e.layer.bringToBack();
             // mapt.bringToBack();
@@ -319,8 +327,8 @@ Map.prototype = {
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
         var widget = this;
-        
-        var initColor = Map.nextcolor();
+
+        var initColor = widget.colornext();
 
         var drawingoptions = function(){
             return { shapeOptions:{ color: initColor } };
@@ -349,8 +357,10 @@ Map.prototype = {
         var latlng;
         // widget.compareShapes = [];
 
+
         map.on('draw:created', function (e) {
             drawnItems.addLayer(e.layer);
+            console.log("Added in "+ widget.name);
 
             // if(widget.compare){
             //     widget.compareShapes.push(e.layer._leaflet_id);
@@ -376,7 +386,7 @@ Map.prototype = {
             }
 
             else{
-                var nextColor = Map.nextcolor();
+                var nextColor = widget.colornext();
                 widget.colorNumber[nextColor] = widget.colorsUsed.length;
                 widget.colorsUsed.push(nextColor);
             }
@@ -385,11 +395,7 @@ Map.prototype = {
             widget.newLayerColors[e.layer._leaflet_id] = e.layer.options.color;
 
             //add constraints to the other maps
-            widget.updateCallback(widget._encodeArgs(),
-                                  [{
-                                      type:"SPATIAL",
-                                      key:e.layer.options.color
-                                  }]);
+            widget.updateCallback(widget._encodeArgs(), []);
             
             //Set color for the next shape
             // var options = {};
@@ -435,11 +441,7 @@ Map.prototype = {
                     widget.newLayerColors[e.layer._leaflet_id] = e.layer.options.color;
                 }
                 
-                widget.updateCallback(widget._encodeArgs(),
-                                  [{
-                                      type:"SPATIAL",
-                                      key:e.layer.options.color
-                                  }]);
+                widget.updateCallback(widget._encodeArgs(), []);
             });
 
         });
@@ -545,7 +547,7 @@ Map.prototype = {
                         widget.colorsUsed.push(initColor);
                     }
                     else{
-                        var nextColor = Map.nextcolor();
+                        var nextColor = widget.colornext();
                         widget.colorNumber[nextColor] = widget.colorsUsed.length;
                         widget.colorsUsed.push(nextColor);
                     }
@@ -569,11 +571,7 @@ Map.prototype = {
                         }
                     });
 
-                    widget.updateCallback(widget._encodeArgs(),
-                        [{
-                            type:"SPATIAL",
-                            key:col
-                        }]);
+                    widget.updateCallback(widget._encodeArgs(), []);
                 }
                 catch(err){
                     console.log(err);
@@ -698,7 +696,7 @@ Map.prototype = {
         var map = this._map;
         var widget = this;
         var xydata = this.getXYCallback();
-         if(!arraysEqual(this.retx,xydata[0]) || !arraysEqual(this.rety,xydata[1])){
+        if(!arraysEqual(this.retx,xydata[0]) || !arraysEqual(this.rety,xydata[1])){
             console.log("Rebuilding..");
             this.retx = xydata[0];
             this.rety = xydata[1];
@@ -714,10 +712,18 @@ Map.prototype = {
                 map.layercontrol.addBaseLayer(this._layers[l2],l2);
             }
         }
-        //force redraw
-        this._map.fire('resize');
-        this._map.fire('moveend');
+        else{
+            //force redraw
+            this._map.fire('resize');
+            // this._map.fire('moveend');
+            this._map.fire('layerreset');
 
+
+            // for (var l in map.layercontrol._layers){
+            //     map.layercontrol._layers[l].layer._map = map;
+            //     map.layercontrol._layers[l].layer._reset();
+            // }
+        }
 
 
         // for(var l in this._layers){
