@@ -222,17 +222,6 @@ Viewer.prototype = {
             }
         }
 
-        // if(compare !== undefined){
-        //     Object.keys(viewer._widget).forEach(function(d){
-        //         if (skip.indexOf(d) == -1){
-        //             viewer._widget[d].compare = compare;
-        //             viewer._widget[d].adjust = compare;
-        //             viewer._widget[d].adjustToCompare();
-        //         }
-        //     });
-        // }
-
-        // console.log(retbrush);
         if(retbrush){
             Object.keys(viewer._widget).forEach(function(d){
                 if(skip.indexOf(d) == -1){

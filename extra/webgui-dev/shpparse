@@ -1,0 +1,3 @@
+import shapefile
+
+sf = shapefile.Reader('states010g')

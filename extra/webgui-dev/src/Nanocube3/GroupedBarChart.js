@@ -394,7 +394,7 @@ GroupedBarChart.prototype = {
                             return (d.cat in kvhash);
                         });
                     });
-                    console.log(res[i][j]);
+                    // console.log(res[i][j]);
                 });
             });
         }

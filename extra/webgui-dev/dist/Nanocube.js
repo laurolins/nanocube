@@ -782,7 +782,7 @@ GroupedBarChart.prototype = {
                             return (d.cat in kvhash);
                         });
                     });
-                    console.log(res[i][j]);
+                    // console.log(res[i][j]);
                 });
             });
         }
@@ -1245,7 +1245,7 @@ var Map=function(opts,getDataCallback,updateCallback, getXYCallback){
 
 //Setup static variables and functions
 Map.brushcolors = colorbrewer.Accent[8].slice(0);
-console.log(Map.brushcolors);
+// console.log(Map.brushcolors);
 Map.nextcolor = function(){
     var c = Map.brushcolors.shift();
     Map.brushcolors.push(c);
@@ -1317,13 +1317,11 @@ Map.prototype = {
         Object.keys(Map.heatcolormaps).map(function(h){
             hcmaps[h] = Map.heatcolormaps[h].map(colorfunc);
         });
-        console.log(widget.retx,widget.rety);
+        // console.log(widget.retx,widget.rety);
         for (var d in data){
             for (var i in widget.retx){
                 for(var j in widget.rety){
                     var layer = L.canvasOverlay(drawfunc,{opacity:0.7});
-
-                    console.log(layer);
 
                     layer.zIndex = -100;
                     //set datasrc
@@ -1538,7 +1536,7 @@ Map.prototype = {
             // }
 
             if(firstShape){
-                console.log(e.layer);
+                // console.log(e.layer);
                 var p1 = e.layer._latlngs[0];
                 var p2 = e.layer._latlngs[1];
                 var p3 = e.layer._latlngs[2];
@@ -1576,7 +1574,7 @@ Map.prototype = {
         map.on('draw:editstart', function(e){
 
             var overlay = $('.leaflet-overlay-pane');
-            console.log(overlay.first(), overlay.last());
+            // console.log(overlay.first(), overlay.last());
             // map.addLayer(drawnItems);
 
             // if(widget.compare){
@@ -1592,7 +1590,7 @@ Map.prototype = {
             }
 
             drawnItems.on('dblclick', function(e){
-                console.log(drawnItems);
+                // console.log(drawnItems);
                 // console.log(e.layer);
                 var cn = widget.colorNumber[e.layer.options.color] + 1;
                 if(cn >= widget.colorsUsed.length)
@@ -1688,62 +1686,21 @@ Map.prototype = {
         obj.on('drop', function (e) {
             e.preventDefault();
             var files = e.originalEvent.dataTransfer.files;
-            //console.log(files);
             var r = new FileReader();
             r.onload = function(e) {
-                // var gjw;
                 var gj;
                 if((typeof e.target.result) == 'object'){
                     var geojson = shp.parseZip(e.target.result);
-                    // gjw = L.geoJson(geojson, {
-                    //     style: {
-                    //         "color": "#ffffff",
-                    //         "opacity": 0.7
-                    //     }
-                    // });
+
                     gj = L.geoJson(geojson, {
                         style: {
                             "color": initColor,
                             "opacity": 0.7
                         }
                     });
-                    // console.log(gj);
                 }
-                // console.log(gj);
                 try{
-                    // if(widget.compare){
-                    //     if(gjw === undefined){
-                    //         gjw = L.geoJson(JSON.parse(e.target.result), {
-                    //             style: {
-                    //                 "color": '#ffffff',
-                    //                 "opacity": 0.7
-                    //             }
-                    //         });
-                    //     }
-                    //     console.log(gjw);
-                    //     Object.keys(gjw._layers).map(function(k){
-                    //         if(gjw._layers[k]._layers){
-                    //             var lids = gjw._layers[k].getLayers().map(function(k){
-                    //                 return k._leaflet_id;
-                    //             });
-                    //             Object.keys(gjw._layers[k]._layers).map(function(l){
-                    //                 drawnItems.addLayer(gjw._layers[k]._layers[l]);
-                    //                 widget.compareShapes.push(gjw._layers[k]._layers[l]._leaflet_id);
-                    //             });
-                    //         }
-                    //         else{
-                    //             drawnItems.addLayer(gjw._layers[k]);
-                    //             widget.compareShapes.push(gjw._layers[k]._leaflet_id);
-                    //         }
-                    //     });
-                    //     widget.updateCallback(widget._encodeArgs(),
-                    //         [{
-                    //             type:"SPATIAL",
-                    //             key:'#ffffff'
-                    //         }]);
-                    //     return;
 
-                    // }
                     if(gj === undefined){
                         gj = L.geoJson(JSON.parse(e.target.result), {
                             style: {
@@ -4499,17 +4456,6 @@ Viewer.prototype = {
             }
         }
 
-        // if(compare !== undefined){
-        //     Object.keys(viewer._widget).forEach(function(d){
-        //         if (skip.indexOf(d) == -1){
-        //             viewer._widget[d].compare = compare;
-        //             viewer._widget[d].adjust = compare;
-        //             viewer._widget[d].adjustToCompare();
-        //         }
-        //     });
-        // }
-
-        // console.log(retbrush);
         if(retbrush){
             Object.keys(viewer._widget).forEach(function(d){
                 if(skip.indexOf(d) == -1){
