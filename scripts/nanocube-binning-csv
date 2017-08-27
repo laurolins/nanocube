@@ -125,7 +125,7 @@ class NanocubeInput:
             reader = pd.read_csv(f,chunksize=csize,
                                  error_bad_lines=False,sep=self.sep,
                                  compression=comp,names=self.header,
-                                 usecols=coi,dtype=str)
+                                 usecols=coi)
 
             datarange = {}
             for i,data in enumerate(reader):
@@ -164,7 +164,7 @@ class NanocubeInput:
             reader = pd.read_csv(f,chunksize=csize,
                                  error_bad_lines=False,sep=self.sep,
                                  compression=comp,names=self.header,
-                                 usecols=coi,dtype=str)
+                                 usecols=coi)
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
@@ -222,7 +222,7 @@ class NanocubeInput:
             data[self.countcol]=1
 
         #get NaN's for errors
-        data[self.countcol] = pd.to_numeric(data[self.countcol],errors='coerce');
+        data[self.countcol] = pd.to_numeric(data[self.countcol]);
         
         #drop bad data
         data = data.dropna()
@@ -282,8 +282,8 @@ class NanocubeInput:
             lat = self.latcol[i]
             lon = self.loncol[i]
             lvl = self.levels
-            data[lon] = pd.to_numeric(data[lon],errors='coerce')
-            data[lat] = pd.to_numeric(data[lat],errors='coerce')
+            data[lon] = pd.to_numeric(data[lon])
+            data[lat] = pd.to_numeric(data[lat])
             data = data.dropna()
 
             data = data[data[lon] > -180]
@@ -307,8 +307,8 @@ class NanocubeInput:
 
     def processDate(self, data):
         for i,d in enumerate(self.timecol):
-            if self.datefmt is None and pd.isnumeric(data[d]).all():
-                data[d] = pd.to_numeric(data[d])*1e9
+            if self.datefmt is None and data[d].dtype == 'int64' :
+                data[d] *= 1e9
 
             if (self.datefmt):
                 data[d] = pd.to_datetime(data[d].astype(str),
@@ -359,7 +359,7 @@ class NanocubeInput:
 
             #for int type
             if data.dtypes[c] == int:
-                data[c] = data[c].apply(lambda x : str(x))
+                self.valname[c] = {}
             
             #no binning
             if c not in self.valname:
