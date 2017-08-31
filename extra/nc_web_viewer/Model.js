@@ -274,7 +274,7 @@ Model.prototype.createMap = function(spvar,cm,extralayers){
     var map=L.map(spvar.dim,{
 	maxZoom: Math.min(18,spvar.maxlevel+1)
     });
-
+    
     var maptile = L.tileLayer(this.options.tilesurl,{
 	noWrap:true,
         detectRetina:true,
@@ -310,7 +310,8 @@ Model.prototype.createMap = function(spvar,cm,extralayers){
 
     maptile.addTo(map);
     heatmap.addTo(map);
-
+    map.attributionControl.addAttribution('<b>Powered by AT&amp;T <a href="http://www.nanocubes.net">Nanocube</a></b>');
+    
     //register panel functions
     this.panelFuncs(maptile,heatmap);
 
