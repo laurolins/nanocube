@@ -310,7 +310,7 @@ Model.prototype.createMap = function(spvar,cm,extralayers){
 
     maptile.addTo(map);
     heatmap.addTo(map);
-    map.attributionControl.addAttribution('<b>Powered by AT&amp;T <a href="http://www.nanocubes.net">Nanocube</a></b>');
+    map.attributionControl.addAttribution('<b>Powered by AT&amp;T <a href="http://www.nanocubes.net">Nanocubes</a></b>');
     
     //register panel functions
     this.panelFuncs(maptile,heatmap);

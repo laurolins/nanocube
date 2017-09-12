@@ -110,7 +110,7 @@ Options::Options(std::vector<std::string>& args) {
 int main(int argc, char **argv)
 {
 
-  std::cout << "AT&T Nanocube: " << NANOCUBE_VERSION << std::endl;
+  std::cout << "AT&T Nanocubes: " << NANOCUBE_VERSION << std::endl;
 
     try {
 
