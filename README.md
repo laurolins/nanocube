@@ -59,25 +59,6 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
     }
 ```
 
-## What is new in release 3.2.1
-
-### Web Client
-
-Improved overall layout and look of the web client front-end, including size
-and position of charts, font ratios, colormaps, and log scales.  Also enabled
-switching between alphabetical and numerical sorting of the bar charts.
-
-
-### Documentation
-
-Improved README file to be more accurate and have clearer instructions. Added
-more details on how to configure the web client.
-
-### Testing
-
-Simplified the nctest.sh script to detect which OS you are using and make the
-appropriate comparisons.  Included expected data for MacOS and Ubuntu.
-
 ## Installing prerequisites
 
 The following are prerequisites for all systems:
