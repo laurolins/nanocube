@@ -1,7 +1,7 @@
 interact('.resize-drag')
     .draggable({
         // enable inertial throwing
-        inertia: true,
+        inertia: false,
         
         // keep the element within the area of it's parent
         restrict: {
@@ -52,6 +52,10 @@ function dragMoveListener (event) {
         x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx,
         y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
     
+    if (target.classList.contains("brushing")){
+        return;
+    }
+    
     // translate the element
     target.style.webkitTransform =
         target.style.transform =
@@ -61,6 +65,3 @@ function dragMoveListener (event) {
     target.setAttribute('data-x', x);
     target.setAttribute('data-y', y);
 }
-
-// this is used later in the resizing and gesture demos
-//window.dragMoveListener = dragMoveListener;

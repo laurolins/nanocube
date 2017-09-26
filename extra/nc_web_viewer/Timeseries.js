@@ -11,7 +11,7 @@ function Timeseries(name, margin){
 
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","resize-drag");
+    d3.select(id).classed("resize-drag",true);
     
     d3.select(id).on("divresize",function(){ widget.redraw(); });
 
@@ -69,11 +69,13 @@ function Timeseries(name, margin){
     this.brush = d3.svg.brush().x(this.x);
 
     this.brush.on("brushstart", function(){
+        d3.select(id).classed('brushing',true); //suppress marker
         d3.event.sourceEvent.stopPropagation();
     });
 
     this.brush.on("brushend", function(){
         that.brushended(that);
+        d3.select(id).classed('brushing',false);
     });
     
     //Zoom
