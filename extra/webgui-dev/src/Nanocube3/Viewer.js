@@ -274,16 +274,16 @@ Viewer.prototype = {
 
         //brush
         Object.keys(this._widget).forEach(function(d){
-            if (skip.indexOf(d) == -1){
+            if (skip.indexOf(d) == -1 && retarray.indexOf(d) == -1){
                 var sel = viewer._widget[d].getSelection();
-
-                if(sel.global){
-                    queries.global=queries.global.setConstraint(d,sel.global);
-                }
 
                 if(sel.brush){
                     queries.global=queries.global.setConstraint(d,sel.brush);
-                }                
+                }else if(sel.global){
+                    queries.global=queries.global.setConstraint(d,sel.global);
+                }
+
+                              
             }
         });
 

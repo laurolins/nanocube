@@ -11,6 +11,10 @@ canvas {
     left:0px;
 }
 
+.clicked {
+    background-color:green;
+}
+
 .chart-overlay{
     position:absolute;
     height:100%;

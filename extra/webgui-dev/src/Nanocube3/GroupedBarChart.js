@@ -6,6 +6,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback, getXYCallback){
     this.getXYCallback = getXYCallback;
 
     var name=opts.name;
+    this._name = name;
     var id = "#"+name.replace(/\./g,'\\.');
     var margin = {top: 20, right: 20, bottom: 30, left: 40};
 
@@ -15,9 +16,6 @@ function GroupedBarChart(opts, getDataCallback, updateCallback, getXYCallback){
     //set param
     this.selection = {global:[]};
     this.tempselection = {};
-    if(opts.args){ // set selection from arguments
-        this._decodeArgs(opts.args);
-    }
 
     this.retbrush = {
         color:'',
@@ -199,6 +197,11 @@ function GroupedBarChart(opts, getDataCallback, updateCallback, getXYCallback){
     this._name = name;
 
     widget.update();
+    if(opts.args){ // set selection from arguments
+        this._decodeArgs(opts.args);
+    }
+    widget.update();
+
 }
 
 GroupedBarChart.brushcolors = colorbrewer.Set1[5].slice(0);
@@ -224,11 +227,45 @@ GroupedBarChart.prototype = {
     },
     
     _encodeArgs: function(){
-        return JSON.stringify(this.getSelection());
+        var args = this.getSelection();
+        var res = {};
+        Object.keys(args).map(function(color){
+            if(color.startsWith("#")){
+                res[color.substr(1)] = JSON.parse(JSON.stringify(args[color]));
+            }
+            else{
+                res[color] = JSON.parse(JSON.stringify(args[color]));
+            }
+        });
+        return JSON.stringify(res);
     },
     
     _decodeArgs: function(s){
-        this.selection = JSON.parse(s);
+        var widget = this;
+        var args = JSON.parse(s);
+        var colors = Object.keys(args);
+
+        var xydata = this.getXYCallback();
+        widget.retx = xydata[0];
+        widget.rety = xydata[1];
+
+        var res = {};
+        for(var col = 0; col < 5; col++){
+            var curcolor = GroupedBarChart.brushcolors[col];
+            if(colors.indexOf(curcolor.substr(1)) != -1){
+                widget.compare = true;
+                res[curcolor] = JSON.parse(JSON.stringify(args[curcolor.substr(1)]));
+                delete args[curcolor.substr(1)];
+            }
+        }
+        if(args.hasOwnProperty("brush"))
+            res.brush = JSON.parse(JSON.stringify(args.brush));
+        res.global = JSON.parse(JSON.stringify(args.global));
+        this.selection = res;
+        if(widget.compare){
+            $('#' + this._name + 'fin').click();
+        }
+
     },
     
     update: function(){
