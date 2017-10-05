@@ -101,16 +101,16 @@ function GroupedBarChart(opts, getDataCallback, updateCallback, getXYCallback){
         .text(opts.name);
     
     //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style("height",widget.restoreHeight);
-        }
-    });
+    // d3.select(id).on('dblclick',function(d){
+    //     var currentheight = d3.select(id).style("height");
+    //     if ( currentheight != "40px"){
+    //         widget.restoreHeight =currentheight ;
+    //         d3.select(id).style('height','40px');
+    //     }
+    //     else{
+    //         d3.select(id).style("height",widget.restoreHeight);
+    //     }
+    // });
 
     
     //SVG container
@@ -469,8 +469,8 @@ GroupedBarChart.prototype = {
                 //append new bars
                 bars.enter()
                     .append('rect')
-                    .attr('class', 'bar')
-                    .on('click', function(d) { widget.clickFunc(d);})//toggle callback
+                    .attr('class', 'bar')   //toggle callback
+                    .on('click', function(d) { widget.clickFunc(d);})
                     .append("svg:title"); //tooltip
 
                 bars = widget.svg[i][j].selectAll('.bar').data(fdata[i][j]);
@@ -545,6 +545,8 @@ GroupedBarChart.prototype = {
     },
 
     clickFunc:function(d){
+        if(this.compare)
+            return;
         var widget = this;
         if(!widget.selection.brush){
             widget.selection.brush = [];

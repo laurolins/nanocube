@@ -296,9 +296,17 @@ Viewer.prototype = {
         Object.keys(this._widget).forEach(function(d){
             if (skip.indexOf(d) == -1 && retarray.indexOf(d) != -1){
                 var sel = viewer._widget[d].getSelection();
-                Object.keys(sel).filter(function(d){
+                var colarray = Object.keys(sel).filter(function(d){
                     return (d != 'brush') && (d != 'global');
-                }).forEach(function(s){
+                });
+                if(colarray.length == 0){
+                    if(sel.brush){
+                        queries.global=queries.global.setConstraint(d,sel.brush);
+                    }else if(sel.global){
+                        queries.global=queries.global.setConstraint(d,sel.global);
+                    }
+                }
+                colarray.forEach(function(s){
                     //get an appropriate query
                     // var q = queries[s] || $.extend(true,{},queries.global);
                     

@@ -99,6 +99,15 @@ canvas {
     align-items: center;
 }
 
+.brushbtndiv{
+    margin: 0 auto;
+    position: relative;
+    pointer-events:visible;
+}
+
+.brush-btn{
+    float: left;
+}
 
 .spd-slider, .play-btn, .as-slider{
     float:right;

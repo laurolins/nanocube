@@ -489,16 +489,16 @@ function GroupedBarChart(opts, getDataCallback, updateCallback, getXYCallback){
         .text(opts.name);
     
     //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style("height",widget.restoreHeight);
-        }
-    });
+    // d3.select(id).on('dblclick',function(d){
+    //     var currentheight = d3.select(id).style("height");
+    //     if ( currentheight != "40px"){
+    //         widget.restoreHeight =currentheight ;
+    //         d3.select(id).style('height','40px');
+    //     }
+    //     else{
+    //         d3.select(id).style("height",widget.restoreHeight);
+    //     }
+    // });
 
     
     //SVG container
@@ -857,8 +857,8 @@ GroupedBarChart.prototype = {
                 //append new bars
                 bars.enter()
                     .append('rect')
-                    .attr('class', 'bar')
-                    .on('click', function(d) { widget.clickFunc(d);})//toggle callback
+                    .attr('class', 'bar')   //toggle callback
+                    .on('click', function(d) { widget.clickFunc(d);})
                     .append("svg:title"); //tooltip
 
                 bars = widget.svg[i][j].selectAll('.bar').data(fdata[i][j]);
@@ -933,6 +933,8 @@ GroupedBarChart.prototype = {
     },
 
     clickFunc:function(d){
+        if(this.compare)
+            return;
         var widget = this;
         if(!widget.selection.brush){
             widget.selection.brush = [];
@@ -4607,16 +4609,28 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
 
             widget.redraw(widget.lastres);
         })
-        .on('end', function(){
-            //update data
-            widget.update();
+        .on('end', zoomend);
+
+    function zoomend(){
+        widget.update();
+        var curcolor = widget.brushcolors[widget.currentcolor];
+        if(Object.keys(widget.brushtime).length == 0 ||
+            (!widget.brushtime.hasOwnProperty(curcolor) &&
+            Object.values(widget.retbrush).indexOf(widget.name) == -1)){
+
             widget.updateCallback(widget._encodeArgs());
-        });
+        }
+    }
 
     //Brush and Brushsnapping
     var bsfunc = [d3.utcHour, d3.utcDay, d3.utcWeek, d3.utcMonth, d3.utcYear];
     var brushsnap = 0;
+
     this.brushcolors = colorbrewer.Set1[5].slice(0).reverse(0);
+
+    widget.brushnumber = 1;
+    widget.currentcolor = 0;
+    widget.brushtime = {};
 
     //BRUSH
     widget.brush = {};
@@ -4667,6 +4681,14 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
         };
     }
 
+    //Decode args
+    if(opts.args){
+        widget._decodeArgs(opts.args);
+    }
+    else{
+        widget.x.domain(opts.timerange);
+    }
+
     // Timeline Left Pan button
     var arc = d3.symbol().type(d3.symbolDiamond)
         .size([height] * 20);
@@ -4684,8 +4706,8 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
     
     var pan;
     leftpan.on("mouseover", function(){
-        // console.log("Mouseover");
         leftpan.attr('fill', 'blue');
+        widget.zoom.on('end', null);
         pan = setInterval(function(){
             var transform = d3.zoomTransform(widget.anyts.node());
             widget.zoom.translateBy(widget.anyts, 20 / transform.k, 0);
@@ -4695,19 +4717,9 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
     leftpan.on('mouseleave', function(){
         leftpan.attr('fill', 'gray');
         clearInterval(pan);
+        widget.zoom.on('end', zoomend);
+        zoomend();
     });
-
-
-    widget.brushnumber = 1;
-    widget.currentcolor = 0;
-    widget.brushtime = {};
-
-    if(opts.args){
-        widget._decodeArgs(opts.args);
-    }
-    else{
-        widget.x.domain(opts.timerange);
-    }
 
     // Timeline svg
     widget.tssvg = {};
@@ -4760,8 +4772,6 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
         }
     }
 
-
-
     Object.keys(widget.ts).map(function(i){
         Object.keys(widget.ts[i]).map(function(j){
             widget.ts[i][j].on("mousedown", function(){d3.event.stopPropagation();});
@@ -4770,6 +4780,8 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
 
     widget.anygbrush = widget.getAny(widget.gbrush);
     widget.anyts = widget.getAny(widget.ts);
+
+    //right pan button
 
     var rightpan = widget.midright.append("svg")
         .attr("width", 30)
@@ -4785,6 +4797,7 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
     var pan2;
     rightpan.on("mouseover", function(){
         rightpan.attr('fill', 'blue');
+        widget.zoom.on('end', null);
         pan2 = setInterval(function(){
             var transform = d3.zoomTransform(widget.anyts.node());
             widget.zoom.translateBy(widget.anyts, -20 / transform.k, 0);
@@ -4794,6 +4807,8 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
     rightpan.on('mouseleave', function(){
         rightpan.attr('fill', 'gray');
         clearInterval(pan2);
+        widget.zoom.on('end', zoomend);
+        zoomend();
     });
 
 
@@ -4831,10 +4846,91 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
             widget.update();
         }).html("auto");
 
+    widget.resetbtn = widget.botlayer.append('button')
+        .attr('class', 'rst-btn')
+        .on('click', function(){
+            play_stop = rst.playstop;
+            ref = rst.ref;
+            widget.x = rst.x;
+            widget.x_new = rst.x_new;
+            widget.y = rst.y;
+
+            currentstep = rst.currentstep;
+            currentspeed = rst.currentspeed;
+            brushsnap = rst.brushsnap;
+
+            ashandle.attr("cx", asx(currentstep));
+            handle.attr("cx", sx(currentspeed));
+            bshandle.attr("cx", bsx(brushsnap));
+
+            widget.brushtime = rst.brushtime;
+            widget.brushnumber = rst.brushnumber;
+            widget.currentcolor = rst.currentcolor;
+
+            for(var col = 0; col < 5; col++){
+                if(col < widget.brushnumber)
+                    $('#' + name + col + 'brush').show();
+                else
+                    $('#' + name + col + 'brush').hide();
+            }
+            $('#' + name + widget.currentcolor + 'brush').click();
+
+            widget.interval = rst.interval;
+            widget.tafactor = rst.tafactor;
+
+            widget.zoom.transform(widget.anyts, rst.zoomtransform);
+
+            Object.keys(widget.gbrush).map(function(i){
+                Object.keys(widget.gbrush[i]).map(function(j){
+                    for(var k = 0; k < 5; k++){
+                        var curcolor = widget.brushcolors[k];
+                        if(rst.brushselection.hasOwnProperty(curcolor)){
+                            widget.brush[k].move(widget.gbrush[i][j][curcolor], 
+                                rst.brushselection[curcolor]);
+                        }
+                        else{
+                            widget.brush[k].move(widget.gbrush[i][j][curcolor], null);
+                        }
+                    }
+                });
+            });
+            widget.update();
+            widget.playTime(play_stop, currentspeed, currentstep, ref);
+        }).html("Reset");
+
+    widget.sdbtn = widget.botlayer.append('button')
+        .attr('class', 'rst-btn')
+        .on('click', function(){
+            rst.x_new = widget.x_new;
+            rst.x = widget.x;
+            rst.y = widget.y;
+            rst.playstop = play_stop;
+            rst.ref = ref;
+            rst.currentstep = currentstep;
+            rst.currentspeed = currentspeed;
+            rst.brushsnap = brushsnap;
+            rst.brushselection = {};
+            Object.keys(widget.anygbrush).map(function(col){
+                rst.brushselection[col] = d3.brushSelection(widget.anygbrush[col].node());
+            });
+            rst.brushtime = widget.brushtime;
+            rst.tainterval = widget.interval;
+            rst.tafactor = widget.tafactor;
+            rst.zoomtransform = d3.zoomTransform(widget.anyts.node());
+        }).html("Set default");
+
+
+    //Multiple brush buttons
+
+    var brushbtndiv = widget.botlayer.append('div')
+        .style("width", 450 + "px")
+        .style("height", 30 + "px")
+        .attr("class", "brushbtndiv");
 
     widget.brushbtn = {};
     for(col = 0; col < 5; col++){
-        widget.brushbtn[col] = widget.botlayer.append('button')
+        widget.brushbtn[col] = brushbtndiv.append('button')
+            .attr('class', 'brush-btn')
             .attr('id',(name + col + 'brush'))
             .on('click', brushPEToggle(col))
             .html("Brush " + (col + 1));
@@ -4844,7 +4940,7 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
         }
     }
 
-    widget.brushbtn[0].attr('class', 'clicked');
+    widget.brushbtn[0].attr('class', 'clicked brush-btn');
     $('#' + name + 0 + 'brush').click();
 
     function brushPEToggle(index){
@@ -4852,23 +4948,13 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
             $('#' + name + index + 'brush').toggleClass('clicked');
             $('#' + name + widget.currentcolor + 'brush').toggleClass('clicked');
             widget.currentcolor = index;
-            // for(var brushnum = 0; brushnum < 5; brushnum++){
-            //     if(brushnum == index){
-            //         widget.brush[brushnum].selectAll('.overlay')
-            //             .style('pointer-events', 'all');
-            //     }
-            //     else{
-            //         widget.brush[brushnum].selectAll('.overlay')
-            //             .style('pointer-events', 'none');
-            //     }
-            // }
 
             Object.keys(widget.gbrush).map(function(i){
                 Object.keys(widget.gbrush[i]).map(function(j){
                     for(var brushnum = 0; brushnum < 5; brushnum++){
                         var brushnode = widget.gbrush[i][j][widget.brushcolors[brushnum]].node();
                         if(brushnum == index){
-                            console.log(brushnode);
+                            // console.log(brushnode);
                             d3.select(brushnode)
                                 .selectAll('.overlay')
                                 .attr('pointer-events', 'all');
@@ -4887,18 +4973,19 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
         };
     }
 
-    widget.newbrushbtn = widget.botlayer.append('button')
+    widget.newbrushbtn = brushbtndiv.append('button')
         .attr('class', 'newbrush-btn')
         .on('click', function(){
             if(widget.brushnumber == 5) return;
-            $('#' + name + widget.brushnumber + 'brush').show();
-            $('#' + name + widget.brushnumber + 'brush').click();
-            // widget.currentcolor = brushnumber;
+
             widget.brushnumber += 1;
-            widget.updateCallback(widget._encodeArgs());
+
+            $('#' + name + (widget.brushnumber - 1) + 'brush').show();
+            $('#' + name + (widget.brushnumber - 1) + 'brush').click();
+
         }).html("New Brush");
 
-    widget.delbrushbtn = widget.botlayer.append('button')
+    widget.delbrushbtn = brushbtndiv.append('button')
         .attr('class', 'delbrush-btn')
         .on('click', function(){
             if(widget.brushnumber == 1) return;
@@ -4906,31 +4993,60 @@ function Timeseries(opts,getDataCallback,updateCallback, getXYCallback){
             widget.brushnumber -= 1;
             $('#' + name + widget.brushnumber + 'brush').hide();
 
-            //move brush[brushcolor] to null
-
             var lastbrush = widget.brushcolors[widget.brushnumber];
 
-            delete widget.brushtime[lastbrush];
-            Object.keys(widget.gbrush).map(function(i){
-                Object.keys(widget.gbrush[i]).map(function(j){
-                    widget.brush[widget.brushnumber].move(widget.gbrush[i][j][lastbrush], null);
+            var needToUpdate = false;
+            if(widget.brushtime.hasOwnProperty(lastbrush)){
+                needToUpdate = true;
+                delete widget.brushtime[lastbrush];
+                Object.keys(widget.gbrush).map(function(i){
+                    Object.keys(widget.gbrush[i]).map(function(j){
+                        widget.brush[widget.brushnumber]
+                            .move(widget.gbrush[i][j][lastbrush], null);
+                    });
                 });
-            });
+            }
+
             if(widget.brushnumber == widget.currentcolor){
+                needToUpdate = false;
                 $('#' + name + (widget.brushnumber - 1) + 'brush').click();
             }
-            widget.updateCallback(widget._encodeArgs());
+            
+            if(needToUpdate)
+                widget.updateCallback(widget._encodeArgs());
+
         }).html("Del Brush");
+
+    widget.idwidth = parseFloat(d3.select(widget.toplayer.node().parentNode)
+        .style('width'));
+    widget.idheight = parseFloat(d3.select(widget.toplayer.node().parentNode)
+        .style('height'));
 
     widget.margin = margin;
     widget.width = width;
     widget.height = height;
-    // widget.gX = gX;
-    // widget.gY = gY;
     widget.iterating = false;
     widget.compare = false;
     widget.name = name;
+
     widget.update();
+    var rst = {
+        x_new: widget.x_new,
+        x: widget.x,
+        y: widget.y,
+        playstop: false,
+        ref: {},
+        currentstep: 0,
+        currentspeed: 0,
+        brushsnap: 0,
+        brushselection: {},
+        brushtime: {},
+        brushnumber: 1,
+        currentcolor: 0,
+        tainterval: widget.interval,
+        tafactor: undefined,
+        zoomtransform: d3.zoomTransform(widget.anyts.node())
+    };
 }
 
 
@@ -4980,7 +5096,6 @@ Timeseries.prototype={
         //updating time aggregation text
 
         widget.tatext.text(function(){
-            // console.log(widget.interval);
             var bucketsize = widget.interval / widget.unitTime;
             bucketsize = Math.max(1,Math.floor(bucketsize+0.5));
 
@@ -4990,8 +5105,6 @@ Timeseries.prototype={
         });
 
         var xydata = this.getXYCallback();
-        // console.log(xydata);
-        // console.log(this.retx, this.rety);
 
         if(!arraysEqual(this.retx,xydata[0]) || !arraysEqual(this.rety,xydata[1])){
             console.log("Rebuilding..");
@@ -5201,14 +5314,13 @@ Timeseries.prototype={
         var widget = this;
         for(var i = 0; i < widget.brushnumber; i++){
             var selcolor = this.brushcolors[i];
-            var brushnode = this.anygbrush[selcolor].node();
-            if (brushnode !== null && d3.brushSelection(brushnode) !== null){
-                var bext = d3.brushSelection(brushnode).map(this.x_new.invert);
+            var brushtime = widget.brushtime[selcolor];
+            if(brushtime !== undefined){
                 if(i == widget.currentcolor){
-                    widget.bstext.text("(" + bext[0].toUTCString() + ", " + 
-                        bext[1].toUTCString() + ")");
+                    widget.bstext.text("(" + brushtime[0].toUTCString() + ", " + 
+                        brushtime[1].toUTCString() + ")");
                 }
-                sel[selcolor] = {start:bext[0], end:bext[1]};
+                sel[selcolor] = {start:brushtime[0], end:brushtime[1]};
             }
             else{
                 if(i == widget.currentcolor){
@@ -5241,7 +5353,7 @@ Timeseries.prototype={
     _decodeArgs: function(s){
         
         var widget = this;
-        console.log(s);
+        // console.log(s);
         var args = JSON.parse(s);
         this.x.domain([new Date(args.global.start),
                        new Date(args.global.end)]);
@@ -5256,8 +5368,8 @@ Timeseries.prototype={
             var curcolor = widget.brushcolors[col];
             if(colors.indexOf(curcolor.substr(1)) != -1){
                 widget.brushnumber = col + 1;
-                widget.brushtime[curcolor] = [args[curcolor.substr(1)].start, 
-                                              args[curcolor.substr(1)].end];
+                widget.brushtime[curcolor] = [new Date(args[curcolor.substr(1)].start), 
+                                              new Date(args[curcolor.substr(1)].end)];
             }
         }
 
@@ -5301,21 +5413,12 @@ Timeseries.prototype={
                     Math.max(p1[1],g[1])];  
         }, [Infinity,-Infinity]);
 
-        
-        // var yext = Object.keys(lines).reduce(function(p,c){
-        //     var e = d3.extent(lines[c].data, function(d){
-        //         return (d.val || 0);
-        //     });
-        //     return [ Math.min(p[0],e[0]),
-        //              Math.max(p[1],e[1])];
-        // }, [Infinity,-Infinity]);
 
 
         yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
 
         var widget = this;
-
 
         widget.yext = yext;
 
@@ -5430,6 +5533,14 @@ Timeseries.prototype={
             .style('width'));
         var idheight = parseFloat(d3.select(widget.toplayer.node().parentNode)
             .style('height'));
+
+        if(idwidth == widget.idwidth && idheight == widget.idheight){
+            return;
+        }
+        else{
+            widget.idwidth = idwidth;
+            widget.idheight = idheight;
+        }
         var width = idwidth - (this.margin.left + this.margin.right) * this.retx.length - 60;
         var height;
 
@@ -5544,8 +5655,9 @@ Timeseries.prototype={
     },
 
     getAny: function(obj){
-        var temp = obj[Object.keys(obj)[0]];
-        return temp[Object.keys(temp)[0]];
+        var key1 = Object.keys(obj)[0];
+        var key2 = Object.keys(obj[key1])[0];
+        return obj[key1][key2];
     },
 
     adjustToCompare: function(){
@@ -5855,9 +5967,17 @@ Viewer.prototype = {
         Object.keys(this._widget).forEach(function(d){
             if (skip.indexOf(d) == -1 && retarray.indexOf(d) != -1){
                 var sel = viewer._widget[d].getSelection();
-                Object.keys(sel).filter(function(d){
+                var colarray = Object.keys(sel).filter(function(d){
                     return (d != 'brush') && (d != 'global');
-                }).forEach(function(s){
+                });
+                if(colarray.length == 0){
+                    if(sel.brush){
+                        queries.global=queries.global.setConstraint(d,sel.brush);
+                    }else if(sel.global){
+                        queries.global=queries.global.setConstraint(d,sel.global);
+                    }
+                }
+                colarray.forEach(function(s){
                     //get an appropriate query
                     // var q = queries[s] || $.extend(true,{},queries.global);
                     
