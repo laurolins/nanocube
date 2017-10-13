@@ -898,7 +898,7 @@ Map.prototype = {
         
         //Leaflet stuffs
         var map = L.map(this._name);
-        map.attributionControl.addAttribution('<a href="http://www.nanocubes.net">Nanocubes</a>');
+        map.attributionControl.addAttribution('<a href="http://www.nanocubes.net">Nanocubes&trade;</a>');
        map.attributionControl.addAttribution('<a href="http://www.osm.org">OpenStreetMap</a>');
 
         
