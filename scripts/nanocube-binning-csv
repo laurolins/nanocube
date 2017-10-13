@@ -112,6 +112,11 @@ class NanocubeInput:
         #Read the csv file
         self.readcsv(args.InputFile,self.chunksize)
 
+    def fixString(self,s):
+        fix = s.replace(' ', '_').replace('"','').replace("'",'')
+        fix = fix.decode('unicode_escape').encode('ascii','ignore')
+        return json.dumps(fix)[1:-1]
+
     def preprocessCat(self,files,cols,csize=20000,nbins=None):
         for f in files:
             comp = None
@@ -125,7 +130,7 @@ class NanocubeInput:
             reader = pd.read_csv(f,chunksize=csize,
                                  error_bad_lines=False,sep=self.sep,
                                  compression=comp,names=self.header,
-                                 usecols=coi)
+                                 usecols=coi,dtype=str)
 
             datarange = {}
             for i,data in enumerate(reader):
@@ -164,7 +169,7 @@ class NanocubeInput:
             reader = pd.read_csv(f,chunksize=csize,
                                  error_bad_lines=False,sep=self.sep,
                                  compression=comp,names=self.header,
-                                 usecols=coi)
+                                 usecols=coi,dtype=str)
 
             for i,data in enumerate(reader):
                 data = data[coi].dropna()
@@ -202,7 +207,7 @@ class NanocubeInput:
                                         
                 if s[0]=='valname':
                     ss = s[1].strip().split()
-                    attr = ss[0].replace(' ','_')
+                    attr = self.fixString(ss[0]) #.replace(' ','_')
                     val = int(ss[1])
                     name = ' '.join(ss[2:])
                     if attr not in valname:
@@ -222,7 +227,7 @@ class NanocubeInput:
             data[self.countcol]=1
 
         #get NaN's for errors
-        data[self.countcol] = pd.to_numeric(data[self.countcol]);
+        data[self.countcol] = pd.to_numeric(data[self.countcol],errors='coerce');
         
         #drop bad data
         data = data.dropna()
@@ -282,8 +287,8 @@ class NanocubeInput:
             lat = self.latcol[i]
             lon = self.loncol[i]
             lvl = self.levels
-            data[lon] = pd.to_numeric(data[lon])
-            data[lat] = pd.to_numeric(data[lat])
+            data[lon] = pd.to_numeric(data[lon],errors='coerce')
+            data[lat] = pd.to_numeric(data[lat],errors='coerce')
             data = data.dropna()
 
             data = data[data[lon] > -180]
@@ -307,8 +312,8 @@ class NanocubeInput:
 
     def processDate(self, data):
         for i,d in enumerate(self.timecol):
-            if self.datefmt is None and data[d].dtype == 'int64' :
-                data[d] *= 1e9
+            if self.datefmt is None and data[d].str.isnumeric().all() :
+                data[d] = pd.to_numeric(data[d])*1e9
 
             if (self.datefmt):
                 data[d] = pd.to_datetime(data[d].astype(str),
@@ -355,11 +360,11 @@ class NanocubeInput:
 
             #fix the spaces
             if data.dtypes[c] == object:
-                data[c] = data[c].apply(lambda x : str(x).replace(' ','_'))
+                data[c] = data[c].apply(lambda x : self.fixString(str(x))) #.replace(' ','_'))
 
             #for int type
             if data.dtypes[c] == int:
-                self.valname[c] = {}
+                data[c] = data[c].apply(lambda x : str(x))
             
             #no binning
             if c not in self.valname:
@@ -402,19 +407,19 @@ class NanocubeInput:
 
     def createHeader(self,data):
         h = ''
-        h += 'name: %s\n'%(self.name.replace(' ',"_"))
+        h += 'name: %s\n'%(self.fixString(self.name))
         h += 'encoding: binary\n'
         for sp in self.spname:
             h += 'metadata: %s__origin degrees_mercator_quadtree%d\n'%(
                 sp,self.levels)
-            h += 'field: %s nc_dim_quadtree_%d\n'%(sp.replace(' ',"_"),
+            h += 'field: %s nc_dim_quadtree_%d\n'%(self.fixString(sp), #sp.replace(' ',"_"),
                                                    self.levels)
 
         for c in self.catcol:
-            h += 'field: %s nc_dim_cat_%d\n'%(c.replace(' ',"_"),
+            h += 'field: %s nc_dim_cat_%d\n'%(self.fixString(c),#.replace(' ',"_"),
                                               self.catbytes)            
             for k in self.valname[c]:
-                h+='valname: %s %d %s\n'%(c.replace(' ',"_"),
+                h+='valname: %s %d %s\n'%(self.fixString(c),#.replace(' ',"_"),
                                           self.valname[c][k],k)
 
         for d in self.timecol:
@@ -422,15 +427,15 @@ class NanocubeInput:
                                                self.offset.time(),
                                                self.timebinsize.astype(np.int))
         if self.timebytes == 4:
-            h += 'field: %s nc_dim_time_4\n'%(d.replace(' ',"_"))
+            h += 'field: %s nc_dim_time_4\n'%(self.fixString(d))#d.replace(' ',"_"))
         else:
-            h += 'field: %s nc_dim_time_2\n'%(d.replace(' ',"_"))
+            h += 'field: %s nc_dim_time_2\n'%(self.fixString(d))#d.replace(' ',"_"))
 
 
         if self.countbytes == 4:
-            h += 'field: %s nc_var_uint_4\n\n' %(self.countcol.replace(' ',"_"))
+            h += 'field: %s nc_var_uint_4\n\n' %(self.fixString(self.countcol)) #.replace(' ',"_"))
         elif self.countbytes == 8:
-            h += 'field: %s nc_var_uint_8\n\n' %(self.countcol.replace(' ',"_"))
+            h += 'field: %s nc_var_uint_8\n\n' %(self.fixString(self.countcol)) #.replace(' ',"_"))
         else:
             raise Exception("only supports 4 and 8 bytes for counts")
 

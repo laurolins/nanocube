@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
-AC_PREREQ([2.65])
-AC_INIT([nanocube], [0.0.1], [lauro.lins@gmail.com])
+AC_PREREQ([2.68])
+AC_INIT([nanocube], [3.2.2], [lauro.lins@gmail.com])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -19,28 +19,11 @@ LT_INIT([dlopen])
 
 AC_LANG([C++])
 
-# turn on c++11
+#c++11
 AX_CXX_COMPILE_STDCXX_11(noext,mandatory)
-
-# check zlib
-AX_CHECK_ZLIB
-
-# Check OpenSSL
-AX_CHECK_OPENSSL([CFLAGS+=" -DNS_ENABLE_SSL"])
-
-#check boost
-BOOST_REQUIRE([1.48])
-BOOST_THREADS
-BOOST_SYSTEM
-BOOST_ASIO
-
-AC_CHECK_CURL(7)
-
-TS_CHECK_TCMALLOC
 
 # Checks for header files.
 AC_CHECK_HEADERS([stdint.h])
-
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
 AC_TYPE_INT32_T
@@ -48,8 +31,26 @@ AC_TYPE_INT64_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 
-# Checks for library functions.
+#zlib
+AX_CHECK_ZLIB
 
+#OpenSSL
+AX_CHECK_OPENSSL([CFLAGS+=" -DNS_ENABLE_SSL"])
+
+#curl
+LIBCURL_CHECK_CONFIG(yes,7)
+
+#boost
+BOOST_REQUIRE([1.48])
+BOOST_THREADS
+BOOST_SYSTEM
+BOOST_ASIO
+
+#tcmalloc
+TS_CHECK_TCMALLOC
+
+
+# Checks for library functions.
 AC_CONFIG_FILES([Makefile
                  src/Makefile
                  scripts/Makefile])

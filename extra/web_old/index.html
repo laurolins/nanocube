@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- fonts --!>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300'
+	  rel='stylesheet' type='text/css'>
+    <meta http-equiv="Pragma" content="no-cache"> 
+    <meta http-equiv="Expires" content="-1"> 
+    <meta http-equiv="cache-control" content="no-store">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1"> 
+    <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css">
+    <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/leaflet.css"/>
+    <link rel="stylesheet" href="lib/leaflet.draw/leaflet.draw.css"/>
+    <link rel="stylesheet" href="nanocube2.css"/>    
+
+    <!-- Start of scripts-->
+    <!-- jQuery, Leaflet, Underscore includes -->
+    <script src="http://code.jquery.com/jquery-1.11.2.min.js"></script>
+    <script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+    
+    <script src="http://d3js.org/d3.v3.js" charset="utf-8"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/leaflet-src.js"></script>
+    <script src="lib/leaflet.draw/leaflet.draw-src.js"></script>
+    <script src="lib/colorbrewer.js"></script>
+
+    <script src="lib/interact.js"></script>
+    <script src="resize-drag.js"></script>
+    
+    <!-- Custom includes -->
+    <script src="nanocube3.js"></script>
+    <script src="TileLatLngUtils.js"></script>
+    
+    <script src="NanocubeLayer.js"></script>
+    <script src="Timeseries.js"></script>
+    <script src="GroupedBarChart.js"></script>
+    
+    <script src="QueryConstraint.js"></script>
+    <script src="Variables.js"></script>
+    <script src="Model.js"></script>
+    
+    <script src="init.js"></script>
+    
+    <!-- Main -->
+    <script>
+      //main
+     function getURLParameter(sParam){
+         var sPageURL = window.location.search.substring(1);
+         var sURLVariables = sPageURL.split('&');
+         for (var i = 0; i < sURLVariables.length; i++){
+             var sParameterName = sURLVariables[i].split('=');
+             if (sParameterName[0] == sParam){
+	         return sParameterName[1];
+             }
+         }
+     }
+
+     $(function(){
+       var conf = getURLParameter('config') ||
+          window.location.hash.substring(1) || 'config';
+              
+       $.getJSON(conf+".json", function(config){
+         initPage(config);
+         initNanocube(config);
+       }).fail(function(){throw new Error("Fail to get or parse "+conf);});
+     });
+    </script>
+  </head>
+  
+  <body>
+    <div id="nc-container">
+      <div data-role="page" id="pageone">
+        <div data-role="panel" id="ctrlpanel" data-display="reveal"> 
+          <div data-role="main" class="ui-content"> 
+            <ul data-role="listview" data-inset="true">
+              <li data-role="list-divider">Geographical map</li>
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Opacity:</legend>
+                    <button id="map-op-btn-inc" class="ui-shadow ui-btn ui-corner-all ui-icon-plus ui-btn-inline ui-btn-icon-notext" 
+                            data-mini="true">plus</button>
+                    <button id="map-op-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline ui-btn-icon-notext" 
+                            data-mini="true">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              
+              <li data-role="list-divider">Heatmap</li>
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Opacity:</legend>
+                    <button id="heatmap-op-btn-inc" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-plus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">
+                      plus</button>
+                    <button id="heatmap-op-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              
+              <li>
+                <div class="ui-field-contain">
+                  <fieldset data-role="controlgroup" data-type="horizontal">
+                    <legend>Radius:</legend>
+                    <button id="heatmap-rad-btn-inc" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-plus
+                            ui-btn-inline
+                            ui-btn-icon-notext">plus</button>
+                    <button id="heatmap-rad-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline
+                            ui-btn-icon-notext">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-grid">Grid:</label>
+                  <select name="flip-grid" id="flip-grid"
+                          data-role="slider"
+                          data-mini="true"> 
+                    <option value="off">Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+
+              <li>
+                <div class="ui-field-contain">
+                  <label for="flip-log">Data:</label>
+                  <select name="flip-log" id="flip-log" data-mini="true"> 
+                    <option value="raw">Raw</option>
+                    <option value="sqrt">Sqrt</option>
+                    <option value="log" selected>Log</option>
+                  </select>
+                </div>
+              </li>
+
+              <li>
+                <div class="ui-field-contain">
+                  <label style="width:25%;" for="flip-renorm">Auto-Norm:</label>
+                  <select name="flip-renorm" id="flip-renorm"
+                          data-role="slider" data-mini="true"> 
+                    <option value="off" selected>Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+
+              <li>
+                <div class="ui-field-contain">
+                  <label style="width:25%;"
+                         for="flip-refresh">Streaming:</label>
+                  <select name="flip-refresh" id="flip-refresh"
+                          data-role="slider" data-mini="true"> 
+                    <option value="off" selected>Off</option>
+                    <option value="on">On</option>
+                  </select>
+                </div>
+              </li>
+
+              <li data-role="list-divider">Time Series</li>
+              <li>
+                <!-- <div class="ui-field-contain">
+                  <label for="flip-gts">Global:</label>
+                  <select name="flip-gts" id="flip-gts"
+                          data-role="slider"
+                          data-mini="true" disabled="disabled"> 
+                    <option value="off">Off</option>
+                    <option value="on" selected>On</option>
+                  </select> 
+                </div> -->
+
+                <div style="width: 250px;"
+                     class="ui-field-contain">
+                  <fieldset data-role="controlgroup"
+                            data-type="horizontal">
+                    <legend>Unit:</legend>
+                    <button id="tbinsize-btn-inc" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-plus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">
+                      plus</button>
+                    <button id="tbinsize-btn-dec" class="ui-shadow
+                            ui-btn ui-corner-all ui-icon-minus
+                            ui-btn-inline
+                            ui-btn-icon-notext" data-mini="true">minus</button>
+                  </fieldset>
+                </div>
+              </li>
+            </ul>
+          </div>
+          
+          <a id="export-btn" class="ui-btn ui-corner-all 
+                                         ui-shadow ui-btn-inline"
+                  data-mini="true" download="nanocube_export.json">Export</a>
+          
+          <!-- keyboard instructions -->
+          <a href="#popupBasic" data-rel="popup" class="ui-btn 
+             ui-corner-all ui-shadow ui-btn-inline" data-mini="true" 
+             data-transition="pop">Keyboard shortcuts</a>
+          <div data-role="popup" id="popupBasic">
+            <h4>Geographical Map: </h4>
+            <p>
+              <code>d</code>: decrease opacity (looks darker)<br />
+              <code>b</code>: increase opacity (looks brighter)<br />
+            </p>
+            <h4>Heatmap</h4>
+            <p>
+              <code>&lt;</code>: decrease opacity<br />
+              <code>&gt;</code>: increase opacity<br />
+              <code>,</code>: decrease radius<br />
+              <code>.</code>: increase radius<br />
+              <code>c</code>: display count and grid<br />
+              <code>n</code>: renormalize colors<br />
+              <code>l</code>: toggle raw and log scale data<br />
+            </p>
+            <h4>Timeseries</h4>
+            <p>
+              <code>g</code>: Toggle the display of the global time
+              series when there are polygon/rect selections.
+            </p>
+          </div>
+        </div>
+        
+        <div id="maincontent" data-role="content" >
+          <div id="panelbtn">
+            <a href="#ctrlpanel" class="ui-btn ui-icon-carat-r
+               ui-btn-icon-notext
+               ui-corner-all">No text</a>  
+          </div>          
+        </div>      
+      </div>    
+    </div>
+  </body>  
+</html>

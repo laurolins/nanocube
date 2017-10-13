@@ -156,25 +156,27 @@ void Server::init(int mongoose_threads, std::string pemfile) // blocks current t
     mg_server *srv = mg_create_server(NULL, __mg_callback);
     mg_set_option(srv, "num_threads", std::to_string(mongoose_threads).c_str());
 
-    if (pemfile  != ""){
-      mg_set_option(srv, "ssl_certificate", pemfile.c_str());
+    if (pemfile  != ""){      
+      //mg_set_option(srv, "ssl_certificate", pemfile.c_str());
+      char portstr[1024];
+      sprintf(portstr, "ssl://%d:%s",port,pemfile.c_str());
+      mg_set_option(srv, "listening_port", portstr);
     }
-    
-    // Serve current directory
-    mg_set_option(srv, "listening_port", (std::to_string(port)).c_str());
-    // Open port
+    else{
+      // Serve current directory
+      mg_set_option(srv, "listening_port", (std::to_string(port)).c_str());
+    }
+
               
     __mongoose_server = srv;
     
-    //mg_poll_server(srv, 1000);   // Infinite loop, Ctrl-C to stop
+    //mg_poll_server(srv, 100);   // Infinite loop, Ctrl-C to stop
     //auto listening_socket = mg_get_listening_socket(srv);
     //if (listening_socket == -1) { // -1 is INVALID_SOCKET on mongoose
+    //if(srv == NULL){
     //    mg_destroy_server(&srv);
-
-    if(__mongoose_server == NULL){
-      mg_destroy_server(&srv);
-      throw ServerException("Problem starting mongoose server");
-    }
+    //    throw ServerException("Problem starting mongoose server");
+    //}
 }
 
 void Server::run() {    
@@ -183,7 +185,7 @@ void Server::run() {
     
     // add some flag for a clean shutdown of mongoose server
     for (;keep_running;) {
-        mg_poll_server(__mongoose_server, 1000);   // Infinite loop, Ctrl-C to stop
+        mg_poll_server(__mongoose_server, 100);   // Infinite loop, Ctrl-C to stop
         // std::cerr << "mg_poll_server result = " << code << std::endl;
     }
     mg_destroy_server(&__mongoose_server);

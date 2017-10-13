@@ -6,6 +6,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 | Number | Description |
 |:------:|-------------|
+| 3.2.2 | Updated `nanocube-binning-csv`, SSL server support, bug fixes and improvements for web gui |
 | 3.2.1 | Improved web client, documentation, testing |
 | 3.2 | Sliding window; removed legacy assertions that would crash the server |
 | 3.1 | Added new tools, standarized tool names, restructured code repository, bug fixes |
@@ -18,24 +19,45 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
 
-## What is new in release 3.2.1
+## What is new in release 3.2.2
+
+* `nanocube-binning-csv` has been updated to work with `pandas` 0.20
+
+* SSL server support has been updated with `mongoose`
+
+* The size of the variables can be set through `nanocube-binning-csv --[cat|time|count]bytes`
+
+* `nanocube-binning-csv --preprocess=<cat>` scans through variable `<cat>` for all possible categorical values
+
+* `nanocube-binning-csv` should now handle unicode characters
 
 ### Web Client
 
-Improved overall layout and look of the web client front-end, including size
-and position of charts, font ratios, colormaps, and log scales.  Also enabled
-switching between alphabetical and numerical sorting of the bar charts.
+* Draggable and resizable charts
 
+* Added viewport, binsize, rectangle selection information
 
-### Documentation
+* Locations markers can be added as a separate layer in the json config file
 
-Improved README file to be more accurate and have clearer instructions. Added
-more details on how to configure the web client.
-
-### Testing
-
-Simplified the nctest.sh script to detect which OS you are using and make the
-appropriate comparisons.  Included expected data for MacOS and Ubuntu.
+```   "location": {
+      "padding": 0, 
+      "width": "100%", 
+      "z-index": 0, 
+      "float": "left", 
+      "margin": 0, 
+      "height": "100%",
+      "layers":{
+        "markers":[
+        {"coordinate":[37.787278,-122.403550], "popup":"701 Market St"},
+        {"coordinate":[37.787128,-122.403642], "popup":"705 Market St"},
+        {"coordinate":[37.791192,-122.398147], "popup":"425 Market St"},
+        {"coordinate":[37.781065,-122.4575672], "popup":"3555 Geary Blvd"},
+        {"coordinate":[37.797168, -122.434483], "popup":"2135 Union St"},
+        {"coordinate":[37.7583654,-122.4195103], "popup":"2410 Mission St"},
+        {"coordinate":[37.7279147,-122.4771771], "popup":"3251 20th Ave"}]
+      }           
+    }
+```
 
 ## Installing prerequisites
 
@@ -48,7 +70,7 @@ The following are prerequisites for all systems:
 
 #### Linux (Ubuntu)
 
-On a newly installed 64-bit Ubuntu 14.04 system, gcc/g++ is already 4.8.2, but you should install the following packages:
+On a newly installed 64-bit Ubuntu 16.04 system, install the following packages:
 
 ```
 sudo apt-get install build-essential
@@ -58,7 +80,7 @@ sudo apt-get install zlib1g-dev
 sudo apt-get install libboost-all-dev
 sudo apt-get install libcurl4-openssl-dev
 ```
-**The support for Ubuntu 16.04 is currently being tested (due to changes in gcc 5), please try it out with the `master` version.**
+<!-- **The support for Ubuntu 16.04 is currently being tested (due to changes in gcc 5), please try it out with the `master` version.** -->
 
 
 #### Linux (CentOS 6)
