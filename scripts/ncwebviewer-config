@@ -1,149 +1,10 @@
-#!/usr/bin/env python
+from __future__ import print_function, division
 
-import sys,argparse,json,urllib2,random,math,os,ssl
+import os,json,sys,argparse,socket
+import tempfile,shutil,math,random,http.server
+import requests
 
-###################################################################
-
-
-ConfigTemplate={
-    "title": None, 
-    "url": None, 
-    "latlonbox": {"min":{}, "max":{}},
-    "tilesurl": "http://{s}.tile.osm.org/{z}/{x}/{y}.png", 
-    "heatmapmaxlevel": 25, 
-    "div": {
-        "info": {
-            "opacity": 0.9, 
-            "padding": 0, 
-            "z-index": 1, 
-            "right": "1ch", 
-            "color": "white", 
-            "position": "absolute", 
-            "top": "1em", 
-            "height": "1em"
-        }
-    }
-}
-
-SpatialVariableTemplate={
-    "float": "left", 
-    "height": "100%", 
-    "padding": 0, 
-    "width": "100%", 
-    "z-index": 0, 
-    "margin": 0
-}
-    
-TemporalVariableTemplate={
-    "opacity": 0.8, 
-    "width": "75%", 
-    "z-index": 1, 
-    "left": "1ch", 
-    "bottom": "1em", 
-    "position": "absolute", 
-    "background-color": "#555", 
-    "height": "10em"
-}
-
-CategoricalVariableTemplate={
-    "opacity": 0.8, 
-    "width": "30%", 
-    "z-index": 1, 
-    "right": "1ch", 
-    "margin-left": "10ch", 
-    "position": "absolute", 
-    "top": "1em", 
-    "background-color": "#555", 
-    "height": "30em",
-    "alpha_order": True,
-    "displaynumcat": 25,
-    "logaxis": False
-}
-
-###############################################################################
-
-
-# { fields:
-#    [ { name: 'src',
-#        type: 'nc_dim_quadtree_25',
-#        valnames: {} },
-#     { name: 'crime',
-#       type: 'nc_dim_cat_1',
-#       valnames:
-#        { CRIM_SEXUAL_ASSAULT: 7,
-#          WEAPONS_VIOLATION: 30,
-#          KIDNAPPING: 13,
-#          OFFENSE_INVOLVING_CHILDREN: 20,
-#          CONCEALED_CARRY_LICENSE_VIOLATION: 4,
-#          SEX_OFFENSE: 27,
-#          INTIMIDATION: 12,
-#          PROSTITUTION: 23,
-#          ARSON: 0,
-#          BURGLARY: 3,
-#          ROBBERY: 26,
-#          CRIMINAL_TRESPASS: 6,
-#          THEFT: 29,
-#          HOMICIDE: 10,
-#          OBSCENITY: 19,
-#          OTHER_NARCOTIC_VIOLATION: 21,
-#          MOTOR_VEHICLE_THEFT: 15,
-#          GAMBLING: 9,
-#          NARCOTICS: 16,
-#          'NON-CRIMINAL_(SUBJECT_SPECIFIED)': 18,
-#          DECEPTIVE_PRACTICE: 8,
-#          STALKING: 28,
-#          CRIMINAL_DAMAGE: 5,
-#          PUBLIC_PEACE_VIOLATION: 25,
-#          BATTERY: 2,
-#          ASSAULT: 1,
-#          PUBLIC_INDECENCY: 24,
-#          'NON-CRIMINAL': 17,
-#          LIQUOR_LAW_VIOLATION: 14,
-#          OTHER_OFFENSE: 22,
-#          INTERFERENCE_WITH_PUBLIC_OFFICER: 11 } },
-#      { name: 'time',
-#        type: 'nc_dim_time_2',
-#        valnames: {} },
-#      { name: 'count',
-#        type: 'nc_var_uint_4',
-#        valnames: {} } ],
-#   metadata:
-#    [ { key: 'tbin',
-#        value: '2013-12-01_00:00:00_3600s' },
-#      { key: 'src__origin',
-#        value: 'degrees_mercator_quadtree25' },
-#      { key: 'name', value: 'crime50k.csv' } ] }
-
-
-class Schema:
-    def __init__(self, name):
-        self.name = name
-        self.fields = []
-    def addField(self, field_name, field_type, field_valnames=None):
-        field = Field(field_name, field_type, field_valnames)
-        self.fields.append(field)
-        return field
-
-class Field:
-    def __init__(self, name, field_type, valnames):
-        self.name = name
-        self.type = field_type
-        self.valnames = valnames
-        
-    def isSpatial(self):
-        return self.type.startswith("nc_dim_quadtree_")
-    def isCategorical(self):
-        return self.type.startswith("nc_dim_cat_")
-    def isTemporal(self):
-        return self.type.startswith("nc_dim_time_")
-    def spatialResolution(self):
-        if self.isSpatial():
-            return int(self.type.split('_')[-1])
-
-ctx = ssl.create_default_context()
-ctx.check_hostname = False
-ctx.verify_mode = ssl.CERT_NONE
-
+### bbox
 ## Find the bounding box
 def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
     query_url='%s/count.a("%s",dive(tile2d({x},{y},{z}),{drill}),"img")'%(server,dim)
@@ -151,9 +12,10 @@ def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
     p = initp
     newtiles=[]
     for location in tiles:
-        res_str =  urllib2.urlopen(query_url.format(**location)).read()
-        res_str = res_str.replace('\x00','}') # this is bad
-        res = json.loads(res_str)
+        res =  requests.get(query_url.format(**location),
+                            verify=False).json()
+        #res_str = res_str.replace('\x00','}') # this is bad
+        #res = json.loads(res_str)
 
         res = res['root']['children']
         offset = {'x':location['x']*2**location['drill'],
@@ -215,145 +77,147 @@ def findbox(server,dim,maxlevel):
                    {'x':float('-inf'),'y':float('-inf')})
     
     return (num2deg(minp),num2deg(maxp))
-    
 
 
-##### Main ######        
-parser = argparse.ArgumentParser();
-parser.add_argument('-s', 
-                    "--server", 
-                    dest="server", 
-                    type=str, 
-                    required=True, 
-                    help='Nanocube Server URL')
-parser.add_argument('-o', 
-                    "--output", 
-                    dest="output", 
-                    type=str,
-                    default="",
-                    required=False, 
-                    help='Output configuration .json file')
-
-parser.add_argument('-p', 
-                    "--port", 
-                    nargs='?',
-                    dest="port",
-                    const=8000,
-                    type=int,
-                    required=False, 
-                    help='Start webserver')
-
-parser.add_argument('-w',
-                    "--webdir", 
-                    nargs=1,
-                    default="",
-                    dest="webdir",
-                    type=str,
-                    required=False, 
-                    help='Web site directory')
-
-args = parser.parse_args()
+### configs
+def initConfig(name,url):
+    config = {}
+    config['nanocube'] = {name: {'url':url}}
+    config['datasrc'] = {name:{'expr':name, 'colormap': 'Reds'}}
+    config['widget'] = {}
+    return config
 
 
-# load schema
-# print args.server
-response = urllib2.urlopen(args.server+"/schema",
-                           context=ctx)
-schema_json = json.loads(response.read())
+def main():
+    #parse the simple arguments
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--width',type=int,default=1920)
+    argparser.add_argument('--height',type=int,default=1080)
+    argparser.add_argument('-s','--server',type=str)
+    argparser.add_argument('-p','--port',type=int,required=False,
+                           const=8000,nargs='?')
+    argparser.add_argument('-w','--web',type=str,required=False,
+                           default=os.environ['NANOCUBE_SRC']+'/extra/web',
+                           nargs='?')
 
-#
-# spatial field
-#
-
-name           = None
-spatial_field  = None
-temporal_field = None
-
-for item in schema_json['metadata']:
-    if item['key'] == 'name':
-        name = item['value']
-
-    # elif item['value'].startswith('degrees_mercator_quadtree'):
-    #     spatial_field_name = item['key'].split('_')[0]
-    #     spatial_resolution = int(item['value'][len('degrees_mercator_quadtree'):])
-    
-schema = Schema(name)
-
-for json_field in schema_json['fields']:
-    if 'valnames' not in json_field:
-        json_field['valnames'] = None
-    
-    field = schema.addField(json_field['name'],
-                            json_field['type'],
-                            json_field['valnames'])
-    if field.isSpatial():
-        spatial_field = field
-    elif field.isTemporal():
-        temporal_field = field
+    args = argparser.parse_args()
+    if args.server is None:
+        sys.stderr.writelines(['Please specify a nanocube server with -s\n'])
+        sys.exit(1)
 
 
-# General Config
-config= ConfigTemplate;
-config['title']= schema.name
-config['url'] = args.server
-config['heatmapmaxlevel'] = spatial_field.spatialResolution()
+    #download the schema
+    url = args.server
+    try:
+        r = requests.get(url+'/schema', allow_redirects=False,verify=False)
+        schema = r.json()
+    except:
+        print ('Fail to read schema from %s'%(url),file=sys.stderr)
+        sys.exit(1)
 
-charttop=3
-for f in schema.fields:
-    if f.isCategorical():
-        config['div'][f.name] = CategoricalVariableTemplate.copy()
+    spatialvars = [ x for x in schema['fields'] if
+                    x['type'].startswith('nc_dim_quadtree')]
+    catvars = [ x for x in schema['fields'] if
+                x['type'].startswith('nc_dim_cat')]
+    timevars = [ x for x in schema['fields'] if
+                 x['type'].startswith('nc_dim_time')]
 
-        #construct the width and height of the margins
-        numofcat = min(25,len(f.valnames))
-        height = numofcat*1.5+4
-        config['div'][f.name]['displaynumcat'] = numofcat
-        config['div'][f.name]['height'] = "%dem"%(height)
-        config['div'][f.name]['top'] = "%dem"%(charttop)
-        charttop += height+1
+
+    schema['metadata'] = {s['key']:s['value'] for s in schema['metadata']}
+    ncname = schema['metadata']['name']
+    ncname = ncname.replace(' ','_').replace('-','_').replace('.','_')
+    config = initConfig(ncname, url)
+
+    sp = {v['name']: spatialWidget(v,w=1.0/len(spatialvars)) for
+          v in spatialvars}
+    ts = {v['name']: timeseriesWidget(v,w=0.5*args.width) for
+          v in timevars}
+    cats = {v['name']: catWidget(v) for
+            v in catvars}
+
+    for c in cats:
+        config['widget'][c] = cats[c]
+
+    for s in sp:
+        sp[s]['viewbox'] = findbox(url,s,sp[s]['levels']-8)
+        config['widget'][s] = sp[s]
+
+    for t in ts:
+        config['widget'][t] = ts[t]
+
+    if args.port is None:
+        print(json.dumps(config,indent=2))
+    else:        
+        #copy the webgui to a tmp dir start a webserver
+        tmpdir = tempfile.mkdtemp()
+        shutil.copytree(args.web,
+                        tmpdir+'/web')
+        os.chdir(tmpdir+'/web')
+        f = open('config.json','w')
+        f.write(json.dumps(config))
+        f.close()
         
-        txtlen = len(max(f.valnames, key=lambda x:len(x.strip())))
-        margin = max(1.2*txtlen+1, 15)
-        config['div'][f.name]['margin-left'] = "%dch"%(margin)
-        config['div'][f.name]['width'] = "%dch"%(margin+30)
+        #start httpserver
+        handler= http.server.SimpleHTTPRequestHandler
+        httpd = http.server.HTTPServer(('', args.port),handler);
+
+        print("See Nanocubes at http://%s:%d/"%(socket.getfqdn(),
+                                                args.port))
+        httpd.serve_forever()
+        httpd.socket.close()
+        shutil.rmtree(tmpdir)
         
-    if f.isTemporal():
-        if f.name != 'defaulttime':
-            config['div'][f.name] = TemporalVariableTemplate.copy()
+def spatialWidget(v,w=1.0):
+    levels = v['type'].replace('nc_dim_quadtree_','')
+    levels = int(levels)
+    return {
+        'type':'spatial',
+        'title': v['name'],
+        'tilesurl':'http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
+        'coarse_offset':2,
+        'viewbox':[[-85,-180],[85,180]],
+        'levels':levels,
+        'css':{
+            'width':'%d%%'%(int(w*100)),
+            'height': '100%',
+            'float':'left'
+        }
+    }
 
-    if f.isSpatial():
-        minp,maxp = findbox(args.server,f.name,
-                            spatial_field.spatialResolution()-8)
+def timeseriesWidget(v,w):
+    return {
+        'title': v['name'],
+        'type':'time',
+
+        'css':{
+            'opacity': 0.8,
+            'bottom': '30px',
+            'height': '100px',
+            'width': '%dpx'%(int(w)),
+            'position': 'absolute',
+            'background-color': '#555',
+            'left': '30px'
+        }
+    }
+
+def catWidget(v):
+    maxkeylen = max([ len(k) for k in v['valnames'].keys() ])
+    marginleft = int(maxkeylen*11)
+    width = marginleft+200
+    height = min(200,len(v['valnames'].keys())*20+40)
+
+    return {
+        'title':v['name'],
+        'logaxis': False,
+        'alpha_order': True,
+        'type':'cat',        
         
-        config['latlonbox']['min'][f.name]= minp
-        config['latlonbox']['max'][f.name]= maxp
-        config['div'][f.name] = SpatialVariableTemplate.copy()
-        
-if args.port != None:
-    import SimpleHTTPServer,SocketServer,socket,tempfile,shutil,os
-    
-    PORT = args.port
-    Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
-    httpd = SocketServer.TCPServer(("", PORT), Handler)
+        'css':{
+            'opacity': 0.8,
+            'height': '%dpx'%(height),
+            'width': '%dpx'%(width),
+        }
+    }
 
-    tmpdir = tempfile.mkdtemp()
-    
-    if args.webdir == "": #default dir
-        args.webdir = os.environ['NANOCUBE_SRC']+'/extra/nc_web_viewer/'
-
-    shutil.copytree(args.webdir, tmpdir+'/nc_web_viewer')
-    os.chdir(tmpdir+'/nc_web_viewer')
-
-    ostream = open('config.json','w')
-    ostream.write(json.dumps(config,indent=2)+'\n')    
-    ostream.close()
-    print "See Nanocubes at http://%s:%d/"%(socket.getfqdn(),PORT)
-
-
-    httpd.serve_forever()
-    
-else:
-    ostream = open(args.output,"w") if len(args.output) else sys.stdout
-    ostream.write(json.dumps(config,indent=2)+'\n')
-    ostream.close()
-
-
+if __name__ == '__main__':
+    main()
