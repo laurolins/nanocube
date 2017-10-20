@@ -179,6 +179,7 @@ def spatialWidget(v,w=1.0):
         'coarse_offset':2,
         'viewbox':[[-85,-180],[85,180]],
         'levels':levels,
+        'legend':'true',
         'css':{
             'width':'%d%%'%(int(w*100)),
             'height': '100%',

@@ -85,12 +85,12 @@ sudo apt-get install libcurl4-openssl-dev
 ```
 sudo yum install curl-devel
 sudo yum install zlib-devel
-sudo yum install boost157-devel
+sudo yum install boost-devel
 ```
 
-#### Mac OS X
+#### Mac OS X (> 10.9)
 
-Example installation on Mac OS > 10.9 with a local homebrew:
+Example installation on Mac OS with a local homebrew:
 
 ```
 git clone https://github.com/mxcl/homebrew.git
@@ -348,7 +348,10 @@ can start the web viewer for the Chicago crime data by running the
 following command and specifying the machine and port of the nanocube.
 
 ```
-$ncwebviewer-config -s http://localhost:29512 -p
+export NANOCUBE_SRC=<your path to the nanocubes directory>
+ncwebviewer-config -s http://localhost:29512 -p
+
+
 See Nanocubes at http://myhostname.com:8000/
 ```
 
