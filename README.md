@@ -74,43 +74,23 @@ On a newly installed 64-bit Ubuntu 16.04 system, install the following packages:
 
 ```
 sudo apt-get install build-essential
-sudo apt-get install automake
 sudo apt-get install libtool
 sudo apt-get install zlib1g-dev
 sudo apt-get install libboost-all-dev
 sudo apt-get install libcurl4-openssl-dev
 ```
-<!-- **The support for Ubuntu 16.04 is currently being tested (due to changes in gcc 5), please try it out with the `master` version.** -->
 
-
-#### Linux (CentOS 6)
-
-Install updated tools from [Software Collections](https://www.softwarecollections.org/en/)
+#### Linux (CentOS 7)
 
 ```
-sudo yum install https://www.softwarecollections.org/en/scls/rhscl/devtoolset-3/epel-6-x86_64/download/rhscl-devtoolset-3-epel-6-x86_64.noarch.rpm
-sudo yum install https://www.softwarecollections.org/en/scls/denisarnaud/boost157/epel-6-x86_64/download/denisarnaud-boost157-epel-6-x86_64.noarch.rpm
-sudo yum install https://www.softwarecollections.org/en/scls/praiskup/autotools/epel-6-x86_64/download/praiskup-autotools-epel-6-x86_64.noarch.rpm
-sudo yum updateinfo
-
 sudo yum install curl-devel
 sudo yum install zlib-devel
-sudo yum install autotools-latest
 sudo yum install boost157-devel
-sudo yum install devtoolset-3-gcc-c++
 ```
 
-Then switch to the software collection environment for the new tools and libraries
+#### Mac OS X
 
-```
-scl enable devtoolset-3 autotools-latest bash
-export BOOST_ROOT=/usr/include/boost157
-export LDFLAGS=-L/usr/lib64/boost157
-```
-
-#### Mac OS X (10.9 and 10.10)
-
-Example installation on Mac OS 10.9 Mavericks and 10.10 Yosemite with a local homebrew:
+Example installation on Mac OS > 10.9 with a local homebrew:
 
 ```
 git clone https://github.com/mxcl/homebrew.git
@@ -125,7 +105,7 @@ export PATH=${PWD}/homebrew/bin:${PATH}
 Install the packages (This assumes your g++ has been installed by [XCode](https://developer.apple.com/xcode/))
 
 ```
-brew install boost libtool autoconf automake
+brew install boost libtool
 ```
 
 Set path to the boost directory
@@ -140,20 +120,19 @@ export BOOST_ROOT=${PWD}/homebrew
 To compile the nanocubes toolkit, run the following commands on your linux/mac system.  You can `https://github.com/laurolins/nanocube.git` or replace `3.2.1` with other valid release numbers, e.g. 3.2, 3.1, 3.0.1, etc. but please follow the instructions in the README.md file for the older releases as they will differ slightly.
 
 ```
-wget https://github.com/laurolins/nanocube/archive/3.2.1.zip
-unzip 3.2.1.zip
-cd nanocube-3.2.1
+wget https://github.com/laurolins/nanocube/archive/3.2.2.zip
+unzip 3.2.2.zip
+cd nanocube-3.2.2
 export NANOCUBE_SRC=`pwd`
-./bootstrap
-mkdir build
-cd build
-../configure --prefix=$NANOCUBE_SRC CXXFLAGS="-O3"
+#./bootstrap
+#mkdir build
+#cd build
+./configure --prefix=$NANOCUBE_SRC
 make
 make install
-cd ..
 ```
 
-After these commands you should have directory `nanocube-3.2.1/bin` with the nanocubes toolkit inside. To make these tools more easily accessible in your account, add the `nanocube-3.2.1/bin` directory to your PATH environment variable.
+After these commands you should have directory `nanocube-3.2.2/bin` with the nanocubes toolkit inside. To make these tools more easily accessible in your account, add the `nanocube-3.2.2/bin` directory to your PATH environment variable.
 
 ```
 export NANOCUBE_BIN=$NANOCUBE_SRC/bin
@@ -161,10 +140,10 @@ export PATH=$NANOCUBE_BIN:$PATH
 ```
 
 **Please note:** If the default version of g++ on your system is too old,
-you can run `configure` and specify a more recent version of g++: `CXX=g++-4.8 ../configure --prefix=$NANOCUBE_SRC CXXFLAGS="-O3"`.
+you can run `configure` and specify a more recent version of g++: `CXX=g++-4.8 ../configure --prefix=$NANOCUBE_SRC`.
 
 **Please note:** For better performance you might configure nanocubes with the tcmalloc
-option (see details below): `../configure --prefix=$NANOCUBE_SRC --with-tcmalloc CXXFLAGS="-O3"`.
+option (see details below): `./configure --prefix=$NANOCUBE_SRC --with-tcmalloc `.
 
 ## Running a nanocube
 
@@ -182,14 +161,16 @@ you are using tcmalloc).
 
 ##### Output
 ```
-VERSION: 3.2.1
+Nanocubes: 3.2.2
 query-port: 29512
-(stdin     ) count:      10000 mem. res:          7MB. time(s):          0
-(stdin     ) count:      20000 mem. res:         12MB. time(s):          0
-(stdin     ) count:      30000 mem. res:         17MB. time(s):          0
-(stdin     ) count:      40000 mem. res:         22MB. time(s):          0
-(stdin     ) count:      50000 mem. res:         26MB. time(s):          0
-(stdin:done) count:      50000 mem. res:         26MB. time(s):          0
+passcode: alaxiReR
+
+(stdin     ) count:      10000 mem. res:         10MB. time(s):          0
+(stdin     ) count:      20000 mem. res:         13MB. time(s):          0
+(stdin     ) count:      30000 mem. res:         16MB. time(s):          0
+(stdin     ) count:      40000 mem. res:         19MB. time(s):          0
+(stdin     ) count:      50000 mem. res:         22MB. time(s):          0
+(stdin:done) count:      50000 mem. res:         22MB. time(s):          0
 ```
 
 **Please note:** If port 29512 is already in use, select another port and use it consistently throughout the examples below.
@@ -352,11 +333,6 @@ are sorting the results of multiple queries and checking that the values returne
 identical, so it is highly unlikely that there is a problem if the sorted results match
 the expected results.
 
-<!--
- and produces `out.txt`.
-Please compare your results with the expected results generated on MacOSX 10.10 or Ubuntu 14.04.
--->
-
 ```
 cd $NANOCUBE_SRC/test
 ./nctest.sh
@@ -367,52 +343,41 @@ cd $NANOCUBE_SRC/test
 **Please note:** This viewer should work with any nanocube that has
 one spatial dimension, zero or more categorical dimensions and one temporal dimension.
 
-To visualize the Chicago Crimes nanocube, you can use the simple
+To visualize the Chicago Crimes nanocube, you can use the simple web
 viewer that we have included with the nanocube distribution.  The
-nanocube viewer, written in JavaScript, [D3](http://d3js.org), and HTML5, can be found here:
-`$NANOCUBE_SRC/extra/nc_web_viewer`.  Before starting the viewer however, we need to specify where
-the nanocube process is being hosted on our machine.  We do this by creating a `nc_web_viewer`
-specific `.json` configuration file and putting it in the same directory as the viewer.  In this case,
-we can generate a valid configuration file for the Chicago crime data by running the following command
-(a python script found in `$NANOCUBE_SRC/bin`) and specifying the machine and port of the nanocube.
+nanocube viewer, written in JavaScript, [D3](http://d3js.org), and
+HTML5, can be found here: `$NANOCUBE_SRC/extra/web`.  We
+can start the web viewer for the Chicago crime data by running the
+following command and specifying the machine and port of the nanocube.
 
 ```
-ncwebviewer-config -s http://localhost:29512 -o $NANOCUBE_SRC/extra/nc_web_viewer/config_crime.json
+$ncwebviewer-config -s http://localhost:29512 -p
+See Nanocubes at http://myhostname.com:8000/
 ```
 
-You can now start the viewer by running the following:
-
+`ncwebviewer-config` is a python script and requires the `requests` and
+`future` packages, install them by:
 ```
-cd $NANOCUBE_SRC/extra/nc_web_viewer
-python -m SimpleHTTPServer 8000
-```
-
-By pointing a web browser to the following URL we can get to the
-`nc_web_viewer` and get our first visualization of the Chicago Crime
-data.  Note that the name of the configuration file (without file extension) is
-specified in the URL.
-
-```
-http://localhost:8000/#config_crime
+pip install requests future
 ```
 
-The intial view should look like the image below, which shows a map of
-Chicago, together with a bar chart of the number of crimes (sorted
-alphabetically) and an hourly time-series of all crimes.  The left
-mouse button will pan the image.  You can zoom further into Chicago by
-using the navigation buttons in the top-left of the viewer, or using
-the mouse wheel.  You can select specific crimes by clicking on the
-corresponding bars (or names of crimes).  To sort the bar chart by
-number of occurrences, click the title "crime" above the bars.  All
-widgets in the viewer should have tool-tips to help you navigate
-properly.
+The initial view at `http://myhostname.com:8000/` should look like the
+image below, which shows a map of Chicago, together with a bar chart
+of the number of crimes (sorted alphabetically) and an hourly
+time-series of all crimes.  The left mouse button will pan the image.
+You can zoom further into Chicago by using the navigation buttons in
+the top-left of the viewer, or using the mouse wheel.  You can select
+specific crimes by clicking on the corresponding bars (or names of
+crimes).  To sort the bar chart by number of occurrences, click the
+title "crime" above the bars.  All widgets in the viewer should have
+tool-tips to help you navigate properly.
 
 ![image](./data/ChicagoCrimeInitial.png?raw=true)
 
 
-Please see [here](https://github.com/laurolins/nanocube/tree/master/extra/nc_web_viewer) for more configuration options.
+Please see [here](https://github.com/laurolins/nanocube/tree/master/extra/web) for more configuration options.
 
-## Auxiliary python tools
+## Auxiliary tools
 
 The nanocubes distribution comes with several auxiliary tools that help simplify creating, testing,
 and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirectory after compiling nanocubes (and running `make install`).
@@ -424,37 +389,10 @@ and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirec
 | nanocube-view-dmp | Show records of a `.dmp` file on the command line |
 | nanocube-monitor | Feedback of latency and size distribution for nanocube profiling |
 
-These tools are all Python scripts, which require some additional packages
-to run.  Please follow the (Ubuntu linux) instructions below for compiling and running the extra tools.
-Once the packages have been installed, you need not re-install in the future.  You will only have to
-activate the virtual python environment (shown in step C).
 
-A. Install the python development package
-
+The `nanocube-binning-csv` depends on python package `pandas` install it  by:
 ```
-sudo apt-get install python-dev
-```
-
-B. Install the python data analysis library (pandas) in a separate python environment
-
-```
-cd $NANOCUBE_SRC
-wget http://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.6.tar.gz
-tar xfz virtualenv-1.11.6.tar.gz
-python virtualenv-1.11.6/virtualenv.py  myPy
-```
-
-C. Activate the virtual python environment.  Install the additional python libraries.  Thankfully this
-needs to be done only once since it takes several minutes for it to complete.
-Once you are done with the tools, you should type `deactivate` to disable.
-
-```
-# Make sure PYTHONHOME and PYTHONPATH are unset
-unset PYTHONHOME
-unset PYTHONPATH
-
-source myPy/bin/activate
-pip install pandas numpy argparse
+pip install pandas
 ```
 
 
@@ -539,7 +477,7 @@ For Mac OS (Static libraries only)
 
 You must then re-run the configure script, indicating support for tcmalloc.
 
-    ../configure --prefix=$NANOCUBE_SRC LIBS=${PWD}/homebrew/lib/libtcmalloc_minimal.a
+    ../configure --prefix=$NANOCUBE_SRC --with-tcmalloc
     make clean
     make -j
     make install    
