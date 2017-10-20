@@ -124,9 +124,6 @@ wget https://github.com/laurolins/nanocube/archive/3.2.2.zip
 unzip 3.2.2.zip
 cd nanocube-3.2.2
 export NANOCUBE_SRC=`pwd`
-#./bootstrap
-#mkdir build
-#cd build
 ./configure --prefix=$NANOCUBE_SRC
 make
 make install
@@ -389,12 +386,10 @@ and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirec
 | nanocube-view-dmp | Show records of a `.dmp` file on the command line |
 | nanocube-monitor | Feedback of latency and size distribution for nanocube profiling |
 
-
 The `nanocube-binning-csv` depends on python package `pandas` install it  by:
 ```
 pip install pandas
 ```
-
 
 ## Loading data into nanocubes
 
