@@ -353,7 +353,7 @@ See Nanocubes at http://myhostname.com:8000/
 ```
 
 `ncwebviewer-config` is a python script and requires the `requests` and
-`future` packages, install them by:
+`future` packages, install them by (use `pip install --user` for installations to the user's home directories):
 ```
 pip install requests future
 ```
