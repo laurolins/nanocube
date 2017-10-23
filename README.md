@@ -347,18 +347,28 @@ HTML5, can be found here: `$NANOCUBE_SRC/extra/web`.  We
 can start the web viewer for the Chicago crime data by running the
 following command and specifying the machine and port of the nanocube.
 
+`ncwebviewer-config` is a python script and requires the `requests` and
+`future` packages, install them by (use `pip install --user` for installations to the user's home directories):
+```
+## If you need to install pip (e.g. on MacOS)
+## wget https://bootstrap.pypa.io/get-pip.py
+## python get-pip.py --user
+
+python -m pip install requests future
+```
+
+
+Start the simple web frontend
+
 ```
 export NANOCUBE_SRC=<your path to the nanocubes directory>
+export NANOCUBE_BIN=$NANOCUBE_SRC/bin
+export PATH=$NANOCUBE_BIN:$PATH
+
 ncwebviewer-config -s http://localhost:29512 -p
 
 
 See Nanocubes at http://myhostname.com:8000/
-```
-
-`ncwebviewer-config` is a python script and requires the `requests` and
-`future` packages, install them by (use `pip install --user` for installations to the user's home directories):
-```
-pip install requests future
 ```
 
 The initial view at `http://myhostname.com:8000/` should look like the
@@ -391,7 +401,7 @@ and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirec
 
 The `nanocube-binning-csv` depends on python package `pandas` install it  by:
 ```
-pip install pandas
+python -m pip install pandas
 ```
 
 ## Loading data into nanocubes
