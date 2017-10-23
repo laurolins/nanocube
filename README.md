@@ -123,7 +123,12 @@ To compile the nanocubes toolkit, run the following commands on your linux/mac s
 wget https://github.com/laurolins/nanocube/archive/3.2.2.zip
 unzip 3.2.2.zip
 cd nanocube-3.2.2
-export NANOCUBE_SRC=`pwd`
+```
+
+Run `source setenv.sh` to setup the environmental variables for
+running Nanocubes. `$NANOCUBE_SRC points to the source code directory, $NANOCUBE_BIN points to the directory contains the executables.`
+
+```
 ./configure --prefix=$NANOCUBE_SRC
 make
 make install
@@ -361,9 +366,7 @@ python -m pip install requests future
 Start the simple web frontend
 
 ```
-export NANOCUBE_SRC=<your path to the nanocubes directory>
-export NANOCUBE_BIN=$NANOCUBE_SRC/bin
-export PATH=$NANOCUBE_BIN:$PATH
+source <your path to the nanocubes directory>/setenv.sh
 
 ncwebviewer-config -s http://localhost:29512 -p
 
