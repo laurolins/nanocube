@@ -350,8 +350,12 @@ following command and specifying the machine and port of the nanocube.
 `ncwebviewer-config` is a python script and requires the `requests` and
 `future` packages, install them by (use `pip install --user` for installations to the user's home directories):
 ```
+## If you need to install pip
+## curl https://bootstrap.pypa.io/get-pip.py | python
+
 pip install requests future
 ```
+
 
 Start the simple web frontend
 
