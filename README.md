@@ -123,22 +123,18 @@ To compile the nanocubes toolkit, run the following commands on your linux/mac s
 wget https://github.com/laurolins/nanocube/archive/3.2.2.zip
 unzip 3.2.2.zip
 cd nanocube-3.2.2
-```
-
-Run `source setenv.sh` to setup the environmental variables for
-running Nanocubes. `$NANOCUBE_SRC points to the source code directory, $NANOCUBE_BIN points to the directory contains the executables.`
-
-```
-./configure --prefix=$NANOCUBE_SRC
+./configure --prefix=$(pwd)
 make
 make install
 ```
 
-After these commands you should have directory `nanocube-3.2.2/bin` with the nanocubes toolkit inside. To make these tools more easily accessible in your account, add the `nanocube-3.2.2/bin` directory to your PATH environment variable.
+After these commands you should have directory `nanocube-3.2.2/bin` with 
+the nanocubes toolkit inside. Run `source setenv.sh` to setup the environmental 
+variables for running Nanocubes. `$NANOCUBE_SRC` points to the source code 
+directory, `$NANOCUBE_BIN` points to the directory contains the executables.
 
 ```
-export NANOCUBE_BIN=$NANOCUBE_SRC/bin
-export PATH=$NANOCUBE_BIN:$PATH
+source setenv.sh
 ```
 
 **Please note:** If the default version of g++ on your system is too old,
