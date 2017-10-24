@@ -129,13 +129,14 @@ make install
 ```
 
 After these commands you should have directory `nanocube-3.2.2/bin` with 
-the nanocubes toolkit inside. Run `source setenv.sh` to setup the environmental 
-variables for running Nanocubes. `$NANOCUBE_SRC` points to the source code 
-directory, `$NANOCUBE_BIN` points to the directory contains the executables.
-
+the nanocubes toolkit inside. By running
 ```
 source setenv.sh
 ```
+you can set the environment variables needed to run the Nanocubes setup
+just installed. This scripts simply sets `$NANOCUBE_SRC` to point to the 
+source code directory, and `$NANOCUBE_BIN` to the directory that
+contains the executables.
 
 **Please note:** If the default version of g++ on your system is too old,
 you can run `configure` and specify a more recent version of g++: `CXX=g++-4.8 ../configure --prefix=$NANOCUBE_SRC`.
