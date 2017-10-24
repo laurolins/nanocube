@@ -24,10 +24,17 @@ $StreamingDataProgram | nanocube-binning-csv --latcol=Latitude --loncol=Longitud
 ```
 
 #### Other useful parameters
+* `--countcol` specify a column for the count
 * `--chunksize` specify the chunksize for csv parsing.
 * `--name` specify the name/title of the nanocube.
 * `--sep` specify the separator of the csv file. e.g. `--sep='|'`.
 * `--header` specifics a header for header less csv files. e.g. `--header='lat,lon,time,crime'`
+* `--xcol`, `--ycol` specify coordinates in x and y instead of latitudes and longitudes.
 * `--datefmt` specify the [date format](https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior) for csv parsing.
+* `--offset` specify the time offset for the nanocubes time series 
+* `--tz` specify the preferred timezone.
 * `--catbytes` specify the categorical variable size in bytes (1, 2 or 4 only).
 * `--countbytes` specify the counter variable size in bytes (4 or 8 only).
+* `--preprocesscat` Go through the specified categorical columns to find all the possible values.
+* `--bincat` discretize a numerical column into `n` different bins.
+* `--nbins` specify the desired number of bins for `--bincat`
