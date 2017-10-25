@@ -560,7 +560,7 @@ GroupedBarChart.prototype = {
 
     redraw :function(res){
         var topn = this._opts.topn;
-        if(topn !== undefined ){
+        if(topn > 0){
             var agg = {};
             Object.keys(res).forEach(function(k){
                 res[k].data.forEach(function(d){
@@ -717,11 +717,11 @@ GroupedBarChart.prototype = {
         
         //set domain from options
         if(this._opts.domain){
-            if(this._opts.domain.min !== undefined){
+            if(this._opts.domain.min != undefined){
                 d[0] = this._opts.domain.min;
             }
                 
-            if(this._opts.domain.max !== undefined){
+            if(this._opts.domain.max != undefined){
                 d[1] = this._opts.domain.max;
             }
         }

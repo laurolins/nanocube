@@ -180,6 +180,9 @@ def spatialWidget(v,w=1.0):
         'viewbox':[[-85,-180],[85,180]],
         'levels':levels,
         'legend':'true',
+        'layers':{
+            'markers':[]
+        },
         'css':{
             'width':'%d%%'%(int(w*100)),
             'height': '100%',
@@ -191,7 +194,7 @@ def timeseriesWidget(v,w):
     return {
         'title': v['name'],
         'type':'time',
-
+        'numformat':None,
         'css':{
             'opacity': 0.8,
             'bottom': '30px',
@@ -214,7 +217,12 @@ def catWidget(v):
         'logaxis': False,
         'alpha_order': True,
         'type':'cat',        
-        
+        'numformat':None,
+        'topn':None,
+        'domain':{
+            'min':None,
+            'max':None
+        },
         'css':{
             'opacity': 0.8,
             'height': '%dpx'%(height),
