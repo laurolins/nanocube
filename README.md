@@ -106,6 +106,7 @@ export PATH=${PWD}/homebrew/bin:${PATH}
 Install the packages (This assumes your g++ has been installed by [XCode](https://developer.apple.com/xcode/))
 
 ```
+brew update
 brew install boost libtool
 ```
 
