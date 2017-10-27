@@ -162,7 +162,7 @@ you are using tcmalloc).
 
 ##### Output
 ```
-Nanocubes: 3.2.2
+Nanocubes: 3.3
 query-port: 29512
 passcode: alaxiReR
 
