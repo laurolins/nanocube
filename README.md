@@ -488,7 +488,6 @@ You must then re-run the configure script, indicating support for tcmalloc.
 
     ../configure --prefix=$NANOCUBE_SRC --with-tcmalloc
     make clean
-    make -j
     make install    
 
 ## Asking for help
