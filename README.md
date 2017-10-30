@@ -386,7 +386,7 @@ tool-tips to help you navigate properly.
 ![image](./data/ChicagoCrimeInitial.png?raw=true)
 
 
-Please see [here](https://github.com/laurolins/nanocube/tree/master/extra/web) for more configuration options.
+Please see [here](./extra/web) for more configuration options.
 
 ## Auxiliary tools
 
