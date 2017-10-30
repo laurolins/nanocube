@@ -95,7 +95,12 @@ def main():
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--width',type=int,default=1920)
     argparser.add_argument('--height',type=int,default=1080)
-    argparser.add_argument('-s','--server',type=str)
+    argparser.add_argument('-s','--server',type=str, required=False,
+                           default='http://%s'%(socket.getfqdn()))
+
+    argparser.add_argument('--ncport',type=int,required=False,
+                           default=29512)
+
     argparser.add_argument('-p','--port',type=int,required=False,
                            const=8000,nargs='?')
     argparser.add_argument('-w','--web',type=str,required=False,
@@ -103,13 +108,9 @@ def main():
                            nargs='?')
 
     args = argparser.parse_args()
-    if args.server is None:
-        sys.stderr.writelines(['Please specify a nanocube server with -s\n'])
-        sys.exit(1)
-
 
     #download the schema
-    url = args.server
+    url = '%s:%d'%(args.server,args.ncport);
     try:
         r = requests.get(url+'/schema', allow_redirects=False,verify=False)
         schema = r.json()

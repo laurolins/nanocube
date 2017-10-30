@@ -6,7 +6,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 | Number | Description |
 |:------:|-------------|
-| 3.3| Release with bug fixes and new gui|
+| 3.3| Release with bug fixes|
 | 3.2.2 | Updated `nanocube-binning-csv`, SSL server support, bug fixes and improvements for web gui |
 | 3.2.1 | Improved web client, documentation, testing |
 | 3.2 | Sliding window; removed legacy assertions that would crash the server |
@@ -75,7 +75,6 @@ On a newly installed 64-bit Ubuntu 16.04 system, install the following packages:
 
 ```
 sudo apt-get install build-essential
-sudo apt-get install libtool
 sudo apt-get install zlib1g-dev
 sudo apt-get install libboost-all-dev
 sudo apt-get install libcurl4-openssl-dev
@@ -89,7 +88,7 @@ sudo yum install zlib-devel
 sudo yum install boost-devel
 ```
 
-#### Mac OS X (> 10.9)
+#### Mac OS X (>= 10.9)
 
 Example installation on Mac OS with a local homebrew:
 
@@ -107,7 +106,7 @@ Install the packages (This assumes your g++ has been installed by [XCode](https:
 
 ```
 brew update
-brew install boost libtool
+brew install boost
 ```
 
 Set path to the boost directory
@@ -351,14 +350,14 @@ HTML5, can be found here: `$NANOCUBE_SRC/extra/web`.  We
 can start the web viewer for the Chicago crime data by running the
 following command and specifying the machine and port of the nanocube.
 
-`ncwebviewer-config` is a python script and requires the `requests` and
-`future` packages, install them by (use `pip install --user` for installations to the user's home directories):
+`ncwebviewer-config` is a python script and requires the `requests`, `http`, and
+`future` packages, install them by:
 ```
 ## If you need to install pip (e.g. on MacOS)
 ## wget https://bootstrap.pypa.io/get-pip.py
 ## python get-pip.py --user
 
-python -m pip install requests future
+python -m pip --user install requests http future
 ```
 
 
@@ -367,7 +366,7 @@ Start the simple web frontend
 ```
 source <your path to the nanocubes directory>/setenv.sh
 
-ncwebviewer-config -s http://localhost:29512 -p
+ncwebviewer-config -p
 
 
 See Nanocubes at http://myhostname.com:8000/
@@ -403,7 +402,7 @@ and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirec
 
 The `nanocube-binning-csv` depends on python package `pandas` install it  by:
 ```
-python -m pip install pandas
+python -m pip --user install pandas
 ```
 
 ## Loading data into nanocubes
