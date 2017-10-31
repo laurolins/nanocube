@@ -82,12 +82,12 @@ echo >> out.txt
 # Mangle the file a bit to make comparisons easier.
 
 # Replace space and left brace with newline and left brace
-sed -i $'s/ {/\\\n{/g' out.txt
 
 # Now sort the file so that we can more easily compare.  The values should be identical across all OSes.
 # Yes, we know this is not a perfect solution, but good enough to determine if your nanocube is setup correctly and able to answer queries.
 
-sort out.txt > out_sorted.txt
+
+sed 's/ {/\'$'\n{/g' out.txt  | LC_ALL=C sort > out_sorted.txt
 
 diff out_sorted.txt nctest_output_expected_sorted.txt
 tmp=$?
