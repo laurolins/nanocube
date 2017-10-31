@@ -9,5 +9,6 @@ MYHOST=$(hostname -A 2>/dev/null)
 if [ $? -ne 0 ]; then
    MYHOST=$(hostname -f)
 fi
-   
+
+MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
 export MYHOST
