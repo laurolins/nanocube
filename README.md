@@ -357,7 +357,7 @@ following command and specifying the machine and port of the nanocube.
 ## wget https://bootstrap.pypa.io/get-pip.py
 ## python get-pip.py --user
 
-python -m pip --user install requests http future
+python -m pip install --user requests http future
 ```
 
 
@@ -402,7 +402,7 @@ and monitoring nanocubes.  They can be found in the `$NANOCUBE_SRC/bin` subdirec
 
 The `nanocube-binning-csv` depends on python package `pandas` install it  by:
 ```
-python -m pip --user install pandas
+python -m pip install --user pandas
 ```
 
 ## Loading data into nanocubes

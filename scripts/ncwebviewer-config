@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
-from __future__ import print_function, division
+from __future__ import print_function,division
 
-import os,json,sys,argparse,socket
-import tempfile,shutil,math,random,http.server
-import requests
+import os,json,sys,argparse,socket,tempfile,shutil,math,random,subprocess
+import requests,http.server
 
 ### bbox
 ## Find the bounding box
@@ -89,14 +88,17 @@ def initConfig(name,url):
     config['widget'] = {}
     return config
 
+def myHostname():
+    return os.environ['MYHOST']
 
+    
 def main():
     #parse the simple arguments
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--width',type=int,default=1920)
     argparser.add_argument('--height',type=int,default=1080)
     argparser.add_argument('-s','--server',type=str, required=False,
-                           default='http://%s'%(socket.getfqdn()))
+                           default='http://%s'%(myHostname()))
 
     argparser.add_argument('--ncport',type=int,required=False,
                            default=29512)
@@ -164,8 +166,7 @@ def main():
         handler= http.server.SimpleHTTPRequestHandler
         httpd = http.server.HTTPServer(('', args.port),handler);
 
-        print("See Nanocubes at http://%s:%d/"%(socket.getfqdn(),
-                                                args.port))
+        print("See Nanocubes at http://%s:%d/"%(myHostname(),args.port))
         httpd.serve_forever()
         httpd.socket.close()
         shutil.rmtree(tmpdir)
