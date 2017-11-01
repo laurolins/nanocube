@@ -125,12 +125,12 @@ export BOOST_ROOT=${PWD}/homebrew
 
 ## Compiling the latest release
 
-To compile the nanocubes toolkit, run the following commands on your linux/mac system.  You can clone `https://github.com/laurolins/nanocube.git` or replace `3.2.1` with other valid release numbers, e.g. 3.3-pre1, 3.2, 3.1, 3.0.1, etc. but please follow the instructions in the README.md file for the older releases as they will differ slightly.
+To compile the nanocubes toolkit, run the following commands on your linux/mac system.  You can clone `https://github.com/laurolins/nanocube.git` or replace `3.2.1` with other valid release numbers, e.g. 3.3, 3.2, 3.1, 3.0.1, etc. but please follow the instructions in the README.md file for the older releases as they will differ slightly.
 
 ```
-wget https://github.com/laurolins/nanocube/archive/3.3-pre1.zip
-unzip 3.3-pre1.zip
-cd nanocube-3.3-pre1
+wget https://github.com/laurolins/nanocube/archive/3.3.zip
+unzip 3.3.zip
+cd nanocube-3.3
 #
 # for faster allocation use configure line below (see Section Thread-Caching Malloc)
 # ./configure --prefix=$(pwd) --with-tcmalloc
@@ -141,7 +141,7 @@ make
 make install
 ```
 
-After these commands you should have directory `nanocube-3.3-pre1/bin` with 
+After these commands you should have directory `nanocube-3.3/bin` with 
 the nanocubes toolkit inside. By running
 ```
 source setenv.sh
