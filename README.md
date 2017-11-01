@@ -388,10 +388,11 @@ Start the simple web frontend on port 8000 by
 ncwebviewer-config -p 8000
 #
 # if the NC back-end server is not on http://localhost:29512, or
-# you don't want to server the web front-end, you can issue the 
-# more complete command:
+# you don't want to server the web front-end on port 8000, you 
+# can issue the more complete command below and change the
+# parameters accordingly
 #
-# ncwebviewer-config -s http://localhost --ncport 29512 -p 8001 
+# ncwebviewer-config -s http://localhost --ncport 29512 -p 8000
 #
 # The web viewer should be ready to go on port 8000, assuming
 # everything is on localhost, go to: http://localhost:8000/
