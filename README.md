@@ -131,7 +131,12 @@ To compile the nanocubes toolkit, run the following commands on your linux/mac s
 wget https://github.com/laurolins/nanocube/archive/3.3-pre1.zip
 unzip 3.3-pre1.zip
 cd nanocube-3.3-pre1
-./configure --prefix=$(pwd)
+#
+# for faster allocation use configure line below (see Section Thread-Caching Malloc)
+# ./configure --prefix=$(pwd) --with-tcmalloc
+#
+# for standard allocation use configure line below instead
+./configure --prefix=$(pwd) 
 make
 make install
 ```
@@ -367,16 +372,30 @@ following command and specifying the machine and port of the nanocube.
 python -m pip install --user requests http future
 ```
 
-
-Start the simple web frontend
+Start the simple web frontend on port 8000 by
 
 ```
-source <your path to the nanocubes directory>/setenv.sh
-
-ncwebviewer-config -p
-
-
-# See Nanocubes at http://myhostname.com:8000/
+#
+# make sure all the binaries point to current install directory by
+# running the command
+#
+# source <INSTALL_DIRECTORY>/setenv.sh
+#
+# if the NC server is running on http://localhost:29512 you can
+# serve a web viewer for that server on port 8000 by issuing 
+# the command
+#
+ncwebviewer-config -p 8000
+#
+# if the NC back-end server is not on http://localhost:29512, or
+# you don't want to server the web front-end, you can issue the 
+# more complete command:
+#
+# ncwebviewer-config -s http://localhost --ncport 29512 -p 8001 
+#
+# The web viewer should be ready to go on port 8000, assuming
+# everything is on localhost, go to: http://localhost:8000/
+#
 ```
 
 The initial view at `http://myhostname.com:8000/` should look like the
@@ -391,7 +410,6 @@ title "crime" above the bars.  All widgets in the viewer should have
 tool-tips to help you navigate properly.
 
 ![image](./data/ChicagoCrimeInitial.png?raw=true)
-
 
 Please see [here](./extra/web) for more configuration options.
 
