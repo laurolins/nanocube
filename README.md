@@ -6,7 +6,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 | Number | Description |
 |:------:|-------------|
-| 3.3| Release with bug fixes|
+| 3.3|Improvements in web gui, bug fixes|
 | 3.2.2 | Updated `nanocube-binning-csv`, SSL server support, bug fixes and improvements for web gui |
 | 3.2.1 | Improved web client, documentation, testing |
 | 3.2 | Sliding window; removed legacy assertions that would crash the server |
@@ -20,24 +20,29 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 | 2.0 | New feature-rich querying API                  |
 | 1.0 | Original release with a simple querying API   |
 
-## What is new in release 3.2.2
+## What is new in release 3.3
 
+* Nanocubes related environmental variables can be set with `setenv.sh`
+* New options for `nanocube-binning-csv` are documented [here](./scripts)
+* Removed dependency on Autoconf
+
+<!--
 * `nanocube-binning-csv` has been updated to work with `pandas` 0.20
-
 * SSL server support has been updated with `mongoose`
-
 * The size of the variables can be set through `nanocube-binning-csv --[cat|time|count]bytes`
-
 * `nanocube-binning-csv --preprocess=<cat>` scans through variable `<cat>` for all possible categorical values
-
 * `nanocube-binning-csv` should now handle unicode characters
+-->
 
 ### Web Client
 
+* `ncwebviewer-config` now starts the web server automatically
+* Legend for spatial colormap
+* Buttons for sorting bar charts elememts
+* New options for the web JSON config are documented [here](./extra/web/)
+
+<!--
 * Draggable and resizable charts
-
-* Added viewport, binsize, rectangle selection information
-
 * Locations markers can be added as a separate layer in the json config file
 
 ```   "location": {
@@ -59,6 +64,8 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
       }           
     }
 ```
+-->
+
 
 ## Installing prerequisites
 
@@ -369,7 +376,7 @@ source <your path to the nanocubes directory>/setenv.sh
 ncwebviewer-config -p
 
 
-See Nanocubes at http://myhostname.com:8000/
+# See Nanocubes at http://myhostname.com:8000/
 ```
 
 The initial view at `http://myhostname.com:8000/` should look like the
