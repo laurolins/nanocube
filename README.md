@@ -1,9 +1,21 @@
+# Nanocubes: an in-memory data structure for spatiotemporal data cubes
+
+Nanocubes are a fast data structure for in-memory data cubes developed at the [Information Visualization department](http://www.research.att.com/infovis) at [AT&T Labs Research](http://www.research.att.com). Visualizations powered by nanocubes can be used to explore datasets with billions of elements at interactive rates in a web browser, and in some cases nanocubes uses sufficiently little memory that you can run a nanocube in a modern-day laptop.
+
+# About this branch
+
+This branch `v4` contains a new implementation of Nanocubes in the C programming language. The goal with this new implementation was to get a much finer control in all aspects of the data structure and specially on its memory aspects (allocation, layout). In our original C++ template-based implementation of Nanocubes (up to version 3.3), we implemented the Nanocube data structure on top of C++ STL (standard library) data structures and while this was a reasonable solution at the time, it had some important downsides: (1) complex serialization which made it hard to save/load Nanocube into files; (2) variation in the guts of a Nanocube based on the specific STL implementation we used.
+
 # Compiling on Linux
 
 ```shell
-git clone git@gitlab.research.att.com:llins/compressed_nanocube
-cd compressed_nanocube/src
-bash build.linux release
+git clone -b v4 git@gitlab.research.att.com:llins/nanocube
+cd nanocube
+autoreconf -vi
+mkdir build
+cd build
+../configure --with-polycover
+./nanocube
 ```
 
 # Paper Example
