@@ -1,0 +1,4 @@
+useDynLib(nanocube, ncr_load, ncr_messages, ncr_query)
+export(nanocube.load, nanocube.messages, nanocube.query,
+nanocube.d2m, nanocube.m2d, nanocube.d2c, nanocube.m2c,
+nanocube.cellname_bounds)

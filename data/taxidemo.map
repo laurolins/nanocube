@@ -1,0 +1,34 @@
+# I1. quadtree index dimension for the pickup location
+index_dimension("pickup_location",input("pickup_latitude","pickup_longitude"),latlon(25));
+
+# I2. quadtree index dimension for the dropoff location
+index_dimension("dropoff_location",input("dropoff_latitude","dropoff_longitude"),latlon(25));
+
+# I3. quadtree index dimension for the dropoff location
+# index_dimension("pickup_time",
+#                 input("tpep_pickup_datetime"),
+#                 time(16,                          # binary tree with 16 levels (slots 0 to 65535)
+#                      "2016-01-01T00:00:00-05:00", # *base* date time
+#                      3600,                        # *width* in secs. interval [base, base + width)
+#                      5*60                         # add 300 minutes to all input values since input comes as if it is UTC and is actually -05:00)
+#                     ));
+
+# weekday of pickup
+index_dimension("weekday", input("tpep_pickup_datetime"), weekday());
+
+# hour of pickup
+index_dimension("hour", input("tpep_pickup_datetime"), hour());
+
+# M1. measure dimension for counting  (u32 means integral non-negative and 2^32 - 1 max value)
+# if no input .csv column is used in a measure dimention, it functions as a count
+# (ie. one for each input record)
+measure_dimension("count",input(),u32);
+
+# M2. Map tip_amount into a 32-bit floating point value
+measure_dimension("tip",input("tip_amount"),f32);
+
+# M3. Map fare_amount into a 32-bit floating point value
+measure_dimension("fare",input("fare_amount"),f32);
+
+# M4. Map trip_distance into a 32-bit floating point value
+measure_dimension("distance",input("trip_distance"),f32);

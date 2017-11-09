@@ -1,0 +1,3 @@
+all:
+	clang -O3 -o zerobits zerobits.c
+	clang -O3 -s zerobits.c

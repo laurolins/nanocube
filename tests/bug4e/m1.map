@@ -1,0 +1,5 @@
+index_dimension('location',input('lat','lon'),latlon(25));
+index_dimension('c1', input('c1'), categorical(8));
+index_dimension('c2', input('c2'), categorical(8));
+index_dimension('c3', input('c3'), categorical(8));
+measure_dimension('bitset',input(),row_bitset());

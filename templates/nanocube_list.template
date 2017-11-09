@@ -1,0 +1,89 @@
+typedef struct List_Type_ {
+    Type* begin;
+    Type* end;
+    Type* capacity;
+} List_Type;
+
+List_Type List_Type_build(Type* begin, Type* end, Type* capacity) {
+    Assert(begin <= end && end <= capacity);
+    List_Type result;
+    result.begin = begin;
+    result.end = end;
+    result.capacity = capacity;
+    return result;
+}
+
+void List_Type_init(List_Type *self, Type* begin, Type* end, Type* capacity) {
+    Assert(begin <= end && end <= capacity);
+    self->begin = begin;
+    self->end = end;
+    self->capacity = capacity;
+}
+
+Type List_Type_get(List_Type *self, s64 index) {
+    Assert(self->begin + index < self->end);
+    return *(self->begin + index);
+}
+
+Type List_Type_back(List_Type *self) {
+    Assert(self->begin < self->end);
+    return *(self->end - 1);
+}
+
+Type List_Type_get_reverse(List_Type *self, s64 index) {
+    Assert(self->begin + index < self->end);
+    return *(self->end - 1 - index);
+}
+
+Type List_Type_front(List_Type *self) {
+    Assert(self->begin < self->end);
+    return *(self->begin);
+}
+
+void List_Type_set(List_Type *self, s64 index, Type element) {
+    Assert(self->begin + index < self->end);
+    *(self->begin + index) = element;
+}
+
+void List_Type_set_reverse(List_Type *self, s64 index, Type element) {
+    Assert(self->begin + index < self->end);
+    *(self->end - 1 - index) = element;
+}
+
+s64 List_Type_size(List_Type *self) {
+    return (s64) (self->end - self->begin);
+}
+
+s64 List_Type_capacity(List_Type *self) {
+    return self->capacity - self->begin;
+}
+
+void List_Type_pop_back(List_Type *self) {
+    Assert(self->end > self->begin);
+    --self->end;
+}
+
+void List_Type_push_back(List_Type *self, Type element) {
+    Assert(self->end < self->capacity);
+    *self->end = element;
+    ++self->end;
+}
+
+b8 List_Type_empty(List_Type *self) {
+    return self->begin == self->end;
+}
+
+void List_Type_clear(List_Type *self) {
+    self->end = self->begin;
+}
+
+void List_Type_drop_prefix(List_Type *self, s64 len) {
+    Assert(List_Type_size(self) >= len);
+    self->begin += len;
+}
+
+void List_Type_drop_suffix(List_Type *self, s64 len) {
+    Assert(List_Type_size(self) >= len);
+    self->end -= len;
+}
+

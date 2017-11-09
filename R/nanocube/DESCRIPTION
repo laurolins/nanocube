@@ -1,0 +1,9 @@
+Package: nanocube
+Version: 0.0.1
+Title: Nanocube
+Author: Lauro Lins
+Maintainer: Lauro Lins <lauro.lins@gmail.com>
+Description: R interface to work with Nanocube data structures.
+License: Eclipse Public License - v 1.0
+NeedsCompilation: yes
+Packaged: 2016-10-19 20:35:04 UTC; llins

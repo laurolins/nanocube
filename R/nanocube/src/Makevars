@@ -1,0 +1,50 @@
+# CXX_STD = CXX11
+# PKG_CPPFLAGS=-I algorithm -I thirdparty  -I tiletree
+# PKG_LIBS=-stdlib=libc++
+# GLUSRC=dict.c geom.c main.c memalloc.c mesh.c normal.c priorityq.c render.c sweep.c tess.c tessellate.c tessmono.c
+# POLYCOVERSRC_C=$(addprefix thirdparty/glu/, $(GLUSRC))
+# POLYCOVEROBJ_C=$(POLYCOVERSRC_C:%.c=%.o)
+
+PKG_CFLAGS= \
+-Wall \
+-Wextra \
+-Wno-unused-parameter \
+-Wno-sign-compare \
+-Wno-strict-aliasing \
+-Wno-unused-variable \
+-Wno-unused-function \
+-Wno-implicit-function-declaration
+
+OS=$(shell uname)
+
+#PKG_CFLAGS+=-DOSX_PLATFORM
+ifeq "$(OS)" "Darwin"
+	PKG_CFLAGS+=-DOSX_PLATFORM
+else
+	PKG_CFLAGS+=-DLINUX_PLATFORM
+endif
+
+# if test `uname` = "Darwin" ; then 
+# 	PKG_CFLAGS+=-DOSX_PLATFORM
+# else 
+# 	PKG_CFLAGS+=-DLINUX_PLATFORM
+# fi
+# 
+# -Werror \
+# \
+# -Wall \
+# -Werror \
+# -Wextra \
+# -Wno-unused-parameter \
+# -Wno-sign-compare \
+# -Wno-strict-aliasing \
+# -Wno-unused-function \
+# -Wno-implicit-function-declaration
+
+# -std=c11 \
+
+PKG_LIBS=
+
+SRC=nanocube_r.c
+OBJ=$(SRC:%.c=%.o)
+OBJECTS=$(OBJ)

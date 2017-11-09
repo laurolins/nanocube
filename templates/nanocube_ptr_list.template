@@ -1,0 +1,71 @@
+
+//
+// TypeList
+//
+
+Type* TypeList_first(TypeList *self) {
+    return Ptr_Type_get(&self->first_p);
+}
+
+Type* TypeList_last(TypeList *self) {
+    return Ptr_Type_get(&self->last_p);
+}
+
+b8 TypeList_is_empty(TypeList *self) {
+    return Ptr_Type_is_null(&self->first_p);
+}
+
+void TypeList_init(TypeList *self) {
+    Ptr_Type_set_null(&self->first_p);
+    Ptr_Type_set_null(&self->last_p);
+}
+
+void TypeList_insert(TypeList *self, Type *new_item, Type *at) {
+    if (!at) { // if at == nullptr append
+        if (TypeList_is_empty(self)) {
+            Assert(Ptr_Type_is_null(&new_item->next_p));
+            Assert(Ptr_Type_is_null(&new_item->prev_p));
+            Ptr_Type_set(&self->first_p,new_item);
+            Ptr_Type_set(&self->last_p,new_item);
+        }
+        else {
+            Type* last = Ptr_Type_get_not_null(&self->last_p);
+            Ptr_Type_set(&last->next_p,new_item);
+            Ptr_Type_set(&new_item->prev_p,last);
+            Ptr_Type_set(&self->last_p,new_item);
+        }
+    }
+    else { // assume at is a valid entry in the list
+        Type* item_p = Ptr_Type_get(&at->prev_p);
+        Ptr_Type_set(&new_item->prev_p,item_p);
+        if (item_p) {
+            Ptr_Type_set(&item_p->next_p,new_item);
+        }
+        else {
+            Ptr_Type_set(&self->first_p,new_item);
+        }
+        Ptr_Type_set(&new_item->next_p,at);
+        Ptr_Type_set(&at->prev_p,new_item);
+    }
+}
+
+void TypeList_remove(TypeList *self, Type *item) {
+    Type* item_p = Ptr_Type_get(&item->prev_p);
+    Type* item_n = Ptr_Type_get(&item->next_p);
+
+    if (item_n) {
+        Ptr_Type_set(&item_n->prev_p,item_p);
+        Ptr_Type_set_null(&item->next_p);
+    }
+    else {
+        Ptr_Type_set(&self->last_p,item_p);
+    }
+
+    if (item_p) {
+        Ptr_Type_set(&item_p->next_p,item_n);
+        Ptr_Type_set_null(&item->prev_p);
+    }
+    else {
+        Ptr_Type_set(&self->first_p,item_n);
+    }
+}

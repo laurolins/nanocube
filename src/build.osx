@@ -1,0 +1,226 @@
+#!/bin/bash
+
+ARGS=("$@")
+
+# options are "debug", "release", "profile"
+# use PROFILE and nx_PROFILE
+MODE="debug"
+if [ $1 ]; then
+	MODE=$1
+fi
+
+# following parameters are the specific defines
+# use PROFILE and nx_PROFILE
+CUSTOM_DEFINES=
+for i in $(seq 2 $#); do
+	CUSTOM_DEFINES+="-D${ARGS[$i]} ";
+done
+
+# FLAGS=-std=c++11 -stdlib=libc++ -O3 -Wall -Werror -Weverything
+FLAGS="-Wall \
+-Werror \
+-std=c11 \
+-Wno-unused-variable \
+-Wno-null-dereference \
+-Wno-unused-function \
+-DOS_MAC"
+
+# -pedantic \
+# -Wno-unused-but-set-variable \
+# -Wno-maybe-uninitialized \
+
+DEBUG_FLAGS="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
+RELEASE_FLAGS="-g -ggdb -O3"
+PROFILE_FLAGS="-g -ggdb -O2 -fno-omit-frame-pointer -DPROFILE"
+OPTIONS=""
+# echo "${MODE}"
+if [ "${MODE}" = "debug" ]; then
+	OPTIONS="${FLAGS} ${DEBUG_FLAGS}"
+elif [ "${MODE}" = "release" ]; then
+	OPTIONS="${FLAGS} ${RELEASE_FLAGS}"
+elif [ "${MODE}" = "profile" ]; then
+	OPTIONS="${FLAGS} ${PROFILE_FLAGS}"
+else
+	echo "invalide mode. needs to be 'debug', 'release', or 'profile'";
+	exit;
+fi
+
+# -ftime-report
+# -DCHECK_ASSERTIONS
+# -DPROFILE
+# BUG=
+# --enable-checking
+# -Q -v -da
+
+# DEBUG="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
+# # -DPROFILE
+# RELEASE="-g -ggdb -O3"
+# # -ftime-report
+# # -DCHECK_ASSERTIONS
+# # -DCHECK_ASSERTIONS
+# # -DPROFILE
+#
+# # -DPROFILE
+# PROFILE="-g -ggdb -O2 -fno-omit-frame-pointer"
+# OPTIONS="${FLAGS} ${DEBUG}"
+# # OPTIONS=${FLAGS} ${RELEASE}
+# # OPTIONS=${FLAGS} ${PROFILE}
+#
+
+BUILD="../../build/compressed_nanocube"
+SRC="../../compressed_nanocube/src"
+CXX="clang"
+LIBS="-L${BUILD} -lm -ldl -lpthread"
+
+# prepare VERSION_NAME name based on repository updates
+BASE_VERSION="$(cat VERSION)"
+REVISION="$(git rev-list --count HEAD)"
+HASH=$(git rev-list HEAD | head -n 1 | cut -c 1-6)
+MODIFIED=""
+if [[ $(git status --porcelain | grep " M") ]]; then
+	  MODIFIED="m"
+fi
+VERSION_NAME="${BASE_VERSION}r${REVISION}${MODIFIED}_${HASH}_${MODE}"
+echo ${VERSION_NAME}
+
+# check if version name stored is the same as the one
+# we just computed
+STORED_VERSION_NAME=""
+if [ -f VERSION_NAME ]; then
+	STORED_VERSION_NAME=$(cat VERSION_NAME)
+fi
+
+VERSION_NAME_WAS_UPDATED=""
+if [ "${VERSION_NAME}" != "${STORED_VERSION_NAME}" ]; then
+	VERSION_NAME_WAS_UPDATED="yes"
+	echo "${VERSION_NAME}" > VERSION_NAME
+fi
+
+function f_file_modified {
+	DOC_SRC_UPDATED=$(git diff $1 | wc -l)
+	if [ "${DOC_SRC_UPDATED}" != "0"]; then
+		echo "1"
+	fi
+}
+
+# Update documentation if its source file has changed.
+# Since the output of documentation files are also part
+# of the tracked repository, we don't want to updated
+# those files everytime we compile, only when there
+# is a potential change
+function f_update_doc {
+	INPUT="$1"
+	VER="$2"
+	OUTPUT="${INPUT}.doc"
+
+	# find all BEGIN_DOC_STRING lines
+	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 2 -d \ > /tmp/n
+	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 1 -d : > /tmp/b
+	grep -n "^END_DOC_STRING"   "${INPUT}" | cut -f 1 -d : > /tmp/e
+	paste /tmp/b /tmp/e /tmp/n > /tmp/r
+
+	echo "" > "${OUTPUT}"
+	# read each line as an array
+	while read -ra LINE; do
+		FIRST="$((${LINE[0]}+1))"
+		LAST="$((${LINE[1]}-1))"
+		NAME="${LINE[2]}"
+		echo "static const char ${NAME}[] = {" >> "${OUTPUT}"
+		sed -n ${FIRST},${LAST}p ${INPUT} | sed 's/__VERSION__/'${VER}'/g' > /tmp/i
+		cat /tmp/i | xxd -i >> ${OUTPUT}
+		echo ", 0x00 };" >> "${OUTPUT}"
+	done < /tmp/r
+
+	echo "updated ${OUTPUT}"
+}
+
+DOC_FILES=(app.c app_roadmap.c)
+BASE_DIR=$(pwd)
+for f in "${DOC_FILES[@]}"; do
+	f_update_doc "$f" "${VERSION_NAME}"
+done
+# 	if [ -n f_file_modified "$f"] || [-n ${VERSION_NAME_WAS_UPDATED}]; then
+# 	fi
+
+# Compile code
+echo ${BUILD}; \
+if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
+pushd ${BUILD} ;\
+${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ;\
+${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/osx_app.c ${LIBS} ;\
+cp nanocube ${HOME}/local/bin/. ;\
+cp libnanocube_app.so ${HOME}/local/bin/. ;\
+popd
+
+
+
+
+
+
+
+
+
+
+
+
+# FLAGS=-std=c++11 -stdlib=libc++ -O3 -Wall -Werror -Weverything
+# CFLAGS=\
+#        -Wall \
+#        -Werror \
+#        -std=c11 \
+#        -Wno-null-dereference \
+#        -Wno-unused-function \
+#        -DOS_MAC \
+#        -DNANOCUBE_HTTP \
+#        -DCHECK_ASSERTIONS
+#
+#
+# LIBS=-L. -ldl -lpthread
+#
+# DEBUG=-g -ggdb -DPROFILE
+# RELEASE=-g -O3 -DPROFILE
+# PROFILE=-g -pg -O3
+#
+# OPTIONS=${CFLAGS} ${RELEASE}
+#
+# # -Wl,-map,nanocube_alloc.map
+# # -Werror -Weverything
+# BUILD=../../build/compressed_nanocube
+# SRC=../../compressed_nanocube/src
+# CXX=clang
+#
+# INSTALLDIR=/Users/llins/local/bin
+#
+# SHAREDLIB=-Wl,-undefined -Wl,dynamic_lookup -Wl,-dylib
+#
+# all:
+# 	echo ${BUILD};\
+# if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi;\
+# pushd ${BUILD};\
+# ${CXX} ${OPTIONS} ${SHAREDLIB} -olibnanocube_app.so ${SRC}/app.c;\
+# ${CXX} ${OPTIONS}              -onanocube           ${SRC}/platform_dependent/osx_nanocube_app.c ${SRC}/../thirdparty/mongoose/mongoose.c ${LIBS};\
+# cp libnanocube_app.so ${INSTALLDIR}/. ;\
+# cp nanocube           ${INSTALLDIR}/. ;\
+# popd
+
+# ${CXX} ${OPTIONS} ${SHAREDLIB} -olibmongoose.so        ${SRC}/../thirdparty/mongoose/mongoose.c -lpthread;\
+# cp libmongoose.so        ${INSTALLDIR}/. ;\
+# ${CXX} ${OPTIONS}              -onctest                ${SRC}/osx_nanocube_test.c ${LIBS};\
+# cp nctest                ${INSTALLDIR}/. ;\
+#     ${CXX} ${OPTIONS} ${SHAREDLIB}  -olibnanocube_count.so ${SRC}/nanocube_count.c;\
+#     ${CXX} ${OPTIONS} ${SHAREDLIB} -olibmongoose.so       ${SRC}/../thirdparty/mongoose/mongoose.c -lpthread;\
+#     ${CXX} ${OPTIONS}              -oncc                  ${SRC}/osx_nanocube_count.c ${LIBS};\
+#     ${CXX} ${FLAGS} -Wl,-undefined -Wl,dynamic_lookup -olibnanocube_count.so ${SRC}/nanocube_count.c;\
+#     ${CXX} ${FLAGS} -o nanocube_count ${SRC}/osx_nanocube_count.c ${LIBS};\
+#     ${CXX} ${FLAGS} -o test_measure ${SRC}/osx_test_measure.c ${LIBS};\
+# ${CXX} ${FLAGS} -o nanocube_count ${SRC}/win32_nanocube_count.c;\
+# ${CXX} ${FLAGS} -o nanocube_index ${SRC}/win32_nanocube_index.c;\
+# ${CXX} ${FLAGS} -o nanocube_test ${SRC}/win32_nanocube_test.c;\
+# ${CXX} ${FLAGS} -c ${SRC}/nanocube_alloc.c;\
+# ${CXX} ${FLAGS} -o nanocube_count ${SRC}/win32_nanocube_count.cc;\
+# ${CXX} $FLAGS -o nanocube_index $SRC/win32_nanocube_index.cc
+# ${CXX} $FLAGS -o nanocube_test $SRC/test.cc
+# ${CXX} $FLAGS -o test $SRC/test.cc $SRC/nanocube_alloc.cc $SRC/nanocube_index.cc $SRC/nanocube_platform.cc
+#!/bin/bash
+# clang -Wl,-undefined -Wl,dynamic_lookup -olibnanocube_count.so nanocube_count.c
+# nm -gm x.lib

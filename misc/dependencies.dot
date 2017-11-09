@@ -1,0 +1,68 @@
+// dot -Tpdf -odependencies.pdf dependencies.dot
+digraph G {
+rankdir=LR;
+nanocube_alloc__c [];
+nanocube_alloc__h [];
+nanocube_count__c [];
+nanocube_count__h [];
+nanocube_count_payload__h [];
+nanocube_count_query__c [];
+nanocube_index__c [];
+nanocube_index__h [];
+nanocube_index_debug__c [];
+nanocube_index_query__c [];
+nanocube_measure__c [];
+nanocube_measure__h [];
+nanocube_parser__c [];
+nanocube_parser__h [];
+nanocube_platform__c [];
+nanocube_platform__h [];
+nanocube_util__c [];
+nanocube_count__c [];
+nanocube_count__h [];
+
+nanocube_count__c -> nanocube_platform__h      [label="1"];
+nanocube_count__c -> nanocube_alloc__h         [label="2"];
+nanocube_count__c -> nanocube_count_payload__h [label="3"];
+nanocube_count__c -> nanocube_index__h         [label="4"];
+nanocube_count__c -> nanocube_measure__h       [label="5"];
+nanocube_count__c -> nanocube_count__h         [label="6"];
+nanocube_count__c -> nanocube_parser__h        [label="7"];
+
+nanocube_count__c -> nanocube_platform_ parser__h        [label="7"];
+
+nanocube_count__c -> nanocube_util__c [];
+
+nanocube_count__h -> nanocube_index__h [];
+
+nanocube_payload_count__h -> nanocube_platform__h [];
+
+nanocube_platform__c -> nanocube_platform__h [];
+
+nanocube_alloc__h -> nanocube_platform__h [];
+
+nanocube_alloc__c -> nanocube_alloc__h [];
+
+nanocube_index__c -> nanocube_index_debug__c [label="#ifdef NANOCUBE_INDEX_DEBUG"];
+nanocube_index__c -> nanocube_index__h [];
+
+nanocube_index__h -> nanocube_platform__h [];
+nanocube_index__h -> nanocube_alloc__h [];
+
+nanocube_util__c -> nanocube_util__h [];
+
+nanocube_measure__c -> nanocube_measure__h [];
+
+nanocube_parser__c -> nanocube_parser__h [];
+
+nanocube_measure__h -> nanocube_platform__h [];
+nanocube_measure__h -> nanocube_index__h    [];
+
+nanocube_parser__h  -> nanocube_platform__h [];
+
+nanocube_index_query__c -> nanocube_index__h [];
+nanocube_index_query__c -> nanocube_index__c [];
+
+nanocube_index__c -> nanocube_alloc__c [];
+
+}

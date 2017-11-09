@@ -1,0 +1,48 @@
+#
+# File downloaded with
+#
+#  https://data.cityofchicago.org/api/views/ijzp-q8t2/rows.csv?accessType=DOWNLOAD
+#
+# ID                           7488772
+# Case Number                  HS290205
+# Date                         05/03/2010 11:30:00 AM
+# Block                        015XX N GREENVIEW AVE
+# IUCR                         0890
+# Primary Type                 THEFT
+# Description                  FROM BUILDING
+# Location Description         RESIDENCE
+# Arrest                       false
+# Domestic                     false
+# Beat                         1433
+# District                     014
+# Ward                         1
+# Community Area               24
+# FBI Code                     06
+# X Coordinate                 1166110
+# Y Coordinate                 1910273
+# Year                         2010
+# Updated On                   02/04/2016 06:33:39 AM
+# Latitude                     41.909371152
+# Longitude                    -87.665218629
+# Location                     '(41.909371152 -87.665218629)'
+#
+
+# I1. quadtree index dimension for the pickup location
+index_dimension('location',input('Latitude','Longitude'),latlon(25));
+
+# I2. categorical dimension
+index_dimension('type',input('Primary Type'),categorical(8,1));
+
+# I3. quadtree index dimension for the dropoff location
+index_dimension('time',
+                input('Date'),
+                time(18,                          # binary tree with 16 levels (slots 0 to 65535)
+                     '2000-01-01T00:00:00-06:00', # *base* date time
+                     3600,                        # *width* in secs. interval [base, base + width)
+                     6*60                         # add 300 minutes to all input values since input comes as if it is UTC and is actually -05:00)
+                    ));
+
+# M1. measure dimension for counting  (u32 means integral non-negative and 2^32 - 1 max value)
+# if no input .csv column is used in a measure dimention, it functions as a count
+# (ie. one for each input record)
+measure_dimension('count',input(),u32);

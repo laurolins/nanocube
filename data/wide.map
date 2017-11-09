@@ -1,0 +1,2 @@
+index_dimension('id',input('id'),categorical(8,1));
+measure_dimension('count',input(),u32);

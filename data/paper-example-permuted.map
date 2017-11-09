@@ -1,0 +1,8 @@
+# I1. device
+index_dimension("device",input("device"),categorical(8));
+
+# I2. quadtree index dimension for the pickup location
+index_dimension("location",input("latitude","longitude"),latlon(2));
+
+# M1. id (represented as a bitset)
+measure_dimension("id",input("id"),u32);

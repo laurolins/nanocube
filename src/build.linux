@@ -1,0 +1,177 @@
+#!/bin/bash
+ARGS=("$@")
+
+# options are "debug", "release", "profile"
+MODE="debug"
+if [ $1 ]; then
+	MODE=$1
+fi
+
+# extra
+POYCOVER_SUPPPORT=false
+
+# following parameters are the specific defines
+# use PROFILE and nx_PROFILE
+CUSTOM_DEFINES=""
+for i in $( seq 1 $(($#-1)) ); do
+	CUSTOM_DEFINES+="-D${ARGS[$i]} ";
+	if [ ${ARGS[$i]} = "POLYCOVER" ]; then
+		POLYCOVER_SUPPORT=true
+	fi
+done
+# echo "${CUSTOM_DEFINES}"
+
+# FLAGS=-std=c++11 -stdlib=libc++ -O3 -Wall -Werror -Weverything
+FLAGS="-Wall \
+-Werror \
+-Wextra \
+-Wno-unused-parameter \
+-Wno-sign-compare \
+-Wno-strict-aliasing \
+-Wno-unused-function \
+-Wno-unused-variable \
+-Wno-implicit-function-declaration \
+-std=gnu11 \
+-DOS_LINUX"
+# -pedantic \
+# -Wno-unused-but-set-variable \
+# -Wno-unused-variable \
+# -Wno-maybe-uninitialized \
+
+DEBUG_FLAGS="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
+RELEASE_FLAGS="-g -ggdb -O3"
+PROFILE_FLAGS="-g -ggdb -O2 -fno-omit-frame-pointer -DPROFILE"
+OPTIONS=""
+
+# echo "${MODE}"
+if [ "${MODE}" = "debug" ]; then
+	OPTIONS="${FLAGS} ${DEBUG_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" = "release" ]; then
+	OPTIONS="${FLAGS} ${RELEASE_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" = "profile" ]; then
+	OPTIONS="${FLAGS} ${PROFILE_FLAGS} ${CUSTOM_DEFINES}"
+else
+	echo "invalide mode. needs to be 'debug', 'release', or 'profile'";
+	exit;
+fi
+
+
+# -ftime-report
+# -DCHECK_ASSERTIONS
+# -DPROFILE
+# BUG=
+# --enable-checking
+# -Q -v -da
+
+# DEBUG="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
+# # -DPROFILE
+# RELEASE="-g -ggdb -O3"
+# # -ftime-report
+# # -DCHECK_ASSERTIONS
+# # -DCHECK_ASSERTIONS
+# # -DPROFILE
+#
+# # -DPROFILE
+# PROFILE="-g -ggdb -O2 -fno-omit-frame-pointer"
+# OPTIONS="${FLAGS} ${DEBUG}"
+# # OPTIONS=${FLAGS} ${RELEASE}
+# # OPTIONS=${FLAGS} ${PROFILE}
+#
+
+BUILD="../../build/compressed_nanocube"
+SRC="../../compressed_nanocube/src"
+CXX="gcc"
+LIBS="-L${BUILD} -lm -ldl -lpthread"
+APP_EXTRA_LIBS=""
+
+if [ "$POLYCOVER_SUPPORT" = true ]; then
+	if [ ! -f "${POLYCOVER_PATH}/libpolycover.so" ]; then
+		echo "Error: file [${POLYCOVER_PATH}/libpolycover.so] doesn't exist";
+		exit 1;
+	else
+		echo "POLYCOVER dynamic library exists: [${POLYCOVER_PATH}/libpolycover.so]"
+		APP_EXTRA_LIBS="-L${POLYCOVER_PATH} -lpolycover"
+	fi
+fi
+
+# prepare VERSION_NAME name based on repository updates
+BASE_VERSION="$(cat VERSION)"
+REVISION="$(git rev-list --count HEAD)"
+HASH=$(git rev-list HEAD | head -n 1 | cut -c 1-6)
+MODIFIED=""
+if [[ $(git status --porcelain | grep " M") ]]; then
+	  MODIFIED="m"
+fi
+VERSION_NAME="${BASE_VERSION}r${REVISION}${MODIFIED}_${HASH}_${MODE}"
+echo ${VERSION_NAME}
+
+# check if version name stored is the same as the one
+# we just computed
+STORED_VERSION_NAME=""
+if [ -f VERSION_NAME ]; then
+	STORED_VERSION_NAME=$(cat VERSION_NAME)
+fi
+
+VERSION_NAME_WAS_UPDATED=""
+if [ "${VERSION_NAME}" != "${STORED_VERSION_NAME}" ]; then
+	VERSION_NAME_WAS_UPDATED="yes"
+	echo "${VERSION_NAME}" > VERSION_NAME
+fi
+
+function f_file_modified {
+	DOC_SRC_UPDATED=$(git diff $1 | wc -l)
+	if [ "${DOC_SRC_UPDATED}" != "0"]; then
+		echo "1"
+	fi
+}
+
+# Update documentation if its source file has changed.
+# Since the output of documentation files are also part
+# of the tracked repository, we don't want to updated
+# those files everytime we compile, only when there
+# is a potential change
+function f_update_doc {
+	INPUT="$1"
+	VER="$2"
+	OUTPUT="${INPUT}.doc"
+
+	# find all BEGIN_DOC_STRING lines
+	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 2 -d \ > /tmp/n
+	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 1 -d : > /tmp/b
+	grep -n "^END_DOC_STRING"   "${INPUT}" | cut -f 1 -d : > /tmp/e
+	paste /tmp/b /tmp/e /tmp/n > /tmp/r
+
+	echo "" > "${OUTPUT}"
+	# read each line as an array
+	while read -ra LINE; do
+		FIRST="$((${LINE[0]}+1))"
+		LAST="$((${LINE[1]}-1))"
+		NAME="${LINE[2]}"
+		echo "static const char ${NAME}[] = {" >> "${OUTPUT}"
+		sed -n ${FIRST},${LAST}p ${INPUT} | sed 's/__VERSION__/'${VER}'/g' > /tmp/i
+		head -c -1 /tmp/i > /tmp/ii
+		cat /tmp/ii | xxd -i >> ${OUTPUT}
+		echo ", 0x00 };" >> "${OUTPUT}"
+	done < /tmp/r
+
+	echo "updated ${OUTPUT}"
+}
+
+DOC_FILES=(app.c app_roadmap.c)
+BASE_DIR=$(pwd)
+for f in "${DOC_FILES[@]}"; do
+	f_update_doc "$f" "${VERSION_NAME}"
+done
+# if [ -n f_file_modified "$f"] || [-n ${VERSION_NAME_WAS_UPDATED}]; then
+# fi
+
+# Compile code
+echo ${BUILD}; \
+if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
+pushd ${BUILD} ;\
+${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
+${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/linux_app.c ${LIBS} ;\
+cp nanocube ${HOME}/local/bin/. ;\
+cp libnanocube_app.so ${HOME}/local/bin/. ;\
+popd
+
