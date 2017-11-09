@@ -9,12 +9,14 @@ This branch `v4` contains a new implementation of Nanocubes in the C programming
 # Compiling on Linux
 
 ```shell
-git clone -b v4 git@gitlab.research.att.com:llins/nanocube
+# clone the v4 branch
+git clone -b v4 git@github.com:laurolins/nanocube
 cd nanocube
 autoreconf -vi
 mkdir build
 cd build
-../configure --with-polycover
+../configure --with-polycover --prefix=../local
+make -j
 ./nanocube
 ```
 
@@ -146,12 +148,12 @@ nanocube create chicago-crimes-10k-sample.csv chicago-crimes.map chicago-crimes-
 nanocube serve 8000 crimes=chicago-crimes-10k-sample.nanocube
 
 # query all its measures (count only) aggregate for the whole dataset
-wget -qO- 'http://localhost:8000/txt=1;crimes;'
+wget -qO- 'http://localhost:8000/format('text');q(crimes);'
 #    #         count
 #    1  1.000000e+04
 
 # query group by type
-wget -qO- "http://localhost:8000/txt=1;crimes.b('type',dive(1));"
+wget -qO- "http://localhost:8000/format('text');q(crimes.b('type',dive(1),'name'));"
 #    #                                              type         count
 #    1                                                 0  7.900000e+01
 #    2                                                 1  1.837000e+03
