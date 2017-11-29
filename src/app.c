@@ -1,8 +1,29 @@
 /*
 BEGIN_TODO
 
-# 2017-10-06T23:38:27
+# 2017-11-29T11:07
+A mechanism to bin numerical columns while creating a nanocube. Could be
+done externally through an Rscript like
 
+     #!/usr/bin/env Rscript
+     # R --slave -e 'x <- scan(file="stdin", quiet=TRUE); summary(x)'
+     args <- commandArgs(TRUE)
+     num.breaks <- as.integer(args[1])
+     values <- scan(file="stdin",sep="\n")
+     b <- pretty(values[!is.na(values)],n=num.breaks)
+     x <- cut(values,breaks=b,include.lowest=T)
+     cat(sprintf("%02d_%s",x,x),sep="\n")
+
+The issues is that it would need a two pass through the data so that
+it could first bin the desired fields (read all data, sort it, and
+bin on the right quantiles etc).
+
+An alternative would be to send in the break points: one pass only
+and have a minor sevice tailored to a single column to bin it automatically
+based on a parameter indicating number of breaks based on quantiles or on
+prettyness (R pretty function).
+
+# 2017-10-06T23:38:27
 Create an intermediate representation for an nm_Table with the nanocube
 vector payload that will be easy for custom clients to read results.
 It should contain no pointers and be easily serializable.
