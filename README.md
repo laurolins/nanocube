@@ -4,7 +4,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 # About this branch
 
-This branch (`v4`) contains a new implementation of Nanocubes in the C programming language. The goal with this new implementation was to get a much finer control in all aspects of the data structure and specially on its memory aspects (allocation, layout). In our original C++ template-based implementation of Nanocubes (up to version 3.3), we implemented the Nanocube data structure on top of C++ STL (standard library) data structures and while this was a reasonable solution at the time, it had some important downsides: (1) complex serialization which made it hard to save/load Nanocube into files; (2) variation in the guts of a Nanocube based on the specific STL implementation we used.
+This branch (`v4`) contains a new implementation of Nanocubes in the C programming language. The goal with this new implementation was to get a much finer control in all aspects of the data structure and specially on its memory aspects (allocation, layout). In our original C++ template-based implementation of Nanocubes (up to version 3.3), we implemented the Nanocube data structure on top of C++ STL (standard library) and while this was a reasonable solution at the time, it had some important downsides: (1) complex serialization which made it hard to save/load Nanocube into files; (2) variations in the internal memory layout of a Nanocube based on the specific STL implementation we used.
 
 # Compiling on Linux
 
@@ -102,7 +102,7 @@ Here is example on how to create a path compressed nanocube index from a
 `.csv` file with the following characteristics:
 * index dimensions:
    - `location` - a quadtree of height (25+1) based on latitude and longitude in degrees.
-   - `type` - a tree of height (1+1) whode root has degree at most 256 (8 bits resolution).
+   - `type` - a tree of height (1+1) whose root has degree at most 256 (8 bits resolution).
    - `time` - a binary tree of height (16+1).
 * measure dimensions:
    - `count` - unsigned 32-bit integer.
@@ -119,12 +119,12 @@ is shown below.
 index_dimension('location',input('Latitude','Longitude'),latlon(25));
 
 # I2. categorical dimension
-index_dimension('type',input('Primary Type'),categorical(8));
+index_dimension('type',input('Primary Type'),categorical(8,1));
 
 # I3. quadtree index dimension for the dropoff location
 index_dimension('time',
                 input('Date'),
-                time(18,                          # binary tree with 16 levels (slots 0 to 65535)
+                time(16,                          # binary tree with 16 levels (slots 0 to 65535)
                      '2000-01-01T00:00:00-06:00', # *base* date time
                      3600,                        # *width* in secs. interval [base, base + width)
                      6*60                         # add 360 minutes to all input values since input
