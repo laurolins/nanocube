@@ -67,8 +67,8 @@ fi
 # # OPTIONS=${FLAGS} ${PROFILE}
 #
 
-BUILD="../../build/compressed_nanocube"
-SRC="../../compressed_nanocube/src"
+BUILD="../../build/nanocube"
+SRC="../../nanocube/src"
 CXX="clang"
 LIBS="-L${BUILD} -lm -ldl -lpthread"
 
