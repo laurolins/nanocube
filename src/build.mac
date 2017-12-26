@@ -147,80 +147,8 @@ echo ${BUILD}; \
 if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
 ${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ;\
-${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/osx_app.c ${LIBS} ;\
+${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
 cp nanocube ${HOME}/local/bin/. ;\
 cp libnanocube_app.so ${HOME}/local/bin/. ;\
 popd
 
-
-
-
-
-
-
-
-
-
-
-
-# FLAGS=-std=c++11 -stdlib=libc++ -O3 -Wall -Werror -Weverything
-# CFLAGS=\
-#        -Wall \
-#        -Werror \
-#        -std=c11 \
-#        -Wno-null-dereference \
-#        -Wno-unused-function \
-#        -DOS_MAC \
-#        -DNANOCUBE_HTTP \
-#        -DCHECK_ASSERTIONS
-#
-#
-# LIBS=-L. -ldl -lpthread
-#
-# DEBUG=-g -ggdb -DPROFILE
-# RELEASE=-g -O3 -DPROFILE
-# PROFILE=-g -pg -O3
-#
-# OPTIONS=${CFLAGS} ${RELEASE}
-#
-# # -Wl,-map,nanocube_alloc.map
-# # -Werror -Weverything
-# BUILD=../../build/compressed_nanocube
-# SRC=../../compressed_nanocube/src
-# CXX=clang
-#
-# INSTALLDIR=/Users/llins/local/bin
-#
-# SHAREDLIB=-Wl,-undefined -Wl,dynamic_lookup -Wl,-dylib
-#
-# all:
-# 	echo ${BUILD};\
-# if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi;\
-# pushd ${BUILD};\
-# ${CXX} ${OPTIONS} ${SHAREDLIB} -olibnanocube_app.so ${SRC}/app.c;\
-# ${CXX} ${OPTIONS}              -onanocube           ${SRC}/platform_dependent/osx_nanocube_app.c ${SRC}/../thirdparty/mongoose/mongoose.c ${LIBS};\
-# cp libnanocube_app.so ${INSTALLDIR}/. ;\
-# cp nanocube           ${INSTALLDIR}/. ;\
-# popd
-
-# ${CXX} ${OPTIONS} ${SHAREDLIB} -olibmongoose.so        ${SRC}/../thirdparty/mongoose/mongoose.c -lpthread;\
-# cp libmongoose.so        ${INSTALLDIR}/. ;\
-# ${CXX} ${OPTIONS}              -onctest                ${SRC}/osx_nanocube_test.c ${LIBS};\
-# cp nctest                ${INSTALLDIR}/. ;\
-#     ${CXX} ${OPTIONS} ${SHAREDLIB}  -olibnanocube_count.so ${SRC}/nanocube_count.c;\
-#     ${CXX} ${OPTIONS} ${SHAREDLIB} -olibmongoose.so       ${SRC}/../thirdparty/mongoose/mongoose.c -lpthread;\
-#     ${CXX} ${OPTIONS}              -oncc                  ${SRC}/osx_nanocube_count.c ${LIBS};\
-#     ${CXX} ${FLAGS} -Wl,-undefined -Wl,dynamic_lookup -olibnanocube_count.so ${SRC}/nanocube_count.c;\
-#     ${CXX} ${FLAGS} -o nanocube_count ${SRC}/osx_nanocube_count.c ${LIBS};\
-#     ${CXX} ${FLAGS} -o test_measure ${SRC}/osx_test_measure.c ${LIBS};\
-# ${CXX} ${FLAGS} -o nanocube_count ${SRC}/win32_nanocube_count.c;\
-# ${CXX} ${FLAGS} -o nanocube_index ${SRC}/win32_nanocube_index.c;\
-# ${CXX} ${FLAGS} -o nanocube_test ${SRC}/win32_nanocube_test.c;\
-# ${CXX} ${FLAGS} -c ${SRC}/nanocube_alloc.c;\
-# ${CXX} ${FLAGS} -o nanocube_count ${SRC}/win32_nanocube_count.cc;\
-# ${CXX} $FLAGS -o nanocube_index $SRC/win32_nanocube_index.cc
-# ${CXX} $FLAGS -o nanocube_test $SRC/test.cc
-# ${CXX} $FLAGS -o test $SRC/test.cc $SRC/nanocube_alloc.cc $SRC/nanocube_index.cc $SRC/nanocube_platform.cc
-#!/bin/bash
-# clang -Wl,-undefined -Wl,dynamic_lookup -olibnanocube_count.so nanocube_count.c
-# nm -gm x.lib
