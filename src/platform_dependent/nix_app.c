@@ -171,7 +171,7 @@ main(int num_args, char** args)
 	}
 
 	if (app_code.application_code_dll == 0) {
-		fputs("Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)",stderr);
+		fputs("[Problem] Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n",stderr);
 		return -1;
 	}
 
