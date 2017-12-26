@@ -78,8 +78,8 @@ fi
 # # OPTIONS=${FLAGS} ${PROFILE}
 #
 
-BUILD="../../build/compressed_nanocube"
-SRC="../../compressed_nanocube/src"
+BUILD="../../build/nanocube"
+SRC="../../nanocube/src"
 CXX="gcc"
 LIBS="-L${BUILD} -lm -ldl -lpthread"
 APP_EXTRA_LIBS=""
@@ -170,8 +170,8 @@ echo ${BUILD}; \
 if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
 ${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
-${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/linux_app.c ${LIBS} ;\
-cp nanocube ${HOME}/local/bin/. ;\
-cp libnanocube_app.so ${HOME}/local/bin/. ;\
+${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+# cp nanocube ${HOME}/local/bin/. ;\
+# cp libnanocube_app.so ${HOME}/local/bin/. ;\
 popd
 

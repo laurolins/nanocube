@@ -10,12 +10,20 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <netdb.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/socket.h> // socket()
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h> // clock()
+#include <unistd.h>
+#include <x86intrin.h>
 
 #if defined(OS_MAC)
 // dispatch_semaphore_t semaphore;
@@ -31,14 +39,6 @@
 #include <sys/epoll.h>           // epoll_*
 #endif
 
-#include <sys/mman.h>
-#include <sys/socket.h> // socket()
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <time.h> // clock()
-#include <unistd.h>
-
-#include <x86intrin.h>
 
 PLATFORM_ALLOCATE_MEMORY(nix_allocate_memory)
 {
@@ -905,7 +905,7 @@ nix_tcp_Socket_kqueue_retrigger(nix_tcp_Socket *self)
 #if defined(OS_MAC)
 	kevent(self->tcp->kqueue_fd, &self->ev, 1, 0, 0, 0);
 #elif defined(OS_LINUX)
-	epoll_ctl(self->tcp->kqueue_fd, EPOLL_CTL_MOD, self->file_descriptor, &self->ev);
+	epoll_ctl(self->tcp->epoll_fd, EPOLL_CTL_MOD, self->file_descriptor, &self->ev);
 #endif
 }
 
@@ -915,7 +915,7 @@ nix_tcp_Socket_kqueue_insert(nix_tcp_Socket *self)
 #if defined(OS_MAC)
 	kevent(self->tcp->kqueue_fd, &self->ev, 1, 0, 0, 0);
 #elif defined(OS_LINUX)
-	epoll_ctl(self->tcp->kqueue_fd, EPOLL_CTL_ADD, self->file_descriptor, &self->ev);
+	epoll_ctl(self->tcp->epoll_fd, EPOLL_CTL_ADD, self->file_descriptor, &self->ev);
 #endif
 }
 
@@ -1417,7 +1417,7 @@ nix_tcp_Engine_process_events(nix_tcp_Engine *tcp, pt_WorkQueue *work_queue)
 	int num_fd = kevent(tcp->kqueue_fd, 0, 0, tcp->events, ArrayCount(tcp->events), &timeout);
 	struct kevent ev;
 #elif defined(OS_LINUX)
-	int num_fd = kqueue_wait(tcp->kqueue_fd, tcp->events, ArrayCount(tcp->events), nix_tcp_TIMEOUT);
+	int num_fd = epoll_wait(tcp->epoll_fd, tcp->events, ArrayCount(tcp->events), nix_tcp_TIMEOUT);
 #endif
 
 	/* for each socket with some event available process all what
