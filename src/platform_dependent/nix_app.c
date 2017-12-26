@@ -150,28 +150,28 @@ main(int num_args, char** args)
 	FilePath executable_path, dll_path;
 	app_state.platform.executable_path(&executable_path);
 	FilePath_copy(&dll_path, &executable_path);
-	FilePath_set_name_cstr(&dll_path, "libnanocube_app.so");
 
-	NIXApplicationCode app_code = nix_load_application_code(dll_path.full_path, &print);
+	char *lib_names[] = { "libnanocube_app.so", "libnanocube_app.dylib" };
 
-#if 0
-	nix_ThreadInfo thread_info_queue[3];
-	pt_WorkQueue work_queue;
-	if (!nix_init_work_queue(&work_queue, thread_info_queue, ArrayCount(thread_info_queue))) {
+	NIXApplicationCode app_code = { 0 };
+	for (s32 i=0; i<ArrayCount(lib_names); ++i) {
+		FilePath_set_name_cstr(&dll_path, lib_names[i]);
 		Print_clear(&print);
-		Print_cstr(&print, "[Problem] Couldn't initialize thread queue\n");
-		app_state.platform.write_to_file(&platform_stdout, print.begin, print.end);
-		return -1;
+		NIXApplicationCode current_app_code = nix_load_application_code(dll_path.full_path, &print);
+		if (!current_app_code.is_valid) {
+			// Print_cstr(&print, "\n[Problem] Could not find dynamically load library: ");
+			// Print_str(&print, dll_path.full_path, cstr_end(dll_path.full_path));
+			// Print_cstr(&print, "\n");
+			// fputs(print.begin, stderr);
+			app_state.platform.write_to_file(&platform_stdout, print.begin, print.end);
+		} else {
+			app_code = current_app_code;
+			break;
+		}
 	}
-	app_state.work_queue = &work_queue;
-#endif
 
-	if (!app_code.is_valid) {
-		app_state.platform.write_to_file(&platform_stdout, print.begin, print.end);
-		Print_cstr(&print, "\n[Problem] Could not find dynamically load library: ");
-		Print_str(&print, dll_path.full_path, cstr_end(dll_path.full_path));
-		Print_cstr(&print, "\n");
-		app_state.platform.write_to_file(&platform_stdout, print.begin, print.end);
+	if (app_code.application_code_dll == 0) {
+		fputs("Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)",stderr);
 		return -1;
 	}
 

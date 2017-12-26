@@ -56,13 +56,13 @@ nanocube_LDADD=libnanocube_app.la -lm -ldl -lpthread
 
 # nanocube
 if LINUX
-nanocube_SOURCES=src/platform_dependent/linux_app.c
+nanocube_SOURCES=src/platform_dependent/nix_app.c
 nanocube_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
 libnanocube_app_la_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
 endif
 
 if OSX
-nanocube_SOURCES=src/platform_dependent/osx_app.c
+nanocube_SOURCES=src/platform_dependent/nix_app.c
 nanocube_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
 libnanocube_app_la_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
 endif
