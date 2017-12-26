@@ -290,10 +290,6 @@ PLATFORM_WORK_QUEUE_DESTROY(osx_work_queue_destroy)
 
 /************* End Work Queue Support ************/
 
-
-
-#if 1
-
 /************* Simple HTTP Server over TCP ************/
 //
 // Include a notion of a complete request. Use a subset notion of HTTP requests.
@@ -319,8 +315,6 @@ PLATFORM_WORK_QUEUE_DESTROY(osx_work_queue_destroy)
 #include <time.h> // clock()
 #include <unistd.h>
 
-#if 1
-
 // #define osx_tcp_LOCAL_ADDR          "127.0.0.1"
 #define osx_tcp_LOCAL_ADDR          "0.0.0.0"
 #define osx_tcp_PORT	              8888
@@ -341,7 +335,7 @@ PLATFORM_WORK_QUEUE_DESTROY(osx_work_queue_destroy)
 // 	int    file_descriptor;
 // 	int    status;
 // 	s32    index;
-// 	struct epoll_event ev;
+// 	struct kevent ev;
 // 	struct osx_tcp_Connection *prev;
 // 	struct osx_tcp_Connection *next;
 // 	// when retriggering a connection for more data
@@ -363,7 +357,7 @@ struct osx_tcp_Socket {
 	int    file_descriptor;
 	s32    type;
 	s32    index;
-	struct epoll_event ev;
+	struct kevent ev;
 	s32    status;
 	union {
 		struct {
@@ -430,8 +424,8 @@ typedef struct {
 } osx_tcp_Task;
 
 struct osx_tcp_Engine {
-	int epoll_fd;
-	struct epoll_event  events[osx_tcp_MAX_EVENTS];
+	int kqueue_fd;
+	struct kevent     events[osx_tcp_MAX_EVENTS];
 	osx_tcp_Socket    sockets[osx_tcp_MAX_SOCKETS];
 	osx_tcp_Socket    *free_sockets;
 	/* some active_connections might have had its file descriptor closed */
@@ -481,7 +475,7 @@ osx_tcp_set_nonblocking_fd(int fd)
 // osx_tcp_Socket
 
 internal void
-liunx_tcp_Socket_init_empty(osx_tcp_Socket *self, osx_tcp_Engine *tcp, s32 index)
+osx_tcp_Socket_init_empty(osx_tcp_Socket *self, osx_tcp_Engine *tcp, s32 index)
 {
 	//TODO(llins): revise this one
 	pt_filln((char*) self, sizeof(osx_tcp_Socket), 0);
@@ -489,49 +483,88 @@ liunx_tcp_Socket_init_empty(osx_tcp_Socket *self, osx_tcp_Engine *tcp, s32 index
 	self->tcp = tcp;
 	self->index = index;
 	self->file_descriptor = -1; // fd;
-	self->ev.data.ptr = 0;
-	self->ev.events = 0;
+
+	EV_SET(&self->ev, 0, 0, 0, 0, 0, 0);
+
 	self->prev = 0;
 	self->next = 0;
 	self->start_time = 0;
 	self->user_data = 0;
 }
 
+// the kevent call is different than the epoll one,
+// we always pass the list of events we are interested
+// in a contiguous array
 internal void
-osx_tcp_Socket_epoll_retrigger(osx_tcp_Socket *self)
+osx_tcp_Socket_kqueue_retrigger(osx_tcp_Socket *self)
 {
-	epoll_ctl(self->tcp->epoll_fd, EPOLL_CTL_MOD, self->file_descriptor, &self->ev);
+	// kqueue_ctl(self->tcp->kqueue_fd, EPOLL_CTL_MOD, self->file_descriptor, &self->ev);
+        // kevent(int kq, const struct kevent *changelist, int nchanges,
+        // struct kevent *eventlist, int nevents, const struct timespec *timeout);
+	kevent(self->tcp->kqueue_fd, &self->ev, 1, 0, 0, 0);
+	// kqueue_ctl(self->tcp->kqueue_fd, EPOLL_CTL_ADD, self->file_descriptor, &self->ev);
 }
 
 internal void
-osx_tcp_Socket_epoll_insert(osx_tcp_Socket *self)
+osx_tcp_Socket_kqueue_insert(osx_tcp_Socket *self)
 {
-	epoll_ctl(self->tcp->epoll_fd, EPOLL_CTL_ADD, self->file_descriptor, &self->ev);
+        // kevent(int kq, const struct kevent *changelist, int nchanges,
+        // struct kevent *eventlist, int nevents, const struct timespec *timeout);
+	kevent(self->tcp->kqueue_fd, &self->ev, 1, 0, 0, 0);
+	// kqueue_ctl(self->tcp->kqueue_fd, EPOLL_CTL_ADD, self->file_descriptor, &self->ev);
 }
 
 internal void
-osx_tcp_Socket_init_listen(osx_tcp_Socket *self, int file_descriptor, s32 port, void *user_data,
-			     PlatformTCPCallback *callback, u64 start_time)
+osx_tcp_Socket_init_listen(osx_tcp_Socket *self, int file_descriptor, s32 port, void *user_data, PlatformTCPCallback *callback, u64 start_time)
 {
 	self->file_descriptor = file_descriptor;
 	self->type = pt_TCP_LISTEN_SOCKET;
-	self->ev.data.ptr = self;
-	self->ev.events = EPOLLIN | EPOLLET; // edge triggered (not oneshot for the listen socket)
+
+	//
+	// kevent we are interested
+	// self->ev.data.ptr = self;
+	// self->ev.events = EPOLLIN | EPOLLET; // edge triggered (not oneshot for the listen socket)
+	//
+        //     intptr_t ident;         /* identifier for this event */
+        //     short     filter;       /* filter for event */
+        //     u_short   flags;        /* action flags for kqueue */
+        //     u_int     fflags;       /* filter flag value */
+        //     intptr_t  data;         /* filter data value */
+        //     void      *udata;       /* opaque user data identifier */
+	//
+	EV_SET(&self->ev, file_descriptor, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, self);
+
 	self->status = osx_tcp_Socket_INUSE;
 	self->listen.port = port;
 	self->callback = callback;
 	self->user_data = user_data;
 	self->start_time = start_time;
 }
+
 internal void
-osx_tcp_Socket_init_server(osx_tcp_Socket *self, osx_tcp_Socket *listen_socket, int file_descriptor,
-			     void *user_data, PlatformTCPCallback *callback, u64 start_time)
+osx_tcp_Socket_init_server(osx_tcp_Socket *self, osx_tcp_Socket *listen_socket, int file_descriptor, void *user_data, PlatformTCPCallback *callback, u64 start_time)
 {
 	Assert(self->status == osx_tcp_Socket_FREE);
 	self->file_descriptor = file_descriptor;
 	self->type = pt_TCP_SERVER_SOCKET;
-	self->ev.data.ptr = self;
-	self->ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+
+	// kevent we are interested
+	// self->ev.data.ptr = self;
+	// self->ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+        // self->ev = (struct kevent) { 0 };
+        // self->ev.ident = file_descriptor;
+        // self->ev.filter = EVFILT_READ;
+        // self->ev.udata = self;
+	//
+        //     intptr_t ident;         /* identifier for this event */
+        //     short     filter;       /* filter for event */
+        //     u_short   flags;        /* action flags for kqueue */
+        //     u_int     fflags;       /* filter flag value */
+        //     intptr_t  data;         /* filter data value */
+        //     void      *udata;       /* opaque user data identifier */
+	//
+	EV_SET(&self->ev, file_descriptor, EVFILT_READ, EV_ADD | EV_ENABLE | EV_ONESHOT, 0, 0, self);
+
 	self->server.listen_socket = listen_socket;
 	self->status = osx_tcp_Socket_INUSE;
 	self->callback = callback;
@@ -540,32 +573,22 @@ osx_tcp_Socket_init_server(osx_tcp_Socket *self, osx_tcp_Socket *listen_socket, 
 }
 
 internal void
-osx_tcp_Socket_init_client(osx_tcp_Socket *self, int file_descriptor, void *user_data,
-			     s32 port, char *hostname, PlatformTCPCallback *callback, u64 start_time)
+osx_tcp_Socket_init_client(osx_tcp_Socket *self, int file_descriptor, void *user_data, s32 port, char *hostname, PlatformTCPCallback *callback, u64 start_time)
 {
 	Assert(self->status == osx_tcp_Socket_FREE);
 	self->file_descriptor = file_descriptor;
 	self->type = pt_TCP_CLIENT_SOCKET;
-	self->ev.data.ptr = self;
-	self->ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+
+	// self->ev.data.ptr = self;
+	// self->ev.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
+	EV_SET(&self->ev, file_descriptor, EVFILT_READ, EV_ADD | EV_ONESHOT, 0, 0, self);
+
 	self->status = osx_tcp_Socket_INUSE;
 	self->callback = callback;
 	self->user_data = user_data;
 	self->start_time = start_time;
 }
 
-
-// internal void
-// osx_tcp_Socket_activate(osx_tcp_Socket *self, int fd, f64 start_time)
-// {
-// 	//TODO(llins): revise this one
-// 	Assert(self->file_descriptor == 0);
-// 	Assert(self->status == osx_tcp_Socket_FREE);
-// 	self->file_descriptor = fd;
-// 	self->start_time = start_time;
-// 	self->status = osx_tcp_Socket_INUSE;
-// }
-//
 internal void
 osx_tcp_Socket_close(osx_tcp_Socket *self)
 {
@@ -579,13 +602,13 @@ osx_tcp_Socket_close(osx_tcp_Socket *self)
 internal void
 osx_tcp_Engine_init(osx_tcp_Engine *self)
 {
-	/* create epoll object */
-	self->epoll_fd = epoll_create(osx_tcp_MAX_EVENTS);
-	Assert(self->epoll_fd);
+	/* create kqueue object */
+	self->kqueue_fd = kqueue();
+	Assert(self->kqueue_fd);
 
 	osx_tcp_Socket *prev = 0;
 	for (s32 i=0;i<ArrayCount(self->sockets);++i) {
-		liunx_tcp_Socket_init_empty(self->sockets + i, self, i);
+		osx_tcp_Socket_init_empty(self->sockets + i, self, i);
 		if (i < ArrayCount(self->sockets)-1) {
 			self->sockets[i].next = self->sockets + i + 1;
 		} else {
@@ -606,7 +629,7 @@ osx_tcp_Engine_init(osx_tcp_Engine *self)
 internal void
 osx_tcp_Engine_destroy(osx_tcp_Engine *self)
 {
-	Assert(self->epoll_fd);
+	Assert(self->kqueue_fd);
 	osx_tcp_Socket *it = self->active_sockets;
 	while (it) {
 		if (it->status == osx_tcp_Socket_INUSE) {
@@ -619,7 +642,7 @@ osx_tcp_Engine_destroy(osx_tcp_Engine *self)
 		}
 		it = it->next;
 	}
-	close(self->epoll_fd);
+	close(self->kqueue_fd);
 	char *p = (char*) self;
 	pt_fill(p, p +sizeof(osx_tcp_Engine), 0);
 }
@@ -775,15 +798,15 @@ osx_tcp_Engine_consume_listen_task(osx_tcp_Engine *self, osx_tcp_Task *task)
 		goto error;
 	}
 	/* initialize listen socket report */
-	f64 start_time = osx_osx_get_time();
+	f64 start_time = osx_linux_get_time();
 	listen_socket = osx_tcp_Engine_reserve_socket(self);
 	if (!listen_socket) {
 		printf("[osx_tcp_Engine_consume_tasks]: could not reserver socket\n");
 		Assert(listen_socket_fd);
 	}
 	osx_tcp_Socket_init_listen(listen_socket, listen_socket_fd, task->port, task->user_data, task->callback, start_time);
-	/* register into epoll */
-	osx_tcp_Socket_epoll_insert(listen_socket);
+	/* register into kqueue */
+	osx_tcp_Socket_kqueue_insert(listen_socket);
 
 	goto done;
 error:
@@ -810,7 +833,7 @@ osx_tcp_Engine_consume_client_task(osx_tcp_Engine *self, osx_tcp_Task *task)
 	// assume hostname
 
 	int client_socket_fd = -1;
-	f64 start_time = osx_osx_get_time();
+	f64 start_time = osx_linux_get_time();
 
 	// http://beej.us/guide/bgnet/output/html/singlepage/bgnet.html#getaddrinfo
 	struct addrinfo hints;
@@ -849,7 +872,7 @@ connect_ok:
 	/* set client to be nonblocking */
 	osx_tcp_set_nonblocking_fd(client_socket_fd);
 
-	/* register client socket fd into the epoll */
+	/* register client socket fd into the kqueue */
 	client_socket = osx_tcp_Engine_reserve_socket(self);
 	if (!client_socket) {
 		printf("[osx_tcp_Engine_consume_client_task]: could not reserve socket\n");
@@ -859,8 +882,8 @@ connect_ok:
 	osx_tcp_Socket_init_client(client_socket, client_socket_fd, task->user_data,
 				     task->port, task->client.hostname, task->callback,
 				     start_time);
-	/* register into epoll */
-	osx_tcp_Socket_epoll_insert(client_socket);
+	/* register into kqueue */
+	osx_tcp_Socket_kqueue_insert(client_socket);
 	goto done;
 error:
 	next_status = pt_TCP_SOCKET_ERROR;
@@ -942,17 +965,17 @@ osx_tcp_read_from_connection_and_dispatch(osx_tcp_Socket *socket)
 		}
 	}
 	if (done) {
-		f64 end_time = osx_osx_get_time();
+		f64 end_time = osx_linux_get_time();
 		printf("[SERVER] Closing Socket %d:%d on (active time: %fs)\n", socket->index, socket->file_descriptor, end_time - socket->start_time);
 		// printf ("Closed socket on descriptor %d\n",events[i].data.fd);
-		/* Closing the descriptor will make epoll remove it
+		/* Closing the descriptor will make kqueue remove it
 		   from the set of descriptors which are monitored. */
 		close(socket->file_descriptor);
 		osx_tcp_Socket_close(socket);
 	} else {
 		/* NOTE(llins): from what I read, system call here is thread safe */
 		printf("[SERVER] Retriggering Socket %d:%d\n", socket->index, socket->file_descriptor);
-		osx_tcp_Socket_epoll_retrigger(socket);
+		osx_tcp_Socket_kqueue_retrigger(socket);
 	}
 }
 
@@ -969,19 +992,21 @@ osx_tcp_Engine_process_events(osx_tcp_Engine *tcp, pt_WorkQueue *work_queue)
 	/* register listen and client sockets coming as registered tasks */
 	osx_tcp_Engine_consume_tasks(tcp);
 	/* wait for events on sockets beign tracked for at most osx_tcp_TIMEOUT */
-	int num_fd = epoll_wait(tcp->epoll_fd, tcp->events, ArrayCount(tcp->events), osx_tcp_TIMEOUT);
+	// int num_fd = kqueue_wait(tcp->kqueue_fd, tcp->events, ArrayCount(tcp->events), osx_tcp_TIMEOUT);
+	static const struct timespec timeout = { .tv_sec= 0, .tv_nsec = osx_tcp_TIMEOUT };
+	int num_fd = kevent(tcp->kqueue_fd, 0, 0, tcp->events, ArrayCount(tcp->events), &timeout);
 	/* for each socket with some event available process all what
 	 * is available (edge triggered)
 	 *
 	 * for events on listen sockets:
-	 *     use the same thread to register new listen sockets to epoll
+	 *     use the same thread to register new listen sockets to kqueue
 	 *
 	 * for events on client or server sockets:
 	 *     use the same thread to run the receive callbacks if work_queue is null
 	 *     dispatch callbacks to work queue
 	 */
 	for (int i=0; i<num_fd; ++i) {
-		osx_tcp_Socket *socket = (osx_tcp_Socket*) tcp->events[i].data.ptr;
+		osx_tcp_Socket *socket = (osx_tcp_Socket*) tcp->events[i].udata;
 		if (socket->type == pt_TCP_LISTEN_SOCKET) {
 			pf_BEGIN_BLOCK("accepting_connection");
 			// try accepetping one or more incoming connections
@@ -1000,14 +1025,14 @@ osx_tcp_Engine_process_events(osx_tcp_Engine *tcp, pt_WorkQueue *work_queue)
 				Assert(new_socket_fd >= 0);
 				osx_tcp_set_nonblocking_fd(new_socket_fd);
 				osx_tcp_Socket *new_socket = osx_tcp_Engine_reserve_socket(tcp);
-				f64 start_time = osx_osx_get_time();
+				f64 start_time = osx_linux_get_time();
 				printf("[SERVER] New Socket %d:%d from %s:%d\n",
 				       new_socket->index,
 				       new_socket_fd,
 				       inet_ntoa(new_socket_addr.sin_addr),
 				       (int) new_socket_addr.sin_port);
 				osx_tcp_Socket_init_server(new_socket, socket, new_socket_fd, socket->user_data, socket->callback, start_time);
-				osx_tcp_Socket_epoll_insert(new_socket);
+				osx_tcp_Socket_kqueue_insert(new_socket);
 			}
 
 			pf_END_BLOCK();
@@ -1040,7 +1065,9 @@ PLATFORM_TCP_WRITE(osx_tcp_write)
 	while (1) {
 		// https://stackoverflow.com/questions/108183/how-to-prevent-sigpipes-or-handle-them-properly
 		// s64 count = write(osx_socket->file_descriptor, buffer + offset, length - offset);
-		s64 count = send(osx_socket->file_descriptor, buffer + offset, length - offset, MSG_NOSIGNAL );
+		// MSG_NOSIGPIPE
+		// s64 count = send(osx_socket->file_descriptor, buffer + offset, length - offset, MSG_NOSIGNAL );
+		s64 count = send(osx_socket->file_descriptor, buffer + offset, length - offset, SO_NOSIGPIPE);
 
 		if (count == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -1111,7 +1138,6 @@ PLATFORM_TCP_SERVE(osx_tcp_serve)
 	osx_tcp_Engine_produce_listen_task(osx_tcp_engine, port, user_data, callback, feedback);
 }
 
-
 // #define PLATFORM_TCP_CLIENT(name) void name(pt_TCP *tcp, s32 port, char *hostname, void *user_data, PlatformTCPCallback *callback, s32 *status)
 internal
 PLATFORM_TCP_CLIENT(osx_tcp_client)
@@ -1124,17 +1150,6 @@ PLATFORM_TCP_CLIENT(osx_tcp_client)
 }
 
 // initialize osx platform to PlatformAPI
-
-
-#endif
-
-
-
-
-
-
-
-
 
 internal void
 osx_init_platform(PlatformAPI* p)
@@ -1151,9 +1166,9 @@ osx_init_platform(PlatformAPI* p)
 	p->thread_sleep             = osx_thread_sleep;
 
 	/* tcp support is not implemented on OSX */
-	p->tcp_create               = 0;
-	p->tcp_serve                = 0;
-	p->tcp_write                = 0;
-	p->tcp_process_events       = 0;
-	p->tcp_client               = 0;
+	p->tcp_create               = osx_tcp_create;
+	p->tcp_serve                = osx_tcp_serve;
+	p->tcp_write                = osx_tcp_write;
+	p->tcp_process_events       = osx_tcp_process_events;
+	p->tcp_client               = osx_tcp_client;
 }

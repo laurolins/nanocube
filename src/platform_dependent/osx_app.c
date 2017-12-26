@@ -166,7 +166,7 @@ main(int num_args, char** args)
 	FilePath executable_path, dll_path;
 	app_state.platform.executable_path(&executable_path);
 	FilePath_copy(&dll_path, &executable_path);
-	FilePath_set_name_cstr(&dll_path, "libnanocube_app.dylib");
+	FilePath_set_name_cstr(&dll_path, "libnanocube_app.so");
 
 	OSXApplicationCode app_code = osx_load_application_code(dll_path.full_path, &print);
 

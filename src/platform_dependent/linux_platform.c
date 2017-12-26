@@ -436,7 +436,7 @@ linux_tcp_set_nonblocking_fd(int fd)
 // linux_tcp_Socket
 
 internal void
-liunx_tcp_Socket_init_empty(linux_tcp_Socket *self, linux_tcp_Engine *tcp, s32 index)
+linux_tcp_Socket_init_empty(linux_tcp_Socket *self, linux_tcp_Engine *tcp, s32 index)
 {
 	//TODO(llins): revise this one
 	pt_filln((char*) self, sizeof(linux_tcp_Socket), 0);
@@ -540,7 +540,7 @@ linux_tcp_Engine_init(linux_tcp_Engine *self)
 
 	linux_tcp_Socket *prev = 0;
 	for (s32 i=0;i<ArrayCount(self->sockets);++i) {
-		liunx_tcp_Socket_init_empty(self->sockets + i, self, i);
+		linux_tcp_Socket_init_empty(self->sockets + i, self, i);
 		if (i < ArrayCount(self->sockets)-1) {
 			self->sockets[i].next = self->sockets + i + 1;
 		} else {
