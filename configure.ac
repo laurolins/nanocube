@@ -50,6 +50,7 @@ AM_CONDITIONAL([WINDOWS], [test "$build_windows" = "yes"])
 
 # Checks for programs.
 AC_PROG_CC
+AM_PROG_CC_C_O
 # the macro AC_PROG_CPP seems to find the default compiler (gcc or clang)
 #AC_PROG_CPP
 AM_PROG_AR
