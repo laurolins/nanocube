@@ -1256,7 +1256,7 @@ nix_tcp_Engine_consume_client_task(nix_tcp_Engine *self, nix_tcp_Task *task)
 	f64 start_time = nix_get_time();
 
 	// http://beej.us/guide/bgnet/output/html/singlepage/bgnet.html#getaddrinfo
-	struct addrinfo hints;
+	struct addrinfo hints = { 0 };
 	hints.ai_family   = AF_UNSPEC;   // don't care IPV4 or IPV6
 	hints.ai_socktype = SOCK_STREAM; // TCP stream socket
 	hints.ai_flags    = AI_PASSIVE;  // fill in my IP for me
@@ -1268,6 +1268,7 @@ nix_tcp_Engine_consume_client_task(nix_tcp_Engine *self, nix_tcp_Task *task)
 	int status = getaddrinfo(task->client.hostname, port_string, &hints, &servinfo);
 	if (status != 0) {
 		printf("[nix_tcp_Engine_consume_client_task] Error: getaddrinfo()\n");
+		printf("     %s\n", gai_strerror(status));
 		goto error;
 	}
 	s32 option = 0;
