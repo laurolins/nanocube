@@ -4,7 +4,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","timeseries");
+    d3.select(id).attr("class","timeseries resize-drag");
     
     d3.select(id).on("divresize",function(){ widget.redraw(); });
 
