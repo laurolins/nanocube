@@ -1,6 +1,6 @@
-# API (v4+)
+# API for Nanocubes v4 (or APIv4)
 
-We will show the query API for Nanocubes using the crime50k example.
+We will show the query APIv4 for Nanocubes using the crime50k example.
 In order to create such a nanocube and serve it via http, we
 run the following script
 
