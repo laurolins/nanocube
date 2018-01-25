@@ -234,9 +234,10 @@ coordinate of the cells grow bottom-up, Chicago is above the Equator and
 ## type
 
 If we want to count the number of crimes by `type` of crime, we run the query
-below for either numeric or textual categories.
+below and retrieve the categories either by number (category id if you will) or
+by category name.
 ```url
-# numerical
+# by number
 http://localhost:51234/q(crimes.b('type',dive(1)))
 ```
 yields the following json
@@ -268,7 +269,7 @@ yields the following json
 ```
 using the hint `'name'` we get path aliases (*ie* the category names)
 ```url
-# numerical
+# by name
 http://localhost:51234/q(crimes.b('type',dive(1)),'name')
 ```
 results in
