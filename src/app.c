@@ -273,6 +273,8 @@ of that dimension.
 
 ```
 b('type',dive(1),'text')
+b('location',dive(p(2,1,2),8),'img8')
+b('location',dive(p(2,1,2),8),'img11')
 ```
 
 ### Interval

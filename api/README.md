@@ -130,7 +130,7 @@ we defined in `crime50k.map` is simply a count of records.
 ]
 ```
 
-## location (loc1)
+## location
 
 The quadtree convention we use is the following:
 ```
@@ -194,227 +194,112 @@ which yields the following text
                              2,1,2,0,0,0,0,1,3,2,2                     5460.000000
                              2,1,2,0,0,0,0,1,3,2,3                     7609.000000
 ```
+If instead of the path we just want the local (x,y) coordinate of the 256x256 grid,
+we can use the hint `img8` as the last parameter of the binding `.b(...)`.
+```
+http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img8'))
+```
+We now get coordinates `x` and `y` both in {0,1,...,255}
+```
+                                          location                           count
+                                              11,7                      272.000000
+                                              12,5                      416.000000
+                                              13,5                    12268.000000
+                                              14,5                      224.000000
+                                              12,6                     6838.000000
+                                              13,6                    16913.000000
+                                              12,7                     5460.000000
+                                              13,7                     7609.000000
+```
+if we want the global coord of the grid we generated we can use the hint 'img11':
+```
+http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img11'))
+```
+We now get coordinates `x` and `y` both in {0,1,...,2047}. Note that the `y`
+coordinate of the cells grow bottom-up, Chicago is above the Equator and
+{1285,1286,1287} are in the upper half of 2048 or 2^11.
 
-
-
-
-## total
-
-
-
-# Crimes Example
-
-We will show the query API for Nanocubes using the crime50k example.
-In order to create such a nanocube and serve it via http, we
-run the following script
-
-```shell
-#
-# (0) go the the $NANOCUBE/data folder
-#
-# (1) create the nanocube index file 'crime50k.nanocube'
-#
-nanocube create <(zcat crime50k.csv.gz) crime50k.map crime50k.nanocube
-#
-# (2) serve the index via http on port 51234 using the alias 'crimes'
-#
-nanocube serve 51234 crimes=crime50k.nanocube
+```
+                                          location                           count
+                                          523,1287                      272.000000
+                                          524,1285                      416.000000
+                                          525,1285                    12268.000000
+                                          526,1285                      224.000000
+                                          524,1286                     6838.000000
+                                          525,1286                    16913.000000
+                                          524,1287                     5460.000000
+                                          525,1287                     7609.000000
 ```
 
-## schema
+## type
 
-To serve the schemas of all the indices being served in port 51234 of
-localhost we use:
-```url
-http://localhost:51234/schema()
-```
-which gives as a result a `json` array with one entry: the schema of
-the crimes index:
+If we want to count the number of crimes by `type` of crime, we run the query
+below for either numeric or textual categories.
 ```json
+# numerical categorical paths
+http://localhost:51234/q(crimes.b('type',dive(1)))
+# yields
 [
 	{
-		"type":"schema",
-		"name":"crimes",
-		"index_dimensions":[
+		"type":"table",
+		"numrows":31,
+		"index_columns":[
 			{
-				"index":0,
-				"name":"location",
-				"bits_per_level":2,
-				"num_levels":25,
-				"hint":"spatial",
-				"aliases":{
-				}
-			},
-			{
-				"index":1,
 				"name":"type",
-				"bits_per_level":8,
-				"num_levels":1,
-				"hint":"categorical",
-				"aliases":{
-					"11":"CRIMINAL TRESPASS",
-					"8":"ROBBERY",
-					"24":"NON-CRIMINAL",
-					"27":"OBSCENITY",
-					"30":"NON-CRIMINAL (SUBJECT SPECIFIED)",
-					"3":"BATTERY",
-					"26":"GAMBLING",
-					"23":"INTIMIDATION",
-					"2":"THEFT",
-					"4":"BURGLARY",
-					"17":"LIQUOR LAW VIOLATION",
-					"29":"CONCEALED CARRY LICENSE VIOLATION",
-					"21":"PROSTITUTION",
-					"16":"CRIM SEXUAL ASSAULT",
-					"12":"WEAPONS VIOLATION",
-					"20":"SEX OFFENSE",
-					"7":"DECEPTIVE PRACTICE",
-					"10":"OTHER OFFENSE",
-					"25":"PUBLIC INDECENCY",
-					"14":"PUBLIC PEACE VIOLATION",
-					"15":"INTERFERENCE WITH PUBLIC OFFICER",
-					"22":"ARSON",
-					"1":"CRIMINAL DAMAGE",
-					"13":"KIDNAPPING",
-					"5":"MOTOR VEHICLE THEFT",
-					"0":"NARCOTICS",
-					"18":"HOMICIDE",
-					"9":"ASSAULT",
-					"28":"OTHER NARCOTIC VIOLATION",
-					"6":"OFFENSE INVOLVING CHILDREN",
-					"19":"STALKING"
-				}
-			},
-			{
-				"index":2,
-				"name":"time",
-				"bits_per_level":1,
-				"num_levels":18,
-				"hint":"temporal|2000-01-01T06:00:00Z_3600s",
-				"aliases":{
-				}
+				"hint":"none",
+				"values_per_row":1,
+				"values":[
+					0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
+				]
 			}
 		],
-		"measure_dimensions":[
+		"measure_columns":[
 			{
-				"order":1,
 				"name":"count",
-				"type":"u32"
+				"values":[
+					5742.000000,4660.000000,11367.000000,8990.000000,2933.000000,2226.000000,456.000000,2190.000000,2132.000000,2629.000000,3278.000000,1429.000000,489.000000,46.000000,441.000000,229.000000,181.000000,69.000000,69.000000,20.000000,119.000000,211.000000,63.000000,21.000000,1.000000,2.000000,2.000000,1.000000,2.000000,1.000000,1.000000
+				]
+			}
+		]
+	}
+]
+# alias for the paths
+http://localhost:51234/q(crimes.b('type',dive(1)),'names')
+[
+	{
+		"type":"table",
+		"numrows":31,
+		"index_columns":[
+			{
+				"name":"type",
+				"hint":"name",
+				"values_per_row":1,
+				"values":[
+					"NARCOTICS","CRIMINAL DAMAGE","THEFT","BATTERY","BURGLARY","MOTOR VEHICLE THEFT","OFFENSE INVOLVING CHILDREN","DECEPTIVE PRACTICE","ROBBERY","ASSAULT","OTHER OFFENSE","CRIMINAL TRESPASS","WEAPONS VIOLATION","KIDNAPPING","PUBLIC PEACE VIOLATION","INTERFERENCE WITH PUBLIC OFFICER","CRIM SEXUAL ASSAULT","LIQUOR LAW VIOLATION","HOMICIDE","STALKING","SEX OFFENSE","PROSTITUTION","ARSON","INTIMIDATION","NON-CRIMINAL","PUBLIC INDECENCY","GAMBLING","OBSCENITY","OTHER NARCOTIC VIOLATION","CONCEALED CARRY LICENSE VIOLATION","NON-CRIMINAL (SUBJECT SPECIFIED)"
+				]
+			}
+		],
+		"measure_columns":[
+			{
+				"name":"count",
+				"values":[
+					5742.000000,4660.000000,11367.000000,8990.000000,2933.000000,2226.000000,456.000000,2190.000000,2132.000000,2629.000000,3278.000000,1429.000000,489.000000,46.000000,441.000000,229.000000,181.000000,69.000000,69.000000,20.000000,119.000000,211.000000,63.000000,21.000000,1.000000,2.000000,2.000000,1.000000,2.000000,1.000000,1.000000
+				]
 			}
 		]
 	}
 ]
 ```
 
-## totals
+## branch on the "crime" type
 
-In order to the total number of crimes we send the query:
-```url
-http://localhost:51234/q(crimes)
-```
-result
-```json
-
-[
-	{
-		"type":"schema",
-		"name":"crimes",
-		"index_dimensions":[
-			{
-				"index":0,
-				"name":"location",
-				"bits_per_level":2,
-				"num_levels":25,
-				"hint":"spatial",
-				"aliases":{
-				}
-			},
-			{
-				"index":1,
-				"name":"type",
-				"bits_per_level":8,
-				"num_levels":1,
-				"hint":"categorical",
-				"aliases":{
-					"11":"CRIMINAL TRESPASS",
-					"8":"ROBBERY",
-					"24":"NON-CRIMINAL",
-					"27":"OBSCENITY",
-					"30":"NON-CRIMINAL (SUBJECT SPECIFIED)",
-					"3":"BATTERY",
-					"26":"GAMBLING",
-					"23":"INTIMIDATION",
-					"2":"THEFT",
-					"4":"BURGLARY",
-					"17":"LIQUOR LAW VIOLATION",
-					"29":"CONCEALED CARRY LICENSE VIOLATION",
-					"21":"PROSTITUTION",
-					"16":"CRIM SEXUAL ASSAULT",
-					"12":"WEAPONS VIOLATION",
-					"20":"SEX OFFENSE",
-					"7":"DECEPTIVE PRACTICE",
-					"10":"OTHER OFFENSE",
-					"25":"PUBLIC INDECENCY",
-					"14":"PUBLIC PEACE VIOLATION",
-					"15":"INTERFERENCE WITH PUBLIC OFFICER",
-					"22":"ARSON",
-					"1":"CRIMINAL DAMAGE",
-					"13":"KIDNAPPING",
-					"5":"MOTOR VEHICLE THEFT",
-					"0":"NARCOTICS",
-					"18":"HOMICIDE",
-					"9":"ASSAULT",
-					"28":"OTHER NARCOTIC VIOLATION",
-					"6":"OFFENSE INVOLVING CHILDREN",
-					"19":"STALKING"
-				}
-			},
-			{
-				"index":2,
-				"name":"time",
-				"bits_per_level":1,
-				"num_levels":18,
-				"hint":"temporal|2000-01-01T06:00:00Z_3600s",
-				"aliases":{
-				}
-			}
-		],
-		"measure_dimensions":[
-			{
-				"order":1,
-				"name":"count",
-				"type":"u32"
-			}
-		]
-	}
-]
+{ "layers":[ "anchor:crime" ], "root":{ "children":[ { "path":[21], "val":2 }, { "path":[20], "val":456 }, { "path":[19], "val":1 }, { "path":[18], "val":1 }, { "path":[17], "val":1 }, { "path":[16], "val":5742 }, { "path":[15], "val":2226 }, { "path":[14], "val":69 }, { "path":[13], "val":46 }, { "path":[12], "val":21 }, { "path":[11], "val":229 }, { "path":[10], "val":69 }, { "path":[0], "val":63 }, { "path":[1], "val":2629 }, { "path":[2], "val":8990 }, { "path":[3], "val":2933 }, { "path":[4], "val":1 }, { "path":[5], "val":4660 }, { "path":[6], "val":1429 }, { "path":[7], "val":181 }, { "path":[8], "val":2190 }, { "path":[9], "val":2 }, { "path":[22], "val":3278 }, { "path":[23], "val":211 }, { "path":[24], "val":2 }, { "path":[25], "val":441 }, { "path":[26], "val":2132 }, { "path":[27], "val":119 }, { "path":[28], "val":20 }, { "path":[29], "val":11367 }, { "path":[30], "val":489 } ] } }
 ```
 
 
 
 
-To illustrate the internals of a nanocube, we use the example in Figure 2 of the
-original [Nanocubes technical paper](http://nanocubes.net/assets/pdf/nanocubes_paper.pdf).
-
-```shell
-# using permutation (location, device)
-nanocube paper.csv paper_location_device.map paper_location_device.nanocube
-# using permutation (device, location)
-nanocube paper.csv paper_device_location.map paper_device_location.nanocube
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
+## location (loc2)
 
 
 
