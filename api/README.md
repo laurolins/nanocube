@@ -340,6 +340,30 @@ results in
                  CONCEALED CARRY LICENSE VIOLATION                        1.000000
                   NON-CRIMINAL (SUBJECT SPECIFIED)                        1.000000
 ```
+If we want to simply get the number of crimes of a particular type, let's say
+`THEFT` we can can request it either by the theft corresponding number (a path
+of length 1 described in the schema) or by name
+```url
+#
+# by number, since by the [schema](README.md#schema) query above
+# THEFT is an alias for the number 2 (note that there can be aliases
+# to any path in a hierarchy, in case of categorical dimension which
+# are trees of height 2, a path is simply a number).
+#
+#        ...
+#        "23":"INTIMIDATION",
+#        "2":"THEFT",
+#        "4":"BURGLARY",
+#        ...
+#
+http://localhost:51234/q(crimes.b('type',p(2)))
+#
+# by name, when we find a string in the TARGET of a binding
+# we assume it is an alias and we process accordingly
+#        ...
+http://localhost:51234/q(crimes.b('type','THEFT'))
+```
+
 
 ## time
 
