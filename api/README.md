@@ -195,7 +195,7 @@ which yields the following text
                              2,1,2,0,0,0,0,1,3,2,3                     7609.000000
 ```
 If instead of the path we just want the local (x,y) coordinate of the 256x256 grid,
-we can use the hint `img8` as the last parameter of the binding `.b(...)`.
+we can use the hint `'img8'` as the last parameter of the binding `.b(...)`.
 ```
 http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img8'))
 ```
@@ -211,7 +211,7 @@ We now get coordinates `x` and `y` both in {0,1,...,255}
                                               12,7                     5460.000000
                                               13,7                     7609.000000
 ```
-if we want the global coord of the grid we generated we can use the hint 'img11':
+if we want the global coord of the grid we generated we can use the hint `'img11'`:
 ```
 http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img11'))
 ```
@@ -266,7 +266,7 @@ yields the following json
 	}
 ]
 ```
-using the hint `name` we get path aliases (*ie* the category names)
+using the hint `'name'` we get path aliases (*ie* the category names)
 ```url
 # numerical
 http://localhost:51234/q(crimes.b('type',dive(1)),'name')
