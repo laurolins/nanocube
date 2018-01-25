@@ -25,7 +25,7 @@ To illustrate the internals of a nanocube, we use the example from Figure 2 from
 original [Nanocubes technical paper](http://nanocubes.net/assets/pdf/nanocubes_paper.pdforiginal paper).
 
 ```shell
-nanocube paper_example.psv paper-example.map paper-example.nanocube
+nanocube paper_example.csv paper-example.map paper-example.nanocube
 ```
 
 
