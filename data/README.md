@@ -21,7 +21,7 @@ zcat crime50k.csv.gz | nanocube -stdin crime50k.map crime50k.nanocube
 
 ## Paper Example
 
-To illustrate the internals of a nanocube, we use the example from Figure 2 from the
+To illustrate the internals of a nanocube, we use the example in Figure 2 of the
 original [Nanocubes technical paper](http://nanocubes.net/assets/pdf/nanocubes_paper.pdf).
 
 ```shell
