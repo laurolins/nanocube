@@ -1,4 +1,4 @@
-# Crimes Example
+# API (v4+)
 
 We will show the query API for Nanocubes using the crime50k example.
 In order to create such a nanocube and serve it via http, we
