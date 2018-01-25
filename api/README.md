@@ -19,13 +19,14 @@ nanocube serve 51234 crimes=crime50k.nanocube
 
 ## schema
 
-To serve the schemas of all the indices being served in port 51234 of
-localhost we use:
+To serve the schemas of all the Nanocube indices being served in port 51234 of
+localhost we send a GET request to:
 ```url
 http://localhost:51234/schema()
 ```
-which gives as a result a `json` array with one entry: the schema of
-the crimes index:
+Note that in our case we only have one Nanocube index being served for the
+crime50k example. The result of the request above is a `json` array with 
+one entry: the schema of the crimes index:
 ```json
 [
 	{
