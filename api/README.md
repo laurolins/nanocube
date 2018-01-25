@@ -102,9 +102,10 @@ the crimes index:
 ]
 ```
 
-## totals
+## total
 
-In order to the total number of crimes we send the query:
+In order to get the total number of crimes indexed in `crimes` we
+send the query `q(crimes)`:
 ```url
 http://localhost:51234/q(crimes)
 ```
@@ -128,6 +129,64 @@ we defined in `crime50k.map` is simply a count of records.
 	}
 ]
 ```
+
+## location (loc1)
+
+The quadtree convention we use is the following:
+```
+0 bottom-left  quadrant (in the first split of the mercator projection contains South-America)
+1 bottom-right quadrant (in the first split of the mercator projection contains Africa and South Asia)
+2 top-left     quadrant (in the first split of the mercator projection contains North America)
+3 top-right    quadrant (in the first split of the mercator projection contains Europe and North Asia)
+```
+If we want to count the number of crimes in a 256x256 quadtree-aligned grid
+of the sub-cell (top-left, bottom-right, top-left) or (2,1,2), we run the query
+below. Note that the cell (2,1,2) contains Chicago.
+```
+http://localhost:29512/q(crimes.b('location',dive(p(2,1,2),8)))
+```
+The result is 
+```json
+[
+	{
+		"type":"table",
+		"numrows":8,
+		"index_columns":[
+			{
+				"name":"location",
+				"hint":"none",
+				"values_per_row":11,
+				"values":[
+					2,1,2,0,0,0,0,1,2,3,3,2,1,2,0,0,0,0,1,3,0,2,2,1,2,0,0,0,0,1,3,0,3,2,1,2,0,0,0,0,1,3,1,2,2,1,2,0,0,0,0,1,3,2,0,2,1,2,0,0,0,0,1,3,2,1,2,1,2,0,0,0,0,1,3,2,2,2,1,2,0,0,0,0,1,3,2,3
+				]
+			}
+		],
+		"measure_columns":[
+			{
+				"name":"count",
+				"values":[
+					272.000000,416.000000,12268.000000,224.000000,6838.000000,16913.000000,5460.000000,7609.000000
+				]
+			}
+		]
+	}
+]
+```
+
+Note that the way the resulting grid cells are described are as paths. Since we
+subdivided the cell (2,1,2) at depth 3 more 8 times (the depth of the dive), we
+get that each grid cell is described by a path of 11 subdivisions. So the way
+to read the result above is to split location 'values' array at every 11-th entry.
+The final correspondence can also be better seen by generating the above resul in
+text format.
+```
+http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8)))
+```
+
+
+## total
+
+
 
 # Crimes Example
 
@@ -359,7 +418,7 @@ How many records in the geo-location table fall into a certain spatial
 bin? Or is of type `theft`? By efficiently pre-computing and storing
 counts or measures, nanocube can handle a good amount of records in a
 few dimensions (e.g. one or two spatial dimensions, one temporal dimension,
-a few categorical dimensions) to solve queries at interactive rates. 
+a few categorical dimensions) to solve queries at interactive rates.
 
 # Paths
 
@@ -480,7 +539,7 @@ http://localhost:29512/count.a("crime",dive([],1))
 ```
 
 ```
-## set target 
+## set target
 http://localhost:29512/count.r("crime",set([1],[3]))
 
 { "layers":[  ], "root":{ "val":5562 } }
@@ -561,12 +620,12 @@ three functions are avaiable on the queries: `.json()`, `.text()`,
 <!-- sophia@oreilly.com -->
 
 <!--     server.port = options.query_port.getValue(); -->
-    
+   
 <!--     bool json        = true; -->
 <!--     bool binary      = false; -->
 <!--     bool compression = true; -->
 <!--     bool plain       = false; -->
-    
+   
 <!--     auto json_query_handler    = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, json,       plain); -->
 <!--     auto binary_query_handler  = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, binary,     plain); -->
 <!--     auto json_tquery_handler   = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, json,   plain); -->
@@ -585,7 +644,7 @@ three functions are avaiable on the queries: `.json()`, `.text()`,
 <!--     auto graphviz_handler      = std::bind(&NanocubeServer::serveGraphViz, this, std::placeholders::_1); -->
 <!--     auto timing_handler        = std::bind(&NanocubeServer::serveTiming, this, std::placeholders::_1); -->
 <!--     auto tile_handler         = std::bind(&NanocubeServer::serveTile, this, std::placeholders::_1); -->
-    
+   
 
 
 
@@ -647,7 +706,7 @@ How many records in the geo-location table fall into a certain spatial
 bin? Or is of type `theft`? By efficiently pre-computing and storing
 counts or measures, nanocube can handle a good amount of records in a
 few dimensions (e.g. one or two spatial dimensions, one temporal dimension,
-a few categorical dimensions) to solve queries at interactive rates. 
+a few categorical dimensions) to solve queries at interactive rates.
 
 # Paths
 
@@ -768,7 +827,7 @@ http://localhost:29512/count.a("crime",dive([],1))
 ```
 
 ```
-## set target 
+## set target
 http://localhost:29512/count.r("crime",set([1],[3]))
 
 { "layers":[  ], "root":{ "val":5562 } }
@@ -849,12 +908,12 @@ three functions are avaiable on the queries: `.json()`, `.text()`,
 <!-- sophia@oreilly.com -->
 
 <!--     server.port = options.query_port.getValue(); -->
-    
+   
 <!--     bool json        = true; -->
 <!--     bool binary      = false; -->
 <!--     bool compression = true; -->
 <!--     bool plain       = false; -->
-    
+   
 <!--     auto json_query_handler    = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, json,       plain); -->
 <!--     auto binary_query_handler  = std::bind(&NanocubeServer::serveQuery, this, std::placeholders::_1, binary,     plain); -->
 <!--     auto json_tquery_handler   = std::bind(&NanocubeServer::serveTimeQuery, this, std::placeholders::_1, json,   plain); -->
@@ -873,7 +932,7 @@ three functions are avaiable on the queries: `.json()`, `.text()`,
 <!--     auto graphviz_handler      = std::bind(&NanocubeServer::serveGraphViz, this, std::placeholders::_1); -->
 <!--     auto timing_handler        = std::bind(&NanocubeServer::serveTiming, this, std::placeholders::_1); -->
 <!--     auto tile_handler         = std::bind(&NanocubeServer::serveTile, this, std::placeholders::_1); -->
-    
+   
 
 
 
