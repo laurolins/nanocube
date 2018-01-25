@@ -13,7 +13,7 @@ type1           q(crimes.b('type',dive(1)))
 type1n          q(crimes.b('type',dive(1),'name'))
 type1nt         format('text');q(crimes.b('type',dive(1),'name'))
 time1intseq     q(crimes.b('time',intseq(480,24,10,24)))
-time1timeseries q(crimes.b('time',timeseries('2013-12-01',24*3600,10,24*3600)))
+time1timeseries q(crimes.b('time',timeseries('2013-12-21T00:00-06',24*3600,10,24*3600)))
 END
 
 prefix="http://localhost:51234"

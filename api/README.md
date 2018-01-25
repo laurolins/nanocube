@@ -426,7 +426,42 @@ The result of the `'intseq'` query above is
 ]
 ```
 
-
+While we can get to query calendar time series using `'intseq'`, there is a
+more convenient way to do it using `'timeseries'`:
+```
+#
+# Usage timeseries: timeseries(BASE_DATE,WIDTH_IN_SECONDS,COUNT[,STRIDE_IN_SECONDS])
+#
+http://localhost:51234/q(crimes.b('time',timeseries('2013-12-21T00:00-06',24*3600,10,24*3600)))
+http://localhost:51234/q(crimes.b('time',timeseries('2013-12-21T00:00-06',24*3600,10)))
+```
+The result is the same as the previous `'intseq'` version:
+```json
+[
+	{
+		"type":"table",
+		"numrows":10,
+		"index_columns":[
+			{
+				"name":"time",
+				"hint":"none",
+				"values_per_row":1,
+				"values":[
+					0,1,2,3,4,5,6,7,8,9
+				]
+			}
+		],
+		"measure_columns":[
+			{
+				"name":"count",
+				"values":[
+					762.000000,724.000000,660.000000,515.000000,410.000000,584.000000,713.000000,712.000000,704.000000,617.000000
+				]
+			}
+		]
+	}
+]
+```
 
 
 
