@@ -341,11 +341,88 @@ results in
 
 ## time
 
-```
-http://localhost:51234/format('text');q(crimes.b('time',interval_sequence(480,24,10)))
-```
+Assuming a dimension of a nanocube is a binary tree, we can get aggregate values
+for a sequence of fixed width (in the finest resolution of the tree) using the
+`'intseq'` *target*.
 
-
+```
+#
+# Usage intseq: intseq(OFFSET,WIDTH,COUNT[,STRIDE])
+#
+# In the example of crime50k the 'time' dimension was specified in
+# the .map file as
+#
+# index_dimension('time',                         # dimension name
+#                 input('Date'),                  # .csv column wher the input date of the record is specified
+#                 time(16,                        # binary tree with 16 levels (slots 0 to 65535)
+#                    '2013-12-01T00:00:00-06:00', # offset 0 corresponds to 0 hour of Dec 1, 2013 at CST (Central Standard Time)
+#                    3600,                        # finest time bin corresponds to 1 hour (or 3600 secs)
+#                    6*60                         # add 360 minutes or 6 hoursto to all input values since input comes as
+#                                                 # if it is UTC while it is actually CST Central Standard Time
+#                   ));
+#
+# So the time bin semantic is the following: there are 16 levels in the binary
+# tree which corresponds, in its finest layer to the numbers {0,1,...,65535}.
+# Each of these numbers correspond to one hour aggregate of date (ie.
+# 3600 secs). Tying back these (fine time resolution) numbers to the calendar, we
+# have the following correspondence:
+#
+#     time interval                                             finest bin
+#     [2013-12-01T00:00:00-06:00,2013-12-01T00:00:00-06:00)     0
+#     [2013-12-01T00:00:01-06:00,2013-12-01T01:00:00-06:00)     1
+#     [2013-12-01T00:00:02-06:00,2013-12-01T02:00:00-06:00)     2
+#     [2013-12-01T00:00:03-06:00,2013-12-01T03:00:00-06:00)     3
+#     ...
+#     [2013-12-21T00:00:03-06:00,2013-12-01T00:00:00-06:00)     480 (is 20 days later)
+#     ...
+#
+# if we want to query 10 days of daily aggregates starting at the 20th day from
+# the 0 time bin, we would like to aggregate
+#
+#     [480 + 00 * 24, 480 + 01 * 24)
+#     [480 + 01 * 24, 480 + 02 * 24)
+#     ...
+#     [480 + 09 * 24, 480 + 10 * 24)
+#
+# we achieve that by setting
+#
+#     OFFSET = 480
+#     WIDTH  = 24
+#     COUNT  = 10
+#     STRIDE = 24  (we can ommit STRIDE when it is the same as the WIDTH)
+#
+# so the query we wan here can be one of the two below
+#
+http://localhost:51234/q(crimes.b('time',intseq(480,24,10,24)))
+http://localhost:51234/q(crimes.b('time',intseq(480,24,10)))
+```
+The result of the `'intseq'` query above is 
+```json
+[
+	{
+		"type":"table",
+		"numrows":10,
+		"index_columns":[
+			{
+				"name":"time",
+				"hint":"none",
+				"values_per_row":1,
+				"values":[
+					0,1,2,3,4,5,6,7,8,9
+				]
+			}
+		],
+		"measure_columns":[
+			{
+				"name":"count",
+				"values":[
+					762.000000,724.000000,660.000000,515.000000,410.000000,584.000000,713.000000,712.000000,704.000000,617.000000
+				]
+			}
+		]
+	}
+]
+```
 
 
 

@@ -1310,6 +1310,41 @@ np_FUNCTION_HANDLER(nv_function_interval_sequence)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
+np_FUNCTION_HANDLER(nv_function_interval_sequence_with_stride)
+{
+	Assert(params_end - params_begin == 4);
+
+	np_TypeValue *base_value_type   = params_begin;
+	np_TypeValue *width_value_type  = params_begin + 1;
+	np_TypeValue *count_value_type  = params_begin + 2;
+	np_TypeValue *stride_value_type = params_begin + 3;
+
+	// Make sure single parameter is a number
+	Assert(base_value_type->type_id  == nv_compiler_types.number);
+	Assert(width_value_type->type_id == nv_compiler_types.number);
+	Assert(count_value_type->type_id == nv_compiler_types.number);
+	Assert(stride_value_type->type_id == nv_compiler_types.number);
+
+	// value should be an integer number
+	s64 base   = (s64) *((f64*) base_value_type->value);
+	u64 width  = (u64) *((f64*) width_value_type->value);
+	u64 count  = (u64) *((f64*) count_value_type->value);
+	u64 stride = (u64) *((f64*) stride_value_type->value);
+	u8  depth  = 0; // use max depth
+
+	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	target->type = nm_TARGET_INTERVAL_SEQUENCE;
+	target->anchor=0;
+	target->loop=1;
+	target->interval_sequence.base   = base;
+	target->interval_sequence.width  = width;
+	target->interval_sequence.count  = count;
+	target->interval_sequence.depth  = depth;
+	target->interval_sequence.stride = stride;
+
+	return np_TypeValue_value(nv_compiler_types.target, target);
+}
+
 np_FUNCTION_HANDLER(nv_function_interval_aggregate)
 {
 	Assert(params_end - params_begin == 2);
@@ -2569,6 +2604,16 @@ nv_Compiler_init(np_Compiler *compiler)
 		(compiler, "intseq", nv_compiler_types.target,
 		 parameter_types, parameter_types + 3, 0, 0,
 		 nv_function_interval_sequence);
+
+	// dive: number, number, number -> target
+	parameter_types[0] = nv_compiler_types.number;
+	parameter_types[1] = nv_compiler_types.number;
+	parameter_types[2] = nv_compiler_types.number;
+	parameter_types[3] = nv_compiler_types.number;
+	np_Compiler_insert_function_cstr
+		(compiler, "intseq", nv_compiler_types.target,
+		 parameter_types, parameter_types + 4, 0, 0,
+		 nv_function_interval_sequence_with_stride);
 
 	// dive: number, number, number -> target
 	parameter_types[0] = nv_compiler_types.number;
