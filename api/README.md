@@ -85,8 +85,8 @@ the crimes index:
 				"index":2,
 				"name":"time",
 				"bits_per_level":1,
-				"num_levels":18,
-				"hint":"temporal|2000-01-01T06:00:00Z_3600s",
+				"num_levels":16,
+				"hint":"temporal|2013-12-01T06:00:00Z_3600s",
 				"aliases":{
 				}
 			}
@@ -339,8 +339,11 @@ results in
                   NON-CRIMINAL (SUBJECT SPECIFIED)                        1.000000
 ```
 
+## time
 
-
+```
+http://localhost:51234/format('text');q(crimes.b('time',interval_sequence(480,24,10)))
+```
 
 
 
