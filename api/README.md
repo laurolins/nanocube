@@ -464,12 +464,7 @@ The result is the same as the previous `'intseq'` version:
 ```
 
 
-
-
-
-
-
-
+# Old stuff
 
 ```
 # Schema

@@ -6,7 +6,7 @@ Nanocubes are a fast data structure for in-memory data cubes developed at the [I
 
 This branch (`v4`) contains a new implementation of Nanocubes in the C programming language. The goal with this new implementation was to get a much finer control in all aspects of the data structure and specially on its memory aspects (allocation, layout). In our original C++ template-based implementation of Nanocubes (up to version 3.3), we implemented the Nanocube data structure on top of C++ STL (standard library) and while this was a reasonable solution at the time, it had some important downsides: (1) complex serialization which made it hard to save/load Nanocube into files; (2) variations in the internal memory layout of a Nanocube based on the specific STL implementation we used.
 
-Here is a link to the new ![API](/api/README.md)
+Here is a link to the new [API](/api/README.md)
 
 # Compiling on Linux or Mac
 
