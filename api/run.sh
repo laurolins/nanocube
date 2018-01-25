@@ -12,6 +12,10 @@ loc1i2               format('text');q(crimes.b('location',dive(p(2,1,2),8),'img1
 type1                q(crimes.b('type',dive(1)))
 type1n               q(crimes.b('type',dive(1),'name'))
 type1nt              format('text');q(crimes.b('type',dive(1),'name'))
+type1ntheft          q(crimes.b('type',p(2)))
+type1atheft          q(crimes.b('type','THEFT'))
+type1ntheftbur       q(crimes.b('type',pathagg(p(2),p(4))))
+type1atheftbur       q(crimes.b('type',pathagg('THEFT','BURGLARY')))
 time1intseq          q(crimes.b('time',intseq(480,24,10,24)))
 time1timeseries      q(crimes.b('time',timeseries('2013-12-21T00:00-06',24*3600,10,24*3600)))
 END

@@ -342,13 +342,12 @@ results in
 ```
 If we want to simply get the number of crimes of a particular type, let's say
 `THEFT` we can can request it either by the theft corresponding number (a path
-of length 1 described in the schema) or by name
+of length 1 described in the [schema](README.md#schema) or by name
 ```url
 #
-# by number, since by the [schema](README.md#schema) query above
-# THEFT is an alias for the number 2 (note that there can be aliases
-# to any path in a hierarchy, in case of categorical dimension which
-# are trees of height 2, a path is simply a number).
+# by number, since by the schema query above THEFT is an alias for the number 2
+# (note that there can be aliases to any path in a hierarchy, in case of
+# categorical dimension which are trees of height 2, a path is simply a number).
 #
 #        ...
 #        "23":"INTIMIDATION",
@@ -358,12 +357,74 @@ of length 1 described in the schema) or by name
 #
 http://localhost:51234/q(crimes.b('type',p(2)))
 #
-# by name, when we find a string in the TARGET of a binding
-# we assume it is an alias and we process accordingly
-#        ...
+# by name, when we find a string in the TARGET parameter of a binding we assume it
+# is an alias and we process as if it was the path of that alias as in the query
+# above.
+#
 http://localhost:51234/q(crimes.b('type','THEFT'))
 ```
-
+both queries result in
+```json
+[
+	{
+		"type":"table",
+		"numrows":1,
+		"index_columns":[
+		],
+		"measure_columns":[
+			{
+				"name":"count",
+				"values":[
+					11367.000000
+				]
+			}
+		]
+	}
+]
+```
+In case we want to aggregate multiple types, we use `'pathagg'`
+```url
+#
+# by number, let's say we want THEFT and BURGLARY added up in a single value
+#
+#        ...
+#        "23":"INTIMIDATION",
+#        "2":"THEFT",
+#        "4":"BURGLARY",
+#        ...
+#
+http://localhost:51234/q(crimes.b('type',pathagg(p(2),p(4))))
+#
+# by name
+#
+http://localhost:51234/q(crimes.b('type',pathagg('THEFT','BURGLARY')))
+```
+both result in adding up what we saw in the drilldown query of crime `type`:
+```
+   THEFT                    11367.000000
+BURGLARY                     2933.000000
+----------------------------------------
+   TOTAL                    14300.000000
+```
+Here is the `.json` result
+```json
+[
+	{
+		"type":"table",
+		"numrows":1,
+		"index_columns":[
+		],
+		"measure_columns":[
+			{
+				"name":"count",
+				"values":[
+					14300.000000
+				]
+			}
+		]
+	}
+]
+```
 
 ## time
 
