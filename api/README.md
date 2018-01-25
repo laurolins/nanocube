@@ -397,7 +397,7 @@ for a sequence of fixed width (in the finest resolution of the tree) using the
 http://localhost:51234/q(crimes.b('time',intseq(480,24,10,24)))
 http://localhost:51234/q(crimes.b('time',intseq(480,24,10)))
 ```
-The result of the `'intseq'` query above is 
+The result of the `'intseq'` query above is
 ```json
 [
 	{
