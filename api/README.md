@@ -362,12 +362,13 @@ for a sequence of fixed width (in the finest resolution of the tree) using the
 #                   ));
 #
 # So the time bin semantic is the following: there are 16 levels in the binary
-# tree which corresponds, in its finest layer to the numbers {0,1,...,65535}.
-# Each of these numbers correspond to one hour aggregate of date (ie.
-# 3600 secs). Tying back these (fine time resolution) numbers to the calendar, we
-# have the following correspondence:
+# tree which yields a correspondence between its leaves and the numbers {0,1,...,65535}.
+# By the `index_dimension` spec above, each of these numbers correspond to one hour
+# aggregate of date (ie. 3600 secs). Tying back these (fine time resolution)
+# numbers to the calendar, we have the following correspondence:
 #
 #     time interval                                             finest bin
+#                                                               or leaf number
 #     [2013-12-01T00:00:00-06:00,2013-12-01T00:00:00-06:00)     0
 #     [2013-12-01T00:00:01-06:00,2013-12-01T01:00:00-06:00)     1
 #     [2013-12-01T00:00:02-06:00,2013-12-01T02:00:00-06:00)     2
