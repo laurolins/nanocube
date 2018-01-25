@@ -385,6 +385,9 @@ both queries result in
 In case we want to aggregate multiple types, we use `'pathagg'`
 ```url
 #
+# Usage pathagg: pathagg(PATH (,PATH)*)
+#                pathagg(ALIAS(,ALIAS)*)
+#
 # by number, let's say we want THEFT and BURGLARY added up in a single value
 #
 #        ...
