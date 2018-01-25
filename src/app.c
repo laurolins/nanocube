@@ -4981,27 +4981,25 @@ on the columns of the input .csv file
 Here is an example of a MAPPING file (it accepts line comments using #)
 
     # I1. quadtree index dimension for the pickup location
+    index_dimension('pickup_location',input('pickup_latitude','pickup_longitude'),latlon(25));
     # I2. quadtree index dimension for the dropoff location
+    index_dimension('dropoff_location',input('dropoff_latitude','dropoff_longitude'),latlon(25));
     # I3. quadtree index dimension for the dropoff location
+    index_dimension('pickup_time', input('tpep_pickup_datetime'), time(17,'2009-01-01T00:00:00-05:00',3600,5*60));
     # I4. weekday of pickup
+    index_dimension('weekday', input('tpep_pickup_datetime'), weekday());
     # I5. hour of pickup
+    index_dimension('hour', input('tpep_pickup_datetime'), hour());
 
     # M1. measure dimension for counting  (u32 means integral non-negative
     #     and 2^32 - 1 max value) if no input .csv column is used in a measure
     #     dimention, it functions as a count (ie. one for each input record)
-    # M2. duration
-    # M3. duration squared (for stddev computations)
-    # M4. Map fare_amount into a 32-bit floating point value
-
-    index_dimension('pickup_location',input('pickup_latitude','pickup_longitude'),latlon(25));
-    index_dimension('dropoff_location',input('dropoff_latitude','dropoff_longitude'),latlon(25));
-    index_dimension('pickup_time', input('tpep_pickup_datetime'), time(17,'2009-01-01T00:00:00-05:00',3600,5*60));
-    index_dimension('weekday', input('tpep_pickup_datetime'), weekday());
-    index_dimension('hour', input('tpep_pickup_datetime'), hour());
-
     measure_dimension('count',input(),u32);
+    # M2. duration
     measure_dimension('duration',input('tpep_pickup_datetime','tpep_dropoff_datetime') ,duration(f32,60));
+    # M3. duration squared (for stddev computations)
     measure_dimension('duration2',input('tpep_pickup_datetime','tpep_dropoff_datetime') ,duration2(f32,60));
+    # M4. Map fare_amount into a 32-bit floating point value
     measure_dimension('fare',input('fare_amount'),f32);
 
 
@@ -5104,8 +5102,6 @@ service_create(Request *request)
 	}
 	// add space for separator indices for the csv scan procedure
 	scan_buffer_size += sizeof(u32) * service_create_MAX_FIELDS;
-
-
 
 	u64 report_frequency = 100000;
 	if (op_Options_find_cstr(options,"-report-frequency")) {
@@ -5242,7 +5238,7 @@ service_create(Request *request)
 
 	/* .csv header comes from an external file */
 	b8 external_header = 0;
-	MemoryBlock external_header_filename = {.begin = 0, .end = 0};
+	MemoryBlock external_header_filename = { .begin = 0, .end = 0 };
 	if (op_Options_find_cstr(options, "-header")) {
 		if (!op_Options_named_str_cstr(options, "-header", 0, &external_header_filename)) {
 			service_create_usage(request, "invalid header option: missing filename;");
