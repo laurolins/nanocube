@@ -235,10 +235,12 @@ coordinate of the cells grow bottom-up, Chicago is above the Equator and
 
 If we want to count the number of crimes by `type` of crime, we run the query
 below for either numeric or textual categories.
-```json
-# numerical categorical paths
+```url
+# numerical
 http://localhost:51234/q(crimes.b('type',dive(1)))
-# yields
+```
+yields the following json
+```json
 [
 	{
 		"type":"table",
@@ -263,8 +265,14 @@ http://localhost:51234/q(crimes.b('type',dive(1)))
 		]
 	}
 ]
-# alias for the paths
-http://localhost:51234/q(crimes.b('type',dive(1)),'names')
+```
+using the hint `name` we get path aliases (*ie* the category names)
+```url
+# numerical
+http://localhost:51234/q(crimes.b('type',dive(1)),'name')
+```
+results in
+```json
 [
 	{
 		"type":"table",
@@ -290,80 +298,61 @@ http://localhost:51234/q(crimes.b('type',dive(1)),'names')
 	}
 ]
 ```
-
-## branch on the "crime" type
-
-{ "layers":[ "anchor:crime" ], "root":{ "children":[ { "path":[21], "val":2 }, { "path":[20], "val":456 }, { "path":[19], "val":1 }, { "path":[18], "val":1 }, { "path":[17], "val":1 }, { "path":[16], "val":5742 }, { "path":[15], "val":2226 }, { "path":[14], "val":69 }, { "path":[13], "val":46 }, { "path":[12], "val":21 }, { "path":[11], "val":229 }, { "path":[10], "val":69 }, { "path":[0], "val":63 }, { "path":[1], "val":2629 }, { "path":[2], "val":8990 }, { "path":[3], "val":2933 }, { "path":[4], "val":1 }, { "path":[5], "val":4660 }, { "path":[6], "val":1429 }, { "path":[7], "val":181 }, { "path":[8], "val":2190 }, { "path":[9], "val":2 }, { "path":[22], "val":3278 }, { "path":[23], "val":211 }, { "path":[24], "val":2 }, { "path":[25], "val":441 }, { "path":[26], "val":2132 }, { "path":[27], "val":119 }, { "path":[28], "val":20 }, { "path":[29], "val":11367 }, { "path":[30], "val":489 } ] } }
+In text form:
+```url
+# numerical
+http://localhost:51234/format('text');q(crimes.b('type',dive(1)),'name')
+```
+results in
+```txt
+                                              type                           count
+                                         NARCOTICS                     5742.000000
+                                   CRIMINAL DAMAGE                     4660.000000
+                                             THEFT                    11367.000000
+                                           BATTERY                     8990.000000
+                                          BURGLARY                     2933.000000
+                               MOTOR VEHICLE THEFT                     2226.000000
+                        OFFENSE INVOLVING CHILDREN                      456.000000
+                                DECEPTIVE PRACTICE                     2190.000000
+                                           ROBBERY                     2132.000000
+                                           ASSAULT                     2629.000000
+                                     OTHER OFFENSE                     3278.000000
+                                 CRIMINAL TRESPASS                     1429.000000
+                                 WEAPONS VIOLATION                      489.000000
+                                        KIDNAPPING                       46.000000
+                            PUBLIC PEACE VIOLATION                      441.000000
+                  INTERFERENCE WITH PUBLIC OFFICER                      229.000000
+                               CRIM SEXUAL ASSAULT                      181.000000
+                              LIQUOR LAW VIOLATION                       69.000000
+                                          HOMICIDE                       69.000000
+                                          STALKING                       20.000000
+                                       SEX OFFENSE                      119.000000
+                                      PROSTITUTION                      211.000000
+                                             ARSON                       63.000000
+                                      INTIMIDATION                       21.000000
+                                      NON-CRIMINAL                        1.000000
+                                  PUBLIC INDECENCY                        2.000000
+                                          GAMBLING                        2.000000
+                                         OBSCENITY                        1.000000
+                          OTHER NARCOTIC VIOLATION                        2.000000
+                 CONCEALED CARRY LICENSE VIOLATION                        1.000000
+                  NON-CRIMINAL (SUBJECT SPECIFIED)                        1.000000
 ```
 
 
 
 
-## location (loc2)
 
 
 
 
 
 
-# Dimensions and Bins
 
-Nanocubes is all about binning multi-dimenstional data. As a running
-example, let's consider a table like the Chicago crime one:
 
-    latitude | longitude | timestamp | type
 
-How many records in the geo-location table fall into a certain spatial
-bin? Or is of type `theft`? By efficiently pre-computing and storing
-counts or measures, nanocube can handle a good amount of records in a
-few dimensions (e.g. one or two spatial dimensions, one temporal dimension,
-a few categorical dimensions) to solve queries at interactive rates.
 
-# Paths
 
-A *path* is the identifier of a *bin* in a *dimension* of a
-nanocube. This *bin* can be either an aggregate one or a finest
-resolution one. For example, if we have a dimension for a categorical
-variable "device" represented as a two level tree, the root represents
-any device and a leaf might represent an `iPhone` or `Android`.
-
-# Target
-
-A *target* for a dimension restricts the set of records of interest to
-the ones that are in a particular set of *bins* in that dimension. For
-example, if we have a categorical dimension with US States as *bins*,
-we can think of `{NY, LA, UT}` as a *target* for that dimension. More
-formally, a *target* for dimension *d* specifies a set of *paths* that
-should be visited every time the execution engine that is solving a
-query needs to traverse a *binning hierarchy* on dimensions *d*. If a
-certain *path* in the *target* is not present for a particular *bin
-hierarchy* instance, then, obviously, this path will not be visited.
-
-## Multi-Target
-
-Sometimes we want to collect separetely values of multiple targets on
-a single dimension. For example, we might want to query multiple
-consecutive intervals from a binary tree representation for time. Each
-interval data can be "solved" by visiting a (minimal) set of time bins
-that is a cover for it (the interval).
-
-# Services
-
-## `.schema`
-
-The schema reports all of the dimensions (i.e. fields) of the nanocube
-and their types.
-
-In this example, there are four fields with names:
-`location`, `crime`, `time`, and `count`.  The types of these fields
-are (roughly) described as: quadree with 25 levels, categorical with 1
-byte, time with 2 bytes, and unsigned integer with 4 bytes. Also
-specified for each field are the valid values of these fields.  In
-this example, we only really need to specify them for the categorical
-dimension `crime` which lists the names and values of the criminal
-offenses. There is also some additional metadata reported to indicate
-when the time dimension should begin, how large the time bins are, how
-to project the quadtree onto a map, and the original data file name.
 
 ```
 # Schema

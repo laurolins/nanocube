@@ -10,7 +10,8 @@ loc1t  format('text');q(crimes.b('location',dive(p(2,1,2),8)))
 loc1i  format('text');q(crimes.b('location',dive(p(2,1,2),8),'img8'))
 loc1i2 format('text');q(crimes.b('location',dive(p(2,1,2),8),'img11'))
 type1  q(crimes.b('type',dive(1)))
-type1t q(crimes.b('type',dive(1),'name'))
+type1n q(crimes.b('type',dive(1),'name'))
+type1nt format('text');q(crimes.b('type',dive(1),'name'))
 END
 
 prefix="http://localhost:51234"
