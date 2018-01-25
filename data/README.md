@@ -2,7 +2,7 @@
 
 ## Chicago Crimes Example
 
-The table `crime50k.csv` in the older version (< v3) had its original field names
+The table `crime50k.csv` in the older versions (<=v3) had its original field names
 'Date' and 'Primary Type' modified to 'time' and 'crime'. Now (version >=v4) we
 preserve the original header and keep it in a compressed .gz format.
 
