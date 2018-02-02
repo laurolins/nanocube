@@ -799,7 +799,7 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
     this._tilesurl = opts.tilesurl ||
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    this._layers = this._genLayers(this._datasrc);
+    this._heatmaps = this._genLayers(this._datasrc);
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
     this._opts = opts;
@@ -919,13 +919,13 @@ Heatmap.prototype = {
         map.addLayer(mapt);
 
         //add nanocube layers
-        for (var l in this._layers){
-            map.addLayer(this._layers[l]);
+        for (var l in this._heatmaps){
+            map.addLayer(this._heatmaps[l]);
         }
 
-        //Layer
-        if (Object.keys(this._layers).length > 1){
-            L.control.layers(null,this._layers,
+        //layer control
+        if (Object.keys(this._heatmaps).length > 1){
+            L.control.layers(null,this._heapmaps,
                              {
                                  collapsed: false,
                                  position: 'bottomright'
@@ -1156,8 +1156,8 @@ Heatmap.prototype = {
         //force redraw
         this._map.invalidateSize();  
         
-        for(var l in this._layers){
-            var layer = this._layers[l];
+        for(var l in this._heatmaps){
+            var layer = this._heatmaps[l];
             if (!this._datasrc[layer._datasrc].disabled){
                 layer.needRedraw();
             }
@@ -2099,7 +2099,9 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries resize-drag");
     
-    d3.select(id).on("divresize",function(){ widget.redraw(); });
+    d3.select(id).on("divresize",function(){
+        widget.redraw(widget.lastres);
+    });
 
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){

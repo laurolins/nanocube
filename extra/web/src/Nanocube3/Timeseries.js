@@ -6,7 +6,9 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries resize-drag");
     
-    d3.select(id).on("divresize",function(){ widget.redraw(); });
+    d3.select(id).on("divresize",function(){
+        widget.redraw(widget.lastres);
+    });
 
     //Collapse on dbl click
     d3.select(id).on('dblclick',function(d){
