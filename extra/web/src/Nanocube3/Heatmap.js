@@ -64,14 +64,14 @@ Heatmap.prototype = {
     _genLayers: function(data){
         var widget = this;
         var layers = {};
-        function drawfunc(layer,options){
-                widget._canvasDraw(layer,options);
+        function drawfunc(info){
+            widget._canvasDraw(info.layer,info);
         }
 
         function colorfunc(d,i,array){
             var m = d.match(/rgba\((.+),(.+),(.+),(.+)\)/);
             if(m){
-                    d={r:+m[1],g:+m[2],b:+m[3],a:+m[4]*255};
+                d={r:+m[1],g:+m[2],b:+m[3],a:+m[4]*255};
                 return d;
             }
             else{
@@ -81,9 +81,10 @@ Heatmap.prototype = {
         }
         
         for (var d in data){
-            var layer = L.canvasOverlay(drawfunc,
-                                        {opacity:0.7});
-
+            var layer = new L.CanvasLayer();
+            layer.options.opacity=0.7;
+            layer.onDrawLayer=drawfunc;
+            
             //set datasrc
             layer._datasrc = d;
 
@@ -96,13 +97,13 @@ Heatmap.prototype = {
 
             //htmllabel
             var htmllabel='<i style="background:'+
-                    layer._color+'"> </i>' + d;
+                layer._color+'"> </i>' + d;
             
             layers[htmllabel] = layer;
         }
         return layers;
     },
-    
+
     _initMap: function(viewbbox){
         var widget = this;
         
@@ -110,7 +111,7 @@ Heatmap.prototype = {
         var map = L.map(this._name);
 
         map.attributionControl.addAttribution('<a href="http://www.nanocubes.net">Nanocubes&trade;</a>');
-       map.attributionControl.addAttribution('<a href="http://www.osm.org">OpenStreetMap</a>');
+        map.attributionControl.addAttribution('<a href="http://www.osm.org">OpenStreetMap</a>');
 
         
         //make the background black
@@ -174,15 +175,15 @@ Heatmap.prototype = {
         //$('#'+this._name).append('<p class="info">info test</p>');
         //style
         /*var infodiv = $('#'+this._name+" .info");
-        infodiv.css({
-            position: 'absolute',
-            'z-index':1,
-            color: 'white',
-            'right': '20ch',
-            'top': '0.5em',
-            'padding':'0px',
-            'margin':'0px'
-        });*/
+          infodiv.css({
+          position: 'absolute',
+          'z-index':1,
+          color: 'white',
+          'right': '20ch',
+          'top': '0.5em',
+          'padding':'0px',
+          'margin':'0px'
+          });*/
 
         //add title
         d3.select('#'+this._name)
@@ -208,7 +209,7 @@ Heatmap.prototype = {
         
         map.setView(v.c,v.z);
     },
-       
+
     _keyboardShortcuts: function(e){
         console.log(e);
         switch(e.keyCode){
@@ -253,7 +254,8 @@ Heatmap.prototype = {
                 polygon: drawingoptions(),
                 polyline:false,
                 circle:false,
-                marker:false
+                marker:false,
+                circlemarker:false
             },
             edit: {
                 featureGroup: drawnItems,
@@ -265,9 +267,9 @@ Heatmap.prototype = {
 
         map.addControl(map.drawControl);
 
-        map.on('draw:created', function (e) {
+        map.on(L.Draw.Event.CREATED, function (e) {
             drawnItems.addLayer(e.layer);
-
+            
             //add constraints to the other maps
             widget.updateCallback(widget._encodeArgs(),
                                   [{
@@ -281,19 +283,17 @@ Heatmap.prototype = {
             map.drawControl.setDrawingOptions(options);
         });
 
-        map.on('draw:edited', function (e) {
+        function updateWidget(e){
             widget.updateCallback(widget._encodeArgs()) ;          
-        });
+        }
+            
+        map.on(L.Draw.Event.EDITED, updateWidget);
 
-        map.on('draw:editing', function (e) {
-            widget.updateCallback(widget._encodeArgs()) ;          
-        });
+        map.on(L.Draw.Event.EDITMOVE, updateWidget);
 
-        map.on('draw:deleted', function(e) {
-            //add constraints to the other maps
-            widget.updateCallback(widget._encodeArgs());
-        });
+        map.on(L.Draw.Event.EDITRESIZE, updateWidget);
 
+        map.on(L.Draw.Event.DELETED, updateWidget);
 
         this._drawnItems = drawnItems;
     },
@@ -354,7 +354,7 @@ Heatmap.prototype = {
         this._drawnItems.getLayers().forEach(function(d){
             res[d.options.color]={};
             res[d.options.color] = {
-                coord: d._latlngs.map(function(d){
+                coord: d.getLatLngs()[0].map(function(d){
                     return [d.lat,d.lng];
                 }),
                 zoom: map.getZoom() + 8
@@ -365,12 +365,12 @@ Heatmap.prototype = {
 
     update: function(){
         //force redraw
-        this._map.fire('resize');        
+        this._map.invalidateSize();  
         
         for(var l in this._layers){
             var layer = this._layers[l];
             if (!this._datasrc[layer._datasrc].disabled){
-                layer._reset();
+                layer.needRedraw();
             }
         }
     },
@@ -435,7 +435,6 @@ Heatmap.prototype = {
         var c = $('<canvas>').attr("width", width).attr("height", height)[0];
         var proxyctx = c.getContext("2d");
         var imgData = proxyctx.createImageData(width,height);
-
         var buf = new ArrayBuffer(imgData.data.length);
         var buf8 = new Uint8ClampedArray(buf);
         var pixels = new Uint32Array(buf);
@@ -470,8 +469,8 @@ Heatmap.prototype = {
         realctx.drawImage(c,0,0,canvas.width,canvas.height);
     },
 
-    _canvasDraw: function(layer,options){
-        var canvas = options.canvas;
+    _canvasDraw: function(layer,info){
+        var canvas = info.canvas;
         var ctx = canvas.getContext('2d');
         ctx.clearRect(0,0,canvas.width,canvas.height);
 

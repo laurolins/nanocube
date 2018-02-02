@@ -10,7 +10,7 @@ require.config({
         interact: 'lib/interact/interact.min',
         colorbrewer: 'lib/colorbrewer/colorbrewer',
         jsep: 'lib/jsep/jsep.min',
-        canvaslayer: 'lib/canvaslayer/L.CanvasOverlay',
+        canvaslayer: 'lib/canvaslayer/L.CanvasLayer',
         'resize-drag': 'lib/resize-drag/resize-drag',
         nanocube: 'dist/Nanocube'
     },

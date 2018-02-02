@@ -50,6 +50,7 @@ canvas {
     border: 1px solid white;
     opacity:0.8;
     pointer-events:visible;
+    z-index:1;
 }
 
 .axis path,
@@ -77,6 +78,10 @@ text {
     stroke: #fff;
     fill-opacity: .25;
     shape-rendering: crispEdges;
+}
+
+.leaflet-container {
+    z-index:0;
 }
 
 .leaflet-control-layers-overlays i { 
@@ -108,6 +113,7 @@ text {
     float:  left;
     margin-right: 8px;
     opacity: 0.7;
+    z-index:1;
 }
 
 .legendinfo{
