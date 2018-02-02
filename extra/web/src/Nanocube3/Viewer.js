@@ -1,4 +1,6 @@
-/*global $ d3 jsep colorbrewer Expression Map Timeseries GroupedBarChart */
+/*global $ d3 jsep colorbrewer Expression Heatmap Timeseries GroupedBarChart
+
+PolygonMap  */
 
 var Viewer = function(opts){
     var container = $(opts.div_id);
@@ -93,7 +95,7 @@ Viewer.prototype = {
         case 'spatial':            
             this._container.append(newdiv);
             options.levels = levels || 25;
-            return new Map(options,function(datasrc,bbox,zoom,maptilesize){
+            return new Heatmap(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
             },function(args,constraints,datasrc){
                 return viewer.update([id],constraints,

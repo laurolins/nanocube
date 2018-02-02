@@ -789,7 +789,7 @@ GroupedBarChart.prototype = {
 
 /*global $ L colorbrewer d3 window */
 
-var Map=function(opts,getDataCallback,updateCallback){
+var Heatmap=function(opts,getDataCallback,updateCallback){
     this.getDataCallback = getDataCallback;
     this.updateCallback = updateCallback;
 
@@ -804,9 +804,8 @@ var Map=function(opts,getDataCallback,updateCallback){
     this._logheatmap = true;
     this._opts = opts;
     
+    var map = opts.map || this._initMap();
     
-    var map = this._initMap();
-
     this._map = map;
 
     //add Legend
@@ -843,14 +842,14 @@ var Map=function(opts,getDataCallback,updateCallback){
 };
 
 //Setup static variables and functions
-Map.brushcolors = colorbrewer.Paired[12].slice(0);
-Map.nextcolor = function(){
-    var c = Map.brushcolors.shift();
-    Map.brushcolors.push(c);
+Heatmap.brushcolors = colorbrewer.Paired[12].slice(0);
+Heatmap.nextcolor = function(){
+    var c = Heatmap.brushcolors.shift();
+    Heatmap.brushcolors.push(c);
     return c;
 };
 
-Map.prototype = {
+Heatmap.prototype = {
     _genLayers: function(data){
         var widget = this;
         var layers = {};
@@ -898,6 +897,7 @@ Map.prototype = {
         
         //Leaflet stuffs
         var map = L.map(this._name);
+
         map.attributionControl.addAttribution('<a href="http://www.nanocubes.net">Nanocubes&trade;</a>');
        map.attributionControl.addAttribution('<a href="http://www.osm.org">OpenStreetMap</a>');
 
@@ -1033,7 +1033,7 @@ Map.prototype = {
         var widget = this;
         
         var drawingoptions = function(){
-            return { shapeOptions:{ color: Map.nextcolor() } };
+            return { shapeOptions:{ color: Heatmap.nextcolor() } };
         };
 
         map.drawControl = new L.Control.Draw({
@@ -2414,7 +2414,9 @@ Timeseries.prototype={
     }
 };
 
-/*global $ d3 jsep colorbrewer Expression Map Timeseries GroupedBarChart */
+/*global $ d3 jsep colorbrewer Expression Heatmap Timeseries GroupedBarChart
+
+PolygonMap  */
 
 var Viewer = function(opts){
     var container = $(opts.div_id);
@@ -2509,7 +2511,7 @@ Viewer.prototype = {
         case 'spatial':            
             this._container.append(newdiv);
             options.levels = levels || 25;
-            return new Map(options,function(datasrc,bbox,zoom,maptilesize){
+            return new Heatmap(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
             },function(args,constraints,datasrc){
                 return viewer.update([id],constraints,
