@@ -1173,13 +1173,25 @@ cm_mapping_time(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, n
 
 	s64 time = 0;
 	if (dim->mapping_spec.index_mapping.time.unix_time) {
+		s32 ok = 0;
+		// losing the time fraction part of the data
 		if (!pt_parse_s64(time_text->begin, time_text->end, &time)) {
-			return 0;
-		} else {
-			tm_Time tm_time;
-			tm_Time_init_from_unix_time(&tm_time, time);
-			time = tm_time.time;
+			char *it=time_text->begin;
+			while (it != time_text->end) {
+				if (*it == '.') {
+					break;
+				}
+				++it;
+			}
+			if (it == time_text->end) {
+				return 0;
+			} else if (!pt_parse_s64(time_text->begin, it, &time)) {
+				return 0;
+			}
 		}
+		tm_Time tm_time;
+		tm_Time_init_from_unix_time(&tm_time, time);
+		time = tm_time.time;
 	} else {
 		if (!ntp_Parser_run(parser, time_text->begin, time_text->end)) {
 			return 0;
