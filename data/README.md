@@ -25,9 +25,9 @@ To illustrate the internals of a nanocube, we use the example in Figure 2 of the
 original [Nanocubes technical paper](http://nanocubes.net/assets/pdf/nanocubes_paper.pdf).
 
 ```shell
-# using permutation (location, device)
-nanocube create paper.csv paper_location_device.map paper_location_device.nanocube
-# using permutation (device, location)
+# using the paper original permutation: location, device
+nanocube create paper.csv paper.map paper.nanocube
+# using permutation: device, location
 nanocube create paper.csv paper_device_location.map paper_device_location.nanocube
 ```
 
