@@ -273,7 +273,7 @@ bash -c "$cmd"
 To serve this multi-part nanocube run
 
 ```bash
-nanocube serve 51234 crimes=$(ls crimes*.nanocube | paste -d: -s) -threads=20
+nanocube serve 51234 crimes=$(ls -1 crimes*.nanocube | paste -d: -s) -threads=20
 ```
 
 # Query API
