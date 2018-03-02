@@ -24,14 +24,15 @@ make -j
 # Paper Example
 
 ```shell
+# go to the nanocube/data folder
 # create nanocube
-nanocube create paper-example.csv paper-example.map paper-example.nanocube
+nanocube create paper.csv paper.map paper.nanocube
 
 # generate graphviz `.dot` file
-nanocube draw paper-example.nanocube paper-example.dot
+nanocube draw paper.nanocube paper.dot
 
-# generate `.pdf`
-dot -Tpdf -opaper-example.pdf paper-example.dot
+# generate `.pdf` using graphviz
+dot -Tpdf -opaper.pdf paper.dot
 ```
 
 In the next figure we present the compressed-path version of the nanocube
