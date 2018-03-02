@@ -24,8 +24,9 @@ There is a `css` attribute for each widget, you may change the style
 of the widget by modifying or inserting standard css elements.
 
 
-## Development If you are interesting in developing this GUI, please
-install the dependencies for development by using `npm`.
+## Development
+
+If you are interesting in developing this GUI, please install the dependencies for development by using `npm`.
 
 ```
 npm install
