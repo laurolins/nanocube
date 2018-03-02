@@ -17,7 +17,7 @@ cd nanocube
 autoreconf -vi
 mkdir build
 cd build
-../configure --with-polycover --prefix=../local
+../configure --with-polycover
 make -j
 ./nanocube
 ```
