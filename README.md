@@ -217,6 +217,65 @@ nanocube draw taxi.nanocube taxi.dot
 
 ```
 
+# Multi-part example using GNU Parallel
+
+Here is an example of creating a multi-part nanocube for the Chicago Crimes 
+dataset.
+
+```bash
+#!/bin/bash
+
+#
+# We want to speed up the creation of a Nanocube by using
+# v4's multi-part feature.
+#
+file_input="crimes.csv"
+file_map="crimes.map"
+parts="10"
+prefix="crimes"
+
+# details
+aux=".v4"
+mkdir -p "$aux"
+file_template="$aux/template"
+file_header="$aux/header"
+
+# prepare template of the command to run
+cat <(cat <<EOF
+# extract header
+head -n 1 FILE_INPUT > FILE_HEADER;
+# pipe in the input file
+pv -cN input < FILE_INPUT
+# deflate?
+# pigz -c -d -p4
+# get rid of the header line
+| tail -n +2
+# filter (for testing), comment otherwise
+# | head -n 100000
+# use GNU parallel to send 4M chunks to different parts
+| parallel --pipe --block 4M --round-robin -jPARTS
+'nanocube create -stdin FILE_MAP PREFIX_{#}.nanocube -header=FILE_HEADER -report-cache=0 -report-frequency=100000 > PREFIX_{#}.log'
+EOF
+) | grep -v "^#" | grep -v "^$" | paste -d' ' -s > $file_template
+
+file_jobs="$aux/jobs"
+cat $file_template \
+| sed "s|FILE_INPUT|$file_input|g" \
+| sed "s|FILE_MAP|$file_map|g" \
+| sed "s|FILE_HEADER|$file_header|g" \
+| sed "s|PARTS|$parts|g" \
+| sed "s|PREFIX|$prefix|g" > $file_jobs
+
+cmd=$(cat $file_jobs)
+bash -c "$cmd"
+```
+
+To serve this multi-part nanocube run
+
+```bash
+nanocube serve 51234 crimes=$(ls crimes*.nanocube | paste -d: -s) -threads=20
+```
+
 # Query API
 
 ## Source
