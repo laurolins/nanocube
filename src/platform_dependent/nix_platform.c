@@ -1524,12 +1524,10 @@ PLATFORM_TCP_WRITE(nix_tcp_write)
 		} else if (count > 0) {
 			offset += count;
 			if (offset == length) {
-				printf("[SERVER] written %d bytes on socket (response done %d) %d:%d\n", (int) count,
-				       (int) length, nix_socket->index, nix_socket->file_descriptor);
+				printf("[SERVER] written %d bytes on socket (response done %d) %d:%d\n", (int) count, (int) length, nix_socket->index, nix_socket->file_descriptor);
 				break;
 			} else {
-				printf("[SERVER] written %d bytes on socket %d:%d\n", (int) count,
-				       nix_socket->index, nix_socket->file_descriptor);
+				// printf("[SERVER] written %d bytes on socket %d:%d\n", (int) count, nix_socket->index, nix_socket->file_descriptor);
 			}
 		}
 	}

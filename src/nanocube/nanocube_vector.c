@@ -806,7 +806,11 @@ nm_TABLE_VALUES_APPEND(nv_tv_append)
 	nv_Nanocube    *cube = (nv_Nanocube*) nanocube;
 	nv_TableValues *table = (nv_TableValues*) handle;
 	/* copy values as f64 numbers */
-	f64 *values = (f64*) LinearAllocator_alloc(table->memsrc, table->columns * sizeof(f64));
+	f64 *values = (f64*) LinearAllocator_alloc_if_available(table->memsrc, table->columns * sizeof(f64));
+	if (values == 0) {
+		fputs("Not enough memory for result. Improved result memory management is coming soon\n", stderr);
+		exit(-1);
+	}
 	if (table->rows == 0) {
 		table->values.begin = values;
 		table->values.end = values;
