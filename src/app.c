@@ -1,6 +1,10 @@
 /*
 BEGIN_TODO
 
+# 2018-04-11T14:38:14
+Support multiple paths in a dive query.
+Support multiple dive in the same query.
+
 # 2017-11-29T11:07
 A mechanism to bin numerical columns while creating a nanocube. Could be
 done externally through an Rscript like
@@ -234,6 +238,8 @@ times the same "bins" if the given paths are not disjoint.
 ```
 dive(levels:<number>)
 dive(base:<path>, depth:<number>)
+dive(PATH_LIST, DEPTH)
+dive(PATH_LIST, DEPTH_LIST)
 ```
 
 A *dive* object indicates a set of nodes within a hierarchy.  Each existing

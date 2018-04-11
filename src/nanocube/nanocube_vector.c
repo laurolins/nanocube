@@ -1575,6 +1575,52 @@ np_FUNCTION_HANDLER(nv_function_dive_1)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
+np_FUNCTION_HANDLER(nv_function_dive_list)
+{
+	Assert(params_end - params_begin >= 1);
+
+	// should be an array of labels!
+	s64 len = params_end - params_begin;
+
+	nm_Dive *begin = 0;
+	nm_Dive *end = 0;
+	if (len > 0) {
+		// check if every object is a dive object
+		np_TypeValue *it = params_begin;
+		while (it != params_end) {
+			Assert(it->type_id == nv_compiler_types.target);
+			nm_Target *target = it->value;
+			if (target->type != nm_TARGET_FIND_DIVE) {
+				char *error = "dive_list must contain only dive objects\n";
+				np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+				np_Compiler_log_ast_node_context(compiler);
+				return np_TypeValue_error();
+			}
+			++it;
+		}
+
+		nm_Dive* dive_list = (nm_Dive*) np_Compiler_alloc(compiler,sizeof(nm_Dive)*len);
+		begin = dive_list;
+		end   = dive_list + len;
+		s64 i = 0;
+		it = params_begin;
+		while (it != params_end) {
+			nm_Target *target = it->value;
+			dive_list[i++] = target->find_dive;
+			++it;
+		}
+
+	}
+	nm_Target* target = (nm_Target*) np_Compiler_alloc(compiler,sizeof(nm_Target));
+	target->type = nm_TARGET_FIND_DIVE_LIST;
+	target->find_dive_list.begin = begin;
+	target->find_dive_list.end = end;
+	target->anchor=1;
+	target->loop=0;
+
+	return np_TypeValue_value(nv_compiler_types.target, target);
+}
+
 np_FUNCTION_HANDLER(nv_function_dive_2)
 {
 	Assert(params_end - params_begin == 2);
@@ -2666,7 +2712,6 @@ nv_Compiler_init(np_Compiler *compiler)
 		 parameter_types, parameter_types + 4, 0, 0,
 		 nv_function_time_series_aggregate);
 
-
 	{
 		char *equivalent_names[] = { "dive", "branch" };
 		for (s32 i=0;i<2;++i) {
@@ -2694,6 +2739,19 @@ nv_Compiler_init(np_Compiler *compiler)
 				 nv_function_dive_by_alias);
 		}
 	}
+
+	// dive_list -> target that is a dive list
+	//
+	// because of the assumption that result table fields have to have a fixed
+	// depth, there needs to be at least one entry to dive list from which
+	// we can derive the depth
+	//
+	parameter_types[0] = nv_compiler_types.target;
+	np_Compiler_insert_function_cstr
+		(compiler, "dive_list", nv_compiler_types.target,
+		 parameter_types, parameter_types+1, 1, nv_compiler_types.target,
+		 // 0, 0, 1, nv_compiler_types.target,
+		 nv_function_dive_list);
 
 	// poly: string -> poly
 	parameter_types[0] = nv_compiler_types.string;
