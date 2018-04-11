@@ -1549,8 +1549,6 @@ np_FUNCTION_HANDLER(nv_function_time_series_aggregate)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
-
-
 np_FUNCTION_HANDLER(nv_function_dive_1)
 {
 	Assert(params_end - params_begin == 1);
