@@ -12,7 +12,7 @@ preserve the original header and keep it in a compressed .gz format.
 # (sample of 50k records extracted from
 #      https://data.cityofchicago.org/api/views/ijzp-q8t2/rows.csv?accessType=DOWNLOAD)
 #
-nanocube create <(zcat crime50k.csv.gz) crime50k.map crime50k.nanocube
+nanocube create <(zcat < crime50k.csv.gz) crime50k.map crime50k.nanocube
 #
 # or equivalently
 #
