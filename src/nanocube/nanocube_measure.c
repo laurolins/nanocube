@@ -14,25 +14,32 @@ typedef enum {
 	nm_TARGET_TIME_SERIES,
 	/* no loop, no anchor */
 	nm_TARGET_TIME_SERIES_AGGREGATE,
-	nm_TARGET_PATH_LIST
+	nm_TARGET_PATH_LIST,
+	nm_TARGET_FIND_DIVE_LIST
 } nm_TargetType;
 
 
 typedef struct {
-	s32 by_alias; // if by name, consider alias, otherwise consider array
+	s32         by_alias; // if by name, consider alias, otherwise consider array
 	nx_Array    array;
 	MemoryBlock alias;
 } nm_Path;
+
+typedef struct {
+	nm_Path  path;
+	u8       depth;
+} nm_Dive;
 
 typedef struct {
 	nm_TargetType type;
 	b8            anchor;
 	b8            loop;
 	union {
+		nm_Dive find_dive;
 		struct {
-			nm_Path  path;
-			u8       depth;
-		} find_dive;
+			nm_Dive *begin;
+			nm_Dive *end;
+		} find_dive_list;
 		struct {
 			nm_Path* *begin;
 			nm_Path* *end;
@@ -1099,6 +1106,12 @@ nm_Target_init(nm_Target *self) {
 	self->loop = 0;
 }
 
+internal s32
+nm_Dive_match(nm_Dive *a, nm_Dive *b)
+{
+	return (a->depth == b->depth) && nm_Path_is_equal(&a->path, &b->path);
+}
+
 internal b8
 nm_Target_is_equal(nm_Target *self, nm_Target *other)
 {
@@ -1109,10 +1122,21 @@ nm_Target_is_equal(nm_Target *self, nm_Target *other)
 
 	if (self->type == nm_TARGET_ROOT) {
 		return 1;
-	} else if (self->type == nm_TARGET_FIND_DIVE
-		 && self->find_dive.depth == other->find_dive.depth
-		 && nm_Path_is_equal(&self->find_dive.path, &other->find_dive.path)) {
-		return 1;
+	} else if (self->type == nm_TARGET_FIND_DIVE) {
+		return nm_Dive_match(&self->find_dive, &other->find_dive);
+	} else if (self->type == nm_TARGET_FIND_DIVE_LIST) {
+		s64 n0 = self->find_dive_list.end - self->find_dive_list.begin;
+		s64 n1 = other->find_dive_list.end - other->find_dive_list.begin;
+		if (n0 != n1) {
+			return 0;
+		} else {
+			for (s64 i=0;i<n0;++i) {
+				if (!nm_Dive_match(other->find_dive_list.begin + i, other->find_dive_list.begin + i)) {
+					return 0;
+				}
+			}
+			return 1;
+		}
 	} else if (self->type == nm_TARGET_MASK) {
 		if (self->mask.begin == other->mask.begin
 		    && self->mask.end == other->mask.end) {
@@ -1549,24 +1573,57 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 			// found column
 			nm_TableKeysColumnType *newcol = (nm_TableKeysColumnType*) LinearAllocator_alloc(memsrc, sizeof(nm_TableKeysColumnType));
 			newcol->name   = *(src->names.begin + it->dimension);
-			Assert(it->target.type == nm_TARGET_FIND_DIVE);
 
-			// assume the path is not by_alias anymore
-			if (it->target.find_dive.path.by_alias) {
-				s32 path_length = 0;
-				if (nm_services->get_alias_path(src->nanocubes[0], (u8) it->dimension,
-							    it->target.find_dive.path.alias, sizeof(path_buffer),
-							    path_buffer, &path_length)) {
-					it->target.find_dive.path.array.begin  = path_buffer;
-					it->target.find_dive.path.array.length = path_length;
+			// figure depth of target
+			s32 depth = -1;
+			{
+				nm_Dive *begin = 0;
+				nm_Dive *end = 0;
+				if (it->target.type == nm_TARGET_FIND_DIVE) {
+					begin = &it->target.find_dive;
+					end   = begin + 1;
+				} else if (it->target.type == nm_TARGET_FIND_DIVE_LIST) {
+					begin = it->target.find_dive_list.begin;
+					end   = it->target.find_dive_list.end;
 				} else {
-					// problem defining storage spec from alias
-					LinearAllocator_rewind(memsrc, chkpt);
-					return 0;
+					Assert(0);
+				}
+				nm_Dive *it2 = begin;
+				while (it2 != end) {
+					// assume the path is not by_alias anymore
+					if (it2->path.by_alias) {
+						s32 candidate_depth = 0;
+						if (nm_services->get_alias_path(src->nanocubes[0], (u8) it->dimension, it2->path.alias, sizeof(path_buffer), path_buffer, &candidate_depth)) {
+							candidate_depth += it2->depth;
+							if (depth < 0) {
+								depth = candidate_depth;
+							} else if (depth != candidate_depth) {
+								fputs("Different depths on dive_list\n",stderr);
+								// problem defining storage spec from alias
+								LinearAllocator_rewind(memsrc, chkpt);
+								return 0;
+							}
+						} else {
+							// problem defining storage spec from alias
+							LinearAllocator_rewind(memsrc, chkpt);
+							return 0;
+						}
+					} else {
+						s32 candidate_depth = it2->path.array.length;
+						candidate_depth += it2->depth;
+						if (depth < 0) {
+							depth = candidate_depth;
+						} else if (depth != candidate_depth) {
+							fputs("Different depths on dive_list\n",stderr);
+							// problem defining storage spec from alias
+							LinearAllocator_rewind(memsrc, chkpt);
+							return 0;
+						}
+					}
+					++it2;
 				}
 			}
-
-			newcol->levels = it->target.find_dive.path.array.length + it->target.find_dive.depth;
+			newcol->levels = depth; // it->target.find_dive.path.array.length + it->target.find_dive.depth;
 			newcol->bits = src->indices[0]->bits_per_label[it->dimension];
 			newcol->loop_column = 0;
 			newcol->hint = it->hint;
@@ -1576,6 +1633,7 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 			tkct_end = newcol + 1;
 			*dim_it = it->dimension;
 			++dim_it;
+
 		} else if (it->target.loop) {
 			// found column
 			nm_TableKeysColumnType *newcol = (nm_TableKeysColumnType*) LinearAllocator_alloc(memsrc, sizeof(nm_TableKeysColumnType));
@@ -2544,15 +2602,6 @@ nm_Measure_check_eval_type(nm_Measure *self)
 
 
 
-
-
-
-
-
-
-
-
-
 internal void
 nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 index, s32 nanocube_index)
 {
@@ -2578,6 +2627,65 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			}
 		} else {
 			Assert(0 && "Case not implemented!");
+		}
+	} else if (target->type == nm_TARGET_FIND_DIVE_LIST) {
+
+		Assert(target->anchor);
+
+		nm_Dive *it_dive  = target->find_dive_list.begin;
+		nm_Dive *end_dive = target->find_dive_list.end;
+
+		while (it_dive != end_dive) {
+			if (it_dive->path.by_alias) {
+				s32 path_length = 0;
+				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index,
+									 it_dive->path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
+					it_dive->path.array.begin  = path_buffer;
+					it_dive->path.array.length = path_length;
+				} else {
+					// dead end: couldn't translate alias to path
+					return;
+				}
+			}
+
+			nx_Array *path_array  = &it_dive->path.array;
+			u8  depth             = it_dive->depth;
+
+			nm_NanocubeIndex_FindDive it;
+			nm_NanocubeIndex_FindDive_init(&it, context->source->indices[nanocube_index], root, index, path_array, depth);
+
+			u8 target_depth = depth + path_array->length;
+			nx_Node *target_node;
+			while ((target_node = nm_NanocubeIndex_FindDive_next(&it)))
+			{
+
+				// add path_array to column on query result
+				nx_Label* begin = it.path.begin;
+				nx_Label* end   = begin + target_depth;
+
+				nm_TableKeys_push_anchor_column(context->table_keys, begin, end);
+
+				if (last_dimension)
+				{
+					nx_PNode* pnode = (nx_PNode*) target_node;
+
+					// commit record
+					context->nm_services->append
+						(context->table_values_handle,
+						 &pnode->payload_aggregate,
+						 context->source->nanocubes[nanocube_index]);
+					nm_TableKeys_commit_key(context->table_keys);
+				} else {
+					nx_INode *inode = (nx_INode*) target_node;
+					nx_Node *next_root = nx_Ptr_Node_get(&inode->content_p);
+					nm_Measure_solve_query (context, next_root, index + 1, nanocube_index);
+				}
+
+				nm_TableKeys_pop_column(context->table_keys);
+			}
+
+			++it_dive;
+
 		}
 	} else if (target->type == nm_TARGET_FIND_DIVE) {
 		if (target->anchor) {
