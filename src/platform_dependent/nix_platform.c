@@ -708,12 +708,14 @@ PLATFORM_WORK_QUEUE_DESTROY(nix_work_queue_destroy)
 #define nix_tcp_MAX_CONNECTIONS     64
 #define nix_tcp_MAX_SOCKETS         256
 #define nix_tcp_MAX_EVENTS	      64
-#define nix_tcp_TIMEOUT             100
 
-#define nix_tcp_Socket_FREE          0
-#define nix_tcp_Socket_ACTIVATIING   1
-#define nix_tcp_Socket_INUSE         2
-#define nix_tcp_Socket_CLOSED        3
+#define nix_tcp_TIMEOUT_MILLISECONDS  0
+#define nix_tcp_TIMEOUT_SECONDS       1
+
+#define nix_tcp_Socket_FREE           0
+#define nix_tcp_Socket_ACTIVATIING    1
+#define nix_tcp_Socket_INUSE          2
+#define nix_tcp_Socket_CLOSED         3
 
 #define nix_tcp_BUFFER_SIZE 4096
 #define nix_tcp_MAX_SERVERS 16
@@ -1412,13 +1414,14 @@ nix_tcp_Engine_process_events(nix_tcp_Engine *tcp, pt_WorkQueue *work_queue)
 {
 	/* register listen and client sockets coming as registered tasks */
 	nix_tcp_Engine_consume_tasks(tcp);
-	/* wait for events on sockets beign tracked for at most nix_tcp_TIMEOUT */
+	/* wait for events on sockets beign tracked for at most nix_tcp_TIMEOUT milliseconds */
 #if defined(OS_MAC)
-	static const struct timespec timeout = { .tv_sec= 0, .tv_nsec = nix_tcp_TIMEOUT };
+	// @note one second timeout
+	static const struct timespec timeout = { .tv_sec= nix_tcp_TIMEOUT_SECONDS, .tv_nsec = 1000 * nix_tcp_TIMEOUT_MILLISECONDS };
 	int num_fd = kevent(tcp->kqueue_fd, 0, 0, tcp->events, ArrayCount(tcp->events), &timeout);
 	struct kevent ev;
 #elif defined(OS_LINUX)
-	int num_fd = epoll_wait(tcp->epoll_fd, tcp->events, ArrayCount(tcp->events), nix_tcp_TIMEOUT);
+	int num_fd = epoll_wait(tcp->epoll_fd, tcp->events, ArrayCount(tcp->events), nix_tcp_TIMEOUT_MILLISECONDS + 1000 * nix_tcp_TIMEOUT_SECONDS);
 #endif
 
 	/* for each socket with some event available process all what
