@@ -1,0 +1,124 @@
+html,body,#nc {
+    height:100%;
+    width:100%;
+    margin:0;
+    font: 10pt Lato, sans-serif;
+}
+
+canvas {
+    position:absolute;
+    top:0px;
+    left:0px;
+}
+
+.chart-overlay{
+    position:absolute;
+    height:100%;
+    width:100%;
+    pointer-events:none;
+    margin:0;
+    z-index:1;
+}
+
+.resize-drag{
+    padding: 5px;
+}
+
+.barchart{
+    position: relative;
+    overflow-y:auto;
+    overflow-x:hidden;
+    float:right;
+    background-color: #555;
+    margin: 5px;
+    opacity:0.8;
+    pointer-events:visible;
+    border: 1px solid white;
+}
+
+.sort-btn,.clear-btn{
+    float:right
+}
+
+.timeseries{
+    position: relative;
+    overflow-y:hidden;
+    overflow-x:hidden;
+    float:left;
+    background-color: #555;
+    margin: 5px;
+    border: 1px solid white;
+    opacity:0.8;
+    pointer-events:visible;
+    z-index:1;
+}
+
+.axis path,
+.axis line{
+    fill: none;
+    stroke: #fff;
+    shape-rendering: crispEdges;
+}
+
+.axis line{
+    stroke-opacity:0.3;
+}
+
+.axis text {
+    fill: #fff;
+    stroke:none;
+}
+
+text {
+    fill: #fff;
+    stroke:none;
+}
+
+.brush {
+    stroke: #fff;
+    fill-opacity: .25;
+    shape-rendering: crispEdges;
+}
+
+.leaflet-container {
+    z-index:0;
+}
+
+.leaflet-control-layers-overlays i { 
+    width: 1em;
+    height: 1em;               
+    float: right;
+    margin-top: 2px;
+    margin-left: 5px;
+    top: 1px;
+}
+
+.maptitle {
+    font: 10pt Lato, sans-serif;
+    z-index: 1;
+    color: white;
+    position: absolute;
+    top: 5px;
+    left: 50px;
+}
+
+.legend {
+    line-height:  18px;
+    color: #555
+}
+
+.legend i{
+    width:  18px;
+    height: 18px;
+    float:  left;
+    margin-right: 8px;
+    opacity: 0.7;
+    z-index:1;
+}
+
+.legendinfo{
+    padding: 5px 5px;
+    background: white;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
