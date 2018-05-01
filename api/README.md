@@ -552,6 +552,24 @@ The result is the same as the previous `'intseq'` version:
 ]
 ```
 
+# Polygons
+
+```
+Returns a path target.
+### Region
+Region is a target based on lat/lon polygons. We define a region
+by feeding RESOLUTION and POLY to the 'region' function.
+    region(RESOLUTION, POLY)
+A POLY primitive is defined by the poly function with a sequence
+of lat/lon pairs that are comma separated in a string:
+    poly(LAT_LON_STRING)
+We can combine POLY objects using
+    poly_complement(POLY)
+    poly_diff(POLY, POLY)
+    poly_union(POLY [, POLY]*)
+    poly_symdiff(POLY [, POLY]*)
+    poly_intersection(POLY [, POLY]*)
+```
 
 # Old stuff
 
