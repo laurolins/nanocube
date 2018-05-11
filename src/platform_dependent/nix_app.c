@@ -235,7 +235,6 @@ main(int num_args, char** args)
 
 	if (app_code.application_code_dll == 0) {
 		app_state.platform.write_to_file(&platform_stdout, print_dlopen_issues->begin, print_dlopen_issues->end);
-		print_delete(print);
 		fputs("[Problem] Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n",stderr);
 		return -1;
 	}
@@ -312,7 +311,6 @@ main(int num_args, char** args)
 	nix_free_memory(&profile_memory);
 #endif
 
-	print_delete(print_dlopen_issues);
 	print_delete(print);
 
 	return 0;
