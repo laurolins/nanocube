@@ -1,11 +1,14 @@
 AUTOMAKE_OPTIONS=subdir-objects
 ACLOCAL_AMFLAGS=-I m4
 
-lib_LTLIBRARIES=libnanocube_app.la
+lib_LTLIBRARIES=
 
 if WITH_POLYCOVER
 lib_LTLIBRARIES+=libpolycover.la
-# no flags for now
+libpolycover_la_CFLAGS=-fPIC
+libpolycover_la_CPPFLAGS=-fPIC
+libpolycover_la_CXXFLAGS=-fPIC
+libpolycover_la_LDFLAGS=-shared -fPIC
 libpolycover_la_SOURCES=\
 	src/polycover/area.cc \
 	src/polycover/area.hh \
@@ -44,11 +47,13 @@ libpolycover_la_SOURCES=\
 	src/polycover/glu/tessellate.c
 endif
 
+lib_LTLIBRARIES+=libnanocube_app.la
 bin_PROGRAMS=nanocube
 
 # the tentative platform independent part
 libnanocube_app_la_SOURCES=src/app.c
-libnanocube_app_la_CFLAGS=-Wall -Werror -g -ggdb -O3
+libnanocube_app_la_CFLAGS=-Wall -Werror -g -ggdb -O3 -fPIC
+libnanocube_app_la_LDFLAGS=-shared -fPIC
 libnanocube_app_la_LIBADD=-lm
 if LINUX
 libnanocube_app_la_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
@@ -62,7 +67,7 @@ endif
 
 nanocube_SOURCES=src/platform_dependent/nix_app.c
 nanocube_CFLAGS=-Wall -Werror -g -ggdb -O3
-nanocube_LDADD=-lm -ldl -lpthread libnanocube_app.la 
+nanocube_LDADD=-lm -ldl -lpthread libnanocube_app.la
 if LINUX
 nanocube_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
 endif
@@ -71,5 +76,5 @@ nanocube_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -W
 endif
 if WITH_POLYCOVER
 nanocube_CFLAGS+=-DPOLYCOVER
-nanocube_LDADD+=libpolycover.la 
+nanocube_LDADD+=libpolycover.la
 endif

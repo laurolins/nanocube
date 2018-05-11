@@ -84,15 +84,15 @@ CXX="gcc"
 LIBS="-L${BUILD} -lm -ldl -lpthread"
 APP_EXTRA_LIBS=""
 
-if [ "$POLYCOVER_SUPPORT" = true ]; then
-	if [ ! -f "${POLYCOVER_PATH}/libpolycover.so" ]; then
-		echo "Error: file [${POLYCOVER_PATH}/libpolycover.so] doesn't exist";
-		exit 1;
-	else
-		echo "POLYCOVER dynamic library exists: [${POLYCOVER_PATH}/libpolycover.so]"
-		APP_EXTRA_LIBS="-L${POLYCOVER_PATH} -lpolycover"
-	fi
-fi
+#  if [ "$POLYCOVER_SUPPORT" = true ]; then
+#  	if [ ! -f "${POLYCOVER_PATH}/libpolycover.so" ]; then
+#  		echo "Error: file [${POLYCOVER_PATH}/libpolycover.so] doesn't exist";
+#  		exit 1;
+#  	else
+#  		echo "POLYCOVER dynamic library exists: [${POLYCOVER_PATH}/libpolycover.so]"
+#  		APP_EXTRA_LIBS="-L${POLYCOVER_PATH} -lpolycover"
+#  	fi
+#  fi
 
 # prepare VERSION_NAME name based on repository updates
 BASE_VERSION="$(cat VERSION)"
@@ -171,7 +171,7 @@ if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
 ${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
 ${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
-cp nanocube ${HOME}/local/bin/. ;\
-cp libnanocube_app.so ${HOME}/local/bin/. ;\
+# cp nanocube ${HOME}/local/bin/. ;\
+# cp libnanocube_app.so ${HOME}/local/bin/. ;\
 popd
 

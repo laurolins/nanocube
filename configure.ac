@@ -9,18 +9,18 @@ AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
 
-# 
+#
 # AC_ARG_ENABLE(option-name, help-string, action-if-present, action-if-not-present)
 # AC_ARG_WITH([polycover], AS_HELP_STRING([--without-foo], [Ignore presence of foo and disable it]))
 #
-AC_ARG_WITH([polycover], 
+AC_ARG_WITH([polycover],
 	    [AS_HELP_STRING([--with-polycover], [polycover; needs c++ and its stdlib dependencies])],
 	    [],
 	    [with_polycover=no])
 
 # add an option
 AS_IF([test "x$with_polycover" != "xno"],
-      [ AM_CONDITIONAL(WITH_POLYCOVER, true)  ], 
+      [ AM_CONDITIONAL(WITH_POLYCOVER, true)  ],
       [ AM_CONDITIONAL(WITH_POLYCOVER, false) ])
 
 ###############################################################
@@ -54,6 +54,9 @@ AM_PROG_CC_C_O
 # the macro AC_PROG_CPP seems to find the default compiler (gcc or clang)
 #AC_PROG_CPP
 AM_PROG_AR
+
+AC_ENABLE_SHARED
+AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 
 LT_LIB_DLLOAD
@@ -67,10 +70,10 @@ LT_INIT
 # AM_COND_IF([WITH_POLYCOVER], [AC_PROG_CXX AC_LANG([C++]) AX_CXX_COMPILE_STDCXX_11(noext)], [])
 # AS_IF([test "x$with_polycover" != "xno"], [ ], [ ])
 
-AC_PROG_CXX 
-AC_LANG([C++]) 
+AC_PROG_CXX
+AC_LANG([C++])
 AX_CXX_COMPILE_STDCXX_11(noext)
-AC_LANG([C]) 
+AC_LANG([C])
 
 
 # Checks for libraries.

@@ -361,7 +361,6 @@ END_DOC_STRING
 // create crimes_nc.dmp crimes.nanocube_count 4G
 //
 
-
 // platform util assumes a platform global variable
 // is available
 global_variable PlatformAPI platform;
@@ -7283,8 +7282,6 @@ Other COMMANDs:
 END_DOC_STRING
 */
 
-// void name(ApplicationState* app_state, const char* request_begin,
-// const char* request_end, PlatformFileHandle *pfh_stdin, PlatformFileHandle *pfh_stdout)
 APPLICATION_PROCESS_REQUEST(application_process_request)
 {
 	/* copy platform function pointers */
@@ -7293,6 +7290,12 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 
 	/* initialize nx_ module */
 	nx_start();
+
+#ifdef POLYCOVER
+	fprintf(stderr,"polycover->get_code: %p\n", global_app_state->polycover.get_code);
+#else
+	fprintf(stderr,"NO POLYCOVER\n");
+#endif
 
 #ifdef PROFILE
 	global_profile_table = (pf_Table*) app_state->global_profile_table;

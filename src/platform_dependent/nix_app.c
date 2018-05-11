@@ -148,9 +148,9 @@ pf_Table *global_profile_table = &global_profile_table_storage;
 #define main_BUFFER_SIZE Megabytes(1)
 
 static Print*
-print_new(u64 buffer_size)
+print_new(u64 request_size)
 {
-	u64 size = RALIGN(buffer_size, 4096);
+	u64 size = RALIGN(request_size, 4096);
 	char *buffer = (char*) malloc(size);
 	Assert(buffer);
 	Print *print = (Print*) buffer;
@@ -240,7 +240,6 @@ main(int num_args, char** args)
 	}
 
 #ifdef POLYCOVER
-	Print_clear(print);
 	char *polycover_lib_names[] = { "libpolycover.so", "libpolycover.dylib", "../lib/libpolycover.so", "../lib/libpolycover.dylib" };
 	for (s32 i=0; i<ArrayCount(polycover_lib_names); ++i) {
 		print->end = path_end;
@@ -267,45 +266,12 @@ main(int num_args, char** args)
 	// the arguments into a single buffer space separated
 	//
 	Print_clear(print);
-	for (s64 i=1;i<num_args;++i)
-	{
-		if (i > 1)
-			Print_char(print, ' ');
+	for (s64 i=1;i<num_args;++i) {
+		if (i > 1) Print_char(print, ' ');
 		Print_cstr(print, args[i]);
 	}
 
-#if 0
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A0");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A1");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A2");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A3");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A4");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A5");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A6");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A7");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A8");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load A9");
-	app_state.platform.work_queue_complete_work(app_state.work_queue);
-
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B0");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B1");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B2");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B3");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B4");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B5");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B6");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B7");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B8");
-	app_state.platform.work_queue_add_entry(app_state.work_queue,test_worker_task,"Load B9");
-	app_state.platform.work_queue_complete_work(app_state.work_queue);
-#endif
-
 	app_code.application_process_request(&app_state, print->begin, print->end, &platform_stdin, &platform_stdout);
-
-#if 0
-	/* destroy semaphore */
-	pt_WorkQueue_free(app_state.work_queue);
-#endif
 
 #ifdef PROFILE
 	nix_free_memory(&profile_memory);
