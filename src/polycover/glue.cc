@@ -38,8 +38,9 @@ polycover_compute_union_decomposition(const polycover::area::Area& area, polycov
 }
 
 // lat,lon pairs
-polycover_Shape
-polycover_contour_in_degrees_to_shape(float *points, int num_points, int max_level)
+// polycover_Shape
+// polycover_contour_in_degrees_to_shape(float *points, int num_points, int max_level)
+POLYCOVER_NEW_SHAPE(polycover_new_shape)
 {
 	polycover::area::Area     area;
 	polycover::area::Contour *contour = area.addContour();
@@ -59,7 +60,8 @@ polycover_contour_in_degrees_to_shape(float *points, int num_points, int max_lev
 	return shape;
 }
 
-void polycover_release_shape(polycover_Shape shape)
+// void polycover_release_shape(polycover_Shape shape)
+POLYCOVER_FREE_SHAPE(polycover_free_shape)
 {
 	cells_t *cells = (cells_t*) shape.handle;
 	if (cells != 0) {
@@ -73,13 +75,14 @@ void polycover_release_shape(polycover_Shape shape)
 // for success there needs to be at least code_size + 1 bytes in the input buffer
 // since we want to force a \0 character at the end of the code word
 //
-int polycover_shape_code(polycover_Shape shape, char *begin, char *end, int *code_size)
+// int polycover_shape_code(polycover_Shape shape, char *begin, char *end, int *size)
+POLYCOVER_CODE(polycover_get_code)
 {
 	// assert(shape.handle);
 	cells_t *cells = (cells_t*) shape.handle;
 	auto code = cells->code();
 	// write
-	*code_size = code.size();
+	*size = code.size();
 	auto buffer_size = end - begin;
 	if (buffer_size < code.size() + 1) {
 		return 0;
@@ -94,7 +97,8 @@ int polycover_shape_code(polycover_Shape shape, char *begin, char *end, int *cod
 	}
 }
 
-polycover_Shape polycover_complement_shape(polycover_Shape shape)
+// polycover_Shape polycover_complement_shape(polycover_Shape shape)
+POLYCOVER_UNARY_OPERATOR(polycover_get_complement)
 {
 	cells_t *cells = (cells_t*) shape.handle;
 	// - unary operator on labeled tree...
@@ -102,7 +106,9 @@ polycover_Shape polycover_complement_shape(polycover_Shape shape)
 	return (polycover_Shape) { .handle = complement };
 }
 
-polycover_Shape polycover_union(polycover_Shape shape1, polycover_Shape shape2)
+
+// polycover_Shape polycover_union(polycover_Shape shape1, polycover_Shape shape2)
+POLYCOVER_BINARY_OPERATOR(polycover_get_union)
 {
 	cells_t *cells1 = (cells_t*) shape1.handle;
 	cells_t *cells2 = (cells_t*) shape2.handle;
@@ -110,7 +116,7 @@ polycover_Shape polycover_union(polycover_Shape shape1, polycover_Shape shape2)
 	return (polycover_Shape) { .handle = result };
 }
 
-polycover_Shape polycover_difference(polycover_Shape shape1, polycover_Shape shape2)
+POLYCOVER_BINARY_OPERATOR(polycover_get_difference)
 {
 	cells_t *cells1 = (cells_t*) shape1.handle;
 	cells_t *cells2 = (cells_t*) shape2.handle;
@@ -118,7 +124,7 @@ polycover_Shape polycover_difference(polycover_Shape shape1, polycover_Shape sha
 	return (polycover_Shape) { .handle = result };
 }
 
-polycover_Shape polycover_symmetric_difference(polycover_Shape shape1, polycover_Shape shape2)
+POLYCOVER_BINARY_OPERATOR(polycover_get_symmetric_difference)
 {
 	cells_t *cells1 = (cells_t*) shape1.handle;
 	cells_t *cells2 = (cells_t*) shape2.handle;
@@ -126,7 +132,7 @@ polycover_Shape polycover_symmetric_difference(polycover_Shape shape1, polycover
 	return (polycover_Shape) { .handle = result };
 }
 
-polycover_Shape polycover_intersection(polycover_Shape shape1, polycover_Shape shape2)
+POLYCOVER_BINARY_OPERATOR(polycover_get_intersection)
 {
 	cells_t *cells1 = (cells_t*) shape1.handle;
 	cells_t *cells2 = (cells_t*) shape2.handle;

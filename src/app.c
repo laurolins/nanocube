@@ -373,6 +373,10 @@ global_variable PlatformAPI platform;
 #include "base/options.c"
 #include "base/util.c"
 
+#ifdef POLYCOVER
+#include "polycover/polycover.h"
+#endif
+
 #include "app.h"
 
 /* reference to application state (comes from platform dependent compilation unit) */
@@ -416,9 +420,6 @@ Request_print(Request *req, Print *print)
 #include "base/csv.c"
 #include "base/aatree.c"
 
-#ifdef POLYCOVER
-#include "polycover/polycover.h"
-#endif
 
 /* btree data structure */
 #include "nanocube/nanocube_btree.c"
@@ -7187,6 +7188,8 @@ service_create_col(Request *request)
 internal void
 service_polycover(Request *request)
 {
+	PolycoverAPI *polycover = &global_app_state->polycover;
+
 	Print      *print   = &request->print;
 	op_Options *options = &request->options;
 
@@ -7197,10 +7200,10 @@ service_polycover(Request *request)
 		 50.0f, 100.0f,
 		 50.0f,-100.0f
 	};
-	polycover_Shape shape = polycover_contour_in_degrees_to_shape(points, 4, 8);
+	polycover_Shape shape = polycover->new_shape(points, 4, 8);
 	pt_Memory memory = platform.allocate_memory(Megabytes(4),12,0);
 	s32 size = 0;
-	s32 ok = polycover_shape_code(shape,memory.memblock.begin,memory.memblock.end,&size);
+	s32 ok = polycover->get_code(shape,memory.memblock.begin,memory.memblock.end,&size);
 	if (!ok) {
 		Print_cstr(print, "not enough memory to get the code of the shape\n");
 	} else {

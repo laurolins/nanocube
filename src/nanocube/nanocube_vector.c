@@ -2006,18 +2006,19 @@ np_FUNCTION_HANDLER(nv_function_poly_intersection)
 internal polycover_Shape
 nv_shape_combine(polycover_Shape shape1, polycover_Shape shape2, s32 op_type)
 {
+	PolycoverAPI *polycover = &global_app_state->polycover;
 	switch(op_type) {
 		case nv_Poly_OP_DIFF: {
-			return polycover_difference(shape1, shape2);
+			return polycover->get_difference(shape1, shape2);
 		}
 		case nv_Poly_OP_SYMDIFF: {
-			return polycover_symmetric_difference(shape1, shape2);
+			return polycover->get_symmetric_difference(shape1, shape2);
 		}
 		case nv_Poly_OP_INTERSECTION: {
-			return polycover_intersection(shape1, shape2);
+			return polycover->get_intersection(shape1, shape2);
 		}
 		case nv_Poly_OP_UNION: {
-			return polycover_union(shape1, shape2);
+			return polycover->get_union(shape1, shape2);
 		}
 		default: {
 			Assert(0 && "not expected");
@@ -2029,14 +2030,15 @@ nv_shape_combine(polycover_Shape shape1, polycover_Shape shape2, s32 op_type)
 internal polycover_Shape
 nv_compute_poly_shape(nv_Poly *poly, s32 level)
 {
+	PolycoverAPI *polycover = &global_app_state->polycover;
 	if (poly->is_poly) {
-		return polycover_contour_in_degrees_to_shape(poly->poly.coords, poly->poly.num_points, level);
+		return polycover->new_shape(poly->poly.coords, poly->poly.num_points, level);
 	} else {
 		if (poly->op.op_type == nv_Poly_OP_COMPLEMENT) {
 			Assert(poly->op.num_polys == 1);
 			polycover_Shape shape  = nv_compute_poly_shape(poly->op.polys[0], level);
-			polycover_Shape result = polycover_complement_shape(shape);
-			polycover_release_shape(shape);
+			polycover_Shape result = polycover->get_complement(shape);
+			polycover->free_shape(shape);
 			return result;
 		} else {
 // 		case nv_Poly_OP_DIFF:
@@ -2052,8 +2054,8 @@ nv_compute_poly_shape(nv_Poly *poly, s32 level)
 				for (s32 i=1;i<poly->op.num_polys;++i) {
 					polycover_Shape b = nv_compute_poly_shape(poly->op.polys[i], level);
 					polycover_Shape aa = nv_shape_combine(a, b, poly->op.op_type);
-					polycover_release_shape(a);
-					polycover_release_shape(b);
+					polycover->free_shape(a);
+					polycover->free_shape(b);
 					a = aa;
 				}
 				return a;
@@ -2065,11 +2067,12 @@ nv_compute_poly_shape(nv_Poly *poly, s32 level)
 internal char*
 nv_compute_poly_mask(nv_Poly *poly, s32 level, char *buffer_begin, char *buffer_end)
 {
+	PolycoverAPI *polycover = &global_app_state->polycover;
 	polycover_Shape shape = nv_compute_poly_shape(poly, level);
 	Assert(shape.handle != 0);
 	s32 code_size = 0;
-	s32 ok = polycover_shape_code(shape, buffer_begin, buffer_end, &code_size);
-	polycover_release_shape(shape);
+	s32 ok = polycover->get_code(shape, buffer_begin, buffer_end, &code_size);
+	polycover->free_shape(shape);
 	if (ok) {
 		return buffer_begin + code_size;
 	} else {

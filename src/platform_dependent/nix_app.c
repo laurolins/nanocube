@@ -1,5 +1,9 @@
 #include "../base/platform.c"
 
+#ifdef POLYCOVER
+#include "../polycover/polycover.h"
+#endif
+
 #include "../app.h"
 
 #include "nix_platform.c"
@@ -74,6 +78,50 @@ nix_load_application_code(char *application_dll_path, Print *print)
 
 	return result;
 }
+
+#ifdef POLYCOVER
+
+internal PolycoverAPI
+nix_load_polycover_code(char *polycover_dll_path, Print *print)
+{
+	PolycoverAPI result = { 0 };
+
+	void *dll_code = dlopen(polycover_dll_path, RTLD_NOW); // RTLD_LAZY);
+
+	// Assert(result.application_process_request);
+	if (!dll_code)
+	{
+		Print_cstr(print, dlerror());
+		Print_cstr(print, "\n");
+		return result;
+	}
+
+	result.get_union                = dlsym(dll_code, "polycover_get_union");
+	result.get_difference           = dlsym(dll_code, "polycover_get_difference");
+	result.get_symmetric_difference = dlsym(dll_code, "polycover_get_symmetric_difference");
+	result.get_intersection         = dlsym(dll_code, "polycover_get_intersection");
+	result.get_complement           = dlsym(dll_code, "polycover_get_complement");
+	result.new_shape                = dlsym(dll_code, "polycover_new_shape");
+	result.free_shape               = dlsym(dll_code, "polycover_free_shape");
+	result.get_code                 = dlsym(dll_code, "polycover_get_code");
+
+
+	if (!(result.get_union
+	      && result.get_difference
+	      && result.get_symmetric_difference
+	      && result.get_intersection
+	      && result.get_complement
+	      && result.new_shape
+	      && result.free_shape
+	      && result.get_code)) {
+		result = (PolycoverAPI) { 0 };
+	}
+
+	return result;
+}
+
+#endif
+
 
 internal
 PLATFORM_WORK_QUEUE_CALLBACK(test_worker_task)
@@ -172,17 +220,7 @@ main(int num_args, char** args)
 	Print_str(print, executable_path.full_path, executable_path.name);
 	char *path_end = print->end;
 
-// typedef struct {
-// 	char  full_path[MAX_FILE_PATH_SIZE+1];
-// 	char* name;
-// 	char* extension; // extension start last . in name
-// 	char* end;
-// } FilePath;
-
-
-
 	char *lib_names[] = { "libnanocube_app.so", "libnanocube_app.dylib", "../lib/libnanocube_app.so", "../lib/libnanocube_app.dylib" };
-
 	NIXApplicationCode app_code = { 0 };
 	for (s32 i=0; i<ArrayCount(lib_names); ++i) {
 		print->end = path_end;
@@ -198,12 +236,32 @@ main(int num_args, char** args)
 	if (app_code.application_code_dll == 0) {
 		app_state.platform.write_to_file(&platform_stdout, print_dlopen_issues->begin, print_dlopen_issues->end);
 		print_delete(print);
-		print_delete(print_dlopen_issues);
 		fputs("[Problem] Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n",stderr);
 		return -1;
-	} else {
-		print_delete(print_dlopen_issues);
 	}
+
+#ifdef POLYCOVER
+	Print_clear(print);
+	char *polycover_lib_names[] = { "libpolycover.so", "libpolycover.dylib", "../lib/libpolycover.so", "../lib/libpolycover.dylib" };
+	for (s32 i=0; i<ArrayCount(polycover_lib_names); ++i) {
+		print->end = path_end;
+		Print_cstr(print,polycover_lib_names[i]);
+		Print_char(print,0);
+		app_state.polycover = nix_load_polycover_code(path, print_dlopen_issues);
+		if (app_state.polycover.get_code) {
+			break;
+		}
+	}
+
+	if (app_state.polycover.get_code == 0) {
+		app_state.platform.write_to_file(&platform_stdout, print_dlopen_issues->begin, print_dlopen_issues->end);
+		fputs("[Problem] Couldn't load polycover dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n", stderr);
+		return -1;
+	}
+#endif
+
+	// delete open dynamic library loading message buffer
+	print_delete(print_dlopen_issues);
 
 	//
 	// treat request as a memory block by copying all
@@ -254,6 +312,7 @@ main(int num_args, char** args)
 	nix_free_memory(&profile_memory);
 #endif
 
+	print_delete(print_dlopen_issues);
 	print_delete(print);
 
 	return 0;

@@ -4,6 +4,11 @@ typedef struct {
 	PlatformAPI     platform;
 	b8              interrupted;
 	void            *global_profile_table;
+
+#ifdef POLYCOVER
+	PolycoverAPI    polycover;
+#endif
+
 } ApplicationState;
 
 #define APPLICATION_PROCESS_REQUEST(name) \

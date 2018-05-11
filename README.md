@@ -17,10 +17,27 @@ cd nanocube
 autoreconf -vi
 mkdir build
 cd build
-../configure --with-polycover
+../configure --with-polycover --prefix=$(pwd)/install
 make -j
 ./nanocube
+make install
+./install/bin/nanocube
 ```
+
+# Viewer
+
+```shell
+cd data
+nanocube create <(zcat crime50k.csv.gz) crime50k.map crime50k.nanocube
+nanocube serve 51234 crime=crime50k.nanocube &
+
+cd ..
+. setenv.sh
+./scripts/ncwebviewer-config -p
+
+# open browser on port localhost 8000 and we should see the crime example
+```
+
 # Paper Example
 
 ```shell

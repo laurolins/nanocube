@@ -4,7 +4,7 @@ ACLOCAL_AMFLAGS=-I m4
 lib_LTLIBRARIES=libnanocube_app.la
 
 if WITH_POLYCOVER
-lib_LTLIBRARIES+=libpolycover.la 
+lib_LTLIBRARIES+=libpolycover.la
 # no flags for now
 libpolycover_la_SOURCES=\
 	src/polycover/area.cc \
@@ -68,6 +68,7 @@ libnanocube_app_la_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dere
 endif
 
 if WITH_POLYCOVER
+nanocube_CFLAGS+=-DPOLYCOVER
 libnanocube_app_la_CFLAGS+=-DPOLYCOVER
 libnanocube_app_la_LIBADD+=libpolycover.la
 endif
