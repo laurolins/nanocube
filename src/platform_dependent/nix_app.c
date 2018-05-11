@@ -1,4 +1,5 @@
 #include "../base/platform.c"
+
 #include "../app.h"
 
 #include "nix_platform.c"
@@ -98,6 +99,23 @@ pf_Table *global_profile_table = &global_profile_table_storage;
 
 #define main_BUFFER_SIZE Megabytes(1)
 
+static Print*
+print_new(u64 buffer_size)
+{
+	u64 size = RALIGN(buffer_size, 4096);
+	char *buffer = (char*) malloc(size);
+	Assert(buffer);
+	Print *print = (Print*) buffer;
+	Print_init(print, buffer + sizeof(Print), buffer + size);
+	return print;
+}
+
+static void
+print_delete(Print *print)
+{
+	free(print);
+}
+
 int
 main(int num_args, char** args)
 {
@@ -142,49 +160,61 @@ main(int num_args, char** args)
 	platform_stdin.handle = stdin;
 
 	// buffer
-	char *buffer = (char*) malloc(main_BUFFER_SIZE);
-	Print print;
-	Print_init(&print, buffer, buffer + main_BUFFER_SIZE);
+	Print *print               = print_new(main_BUFFER_SIZE);
+	Print *print_dlopen_issues = print_new(Kilobytes(32));
 
 	// get .dll full path
-	FilePath executable_path, dll_path;
+	FilePath executable_path;
 	app_state.platform.executable_path(&executable_path);
-	FilePath_copy(&dll_path, &executable_path);
 
-	char *lib_names[] = { "libnanocube_app.so", "libnanocube_app.dylib" };
+	//
+	char *path = print->begin;
+	Print_str(print, executable_path.full_path, executable_path.name);
+	char *path_end = print->end;
+
+// typedef struct {
+// 	char  full_path[MAX_FILE_PATH_SIZE+1];
+// 	char* name;
+// 	char* extension; // extension start last . in name
+// 	char* end;
+// } FilePath;
+
+
+
+	char *lib_names[] = { "libnanocube_app.so", "libnanocube_app.dylib", "../lib/libnanocube_app.so", "../lib/libnanocube_app.dylib" };
 
 	NIXApplicationCode app_code = { 0 };
 	for (s32 i=0; i<ArrayCount(lib_names); ++i) {
-		FilePath_set_name_cstr(&dll_path, lib_names[i]);
-		Print_clear(&print);
-		NIXApplicationCode current_app_code = nix_load_application_code(dll_path.full_path, &print);
-		if (!current_app_code.is_valid) {
-			// Print_cstr(&print, "\n[Problem] Could not find dynamically load library: ");
-			// Print_str(&print, dll_path.full_path, cstr_end(dll_path.full_path));
-			// Print_cstr(&print, "\n");
-			// fputs(print.begin, stderr);
-			app_state.platform.write_to_file(&platform_stdout, print.begin, print.end);
-		} else {
+		print->end = path_end;
+		Print_cstr(print,lib_names[i]);
+		Print_char(print,0);
+		NIXApplicationCode current_app_code = nix_load_application_code(path, print_dlopen_issues);
+		if (current_app_code.is_valid) {
 			app_code = current_app_code;
 			break;
 		}
 	}
 
 	if (app_code.application_code_dll == 0) {
+		app_state.platform.write_to_file(&platform_stdout, print_dlopen_issues->begin, print_dlopen_issues->end);
+		print_delete(print);
+		print_delete(print_dlopen_issues);
 		fputs("[Problem] Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n",stderr);
 		return -1;
+	} else {
+		print_delete(print_dlopen_issues);
 	}
 
 	//
 	// treat request as a memory block by copying all
 	// the arguments into a single buffer space separated
 	//
-	Print_clear(&print);
+	Print_clear(print);
 	for (s64 i=1;i<num_args;++i)
 	{
 		if (i > 1)
-			Print_char(&print, ' ');
-		Print_cstr(&print, args[i]);
+			Print_char(print, ' ');
+		Print_cstr(print, args[i]);
 	}
 
 #if 0
@@ -213,7 +243,7 @@ main(int num_args, char** args)
 	app_state.platform.work_queue_complete_work(app_state.work_queue);
 #endif
 
-	app_code.application_process_request(&app_state, print.begin, print.end, &platform_stdin, &platform_stdout);
+	app_code.application_process_request(&app_state, print->begin, print->end, &platform_stdin, &platform_stdout);
 
 #if 0
 	/* destroy semaphore */
@@ -224,7 +254,8 @@ main(int num_args, char** args)
 	nix_free_memory(&profile_memory);
 #endif
 
-	free(buffer);
+	print_delete(print);
+
 	return 0;
 
 }
