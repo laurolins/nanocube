@@ -1,25 +1,22 @@
 {
   "name": "Nanocube",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Nanocube Web Frontend",
-  "repository": "https://github.research.att.com/ipcy/nanocube-web",
+  "repository": "https://github.com/laurolins/nanocube",
   "license": "EPL-1.0",
   "devDependencies": {
     "colorbrewer": "*",
-    "d3": "^3",
+    "d3": "3",
     "grunt": "*",
     "grunt-cli": "*",
     "grunt-contrib-concat": "*",
     "grunt-contrib-jshint": "*",
     "interact.js": "*",
-    "jquery": "^2",
+    "jquery": "*",
     "jsep": "*",
-    "leaflet": "^1.3.1",
-    "leaflet-draw": "^1.0.2",
-    "requirejs": "*"
-  },
-  "dependencies": {
-    "http-server": "^0.11.1",
-    "sprintf": "^0.1.5"
+    "leaflet": "*",
+    "leaflet-draw": "*",
+    "requirejs": "*",
+    "sprintf-js": "*"
   }
 }
