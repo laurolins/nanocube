@@ -50,25 +50,26 @@ bin_PROGRAMS=nanocube
 libnanocube_app_la_SOURCES=src/app.c
 libnanocube_app_la_CFLAGS=-Wall -Werror -g -ggdb -O3
 libnanocube_app_la_LIBADD=-lm
-
-nanocube_CFLAGS=-Wall -Werror -g -ggdb -O3
-nanocube_LDADD=libnanocube_app.la -lm -ldl -lpthread
-
-# nanocube
 if LINUX
-nanocube_SOURCES=src/platform_dependent/nix_app.c
-nanocube_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
 libnanocube_app_la_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
 endif
-
 if OSX
-nanocube_SOURCES=src/platform_dependent/nix_app.c
-nanocube_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
 libnanocube_app_la_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
 endif
+if WITH_POLYCOVER
+libnanocube_app_la_CFLAGS+=-DPOLYCOVER
+endif
 
+nanocube_SOURCES=src/platform_dependent/nix_app.c
+nanocube_CFLAGS=-Wall -Werror -g -ggdb -O3
+nanocube_LDADD=-lm -ldl -lpthread libnanocube_app.la 
+if LINUX
+nanocube_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
+endif
+if OSX
+nanocube_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
+endif
 if WITH_POLYCOVER
 nanocube_CFLAGS+=-DPOLYCOVER
-libnanocube_app_la_CFLAGS+=-DPOLYCOVER
-libnanocube_app_la_LIBADD+=libpolycover.la
+nanocube_LDADD+=libpolycover.la 
 endif
