@@ -8,7 +8,6 @@ AC_CONFIG_AUX_DIR([ac_aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 
-
 #
 # AC_ARG_ENABLE(option-name, help-string, action-if-present, action-if-not-present)
 # AC_ARG_WITH([polycover], AS_HELP_STRING([--without-foo], [Ignore presence of foo and disable it]))

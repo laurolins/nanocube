@@ -7291,11 +7291,11 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 	/* initialize nx_ module */
 	nx_start();
 
-#ifdef POLYCOVER
-	fprintf(stderr,"polycover->get_code: %p\n", global_app_state->polycover.get_code);
-#else
-	fprintf(stderr,"NO POLYCOVER\n");
-#endif
+// #ifdef POLYCOVER
+// 	fprintf(stderr,"polycover->get_code: %p\n", global_app_state->polycover.get_code);
+// #else
+// 	fprintf(stderr,"NO POLYCOVER\n");
+// #endif
 
 #ifdef PROFILE
 	global_profile_table = (pf_Table*) app_state->global_profile_table;

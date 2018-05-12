@@ -24,6 +24,21 @@ make install
 ./install/bin/nanocube
 ```
 
+# Compiling in Debug Mode
+
+```shell
+mkdie build
+cd build
+# profile
+../configure --with-polycover --prefix=$(pwd)/profile CFLAGS="-g -ggdb -O2 -DPROFILE"
+# debug
+../configure --with-polycover --prefix=$(pwd)/debug CFLAGS="-g -ggdb -O0 -DDEBUG"
+# release
+../configure --with-polycover --prefix=$(pwd)/release CFLAGS="-g -ggdb -O3"
+```
+
+
+
 # Viewer
 
 ```shell

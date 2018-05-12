@@ -220,7 +220,10 @@ main(int num_args, char** args)
 	Print_str(print, executable_path.full_path, executable_path.name);
 	char *path_end = print->end;
 
-	char *lib_names[] = { "libnanocube_app.so", "libnanocube_app.dylib", "../lib/libnanocube_app.so", "../lib/libnanocube_app.dylib" };
+	char *lib_names[] = { "libnanocube_app.so", "libnanocube_app.dylib",
+		"../lib/libnanocube_app.so", "../lib/libnanocube_app.dylib",
+		".libs/libnanocube_app.so", ".libs/libnanocube_app.dylib"
+	};
 	NIXApplicationCode app_code = { 0 };
 	for (s32 i=0; i<ArrayCount(lib_names); ++i) {
 		print->end = path_end;
@@ -240,7 +243,9 @@ main(int num_args, char** args)
 	}
 
 #ifdef POLYCOVER
-	char *polycover_lib_names[] = { "libpolycover.so", "libpolycover.dylib", "../lib/libpolycover.so", "../lib/libpolycover.dylib" };
+	char *polycover_lib_names[] = { "libpolycover.so", "libpolycover.dylib",
+		"../lib/libpolycover.so", "../lib/libpolycover.dylib",
+		".libs/libpolycover.so", ".libs/libpolycover.dylib" };
 	for (s32 i=0; i<ArrayCount(polycover_lib_names); ++i) {
 		print->end = path_end;
 		Print_cstr(print,polycover_lib_names[i]);
