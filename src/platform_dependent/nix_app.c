@@ -275,6 +275,8 @@ main(int num_args, char** args)
 		if (i > 1) Print_char(print, ' ');
 		Print_cstr(print, args[i]);
 	}
+	// cannot append zero it messes up the options
+	// Print_char(print,0);
 
 	app_code.application_process_request(&app_state, print->begin, print->end, &platform_stdin, &platform_stdout);
 

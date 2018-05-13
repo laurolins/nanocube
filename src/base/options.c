@@ -345,14 +345,9 @@ op_Options_named_f32_cstr(op_Options *self, char *name, u32 value_index, f32 *ou
 internal op_NamedParameter*
 op_Options_insert_named_parameter(op_Options *self, char *name_begin, char *name_end)
 {
-	op_NamedParameter *named_parameter = (op_NamedParameter*)
-		LinearAllocator_alloc(&self->allocator, sizeof(op_NamedParameter));
-
-	named_parameter->name.begin = name_begin;
-	named_parameter->name.end   = name_end;
-	named_parameter->next = 0;
-	named_parameter->first_parameter = 0;
-
+	// fprintf(stderr,"append named parameter  %.*s\n", (s32) (name_end - name_begin), name_begin);
+	op_NamedParameter *named_parameter = (op_NamedParameter*) LinearAllocator_alloc(&self->allocator, sizeof(op_NamedParameter));
+	op_NamedParameter_init(named_parameter, name_begin, name_end);
 	if (!self->last_named_parameter) {
 		self->first_named_parameter = named_parameter;
 		self->last_named_parameter  = named_parameter;
@@ -366,13 +361,9 @@ op_Options_insert_named_parameter(op_Options *self, char *name_begin, char *name
 internal op_Parameter*
 op_Options_append_parameter(op_Options *self, char *value_begin, char *value_end)
 {
-	op_Parameter *parameter = (op_Parameter*)
-		LinearAllocator_alloc(&self->allocator, sizeof(op_Parameter));
-
-	parameter->value.begin = value_begin;
-	parameter->value.end   = value_end;
-	parameter->next        = 0;
-
+	// fprintf(stderr,"append parameter %.*s\n", (s32) (value_end - value_begin), value_begin);
+	op_Parameter *parameter = (op_Parameter*) LinearAllocator_alloc(&self->allocator, sizeof(op_Parameter));
+	op_Parameter_init(parameter, value_begin, value_end);
 	if (!self->last_positioned_parameter) {
 		self->first_positioned_parameter = parameter;
 		self->last_positioned_parameter  = parameter;
@@ -384,14 +375,11 @@ op_Options_append_parameter(op_Options *self, char *value_begin, char *value_end
 }
 
 internal op_Parameter*
-op_Options_append_to_named_parameter(op_Options *self, op_NamedParameter *named_parameter,
-				  char *value_begin, char *value_end)
+op_Options_append_to_named_parameter(op_Options *self, op_NamedParameter *named_parameter, char *value_begin, char *value_end)
 {
+	// fprintf(stderr,"append parameter to named parameter %.*s\n", (s32) (value_end - value_begin), value_begin);
 	op_Parameter *parameter = (op_Parameter*) LinearAllocator_alloc(&self->allocator, sizeof(op_Parameter));
-	parameter->value.begin = value_begin;
-	parameter->value.end   = value_end;
-	parameter->next        = 0;
-
+	op_Parameter_init(parameter, value_begin, value_end);
 	if (!named_parameter->last_parameter) {
 		named_parameter->first_parameter = parameter;
 		named_parameter->last_parameter  = parameter;
@@ -696,8 +684,7 @@ internal b8 op_Parser_run(op_Parser *self, char *text_begin, char *text_end)
 				op_Options_append_parameter(self->options, token->begin, token->end);
 			} else {
 				if (self->ready_for_named_parameter) {
-					op_Options_append_to_named_parameter(self->options, self->named_parameter,
-									     token->begin, token->end);
+					op_Options_append_to_named_parameter(self->options, self->named_parameter, token->begin, token->end);
 					self->ready_for_named_parameter = 0;
 				} else {
 					op_Options_append_parameter(self->options, token->begin, token->end);
@@ -711,8 +698,7 @@ internal b8 op_Parser_run(op_Parser *self, char *text_begin, char *text_end)
 				op_Options_append_parameter(self->options, token->begin+1, token->end-1);
 			} else if (self->named_parameter) {
 				if (self->ready_for_named_parameter) {
-					op_Options_append_to_named_parameter(self->options, self->named_parameter,
-									  token->begin+1, token->end-1);
+					op_Options_append_to_named_parameter(self->options, self->named_parameter, token->begin+1, token->end-1);
 					self->ready_for_named_parameter = 0;
 				} else {
 					op_Options_append_parameter(self->options, token->begin+1, token->end-1);

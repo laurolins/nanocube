@@ -30,14 +30,12 @@ make install
 mkdie build
 cd build
 # profile
-../configure --with-polycover --prefix=$(pwd)/profile CFLAGS="-g -ggdb -O2 -DPROFILE"
+../configure --with-polycover --prefix=$(pwd)/profile CFLAGS="-g -ggdb -O2 -DPROFILE" CXXFLAGS="-g -ggdb -O0 -DDEBUG"
 # debug
-../configure --with-polycover --prefix=$(pwd)/debug CFLAGS="-g -ggdb -O0 -DDEBUG"
+../configure --with-polycover --prefix=$(pwd)/debug CFLAGS="-g -ggdb -O0 -DDEBUG" CXXFLAGS="-g -ggdb -O0 -DDEBUG"
 # release
-../configure --with-polycover --prefix=$(pwd)/release CFLAGS="-g -ggdb -O3"
+../configure --with-polycover --prefix=$(pwd)/release CFLAGS="-g -ggdb -O3" CXXFLAGS="-g -ggdb -O3" CPPFLAGS="-g -ggdb -O3"
 ```
-
-
 
 # Viewer
 

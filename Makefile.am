@@ -68,11 +68,11 @@ libnanocube_app_la_CFLAGS+=-DPOLYCOVER
 endif
 
 nanocube_SOURCES=src/platform_dependent/nix_app.c
-nanocube_CFLAGS=
+nanocube_CFLAGS=-pthread
 # nanocube_CFLAGS=-Wall -Werror -g -ggdb -O3
 # nanocube_LDFLAGS=-all-static
-nanocube_LDADD=-lm -ldl -lpthread
 # libnanocube_app.la
+nanocube_LDADD=-lm -ldl
 if LINUX
 nanocube_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
 endif
