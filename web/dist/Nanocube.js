@@ -1466,19 +1466,25 @@ Nanocube.prototype = {
 
 
     setTimeInfo: function() {
+	var dfd = new $.Deferred();
+        
 	var dim = this.dimensions;
 
 	var tvar = Object.keys(dim).filter(function(k){
 	    return dim[k].vartype === 'temporal';
 	});
 
-	var tvarname = tvar[0];
+        if(tvar.length < 1){ // no time variable
+            dfd.resolve(); // dummy promise
+            return dfd.promise();
+        }
+
+        var tvarname = tvar[0];
 	tvar = dim[tvar[0]];
 
 	var twidth = tvar.varsize;
 	var maxtime = twidth-1;
 
-	var dfd = new $.Deferred();
 
         this.timeinfo={};
         var timeinfo = this.timeinfo;
