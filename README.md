@@ -45,6 +45,10 @@ nanocube create <(zcat crime50k.csv.gz) crime50k.map crime50k.nanocube
 nanocube serve 51234 crime=crime50k.nanocube &
 
 cd ..
+
+#Install the python packages for the first time
+pip install --user requests future
+
 . setenv.sh
 ./scripts/ncwebviewer-config -p
 
