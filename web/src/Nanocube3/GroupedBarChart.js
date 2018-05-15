@@ -69,16 +69,16 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     svg.append("g").attr("class", "x axis");
     
     //Scales
-    var y0 = d3.scale.ordinal();
-    var y1 = d3.scale.ordinal();
-    var x = d3.scale.linear();
+    var y0 = d3.scaleBand();
+    var y1 = d3.scaleBand();
+    var x = d3.scaleLinear();
     if (opts.logaxis){
-        x = d3.scale.log();
+        x = d3.scaleLog();
     }
 
     //Axis
-    var xAxis = d3.svg.axis();
-    var yAxis = d3.svg.axis();
+    var xAxis = d3.axisBottom();
+    var yAxis = d3.axisLeft();
 
     //set default values 
     opts.numformat = opts.numformat || ",";    
@@ -86,9 +86,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         opts.alpha_order = true;
     }
 
-    xAxis.orient("bottom")
-        .ticks(3,opts.numformat);
-    yAxis.orient("left");
+    xAxis.ticks(3,opts.numformat);
 
     //Save vars to "this"
     this.margin = margin;
@@ -236,7 +234,7 @@ GroupedBarChart.prototype = {
                 }
             })
             .attr('height',function(d){
-                return widget.y1.rangeBand()-1;
+                return widget.y1.bandwidth()-1;
             })
             .transition().duration(250)
             .attr('width',function(d){
@@ -380,8 +378,8 @@ GroupedBarChart.prototype = {
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
-        y0.rangeRoundBands([0, totalheight]);
-        y1.rangeRoundBands([0, y0.rangeBand()]);
+        y0.range([0, totalheight]);
+        y1.range([0, y0.bandwidth()]);
         yAxis.scale(y0);
         svg.select('.y.axis').call(yAxis);
 
