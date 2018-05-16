@@ -461,8 +461,7 @@ Heatmap.prototype = {
         proxyctx.putImageData(imgData, 0, 0);
 
         //Clear
-        realctx.imageSmoothingEnabled = false;
-        realctx.mozImageSmoothingEnabled = false;
+        //realctx.imageSmoothingEnabled = true;
         realctx.clearRect(0,0,canvas.width,canvas.height);
 
         //draw onto the real canvas ...

@@ -2,7 +2,7 @@ html,body,#nc {
     height:100%;
     width:100%;
     margin:0;
-    font: 10pt Lato, sans-serif;
+    font: 10pt sans-serif;
 }
 
 canvas {
@@ -94,7 +94,6 @@ text {
 }
 
 .maptitle {
-    font: 10pt Lato, sans-serif;
     z-index: 1;
     color: white;
     position: absolute;

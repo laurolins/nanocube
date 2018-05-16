@@ -6,7 +6,7 @@
   "license": "EPL-1.0",
   "devDependencies": {
     "colorbrewer": "*",
-    "d3": "3",
+    "d3": "*",
     "grunt": "*",
     "grunt-cli": "*",
     "grunt-contrib-concat": "*",
@@ -18,5 +18,8 @@
     "leaflet-draw": "*",
     "requirejs": "*",
     "sprintf-js": "*"
+  },
+  "dependencies": {
+    "http-server": "*"
   }
 }

@@ -211,18 +211,38 @@ GroupedBarChart.prototype = {
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
-        
-        //append new bars
-        bars.enter()
+
+        //exit
+        bars.exit()
+            .transition()
+            .duration(100)
+            .remove();
+
+        //append
+        var newbars = bars.enter()
             .append('rect')
             .attr('class', 'bar')
-            .on('click', function(d) { widget.clickFunc(d);})//toggle callback
-            .append("svg:title"); //tooltip
+            .on('click', function(d) {
+                widget.clickFunc(d); //toggle callback
+            });
 
-        //set shape
-        bars.attr('x', 0)
-            .attr('y', function(d){return widget.y0(d.cat) + //category
-                                   widget.y1(d.color);}) //selection group
+        newbars.append('svg:title');
+
+        //merge new with old
+        bars = newbars.merge(bars);
+
+        //update
+        bars.attr('x',0)
+            .attr('y', function(d){
+                return widget.y0(d.cat)+widget.y1(d.color);
+            })
+            .attr('height',function(d){
+                return widget.y1.bandwidth()-1;
+            })
+            .transition().duration(100)
+            .attr('width',function(d){
+                return (widget.x(d.val) || 0);
+            })
             .style('fill', function(d){
                 if (!widget.selection.brush || //no selection
                     widget.selection.brush.findIndex(function(b){
@@ -232,26 +252,12 @@ GroupedBarChart.prototype = {
                 else{
                     return 'gray';
                 }
-            })
-            .attr('height',function(d){
-                return widget.y1.bandwidth()-1;
-            })
-            .transition().duration(250)
-            .attr('width',function(d){
-                var w = widget.x(d.val);
-                if(isNaN(w) && d.val <=0 ){
-                    w = 0;
-                }
-                return w;
             });
-        
+
         //add tool tip
         bars.select('title').text(function(d){
             return d3.format(widget._opts.numformat)(d.val);
         });
-
-        //remove bars with no data
-        bars.exit().remove();
     },
 
     clickFunc:function(d){

@@ -1,72 +1,72 @@
 {
-  "nanocube": {
-    "crime50k_csv": {
-      "url": "http://localhost:51234"
-    }
-  }, 
-  "widget": {
-    "time": {
-      "numformat": null, 
-      "type": "time", 
-      "css": {
-        "opacity": 0.8, 
-        "bottom": "30px", 
-        "height": "100px", 
-        "width": "960px", 
-        "position": "absolute", 
-        "background-color": "#555", 
-        "left": "30px"
-      }, 
-      "title": "time"
+    "nanocube": {
+        "crime50k_csv": {
+            "url": "http://localhost:51234"
+        }
     }, 
-    "location": {
-      "layers": {
-        "markers": []
-      }, 
-      "tilesurl": "http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png", 
-      "levels": 25, 
-      "title": "location", 
-      "coarse_offset": 2, 
-      "type": "spatial", 
-      "viewbox": [
-        [
-          41.646235928686764, 
-          -87.923583984375
-        ], 
-        [
-          42.02277326296909, 
-          -87.52532958984375
-        ]
-      ], 
-      "css": {
-        "width": "100%", 
-        "float": "left", 
-        "height": "100%"
-      }, 
-      "legend": "true"
+    "widget": {
+        "time": {
+            "numformat": null, 
+            "type": "time", 
+            "css": {
+                "opacity": 0.8, 
+                "height": "100px", 
+                "width": "960px", 
+                "position": "absolute", 
+                "background-color": "#555",
+                "left":"0px",
+                "bottom":"0px"                
+            }, 
+            "title": "time"
+        }, 
+        "location": {
+            "layers": {
+                "markers": []
+            }, 
+            "tilesurl": "http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png", 
+            "levels": 25, 
+            "title": "location", 
+            "coarse_offset": 2, 
+            "type": "spatial", 
+            "viewbox": [
+                [
+                    41.646235928686764, 
+                    -87.923583984375
+                ], 
+                [
+                    42.02277326296909, 
+                    -87.52532958984375
+                ]
+            ], 
+            "css": {
+                "width": "100%", 
+                "float": "left", 
+                "height": "100%"
+            }, 
+            "legend": "true"
+        }, 
+        "type": {
+            "topn": null, 
+            "domain": {
+                "max": null, 
+                "min": null
+            }, 
+            "title": "crime", 
+            "numformat": null, 
+            "logaxis": false, 
+            "type": "cat", 
+            "alpha_order": true, 
+            "css": {
+                "opacity": 0.8, 
+                "width": "563px", 
+                "height": "200px"
+            }
+        }
     }, 
-    "type": {
-      "topn": null, 
-      "domain": {
-        "max": null, 
-        "min": null
-      }, 
-      "title": "crime", 
-      "numformat": null, 
-      "logaxis": false, 
-      "type": "cat", 
-      "alpha_order": true, 
-      "css": {
-        "opacity": 0.8, 
-        "width": "563px", 
-        "height": "200px"
-      }
+    "datasrc": {
+        "crime50k_csv": {
+            "expr": "crime50k_csv", 
+            "colormap": "Reds"
+        }
     }
-  }, 
-  "datasrc": {
-    "crime50k_csv": {
-      "expr": "crime50k_csv", 
-      "colormap": "Reds"
-    }
-  }
 }

@@ -33,42 +33,34 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin===undefined){
-        margin = {top: 30, right: 10, bottom: 30, left: 70};
+        margin = {top: 30, right: 10, bottom: 15, left: 35};
     }
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
 
-    widget.x = d3.time.scale.utc().range([0, width]);
-    widget.y = d3.scale.linear().range([height, 0]);
+    widget.x = d3.scaleUtc().range([0, width]);
+    widget.y = d3.scaleLinear().range([height, 0]);
 
-    widget.xAxis = d3.svg.axis().scale(widget.x)
-        .orient("bottom")
-        .innerTickSize(-height);
+    //zoomed x axis
+    widget.xz = widget.x;
+    
+    widget.xAxis = d3.axisBottom(widget.x)
+        .tickSizeInner(-height);
 
-    widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left")
+    widget.yAxis = d3.axisLeft(widget.y)
         .ticks(3)
         .tickFormat(d3.format(opts.numformat))
-        .innerTickSize(-width-3);
-    
-    // gridlines in x axis function
-    function make_x_gridlines() {		
-        return d3.axisBottom(widget.x);
-    }
+        .tickSizeInner(-width-3);
 
-    // gridlines in y axis function
-    function make_y_gridlines() {		
-        return d3.axisLeft(widget.y)
-            .ticks(3);
-    }
-
-    
+    /*
     //Zoom
-    widget.zoom=d3.behavior.zoom()
-        .x(widget.x)
+    widget.zoom=d3.zoom().extent([0,0],[width,height])
         .on('zoom', function(){
-            widget.svg.select(".x.axis").call(widget.xAxis);
+            var t = d3.event.transform;
+            widget.x = t.rescaleX(widget.x);
+            //widget.svg.select(".x.axis").call(widget.xAxis);
+            widget.x = 
             widget.redraw(widget.lastres);
         })
         .on('zoomend', function(){
@@ -92,14 +84,16 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
         widget.updateCallback(widget._encodeArgs());
     });
+    */
 
     //SVG
-    widget.svg = d3.select(id).append("svg")
+    widget.svg = d3.select(id)
+        .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
-              margin.top + ")").call(widget.zoom);
+              margin.top + ")");
 
     //Load config
     if(opts.args){
@@ -107,11 +101,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
     }
     else{
         //set initial domain    
-        widget.x.domain(opts.timerange);
+        widget.xz.domain(opts.timerange);
     }
-    //Update scales
-    widget.zoom.x(widget.x);
-    widget.brush.x(widget.x);
     
     //add svg stuffs    
     //add title
@@ -122,33 +113,48 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     widget.svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + (height) + ")")
+        .attr("transform", "translate(0," + height + ")")
         .call(widget.xAxis);
 
     widget.svg.append("g")
         .attr("class", "y axis")
         .attr("transform", "translate(-3,0)")
         .call(widget.yAxis);
+    
 
-    //add the X gridlines
-    //widget.svg.append("g")			
-        //.attr("class", "grid")
-      //  .attr("transform", "translate(0," + height + ")")
-        //.call(make_x_gridlines().tickSize(-height).tickFormat(""));
+    //Zoom
+    widget.zoom=d3.zoom()
+        .on('zoom', function(){
+            var xz = d3.event.transform.rescaleX(widget.x);
+
+            //rescale
+            widget.xAxis.scale(xz);
+
+            //apply it axis
+            widget.svg.select(".x.axis").call(widget.xAxis);
+
+            //update scale
+            widget.xz = xz;
+
+            //redraw
+            widget.redraw(widget.lastres);
+        })
+        .on('end', function(){
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());            
+        });
     
-    // add the Y gridlines
-    //widget.append("g")			
-    //    .attr("class", "grid")
-    //    .call(make_y_gridlines()
-    //          .tickSize(-width).tickFormat(""));
-    
+
+    //apply zoom to axis
+    widget.svg.call(widget.zoom);
+
     //brush
-    widget.svg.append("g").attr("class", "x brush")
+    /*widget.svg.append("g").attr("class", "x brush")
         .call(widget.brush)
         .selectAll("rect")
         .attr("y", 0)
         .attr("height", height);
-
+    */
     widget.width = width;
 }
 
@@ -200,16 +206,18 @@ Timeseries.prototype={
             widget.redraw(res);
         });
     },
-
+    
     getSelection: function(){
         var sel = {};
-        var timedom = this.x.domain();
+        var timedom = this.xz.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
-        if (!this.brush.empty()){
-            var bext = this.brush.extent();
+        /*
+          if (!this.brush.empty()){
+          var bext = this.brush.extent();
             sel.brush = {start:bext[0], end:bext[1]};
         }
+        */
         return sel;
     },
 
@@ -260,9 +268,8 @@ Timeseries.prototype={
         
         this.y.domain(yext);
 
-        //update the axis
-        this.svg.select("g.x.axis").call(this.xAxis);
-        this.svg.select("g.y.axis").call(this.yAxis);
+        //update y axis
+        this.svg.select(".y.axis").call(this.yAxis);
 
         var widget = this;
 
@@ -293,8 +300,7 @@ Timeseries.prototype={
             return;
         }
 
-        var widget = this;
-        
+        var widget = this;        
         //create unexisted paths
         var path = widget.svg.select('path.line.'+colorid);
         if (path.empty()){
@@ -308,14 +314,11 @@ Timeseries.prototype={
 
 
         //Transit to new data
-        var lineFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(d.val); })
-                .interpolate("step-before");
-        var zeroFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(0); });
-
+        var lineFunc = d3.line()
+            .x(function(d) { return widget.xz(d.time); })
+            .y(function(d) { return widget.y(d.val); })
+            .curve(d3.curveStep);
+        
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));

@@ -456,16 +456,16 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     svg.append("g").attr("class", "x axis");
     
     //Scales
-    var y0 = d3.scale.ordinal();
-    var y1 = d3.scale.ordinal();
-    var x = d3.scale.linear();
+    var y0 = d3.scaleBand();
+    var y1 = d3.scaleBand();
+    var x = d3.scaleLinear();
     if (opts.logaxis){
-        x = d3.scale.log();
+        x = d3.scaleLog();
     }
 
     //Axis
-    var xAxis = d3.svg.axis();
-    var yAxis = d3.svg.axis();
+    var xAxis = d3.axisBottom();
+    var yAxis = d3.axisLeft();
 
     //set default values 
     opts.numformat = opts.numformat || ",";    
@@ -473,9 +473,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         opts.alpha_order = true;
     }
 
-    xAxis.orient("bottom")
-        .ticks(3,opts.numformat);
-    yAxis.orient("left");
+    xAxis.ticks(3,opts.numformat);
 
     //Save vars to "this"
     this.margin = margin;
@@ -600,18 +598,38 @@ GroupedBarChart.prototype = {
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
-        
-        //append new bars
-        bars.enter()
+
+        //exit
+        bars.exit()
+            .transition()
+            .duration(100)
+            .remove();
+
+        //append
+        var newbars = bars.enter()
             .append('rect')
             .attr('class', 'bar')
-            .on('click', function(d) { widget.clickFunc(d);})//toggle callback
-            .append("svg:title"); //tooltip
+            .on('click', function(d) {
+                widget.clickFunc(d); //toggle callback
+            });
 
-        //set shape
-        bars.attr('x', 0)
-            .attr('y', function(d){return widget.y0(d.cat) + //category
-                                   widget.y1(d.color);}) //selection group
+        newbars.append('svg:title');
+
+        //merge new with old
+        bars = newbars.merge(bars);
+
+        //update
+        bars.attr('x',0)
+            .attr('y', function(d){
+                return widget.y0(d.cat)+widget.y1(d.color);
+            })
+            .attr('height',function(d){
+                return widget.y1.bandwidth()-1;
+            })
+            .transition().duration(100)
+            .attr('width',function(d){
+                return (widget.x(d.val) || 0);
+            })
             .style('fill', function(d){
                 if (!widget.selection.brush || //no selection
                     widget.selection.brush.findIndex(function(b){
@@ -621,26 +639,12 @@ GroupedBarChart.prototype = {
                 else{
                     return 'gray';
                 }
-            })
-            .attr('height',function(d){
-                return widget.y1.rangeBand()-1;
-            })
-            .transition().duration(250)
-            .attr('width',function(d){
-                var w = widget.x(d.val);
-                if(isNaN(w) && d.val <=0 ){
-                    w = 0;
-                }
-                return w;
             });
-        
+
         //add tool tip
         bars.select('title').text(function(d){
             return d3.format(widget._opts.numformat)(d.val);
         });
-
-        //remove bars with no data
-        bars.exit().remove();
     },
 
     clickFunc:function(d){
@@ -767,8 +771,8 @@ GroupedBarChart.prototype = {
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
-        y0.rangeRoundBands([0, totalheight]);
-        y1.rangeRoundBands([0, y0.rangeBand()]);
+        y0.range([0, totalheight]);
+        y1.range([0, y0.bandwidth()]);
         yAxis.scale(y0);
         svg.select('.y.axis').call(yAxis);
 
@@ -1213,7 +1217,7 @@ Heatmap.prototype = {
             domain = domain.map(function(d){return Math.exp(d)+minv-2;});
         }
 
-        return d3.scale.linear().domain(domain).range(colors);
+        return d3.scaleLinear().domain(domain).range(colors);
     },
 
     render: function(arr,pb,colormap,canvas,opacity){
@@ -1251,8 +1255,7 @@ Heatmap.prototype = {
         proxyctx.putImageData(imgData, 0, 0);
 
         //Clear
-        realctx.imageSmoothingEnabled = false;
-        realctx.mozImageSmoothingEnabled = false;
+        //realctx.imageSmoothingEnabled = true;
         realctx.clearRect(0,0,canvas.width,canvas.height);
 
         //draw onto the real canvas ...
@@ -2367,42 +2370,34 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin===undefined){
-        margin = {top: 30, right: 10, bottom: 30, left: 70};
+        margin = {top: 30, right: 10, bottom: 15, left: 35};
     }
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
 
-    widget.x = d3.time.scale.utc().range([0, width]);
-    widget.y = d3.scale.linear().range([height, 0]);
+    widget.x = d3.scaleUtc().range([0, width]);
+    widget.y = d3.scaleLinear().range([height, 0]);
 
-    widget.xAxis = d3.svg.axis().scale(widget.x)
-        .orient("bottom")
-        .innerTickSize(-height);
+    //zoomed x axis
+    widget.xz = widget.x;
+    
+    widget.xAxis = d3.axisBottom(widget.x)
+        .tickSizeInner(-height);
 
-    widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left")
+    widget.yAxis = d3.axisLeft(widget.y)
         .ticks(3)
         .tickFormat(d3.format(opts.numformat))
-        .innerTickSize(-width-3);
-    
-    // gridlines in x axis function
-    function make_x_gridlines() {		
-        return d3.axisBottom(widget.x);
-    }
+        .tickSizeInner(-width-3);
 
-    // gridlines in y axis function
-    function make_y_gridlines() {		
-        return d3.axisLeft(widget.y)
-            .ticks(3);
-    }
-
-    
+    /*
     //Zoom
-    widget.zoom=d3.behavior.zoom()
-        .x(widget.x)
+    widget.zoom=d3.zoom().extent([0,0],[width,height])
         .on('zoom', function(){
-            widget.svg.select(".x.axis").call(widget.xAxis);
+            var t = d3.event.transform;
+            widget.x = t.rescaleX(widget.x);
+            //widget.svg.select(".x.axis").call(widget.xAxis);
+            widget.x = 
             widget.redraw(widget.lastres);
         })
         .on('zoomend', function(){
@@ -2426,14 +2421,16 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
         widget.updateCallback(widget._encodeArgs());
     });
+    */
 
     //SVG
-    widget.svg = d3.select(id).append("svg")
+    widget.svg = d3.select(id)
+        .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
-              margin.top + ")").call(widget.zoom);
+              margin.top + ")");
 
     //Load config
     if(opts.args){
@@ -2441,11 +2438,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
     }
     else{
         //set initial domain    
-        widget.x.domain(opts.timerange);
+        widget.xz.domain(opts.timerange);
     }
-    //Update scales
-    widget.zoom.x(widget.x);
-    widget.brush.x(widget.x);
     
     //add svg stuffs    
     //add title
@@ -2456,33 +2450,48 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     widget.svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + (height) + ")")
+        .attr("transform", "translate(0," + height + ")")
         .call(widget.xAxis);
 
     widget.svg.append("g")
         .attr("class", "y axis")
         .attr("transform", "translate(-3,0)")
         .call(widget.yAxis);
+    
 
-    //add the X gridlines
-    //widget.svg.append("g")			
-        //.attr("class", "grid")
-      //  .attr("transform", "translate(0," + height + ")")
-        //.call(make_x_gridlines().tickSize(-height).tickFormat(""));
+    //Zoom
+    widget.zoom=d3.zoom()
+        .on('zoom', function(){
+            var xz = d3.event.transform.rescaleX(widget.x);
+
+            //rescale
+            widget.xAxis.scale(xz);
+
+            //apply it axis
+            widget.svg.select(".x.axis").call(widget.xAxis);
+
+            //update scale
+            widget.xz = xz;
+
+            //redraw
+            widget.redraw(widget.lastres);
+        })
+        .on('end', function(){
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());            
+        });
     
-    // add the Y gridlines
-    //widget.append("g")			
-    //    .attr("class", "grid")
-    //    .call(make_y_gridlines()
-    //          .tickSize(-width).tickFormat(""));
-    
+
+    //apply zoom to axis
+    widget.svg.call(widget.zoom);
+
     //brush
-    widget.svg.append("g").attr("class", "x brush")
+    /*widget.svg.append("g").attr("class", "x brush")
         .call(widget.brush)
         .selectAll("rect")
         .attr("y", 0)
         .attr("height", height);
-
+    */
     widget.width = width;
 }
 
@@ -2534,16 +2543,18 @@ Timeseries.prototype={
             widget.redraw(res);
         });
     },
-
+    
     getSelection: function(){
         var sel = {};
-        var timedom = this.x.domain();
+        var timedom = this.xz.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
-        if (!this.brush.empty()){
-            var bext = this.brush.extent();
+        /*
+          if (!this.brush.empty()){
+          var bext = this.brush.extent();
             sel.brush = {start:bext[0], end:bext[1]};
         }
+        */
         return sel;
     },
 
@@ -2594,9 +2605,8 @@ Timeseries.prototype={
         
         this.y.domain(yext);
 
-        //update the axis
-        this.svg.select("g.x.axis").call(this.xAxis);
-        this.svg.select("g.y.axis").call(this.yAxis);
+        //update y axis
+        this.svg.select(".y.axis").call(this.yAxis);
 
         var widget = this;
 
@@ -2627,8 +2637,7 @@ Timeseries.prototype={
             return;
         }
 
-        var widget = this;
-        
+        var widget = this;        
         //create unexisted paths
         var path = widget.svg.select('path.line.'+colorid);
         if (path.empty()){
@@ -2642,14 +2651,11 @@ Timeseries.prototype={
 
 
         //Transit to new data
-        var lineFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(d.val); })
-                .interpolate("step-before");
-        var zeroFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(0); });
-
+        var lineFunc = d3.line()
+            .x(function(d) { return widget.xz(d.time); })
+            .y(function(d) { return widget.y(d.val); })
+            .curve(d3.curveStep);
+        
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));
