@@ -2405,7 +2405,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
             //rescale
             widget.xz = d3.event.transform.rescaleX(widget.x);
 
-            //apply it axis
+            //apply the scale to  axis
             widget.svg.select(".x.axis")
                 .call(widget.xAxis.scale(widget.xz));
 
@@ -2469,13 +2469,23 @@ function Timeseries(opts,getDataCallback,updateCallback){
             var newsel = [widget.brush.selection[1],                   
                           new Date(widget.brush.selection[1].getTime()+
                                    (widget.brush.selection[1]-
-                                    widget.brush.selection[0]))
-                         ];
+                                    widget.brush.selection[0]))];
                 
             widget.brush.selection = newsel;
+
+            //move the domain
+            if(widget.xz.domain()[1] < newsel[1]){
+                var xzdom = widget.xz.domain();
+                widget.xz.domain([newsel[1]-(xzdom[1]-xzdom[0]),
+                                  newsel[1]]);
+                //apply the scale to axis
+                widget.svg.select(".x.axis")
+                    .call(widget.xAxis.scale(widget.xz));
+            }
+
             widget.svg.select('g.brush')
                 .call(widget.brush.move,
-                      widget.brush.selection.map(widget.xz));                
+                      widget.brush.selection.map(widget.xz));              
         }
         
         widget.update(); //redraw itself
