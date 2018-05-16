@@ -177,7 +177,6 @@ Heatmap.prototype = {
         /*var infodiv = $('#'+this._name+" .info");
           infodiv.css({
           position: 'absolute',
-          'z-index':1,
           color: 'white',
           'right': '20ch',
           'top': '0.5em',

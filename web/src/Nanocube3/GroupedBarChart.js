@@ -25,7 +25,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     //Add clear button
     this.clearbtn = d3.select(id)
         .append('button')
-        .attr('class','clear-btn')
+        .attr('class','btn')
         .on('click',function(){
             d3.event.stopPropagation();
             
@@ -37,25 +37,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     //Add sort button
     this.sortbtn = d3.select(id)
         .append('button')
-        .attr('class','sort-btn')
+        .attr('class','btn')
         .on('click',function(){
             d3.event.stopPropagation();
             widget._opts.alpha_order = !widget._opts.alpha_order;
             widget.redraw(widget.lastres);
         });
     
-    //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style("height",widget.restoreHeight);
-        }
-    });
-
     
     //SVG container
     var svg = d3.select(id).append("svg").append("g");

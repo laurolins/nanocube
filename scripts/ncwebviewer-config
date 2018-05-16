@@ -3,7 +3,7 @@
 from __future__ import print_function,division
 
 import os,json,sys,argparse,socket,tempfile,shutil,math,random,subprocess
-import requests,http.server
+import http.server,requests
 
 ### bbox
 ## Find the bounding box
@@ -15,8 +15,6 @@ def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
     for location in tiles:
         res =  requests.get(query_url.format(**location),
                             verify=False).json()
-        #res_str = res_str.replace('\x00','}') # this is bad
-        #res = json.loads(res_str)
 
         res = res['root']['children']
         offset = {'x':location['x']*2**location['drill'],
@@ -114,7 +112,7 @@ def main():
     #download the schema
     url = '%s:%d'%(args.server,args.ncport);
     try:
-        r = requests.get(url+'/schema()', allow_redirects=False,verify=False)
+        r = requests.get(url+'/schema()',allow_redirects=False,verify=False)
         schema = r.json()[0]
     except:
         print ('Fail to read schema from %s'%(url),file=sys.stderr)
@@ -200,12 +198,12 @@ def timeseriesWidget(v,w):
         'numformat':None,
         'css':{
             'opacity': 0.8,
-            'bottom': '30px',
-            'height': '100px',
+            'bottom': '0px',
+            'height': '150px',
             'width': '%dpx'%(int(w)),
             'position': 'absolute',
             'background-color': '#555',
-            'left': '30px'
+            'left': '0px'
         }
     }
 

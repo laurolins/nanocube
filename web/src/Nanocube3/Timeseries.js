@@ -3,23 +3,18 @@
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
+
+    //Add play btn
+    this.playbtn = d3.select(id)
+        .append('button')
+        .attr('class','btn')
+        .html('step');
+    
     //Make draggable and resizable
-    d3.select(id).attr("class","timeseries resize-drag");
+    d3.select(id).attr("class","timeseries");
     
     d3.select(id).on("divresize",function(){
         widget.redraw(widget.lastres);
-    });
-
-    //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style('height',widget.restoreHeight);
-        }
     });
 
 
@@ -33,7 +28,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin===undefined){
-        margin = {top: 30, right: 20, bottom: 15, left: 35};
+        margin = {top: 30, right: 20, bottom: 35, left: 35};
     }
 
     var width = $(id).width() - margin.left - margin.right;
@@ -114,6 +109,10 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.brush = d3.brushX()
         .extent([[0, 0], [width, height]])
         .on('end', function(){
+            if(!d3.event.sourceEvent){
+                return;
+            }
+            
             if (d3.event.selection) {
                 var sel = d3.event.selection;
                 //save selection
@@ -138,6 +137,26 @@ function Timeseries(opts,getDataCallback,updateCallback){
     }
 
     widget.width = width;
+
+    //Play button
+    this.playbtn.on('click',function(){
+        if(widget.brush.selection){
+            //move the selection
+            var newsel = [widget.brush.selection[1],                   
+                          new Date(widget.brush.selection[1].getTime()+
+                                   (widget.brush.selection[1]-
+                                    widget.brush.selection[0]))
+                         ];
+                
+            widget.brush.selection = newsel;
+            widget.svg.select('g.brush')
+                .call(widget.brush.move,
+                      widget.brush.selection.map(widget.xz));                
+        }
+        
+        widget.update(); //redraw itself
+        widget.updateCallback(widget._encodeArgs());            
+    });
 }
 
 Timeseries.prototype={

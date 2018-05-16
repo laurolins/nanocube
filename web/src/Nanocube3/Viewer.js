@@ -12,6 +12,11 @@ var Viewer = function(opts){
     }
     
     //overlays
+    var mapdiv = $('<div>');
+    mapdiv.addClass('map-overlay');
+    mapdiv.attr('id', 'map_overlay');
+    container.append(mapdiv);
+
     var catdiv = $('<div>');
     catdiv.addClass('chart-overlay');
     catdiv.attr('id', 'cat_overlay');
@@ -28,6 +33,7 @@ var Viewer = function(opts){
     var variables = [];
     
     this._container = container;
+    this._mapoverlay = mapdiv;
     this._catoverlay = catdiv;
     this._timeoverlay = timediv;
 
@@ -93,7 +99,7 @@ Viewer.prototype = {
         //Create the widget
         switch(widget.type){
         case 'spatial':            
-            this._container.append(newdiv);
+            this._mapoverlay.append(newdiv);
             options.levels = levels || 25;
             return new Heatmap(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);

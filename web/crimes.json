@@ -1,4 +1,5 @@
 {
+    "title":"Chicago Crime",
     "nanocube": {
         "crime50k_csv": {
             "url": "http://localhost:51234"

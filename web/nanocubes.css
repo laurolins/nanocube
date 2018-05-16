@@ -11,12 +11,20 @@ canvas {
     left:0px;
 }
 
+.map-overlay{
+    position:absolute;
+    height:100%;
+    width:100%;
+    margin:0;
+    z-index:0;
+}
+
 .chart-overlay{
     position:absolute;
     height:100%;
     width:100%;
-    pointer-events:none;
     margin:0;
+    pointer-events:none;
     z-index:1;
 }
 
@@ -31,13 +39,8 @@ canvas {
     float:right;
     background-color: #555;
     margin: 5px;
-    opacity:0.8;
     pointer-events:visible;
     border: 1px solid white;
-}
-
-.sort-btn,.clear-btn{
-    float:right
 }
 
 .timeseries{
@@ -48,9 +51,11 @@ canvas {
     background-color: #555;
     margin: 5px;
     border: 1px solid white;
-    opacity:0.8;
     pointer-events:visible;
-    z-index:1;
+}
+
+.btn{
+    float:right
 }
 
 .axis path,
@@ -75,7 +80,6 @@ text {
 }
 
 .leaflet-container {
-    z-index:0;
 }
 
 .leaflet-control-layers-overlays i { 
@@ -88,7 +92,6 @@ text {
 }
 
 .maptitle {
-    z-index: 1;
     color: white;
     position: absolute;
     top: 5px;
@@ -106,7 +109,6 @@ text {
     float:  left;
     margin-right: 8px;
     opacity: 0.7;
-    z-index:1;
 }
 
 .legendinfo{
