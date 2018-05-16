@@ -61,7 +61,7 @@ canvas {
 }
 
 .axis line{
-    stroke-opacity:0.3;
+    stroke-opacity:0.5;
 }
 
 .axis text {
@@ -72,12 +72,6 @@ canvas {
 text {
     fill: #fff;
     stroke:none;
-}
-
-.brush {
-    stroke: #fff;
-    fill-opacity: .25;
-    shape-rendering: crispEdges;
 }
 
 .leaflet-container {

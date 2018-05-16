@@ -33,7 +33,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin===undefined){
-        margin = {top: 30, right: 10, bottom: 15, left: 35};
+        margin = {top: 30, right: 20, bottom: 15, left: 35};
     }
 
     var width = $(id).width() - margin.left - margin.right;
@@ -42,8 +42,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.x = d3.scaleUtc().range([0, width]);
     widget.y = d3.scaleLinear().range([height, 0]);
 
-    //zoomed x axis
-    widget.xz = widget.x;
+    //x axis    
+    widget.xz = widget.x; //zoomed scale
     
     widget.xAxis = d3.axisBottom(widget.x)
         .tickSizeInner(-height);
@@ -53,39 +53,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .tickFormat(d3.format(opts.numformat))
         .tickSizeInner(-width-3);
 
-    /*
-    //Zoom
-    widget.zoom=d3.zoom().extent([0,0],[width,height])
-        .on('zoom', function(){
-            var t = d3.event.transform;
-            widget.x = t.rescaleX(widget.x);
-            //widget.svg.select(".x.axis").call(widget.xAxis);
-            widget.x = 
-            widget.redraw(widget.lastres);
-        })
-        .on('zoomend', function(){
-            widget.update();
-            widget.updateCallback(widget._encodeArgs());
-            widget.brush.x(widget.x);
-        });
-
-    
-    //Brush
-    widget.brush = d3.svg.brush().x(widget.x);
-
-    widget.brush.on('brushstart', function(){
-        if(d3.event.sourceEvent){
-            d3.event.sourceEvent.stopPropagation();
-        }
-    });
-
-    widget.brush.on('brushend', function(){
-        console.log(widget.brush.extent());
-
-        widget.updateCallback(widget._encodeArgs());
-    });
-    */
-
     //SVG
     widget.svg = d3.select(id)
         .append("svg")
@@ -94,15 +61,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
               margin.top + ")");
-
-    //Load config
-    if(opts.args){
-        widget._decodeArgs(opts.args);
-    }
-    else{
-        //set initial domain    
-        widget.xz.domain(opts.timerange);
-    }
     
     //add svg stuffs    
     //add title
@@ -125,20 +83,24 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //Zoom
     widget.zoom=d3.zoom()
         .on('zoom', function(){
-            var xz = d3.event.transform.rescaleX(widget.x);
-
             //rescale
-            widget.xAxis.scale(xz);
+            widget.xz = d3.event.transform.rescaleX(widget.x);
 
             //apply it axis
-            widget.svg.select(".x.axis").call(widget.xAxis);
-
-            //update scale
-            widget.xz = xz;
+            widget.svg.select(".x.axis")
+                .call(widget.xAxis.scale(widget.xz));
 
             //redraw
             widget.redraw(widget.lastres);
+
+            //update brush
+            if(widget.brush.selection){
+                widget.svg.select('g.brush')
+                    .call(widget.brush.move,
+                          widget.brush.selection.map(widget.xz));
+            }
         })
+            
         .on('end', function(){
             widget.update();
             widget.updateCallback(widget._encodeArgs());            
@@ -148,13 +110,33 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //apply zoom to axis
     widget.svg.call(widget.zoom);
 
-    //brush
-    /*widget.svg.append("g").attr("class", "x brush")
-        .call(widget.brush)
-        .selectAll("rect")
-        .attr("y", 0)
-        .attr("height", height);
-    */
+    //Brush
+    widget.brush = d3.brushX()
+        .extent([[0, 0], [width, height]])
+        .on('end', function(){
+            if (d3.event.selection) {
+                var sel = d3.event.selection;
+                //save selection
+                widget.brush.selection = sel.map(widget.xz.invert);
+            }
+            else{
+                delete widget.brush.selection;
+            }
+            widget.updateCallback(widget._encodeArgs());
+        });
+
+    widget.svg.append("g")
+        .attr("class", "brush").call(widget.brush);
+
+    //Load config
+    if(opts.args){
+        widget._decodeArgs(opts.args);
+    }
+    else{
+        //set initial domain    
+        widget.xz.domain(opts.timerange);
+    }
+
     widget.width = width;
 }
 
@@ -212,12 +194,10 @@ Timeseries.prototype={
         var timedom = this.xz.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
-        /*
-          if (!this.brush.empty()){
-          var bext = this.brush.extent();
+        if (this.brush.selection){
+            var bext = this.brush.selection;
             sel.brush = {start:bext[0], end:bext[1]};
         }
-        */
         return sel;
     },
 
@@ -230,21 +210,16 @@ Timeseries.prototype={
         var args = JSON.parse(s);
         this.x.domain([new Date(args.global.start),
                        new Date(args.global.end)]);
-        if(args.brush){
-            this.brush.extent([new Date(args.brush.start),
-                               new Date(args.brush.end)]);
 
-            this._updateBrush();
+        if(args.brush){
+            this.brush.selection = [new Date(args.brush.start),
+                                    new Date(args.brush.end)];
+            this.svg.select('g.brush')
+                .call(this.brush.move,
+                      this.brush.selection.map(this.xz));
         }
     },
-    
-    _updateBrush: function(){
-        //update brush
-        this.svg.select("g.x.brush")
-            .call(this.brush)
-            .call(this.brush.event);
-    },
-    
+        
     redraw: function(lines){            
         Object.keys(lines).forEach(function(k){
             if(lines[k].data.length > 1){ 
@@ -312,12 +287,11 @@ Timeseries.prototype={
                 .style('stroke',color);
         }
 
-
         //Transit to new data
         var lineFunc = d3.line()
             .x(function(d) { return widget.xz(d.time); })
             .y(function(d) { return widget.y(d.val); })
-            .curve(d3.curveStep);
+            .curve(d3.curveStepAfter);
         
         path.transition()
             .duration(500)
