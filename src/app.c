@@ -461,6 +461,18 @@ Request_print(Request *req, Print *print)
 #include "base/profile_collect.c"
 
 //------------------------------------------------------------------------------
+// Memory Limits
+//------------------------------------------------------------------------------
+
+static u64 app_service_serve_MEM_COMPILER            = Megabytes(8);
+static u64 app_service_serve_MEM_PRINT_RESULT        = Megabytes(64);
+static u64 app_service_serve_MEM_PRINT_HEADER        = Kilobytes(4);
+static u64 app_service_serve_MEM_TABLE_INDEX_COLUMNS = Megabytes(64);
+static u64 app_service_serve_MEM_TABLE_VALUE_COLUMNS = Megabytes(64);
+/* largest GET query is bounded by http channel memory */
+static u64 app_service_serve_MEM_HTTP_CHANNEL        = Megabytes(4);
+
+//------------------------------------------------------------------------------
 // snap function
 //------------------------------------------------------------------------------
 
@@ -1387,7 +1399,8 @@ service_test(Request *request)
 			/* set the table values allocator */
 			LinearAllocator_clear(&table_index_columns_allocator);
 			LinearAllocator_clear(&table_measure_columns_allocator);
-			nm_Table *table_begin = nm_Measure_eval(measure, &table_index_columns_allocator, &nv_payload_services, &table_measure_columns_allocator);
+			s32 error = nm_OK;
+			nm_Table *table_begin = nm_Measure_eval(measure, &table_index_columns_allocator, &nv_payload_services, &table_measure_columns_allocator, &error);
 			nm_Table *table_end   = table_begin + 1; //  measure->num_sources;
 
 			if (table_begin) {
@@ -1405,7 +1418,7 @@ service_test(Request *request)
 				}
 				Request_print(request, print);
 			} else {
-				Request_msg(request, "[test] failed evaluation: probable reason is an alias was used that doesn't exist (check its spelling)");
+				Request_msg(request, nm_error_messages[error]);
 			}
 		}
 		platform.free_memory(&table_index_columns_buffer);
@@ -1600,14 +1613,12 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 			LinearAllocator_clear(&buffers->table_value_columns_allocator);
 
 			// pf_BEGIN_BLOCK("nm_Measure_eval");
-			nm_Table *table = nm_Measure_eval(measure,
-							  &buffers->table_index_columns_allocator,
-							  buffers->payload_services,
-							  &buffers->table_value_columns_allocator);
+			s32 error = nm_OK;
+			nm_Table *table = nm_Measure_eval(measure, &buffers->table_index_columns_allocator, buffers->payload_services, &buffers->table_value_columns_allocator, &error);
 			// pf_END_BLOCK();
 
 			if (table == 0) {
-				Print_cstr(print_result, "Measure was evaluated to NULL.\n");
+				Print_cstr(print_result, nm_error_messages[error]);
 				Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 				app_nanocube_print_http_header_default_flags(print_header);
 				Print_cstr(print_header, "Content-Type: text/plain\r\n");
@@ -1787,25 +1798,26 @@ PLATFORM_TCP_CALLBACK(serve_request_handler)
 
 }
 
-#if 1
-/* memory in megabytes for solving query */
-#define app_service_serve_MEM_COMPILER            Megabytes(32)
-#define app_service_serve_MEM_PRINT_RESULT        Megabytes(64)
-#define app_service_serve_MEM_PRINT_HEADER        Kilobytes(4)
-#define app_service_serve_MEM_TABLE_INDEX_COLUMNS Megabytes(64)
-#define app_service_serve_MEM_TABLE_VALUE_COLUMNS Megabytes(64)
-/* largest GET query is bounded by http channel memory */
-#define app_service_serve_MEM_HTTP_CHANNEL        Megabytes(4)
-#else
-/* memory in megabytes for solving query */
-#define app_service_serve_MEM_COMPILER            Megabytes(16)
-#define app_service_serve_MEM_PRINT_RESULT        Megabytes(32)
-#define app_service_serve_MEM_PRINT_HEADER        Kilobytes(4)
-#define app_service_serve_MEM_TABLE_INDEX_COLUMNS Megabytes(32)
-#define app_service_serve_MEM_TABLE_VALUE_COLUMNS Megabytes(32)
-/* largest GET query is bounded by http channel memory */
-#define app_service_serve_MEM_HTTP_CHANNEL        Megabytes(4)
-#endif
+// #if 1
+// /* memory in megabytes for solving query */
+// #define app_service_serve_MEM_COMPILER            Megabytes(32)
+// #define app_service_serve_MEM_PRINT_RESULT        Megabytes(64)
+// #define app_service_serve_MEM_PRINT_HEADER        Kilobytes(4)
+// #define app_service_serve_MEM_TABLE_INDEX_COLUMNS Megabytes(64)
+// #define app_service_serve_MEM_TABLE_VALUE_COLUMNS Megabytes(64)
+// /* largest GET query is bounded by http channel memory */
+// #define app_service_serve_MEM_HTTP_CHANNEL        Megabytes(4)
+// #else
+// /* memory in megabytes for solving query */
+// #define app_service_serve_MEM_COMPILER            Megabytes(16)
+// #define app_service_serve_MEM_PRINT_RESULT        Megabytes(32)
+// #define app_service_serve_MEM_PRINT_HEADER        Kilobytes(4)
+// #define app_service_serve_MEM_TABLE_INDEX_COLUMNS Megabytes(32)
+// #define app_service_serve_MEM_TABLE_VALUE_COLUMNS Megabytes(32)
+// /* largest GET query is bounded by http channel memory */
+// #define app_service_serve_MEM_HTTP_CHANNEL        Megabytes(4)
+// #endif
+
 
 #define app_NanocubesAndAliases_OK 1
 #define app_NanocubesAndAliases_EMPTY_ALIAS 2
@@ -2047,6 +2059,15 @@ Possible OPTIONS:
 	 At this moment, multiple requests might be processed in parallel
 	 by different threads, but each request is processed sequentially.
 
+    -mem_compiler=SIZE                  (default  8M)
+    -mem_print_result=SIZE              (default 64M)
+    -mem_print_header=SIZE              (default  4K)
+    -mem_table_index_columns=SIZE       (default 64M)
+    -mem_table_value_columns=SIZE       (default 64M)
+    -mem_http_channel=SIZE              (default  4M)
+    -mem_table_value=SIZE               (default  8M)
+         Maximum memory sizes used by nanocube. On overflow report error.
+
 END_DOC_STRING
 */
 
@@ -2097,6 +2118,26 @@ service_serve(Request *request)
 			Request_msg(request, "[serve] incorrect usage of options: -threads=<num-threads>\n");
 			return;
 		}
+	}
+
+	{
+		// memory limits
+		u64 mem_limit = 0;
+
+#define app_MEM_OPTION(name,variable) \
+		if (op_Options_find_cstr(options,name)) { if (!op_Options_named_num_bytes_cstr(options,name,0,&variable)) {  \
+			fprintf(stderr,"[serve] invalid memory limit: %s\n", name); return; \
+		} }
+
+		app_MEM_OPTION("-mem_compiler",            app_service_serve_MEM_COMPILER);
+		app_MEM_OPTION("-mem_print_result",        app_service_serve_MEM_PRINT_RESULT);
+		app_MEM_OPTION("-mem_print_header",        app_service_serve_MEM_PRINT_HEADER);
+		app_MEM_OPTION("-mem_table_index_columns", app_service_serve_MEM_TABLE_INDEX_COLUMNS);
+		app_MEM_OPTION("-mem_table_value_columns", app_service_serve_MEM_TABLE_VALUE_COLUMNS);
+		app_MEM_OPTION("-mem_http_channel",        app_service_serve_MEM_HTTP_CHANNEL);
+		app_MEM_OPTION("-mem_table_value",         nv_TABLE_VALUE_MAX_SIZE);
+#undef app_MEM_OPTION
+
 	}
 
 	Print_clear(print);
@@ -2289,22 +2330,23 @@ free_resources:
 
 }
 
-
 /*
  * Service Query
  */
-
-/* memory in megabytes for solving query */
-#define app_service_query_MEM_COMPILER            32
-#define app_service_query_MEM_PRINT_RESULT        64
-#define app_service_query_MEM_TABLE_INDEX_COLUMNS 64
-#define app_service_query_MEM_TABLE_VALUE_COLUMNS 64
 
 /*
 BEGIN_DOC_STRING nanocube_query_doc
 Ver:   __VERSION__
 Usage: nanocube query QUERY *(ALIAS=([@]NANOCUBE_FILE)*(,[@]NANOCUBE_FILE))
 Run QUERY on the indices being linked by the ALIASes.
+
+    -mem_compiler=SIZE                  (default  8M)
+    -mem_print_result=SIZE              (default 64M)
+    -mem_print_header=SIZE              (default  4K)
+    -mem_table_index_columns=SIZE       (default 64M)
+    -mem_table_value_columns=SIZE       (default 64M)
+    -mem_table_value=SIZE               (default  8M)
+         Maximum memory sizes used by nanocube. On overflow report error.
 
 END_DOC_STRING
 */
@@ -2335,6 +2377,28 @@ service_query(Request *request)
 		Request_print(request, print);
 		return;
 	}
+
+	{
+		// memory limits
+		u64 mem_limit = 0;
+
+#define app_MEM_OPTION(name,variable) \
+		if (op_Options_find_cstr(options,name)) { if (!op_Options_named_num_bytes_cstr(options,name,0,&variable)) {  \
+			fprintf(stderr,"[serve] invalid memory limit: %s\n", name); return; \
+		} }
+
+		app_MEM_OPTION("-mem_compiler",            app_service_serve_MEM_COMPILER);
+		app_MEM_OPTION("-mem_print_result",        app_service_serve_MEM_PRINT_RESULT);
+		app_MEM_OPTION("-mem_print_header",        app_service_serve_MEM_PRINT_HEADER);
+		app_MEM_OPTION("-mem_table_index_columns", app_service_serve_MEM_TABLE_INDEX_COLUMNS);
+		app_MEM_OPTION("-mem_table_value_columns", app_service_serve_MEM_TABLE_VALUE_COLUMNS);
+		app_MEM_OPTION("-mem_table_value",         nv_TABLE_VALUE_MAX_SIZE);
+
+#undef app_MEM_OPTION
+
+	}
+
+
 
 	u32 num_parameters = op_Options_num_positioned_parameters(options);
 	if (num_parameters < 3) {

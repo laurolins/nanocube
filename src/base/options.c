@@ -61,6 +61,41 @@ op_Parameter_count(op_Parameter *self)
 }
 
 internal b8
+op_Parameter_value_num_bytes(op_Parameter *self, u64 *output)
+{
+	if (!self) {
+		return 0;
+	}
+	s64 len = self->value.end - self->value.begin;
+	if (len == 0) {
+		return 0;
+	}
+
+	u64 multiplier = 1;
+	char last_char = self->value.begin[len-1];
+	if (last_char == 'k' || last_char == 'K') {
+		multiplier = Kilobytes(1);
+	} else if (last_char == 'b' || last_char == 'B') {
+		multiplier = 1u;
+	} else if (last_char == 'm' || last_char == 'M') {
+		multiplier = Megabytes(1);
+	} else if (last_char == 'g' || last_char == 'G') {
+		multiplier = Gigabytes(1);
+	} else {
+		++len;
+	}
+
+	--len;
+
+	if (!pt_parse_u64(self->value.begin, self->value.begin + len, output)) {
+		return 0;
+	} else {
+		*output *= multiplier;
+		return 1;
+	}
+}
+
+internal b8
 op_Parameter_value_u64(op_Parameter *self, u64 *output)
 {
 	if (!self) {
@@ -292,6 +327,22 @@ op_Options_named_u64(op_Options *self, char *name_begin, char *name_end, u32 val
 }
 
 internal b8
+op_Options_named_num_bytes(op_Options *self, char *name_begin, char *name_end, u32 value_index, u64 *output)
+{
+	op_NamedParameter *named_parameter = op_Options_find(self, name_begin, name_end);
+	if (named_parameter) {
+		op_Parameter *parameter = op_Parameter_at(named_parameter->first_parameter, value_index);
+		if (parameter) {
+			return op_Parameter_value_num_bytes(parameter, output);
+		} else {
+			return 0;
+		}
+	} else {
+		return 0;
+	}
+}
+
+internal b8
 op_Options_named_f32(op_Options *self, char *name_begin, char *name_end, u32 value_index, f32 *output)
 {
 	op_NamedParameter *named_parameter = op_Options_find(self, name_begin, name_end);
@@ -334,6 +385,12 @@ internal b8
 op_Options_named_u64_cstr(op_Options *self, char *name, u32 value_index, u64 *output)
 {
 	return op_Options_named_u64(self, name, cstr_end(name), value_index, output);
+}
+
+internal b8
+op_Options_named_num_bytes_cstr(op_Options *self, char *name, u32 value_index, u64 *output)
+{
+	return op_Options_named_num_bytes(self, name, cstr_end(name), value_index, output);
 }
 
 internal b8

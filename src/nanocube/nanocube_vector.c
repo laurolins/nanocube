@@ -649,8 +649,6 @@ nv_TableValues_init_src_indices(nv_TableValues *self, u32 *begin, u32 *end)
 	}
 }
 
-
-
 //------------------------------------------------------------------------------
 // Payload Table Algebra
 //------------------------------------------------------------------------------
@@ -658,7 +656,7 @@ nv_TableValues_init_src_indices(nv_TableValues *self, u32 *begin, u32 *end)
 #if 1
 
 /* Assume a global linear allocator */
-#define nv_TABLE_VALUE_MAX_SIZE Megabytes(8)
+static u64 nv_TABLE_VALUE_MAX_SIZE=Megabytes(8);
 
 internal nv_TableValues*
 nv_new_table_values(LinearAllocator *nv_table_value_allocator)
@@ -807,10 +805,7 @@ nm_TABLE_VALUES_APPEND(nv_tv_append)
 	nv_TableValues *table = (nv_TableValues*) handle;
 	/* copy values as f64 numbers */
 	f64 *values = (f64*) LinearAllocator_alloc_if_available(table->memsrc, table->columns * sizeof(f64));
-	if (values == 0) {
-		fputs("Not enough memory for result. Improved result memory management is coming soon\n", stderr);
-		exit(-1);
-	}
+	if (!values) { return nm_ERROR_PAYLOAD_OUT_OF_MEMORY; }
 	if (table->rows == 0) {
 		table->values.begin = values;
 		table->values.end = values;
@@ -820,7 +815,7 @@ nm_TABLE_VALUES_APPEND(nv_tv_append)
 	}
 	table->values.end += table->columns;
 	++table->rows;
-	return 0;
+	return nm_OK;
 }
 
 nm_TABLE_VALUES_APPEND_COPYING(nv_tv_append_copying)
@@ -829,7 +824,8 @@ nm_TABLE_VALUES_APPEND_COPYING(nv_tv_append_copying)
 	nv_TableValues *src = (nv_TableValues*) src_handle;
 	Assert(src_index < src->rows);
 	Assert(dst->columns == src->columns);
-	f64 *it_dst = (f64*) LinearAllocator_alloc(dst->memsrc, dst->columns * sizeof(f64));
+	f64 *it_dst = (f64*) LinearAllocator_alloc_if_available(dst->memsrc, dst->columns * sizeof(f64));
+	if (!it_dst) { return nm_ERROR_PAYLOAD_OUT_OF_MEMORY; }
 	if (dst->rows == 0) {
 		dst->values.begin = it_dst;
 		dst->values.end = it_dst;
@@ -842,7 +838,7 @@ nm_TABLE_VALUES_APPEND_COPYING(nv_tv_append_copying)
 	}
 	dst->values.end = it_dst;
 	++dst->rows;
-	return 0;
+	return nm_OK;
 }
 
 
@@ -857,9 +853,6 @@ nm_TABLE_VALUES_COMBINE_ENTRY(nv_tv_combine_entry)
 	f64 *src     = table_src->values.begin + table_src->columns * with_index;
 	f64 *src_end = src + table_src->columns;
 	f64 *dst     = table_dst->values.begin + table_dst->columns * entry_index;
-
-
-
 
 	if (pt_is_nan_f64(*src) || pt_is_nan_f64(*dst)) {
 		*dst = pt_nan_f64();
