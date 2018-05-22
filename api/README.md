@@ -554,19 +554,54 @@ The result is the same as the previous `'intseq'` version:
 
 # Polygons
 
+If we want to restrict spatial queries to shapes defined by lat/lon contours,
+we can use the `regions` and `poly` features enabled when we build nanocubes
+using `--with-polycover`. Note that we assume the mercator projection convention
+in all the geospatial interpretation here.
+
+```url
+# query a polygon defined by four lat/lon pairs (latitude first, longitude second)
+http://localhost:51234/q(crime.b('location',region(18,poly('41.8595,-87.6565,41.8969,-87.6565,41.8969,-87.6013,41.8595,-87.6013'))))
 ```
-Returns a path target.
-### Region
-Region is a target based on lat/lon polygons. We define a region
-by feeding RESOLUTION and POLY to the 'region' function.
+This yelds the following `.json` result:
+```json
+[
+	{
+		"type":"table",
+		"numrows":1,
+		"index_columns":[
+		],
+		"measure_columns":[
+			{
+				"name":"count",
+				"values":[
+					3362.000000
+				]
+			}
+		]
+	}
+]
+```
+
+Note yet that we can combine region with algebraic operators and the resolution
+of the result region is specified as the first parameter of `region` (ie. 18).
+
+```python
+# Region
+# Region is a target based on lat/lon polygons. We define a region
+# by feeding RESOLUTION and POLY to the 'region' function.
     region(RESOLUTION, POLY)
-A POLY primitive is defined by the poly function with a sequence
-of lat/lon pairs that are comma separated in a string:
+# A POLY primitive is defined by the poly function with a sequence
+# of lat/lon pairs that are comma separated in a string:
     poly(LAT_LON_STRING)
-We can combine POLY objects using
+# We can combine POLY objects using
     poly_complement(POLY)
     poly_diff(POLY, POLY)
     poly_union(POLY [, POLY]*)
     poly_symdiff(POLY [, POLY]*)
     poly_intersection(POLY [, POLY]*)
 ```
+
+![polygon](../doc/polygon.png)
+
+
