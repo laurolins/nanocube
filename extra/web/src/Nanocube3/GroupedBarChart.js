@@ -25,7 +25,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     //Add clear button
     this.clearbtn = d3.select(id)
         .append('button')
-        .attr('class','clear-btn')
+        .attr('class','btn')
         .on('click',function(){
             d3.event.stopPropagation();
             
@@ -37,25 +37,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     //Add sort button
     this.sortbtn = d3.select(id)
         .append('button')
-        .attr('class','sort-btn')
+        .attr('class','btn')
         .on('click',function(){
             d3.event.stopPropagation();
             widget._opts.alpha_order = !widget._opts.alpha_order;
             widget.redraw(widget.lastres);
         });
     
-    //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style("height",widget.restoreHeight);
-        }
-    });
-
     
     //SVG container
     var svg = d3.select(id).append("svg").append("g");
@@ -69,16 +57,16 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     svg.append("g").attr("class", "x axis");
     
     //Scales
-    var y0 = d3.scale.ordinal();
-    var y1 = d3.scale.ordinal();
-    var x = d3.scale.linear();
+    var y0 = d3.scaleBand();
+    var y1 = d3.scaleBand();
+    var x = d3.scaleLinear();
     if (opts.logaxis){
-        x = d3.scale.log();
+        x = d3.scaleLog();
     }
 
     //Axis
-    var xAxis = d3.svg.axis();
-    var yAxis = d3.svg.axis();
+    var xAxis = d3.axisBottom();
+    var yAxis = d3.axisLeft();
 
     //set default values 
     opts.numformat = opts.numformat || ",";    
@@ -86,9 +74,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         opts.alpha_order = true;
     }
 
-    xAxis.orient("bottom")
-        .ticks(3,opts.numformat);
-    yAxis.orient("left");
+    xAxis.ticks(3,opts.numformat);
 
     //Save vars to "this"
     this.margin = margin;
@@ -213,18 +199,38 @@ GroupedBarChart.prototype = {
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
-        
-        //append new bars
-        bars.enter()
+
+        //exit
+        bars.exit()
+            .transition()
+            .duration(100)
+            .remove();
+
+        //append
+        var newbars = bars.enter()
             .append('rect')
             .attr('class', 'bar')
-            .on('click', function(d) { widget.clickFunc(d);})//toggle callback
-            .append("svg:title"); //tooltip
+            .on('click', function(d) {
+                widget.clickFunc(d); //toggle callback
+            });
 
-        //set shape
-        bars.attr('x', 0)
-            .attr('y', function(d){return widget.y0(d.cat) + //category
-                                   widget.y1(d.color);}) //selection group
+        newbars.append('svg:title');
+
+        //merge new with old
+        bars = newbars.merge(bars);
+
+        //update
+        bars.attr('x',0)
+            .attr('y', function(d){
+                return widget.y0(d.cat)+widget.y1(d.color);
+            })
+            .attr('height',function(d){
+                return widget.y1.bandwidth()-1;
+            })
+            .transition().duration(100)
+            .attr('width',function(d){
+                return (widget.x(d.val) || 0);
+            })
             .style('fill', function(d){
                 if (!widget.selection.brush || //no selection
                     widget.selection.brush.findIndex(function(b){
@@ -234,26 +240,12 @@ GroupedBarChart.prototype = {
                 else{
                     return 'gray';
                 }
-            })
-            .attr('height',function(d){
-                return widget.y1.rangeBand()-1;
-            })
-            .transition().duration(250)
-            .attr('width',function(d){
-                var w = widget.x(d.val);
-                if(isNaN(w) && d.val <=0 ){
-                    w = 0;
-                }
-                return w;
             });
-        
+
         //add tool tip
         bars.select('title').text(function(d){
             return d3.format(widget._opts.numformat)(d.val);
         });
-
-        //remove bars with no data
-        bars.exit().remove();
     },
 
     clickFunc:function(d){
@@ -380,8 +372,8 @@ GroupedBarChart.prototype = {
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
-        y0.rangeRoundBands([0, totalheight]);
-        y1.rangeRoundBands([0, y0.rangeBand()]);
+        y0.range([0, totalheight]);
+        y1.range([0, y0.bandwidth()]);
         yAxis.scale(y0);
         svg.select('.y.axis').call(yAxis);
 

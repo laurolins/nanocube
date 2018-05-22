@@ -277,7 +277,7 @@ Query.prototype = {
     },
 
 
-    categorialQuery: function(varname){
+    categoricalQuery: function(varname){
         var constraint = "a(\"" + varname + "\",dive([],1)) ";
         this.query_elements[varname] = constraint;
 

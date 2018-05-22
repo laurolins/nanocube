@@ -177,7 +177,6 @@ Heatmap.prototype = {
         /*var infodiv = $('#'+this._name+" .info");
           infodiv.css({
           position: 'absolute',
-          'z-index':1,
           color: 'white',
           'right': '20ch',
           'top': '0.5em',
@@ -423,7 +422,7 @@ Heatmap.prototype = {
             domain = domain.map(function(d){return Math.exp(d)+minv-2;});
         }
 
-        return d3.scale.linear().domain(domain).range(colors);
+        return d3.scaleLinear().domain(domain).range(colors);
     },
 
     render: function(arr,pb,colormap,canvas,opacity){
@@ -461,8 +460,7 @@ Heatmap.prototype = {
         proxyctx.putImageData(imgData, 0, 0);
 
         //Clear
-        realctx.imageSmoothingEnabled = false;
-        realctx.mozImageSmoothingEnabled = false;
+        //realctx.imageSmoothingEnabled = true;
         realctx.clearRect(0,0,canvas.width,canvas.height);
 
         //draw onto the real canvas ...

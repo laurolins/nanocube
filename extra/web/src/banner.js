@@ -12,7 +12,7 @@ function loadCss(url) {
     if (typeof define === 'function' && define.amd) {
 	// AMD. Register as an anonymous module.
 	define(['jquery','colorbrewer','d3',
-		'jsep','leafletdraw','canvaslayer'], factory);
+		'jsep','sprintf','leafletdraw','canvaslayer'], factory);
     } else if (typeof exports === 'object') {
 	// Node. Does not work with strict CommonJS, but
 	// only CommonJS-like environments that support module.exports,
@@ -21,15 +21,16 @@ function loadCss(url) {
 				 require('colorbrewer'),
 				 require('d3'),
 				 require('jsep'),
+                                 require('sprintf'),
 				 require('leaflet'),
 				 require('leafletdraw'),
 				 require('canvaslayer'));
     } else {
 	// Browser globals (root is window)
 	root.Nanocube3 = factory(root.$,root.colorbrewer,root.d3,
-				 root.jsep,root.L);
+				 root.jsep,root.sprintf,root.L);
     }
-} (this, function($,colorbrewer,d3,jsep,L) {
+} (this, function($,colorbrewer,d3,jsep,sprintf,L) {
     loadCss('lib/leaflet/leaflet.css');
     loadCss('lib/leaflet-draw/leaflet.draw.css');
 
