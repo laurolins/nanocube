@@ -144,7 +144,7 @@ If we want to count the number of crimes in a 256x256 quadtree-aligned grid
 of the sub-cell (top-left, bottom-right, top-left) or (2,1,2), we run the query
 below. Note that the cell (2,1,2) contains Chicago.
 ```
-http://localhost:29512/q(crimes.b('location',dive(p(2,1,2),8)))
+http://localhost:51234/q(crimes.b('location',dive(p(2,1,2),8)))
 ```
 The result is 
 ```json
@@ -181,7 +181,7 @@ to read the result above is to split location 'values' array at every 11-th entr
 The final correspondence can also be better seen by generating the above resul in
 text format.
 ```
-http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8)))
+http://localhost:51234/format('text');q(crimes.b('location',dive(p(2,1,2),8)))
 ```
 which yields the following text
 ```
@@ -198,7 +198,7 @@ which yields the following text
 If instead of the path we just want the local (x,y) coordinate of the 256x256 grid,
 we can use the hint `'img8'` as the last parameter of the binding `.b(...)`.
 ```
-http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img8'))
+http://localhost:51234/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img8'))
 ```
 We now get coordinates `x` and `y` both in {0,1,...,255}
 ```
@@ -214,7 +214,7 @@ We now get coordinates `x` and `y` both in {0,1,...,255}
 ```
 if we want the global coord of the grid we generated we can use the hint `'img11'`:
 ```
-http://localhost:29512/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img11'))
+http://localhost:51234/format('text');q(crimes.b('location',dive(p(2,1,2),8),'img11'))
 ```
 We now get coordinates `x` and `y` both in {0,1,...,2047}. Note that the `y`
 coordinate of the cells grow bottom-up, Chicago is above the Equator and
