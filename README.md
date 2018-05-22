@@ -30,7 +30,7 @@ make install
 # Viewer
 
 ```shell
-# Setup the environment
+# Setup the environment variables needed to run the Nanocubes binary just installed
 . setenv.sh
 
 cd data/
@@ -45,7 +45,7 @@ cd ../
 
 python -m pip install --user requests future
 
-./scripts/ncwebviewer-config -p
+./scripts/ncwebviewer-config -s http://localhost --ncport 51234 -p 8000
 
 # Open browser on http://localhost:8000/ and you should see the crime example
 ```
