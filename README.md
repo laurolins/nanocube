@@ -11,8 +11,9 @@ Here is a link to the new [API](/api/README.md)
 # Compiling on Linux or Mac
 
 ```shell
-#Dependencies
-# apt install build-essentials autoconf libtool git
+# Dependencies for Ubuntu 18.04
+# apt install build-essentials autoconf libtool git python-pip
+
 
 # clone the v4 branch
 git clone -b v4 https://github.com/laurolins/nanocube
