@@ -2329,14 +2329,34 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var widget = this;
 
     //Add play btn
-    this.playbtn = d3.select(id)
-        .append('button')
+    var buttondiv = d3.select(id)
+        .append('div')
+        .attr('class','buttondiv');
+
+    buttondiv.append('button')
         .attr('class','btn')
-        .html('step');
-    
+        .on('click',function(){
+            widget.moveOneStep();
+        })
+        .html('forward');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.animationStartStop();
+        })
+        .html('play/pause');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.moveOneStep(false);
+        })
+        .html('backward');
+
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries");
-    
+
     d3.select(id).on("divresize",function(){
         widget.redraw(widget.lastres);
     });
@@ -2361,9 +2381,9 @@ function Timeseries(opts,getDataCallback,updateCallback){
     widget.x = d3.scaleUtc().range([0, width]);
     widget.y = d3.scaleLinear().range([height, 0]);
 
-    //x axis    
+    //x axis
     widget.xz = widget.x; //zoomed scale
-    
+
     widget.xAxis = d3.axisBottom(widget.x)
         .tickSizeInner(-height);
 
@@ -2380,8 +2400,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
               margin.top + ")");
-    
-    //add svg stuffs    
+
+    //add svg stuffs
     //add title
     widget.svg.append("text")
         .attr("x", -10)
@@ -2397,17 +2417,13 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("class", "y axis")
         .attr("transform", "translate(-3,0)")
         .call(widget.yAxis);
-    
+
 
     //Zoom
     widget.zoom=d3.zoom()
         .on('zoom', function(){
             //rescale
             widget.xz = d3.event.transform.rescaleX(widget.x);
-
-            //apply the scale to  axis
-            widget.svg.select(".x.axis")
-                .call(widget.xAxis.scale(widget.xz));
 
             //redraw
             widget.redraw(widget.lastres);
@@ -2419,12 +2435,12 @@ function Timeseries(opts,getDataCallback,updateCallback){
                           widget.brush.selection.map(widget.xz));
             }
         })
-            
+
         .on('end', function(){
             widget.update();
-            widget.updateCallback(widget._encodeArgs());            
+            widget.updateCallback(widget._encodeArgs());
         });
-    
+
 
     //apply zoom to axis
     widget.svg.call(widget.zoom);
@@ -2436,7 +2452,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
             if(!d3.event.sourceEvent){
                 return;
             }
-            
+
             if (d3.event.selection) {
                 var sel = d3.event.selection;
                 //save selection
@@ -2456,41 +2472,12 @@ function Timeseries(opts,getDataCallback,updateCallback){
         widget._decodeArgs(opts.args);
     }
     else{
-        //set initial domain    
+        //set initial domain
         widget.xz.domain(opts.timerange);
     }
 
+    widget.animating = null;
     widget.width = width;
-
-    //Play button
-    this.playbtn.on('click',function(){
-        if(widget.brush.selection){
-            //move the selection
-            var newsel = [widget.brush.selection[1],                   
-                          new Date(widget.brush.selection[1].getTime()+
-                                   (widget.brush.selection[1]-
-                                    widget.brush.selection[0]))];
-                
-            widget.brush.selection = newsel;
-
-            //move the domain
-            if(widget.xz.domain()[1] < newsel[1]){
-                var xzdom = widget.xz.domain();
-                widget.xz.domain([newsel[1]-(xzdom[1]-xzdom[0]),
-                                  newsel[1]]);
-                //apply the scale to axis
-                widget.svg.select(".x.axis")
-                    .call(widget.xAxis.scale(widget.xz));
-            }
-
-            widget.svg.select('g.brush')
-                .call(widget.brush.move,
-                      widget.brush.selection.map(widget.xz));              
-        }
-        
-        widget.update(); //redraw itself
-        widget.updateCallback(widget._encodeArgs());            
-    });
 }
 
 Timeseries.prototype={
@@ -2513,7 +2500,7 @@ Timeseries.prototype={
                 promises[k] = p[k];
             }
         }
-            
+
         var promarray = Object.keys(promises).map(function(k){
             return promises[k];
         });
@@ -2526,7 +2513,7 @@ Timeseries.prototype={
                 res[d] = results[i];
 
                 var label = d.split('&-&');
-                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);
                 if(isColor){
                     res[d].color = label[0];
                 }
@@ -2541,7 +2528,7 @@ Timeseries.prototype={
             widget.redraw(res);
         });
     },
-    
+
     getSelection: function(){
         var sel = {};
         var timedom = this.xz.domain();
@@ -2558,7 +2545,7 @@ Timeseries.prototype={
         var args= this.getSelection();
         return JSON.stringify(args);
     },
-    
+
     _decodeArgs: function(s){
         var args = JSON.parse(s);
         this.x.domain([new Date(args.global.start),
@@ -2572,10 +2559,10 @@ Timeseries.prototype={
                       this.brush.selection.map(this.xz));
         }
     },
-        
-    redraw: function(lines){            
+
+    redraw: function(lines){
         Object.keys(lines).forEach(function(k){
-            if(lines[k].data.length > 1){ 
+            if(lines[k].data.length > 1){
                 var last = lines[k].data[lines[k].data.length-1];
                 lines[k].data.push(last); //dup the last point for step line
             }
@@ -2593,15 +2580,14 @@ Timeseries.prototype={
 
         yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
-        
         this.y.domain(yext);
 
-        //update y axis
-        this.svg.select(".y.axis").call(this.yAxis);
-
-        var widget = this;
+        //update axis
+        this.svg.select(".y.axis").call(this.yAxis.scale(this.y));
+        this.svg.select(".x.axis").call(this.xAxis.scale(this.xz));
 
         //Remove paths obsolete paths
+        var widget = this;
         var paths = widget.svg.selectAll('path.line');
         paths.each(function(){
             var p = this;
@@ -2612,8 +2598,7 @@ Timeseries.prototype={
                 d3.select(p).remove();
             }
         });
-        
-        
+
         //Draw Lines
         Object.keys(lines).forEach(function(k){
             lines[k].data.sort(function(a,b){return a.time - b.time;});
@@ -2623,18 +2608,18 @@ Timeseries.prototype={
 
     drawLine:function(data,color){
         var colorid = 'color_'+color.replace('#','');
-        
+
         if (data.length < 2){
             return;
         }
 
-        var widget = this;        
+        var widget = this;
         //create unexisted paths
         var path = widget.svg.select('path.line.'+colorid);
         if (path.empty()){
             path = widget.svg.append('path');
             path.attr('class', 'line '+colorid);
-            
+
             path.style('stroke-width','2px')
                 .style('fill','none')
                 .style('stroke',color);
@@ -2645,10 +2630,75 @@ Timeseries.prototype={
             .x(function(d) { return widget.xz(d.time); })
             .y(function(d) { return widget.y(d.val); })
             .curve(d3.curveStepAfter);
-        
+
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));
+    },
+
+    moveOneStep: function(forward,stepsize){
+        var widget = this;
+        if(!widget.brush.selection){
+            return;
+        }
+
+        if(forward == undefined){
+            forward = true;
+        }
+
+        if(stepsize == undefined){
+            stepsize = widget.brush.selection[1]-widget.brush.selection[0];
+        }
+
+        if(!forward){
+            stepsize = -stepsize;
+        }
+
+        //move the selection
+        var sel = [widget.brush.selection[0].getTime()+stepsize,
+                   widget.brush.selection[1].getTime()+stepsize];
+
+        var newsel = [Math.min.apply(null, sel),
+                      Math.max.apply(null, sel)].map(function(d){
+                          return new Date(d);
+                      });
+
+        widget.brush.selection = newsel; 
+
+        
+        //move the domain if needed
+        var xzdom = widget.xz.domain();
+        if(xzdom[1] < newsel[1]){
+            widget.xz.domain([newsel[1]-(xzdom[1]-xzdom[0]),
+                              newsel[1]]);
+        }
+
+        if(xzdom[0] > newsel[0]){
+            widget.xz.domain([newsel[0],
+                              newsel[0]+(xzdom[1]-xzdom[0])]);
+        }
+
+
+        //move the brush
+        widget.svg.select('g.brush')
+            .call(widget.brush.move,
+                  widget.brush.selection.map(widget.xz));
+
+        widget.update(); //redraw itself
+        widget.updateCallback(widget._encodeArgs());
+    },
+
+    animationStartStop: function(){
+        var widget = this;
+        if(this.animating==null){
+            this.animating = window.setInterval(function(){
+                widget.moveOneStep();
+            },1000/3.0);
+        }
+        else{
+            window.clearInterval(widget.animating);
+            widget.animating=null;
+        }
     }
 };
 
