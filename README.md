@@ -39,15 +39,24 @@ nanocube serve 51234 crime=crime50k.nanocube &
 
 cd ../
 
-## If you need to install pip (e.g. on MacOS)
-## wget https://bootstrap.pypa.io/get-pip.py
-## python get-pip.py --user
+# If you need to install pip (e.g. on MacOS)
+# wget https://bootstrap.pypa.io/get-pip.py
+# python get-pip.py --user
 
 python -m pip install --user requests future
 
+#
+# Setup a web viewer on port 8000 for the crimes nanocube previously opened 
+# on port 51234.
+#
+# Parameters:
+#     -s         nanocube backend server (any http heachable machine)
+#     --ncport   nanocube backend port
+#     -p         port of the webviewer to be opon in the localhost
+#
+
 ./scripts/ncwebviewer-config -s http://localhost --ncport 51234 -p 8000
 
-# Open browser on http://localhost:8000/ and you should see the crime example
 ```
 
 # Extra
