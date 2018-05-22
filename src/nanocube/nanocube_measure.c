@@ -419,6 +419,29 @@ typedef struct {
 	s32               cursor_num_nodes;
 } nm_Mask;
 
+
+//------------------------------------------------------------------------------
+// error codes
+//------------------------------------------------------------------------------
+
+#define nm_OK 0
+#define nm_ERROR_COULDNT_DERIVE_KEY_TYPES_FROM_MEASURE_SOURCE_AND_BINDINGS 1
+#define nm_ERROR_PAYLOAD_OUT_OF_MEMORY 2
+#define nm_ERROR_TIME_BIN_ALIGNMENT 3
+#define nm_ERROR_INVALID_ALIAS 4
+#define nm_ERROR_TYPE_INFERENCE_DIFFERENT_DIVE_DEPTHS 5
+#define nm_ERROR_TYPE_INFERENCE_INVALID_ALIAS 6
+
+static char *nm_error_messages[] = {
+	"nm_OK",
+	"nm_ERROR_COULDNT_DERIVE_KEY_TYPES_FROM_MEASURE_SOURCE_AND_BINDINGS",
+	"nm_ERROR_PAYLOAD_OUT_OF_MEMORY",
+	"nm_ERROR_TIME_BIN_ALIGNMENT",
+	"nm_ERROR_INVALID_ALIAS",
+	"nm_ERROR_TYPE_INFERENCE_DIFFERENT_DIVE_DEPTHS",
+	"nm_ERROR_TYPE_INFERENCE_INVALID_ALIAS"
+};
+
 //------------------------------------------------------------------------------
 // nm_Path
 //------------------------------------------------------------------------------
@@ -1553,12 +1576,13 @@ nm_Measure_combine_number(nm_Measure *self, f64 number, nm_MeasureExpression_Ope
 // MeasureSource + MeasureSourceBindings -> TableKeyType
 
 internal nm_TableKeysType*
-nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_MeasureSource *src, nm_MeasureSourceBinding *binding, nm_Services *nm_services)
-
+nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_MeasureSource *src, nm_MeasureSourceBinding *binding, nm_Services *nm_services, s32 *error)
 {
+	*error = nm_OK;
+
 	Assert(src->num_nanocubes > 0);
 
-	LinearAllocatorCheckpoint chkpt = LinearAllocator_checkpoint(memsrc);
+	// LinearAllocatorCheckpoint chkpt = LinearAllocator_checkpoint(memsrc);
 
 	u8 dimension_of[nx_MAX_NUM_DIMENSIONS];
 	u8 path_buffer[128];
@@ -1598,14 +1622,11 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 							if (depth < 0) {
 								depth = candidate_depth;
 							} else if (depth != candidate_depth) {
-								fputs("Different depths on dive_list\n",stderr);
-								// problem defining storage spec from alias
-								LinearAllocator_rewind(memsrc, chkpt);
+								*error = nm_ERROR_TYPE_INFERENCE_DIFFERENT_DIVE_DEPTHS;
 								return 0;
 							}
 						} else {
-							// problem defining storage spec from alias
-							LinearAllocator_rewind(memsrc, chkpt);
+							*error = nm_ERROR_TYPE_INFERENCE_INVALID_ALIAS;
 							return 0;
 						}
 					} else {
@@ -1614,9 +1635,7 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 						if (depth < 0) {
 							depth = candidate_depth;
 						} else if (depth != candidate_depth) {
-							fputs("Different depths on dive_list\n",stderr);
-							// problem defining storage spec from alias
-							LinearAllocator_rewind(memsrc, chkpt);
+							*error = nm_ERROR_TYPE_INFERENCE_DIFFERENT_DIVE_DEPTHS;
 							return 0;
 						}
 					}
@@ -2000,8 +2019,7 @@ nm_TableKeys_commit_key(nm_TableKeys *self)
 	u32 len = self->row_length;
 
 	// running record
-	char *running_key =
-		LinearAllocator_alloc(self->memsrc, self->row_length);
+	char *running_key = LinearAllocator_alloc(self->memsrc, self->row_length);
 	Assert(running_key == self->keys.end + len); // invariant: reserved space for one extra record
 
 	pt_copy_bytes(self->keys.end, self->keys.end + len,
@@ -2600,12 +2618,18 @@ nm_Measure_check_eval_type(nm_Measure *self)
 }
 
 
+#define nm_RUN_AND_CHECK_INIT s32 error_ = 0;
+#define nm_RUN_AND_CHECK(Exp) \
+	error_ = (Exp); \
+	if (error_) return error_;
 
-
-internal void
+// @todo if return different from zero
+internal s32
 nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 index, s32 nanocube_index)
 {
 	Assert(root);
+
+	nm_RUN_AND_CHECK_INIT;
 
 	nm_Target* target = context->target_begin + index;
 	b8 last_dimension = (context->target_begin + index + 1) == context->target_end;
@@ -2617,17 +2641,23 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			if (last_dimension) {
 				nx_PNode* pnode = (nx_PNode*) root;
 
-				// commit record
-				context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index]);
+				nm_RUN_AND_CHECK(
+						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						);
+
 				nm_TableKeys_commit_key(context->table_keys);
 			} else {
 				nx_INode* inode     = (nx_INode*) root;
 				nx_Node*  next_root = nx_Ptr_Node_get(&inode->content_p);
-				nm_Measure_solve_query (context, next_root, index + 1, nanocube_index); // recursive call
+
+				nm_RUN_AND_CHECK(
+						 nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+						); // recursive call
 			}
 		} else {
 			Assert(0 && "Case not implemented!");
 		}
+
 	} else if (target->type == nm_TARGET_FIND_DIVE_LIST) {
 
 		Assert(target->anchor);
@@ -2638,13 +2668,12 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		while (it_dive != end_dive) {
 			if (it_dive->path.by_alias) {
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index,
-									 it_dive->path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, it_dive->path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					it_dive->path.array.begin  = path_buffer;
 					it_dive->path.array.length = path_length;
 				} else {
 					// dead end: couldn't translate alias to path
-					return;
+					return nm_ERROR_INVALID_ALIAS;
 				}
 			}
 
@@ -2670,15 +2699,18 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 					nx_PNode* pnode = (nx_PNode*) target_node;
 
 					// commit record
-					context->nm_services->append
-						(context->table_values_handle,
-						 &pnode->payload_aggregate,
-						 context->source->nanocubes[nanocube_index]);
+					nm_RUN_AND_CHECK(
+						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+					);
+
 					nm_TableKeys_commit_key(context->table_keys);
 				} else {
 					nx_INode *inode = (nx_INode*) target_node;
 					nx_Node *next_root = nx_Ptr_Node_get(&inode->content_p);
-					nm_Measure_solve_query (context, next_root, index + 1, nanocube_index);
+
+					nm_RUN_AND_CHECK(
+							 nm_Measure_solve_query (context, next_root, index + 1, nanocube_index)
+							);
 				}
 
 				nm_TableKeys_pop_column(context->table_keys);
@@ -2692,13 +2724,12 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 			if (target->find_dive.path.by_alias) {
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index,
-									 target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					target->find_dive.path.array.begin  = path_buffer;
 					target->find_dive.path.array.length = path_length;
 				} else {
 					// dead end: couldn't translate alias to path
-					return;
+					return nm_ERROR_INVALID_ALIAS;
 				}
 			}
 
@@ -2724,15 +2755,17 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 					nx_PNode* pnode = (nx_PNode*) target_node;
 
 					// commit record
-					context->nm_services->append
-						(context->table_values_handle,
-						 &pnode->payload_aggregate,
-						 context->source->nanocubes[nanocube_index]);
+					nm_RUN_AND_CHECK(
+						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+					);
+
 					nm_TableKeys_commit_key(context->table_keys);
 				} else {
 					nx_INode *inode = (nx_INode*) target_node;
 					nx_Node *next_root = nx_Ptr_Node_get(&inode->content_p);
-					nm_Measure_solve_query (context, next_root, index + 1, nanocube_index);
+					nm_RUN_AND_CHECK(
+							 nm_Measure_solve_query (context, next_root, index + 1, nanocube_index)
+							);
 				}
 
 				nm_TableKeys_pop_column(context->table_keys);
@@ -2741,13 +2774,12 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			if (target->find_dive.path.by_alias) {
 				// @todo make sure we fill in the array
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index,
-									 target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					target->find_dive.path.array.begin  = path_buffer;
 					target->find_dive.path.array.length = path_length;
 				} else {
 					// dead end: couldn't translate alias to path
-					return;
+					return nm_ERROR_INVALID_ALIAS;
 				}
 			}
 
@@ -2763,17 +2795,18 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 					nx_PNode* pnode = (nx_PNode*) target_node;
 
 					// commit
-					context->nm_services->append
-						(context->table_values_handle,
-						 &pnode->payload_aggregate,
-						 context->source->nanocubes[nanocube_index]);
+					nm_RUN_AND_CHECK(
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							);
 					nm_TableKeys_commit_key (context->table_keys);
 				} else {
 					nx_INode* inode = (nx_INode*) target_node;
 					nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
 
 					// recursive
-					nm_Measure_solve_query(context, next_root, index + 1, nanocube_index);
+					nm_RUN_AND_CHECK(
+						nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+					);
 				}
 			}
 		}
@@ -2788,13 +2821,11 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			if (path->by_alias) {
 				// @todo make sure we fill in the array
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index,
-									 path->alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, path->alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					path->array.begin  = path_buffer;
 					path->array.length = path_length;
 				} else {
-					// dead end: couldn't translate alias to path
-					continue;
+					return nm_ERROR_INVALID_ALIAS;
 				}
 			}
 
@@ -2809,15 +2840,19 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 					nx_PNode* pnode = (nx_PNode*) target_node;
 
 					// commit
-					context->nm_services->append (context->table_values_handle, &pnode->payload_aggregate,
-								      context->source->nanocubes[nanocube_index]);
+					nm_RUN_AND_CHECK(
+						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+					);
+
 					nm_TableKeys_commit_key (context->table_keys);
+
 				} else {
 					nx_INode* inode = (nx_INode*) target_node;
 					nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
 
-					// recursive
-					nm_Measure_solve_query(context, next_root, index + 1, nanocube_index);
+					nm_RUN_AND_CHECK(
+						nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+					);
 				}
 			}
 			++it_path;
@@ -2835,15 +2870,19 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 				nx_PNode* pnode = (nx_PNode*) target_node;
 
 				// commit
-				context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate,
-							     context->source->nanocubes[nanocube_index]);
+				nm_RUN_AND_CHECK(
+						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						);
+
 				nm_TableKeys_commit_key(context->table_keys);
 			} else {
 				nx_INode* inode = (nx_INode*) target_node;
 				nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
 
 				// recursive
-				nm_Measure_solve_query(context, next_root, index + 1, nanocube_index);
+				nm_RUN_AND_CHECK(
+					nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+				);
 			}
 		}
 
@@ -2871,9 +2910,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			u64 begin = (begin_it >= 0) ? (u64) begin_it : 0ull;
 			u64 end   = begin + target->interval_sequence.width;
 
-			NanocubeIndex_Interval_init(&it, context->source->indices[nanocube_index],
-						    root, index, depth, begin,
-						    end);
+			NanocubeIndex_Interval_init(&it, context->source->indices[nanocube_index], root, index, depth, begin, end);
 
 			if (loop) {
 				TableKeys_push_loop_column(context->table_keys, i);
@@ -2883,20 +2920,20 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 			while ((target_node = NanocubeIndex_Interval_next(&it))) {
 				if (last_dimension) {
-					nx_PNode* pnode = (nx_PNode*)
-						target_node;
+					nx_PNode* pnode = (nx_PNode*) target_node;
 
 					// commit
-					context->nm_services->append(context->table_values_handle,
-									       &pnode->payload_aggregate,
-									       context->source->nanocubes[nanocube_index]);
+					nm_RUN_AND_CHECK(
+						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+					);
 					nm_TableKeys_commit_key (context->table_keys);
 				} else {
 					nx_INode* inode = (nx_INode*) target_node;
 					nx_Node* next_root = nx_Ptr_Node_get (&inode->content_p);
 
-					// recursive
-					nm_Measure_solve_query(context, next_root, index + 1, nanocube_index);
+					nm_RUN_AND_CHECK(
+						nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+					);
 				}
 			}
 
@@ -2922,16 +2959,8 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		/* check if we can align the base date requested */
 		nm_TimeBinning time_binning;
 		if (!context->nm_services->get_time_binning(context->source->nanocubes[nanocube_index], (u8) index, &time_binning)) {
-			/* @TODO(llins): turn on error flag */
-			return;
+			return nm_ERROR_TIME_BIN_ALIGNMENT;
 		}
-
-// 		nv_Nanocube *nanocube = (nv_Nanocube*) context->source->nanocube;
-// 		nv_TimeBinning time_binning;
-// 		if (!nv_Nanocube_get_time_binning(nanocube, (u8) index, &time_binning)) {
-// 			/* @TODO(llins): turn on error flag */
-// 			return;
-// 		}
 
 		u64 query_time0       = target->time_sequence.base.time;
 		u64 query_bin_secs    = target->time_sequence.width;
@@ -2942,20 +2971,17 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		u64 scheme_bin_secs   = time_binning.bin_width;
 
 		if ((query_bin_secs % scheme_bin_secs) != 0) {
-			/* @TODO(llins): turn on error flag */
-			return;
+			return nm_ERROR_TIME_BIN_ALIGNMENT;
 		}
 
 		if ((query_stride_secs % scheme_bin_secs) != 0) {
-			/* @TODO(llins): turn on error flag */
-			return;
+			return nm_ERROR_TIME_BIN_ALIGNMENT;
 		}
 
 		s64 offset = (s64) query_time0 - (s64) scheme_time0;
 
 		if ((offset % scheme_bin_secs) != 0) {
-			/* @TODO(llins): turn on error flag */
-			return;
+			return nm_ERROR_TIME_BIN_ALIGNMENT;
 		}
 
 		/* convert to interval query */
@@ -2989,16 +3015,18 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 						nx_PNode* pnode = (nx_PNode*) target_node;
 
 						// commit
-						context->nm_services->append(context->table_values_handle,
-									     &pnode->payload_aggregate,
-									     context->source->nanocubes[nanocube_index]);
+						nm_RUN_AND_CHECK(
+							context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						);
 						nm_TableKeys_commit_key(context->table_keys);
 					} else {
 						nx_INode* inode = (nx_INode*) target_node;
 						nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
 
 						// recursive
-						nm_Measure_solve_query(context, next_root, index + 1, nanocube_index);
+						nm_RUN_AND_CHECK(
+							nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+						);
 					}
 				}
 
@@ -3014,6 +3042,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 	} else {
 		Assert(0 && "Case not implemented!");
 	}
+
+	return nm_OK; // or zero
+
 }
 
 
@@ -3585,9 +3616,9 @@ nm_Measure_eval_expression(nm_MeasureEvalContext *context, nm_MeasureExpression 
 
 // @todo: bring in a log and allow for an error flow here
 internal nm_Table*
-nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_services, void *allocation_context)
+nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_services, void *allocation_context, s32 *error)
 {
-	LinearAllocatorCheckpoint chkpt = LinearAllocator_checkpoint(memsrc);
+	// LinearAllocatorCheckpoint chkpt = LinearAllocator_checkpoint(memsrc);
 
 	LinearAllocator memsrc_scratch;
 	LinearAllocator memsrc_tables;
@@ -3619,11 +3650,8 @@ nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_servi
 		// multiple indices but we assume the same schema for all the indices)
 		table->source = source;
 		nm_TableKeys     *table_keys      = &table->table_keys;
-		nm_TableKeysType *table_keys_type = nm_TableKeysType_from_measure_source_and_bindings(&memsrc_tables, source, bindings, nm_services);
-
-		if (table_keys_type == 0) {
-			// empty result
-			LinearAllocator_rewind(memsrc, chkpt);
+		nm_TableKeysType *table_keys_type = nm_TableKeysType_from_measure_source_and_bindings(&memsrc_tables, source, bindings, nm_services, error);
+		if (!table_keys_type) {
 			return 0;
 		}
 
@@ -3667,7 +3695,7 @@ nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_servi
 			Assert(table_keys->current_column == 0 && table_keys->current_offset == 0);
 
 			/* solve query for all indices within the measure source */
-			nm_Measure_solve_query(&query_context, root, 0, j);
+			s32 error = nm_Measure_solve_query(&query_context, root, 0, j);
 
 			// compress table
 			if (table_keys->rows > 1)

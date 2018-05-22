@@ -1387,7 +1387,8 @@ service_test(Request *request)
 			/* set the table values allocator */
 			LinearAllocator_clear(&table_index_columns_allocator);
 			LinearAllocator_clear(&table_measure_columns_allocator);
-			nm_Table *table_begin = nm_Measure_eval(measure, &table_index_columns_allocator, &nv_payload_services, &table_measure_columns_allocator);
+			s32 error = nm_OK;
+			nm_Table *table_begin = nm_Measure_eval(measure, &table_index_columns_allocator, &nv_payload_services, &table_measure_columns_allocator, &error);
 			nm_Table *table_end   = table_begin + 1; //  measure->num_sources;
 
 			if (table_begin) {
@@ -1405,7 +1406,7 @@ service_test(Request *request)
 				}
 				Request_print(request, print);
 			} else {
-				Request_msg(request, "[test] failed evaluation: probable reason is an alias was used that doesn't exist (check its spelling)");
+				Request_msg(request, nm_error_messages[error]);
 			}
 		}
 		platform.free_memory(&table_index_columns_buffer);
@@ -1600,14 +1601,12 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 			LinearAllocator_clear(&buffers->table_value_columns_allocator);
 
 			// pf_BEGIN_BLOCK("nm_Measure_eval");
-			nm_Table *table = nm_Measure_eval(measure,
-							  &buffers->table_index_columns_allocator,
-							  buffers->payload_services,
-							  &buffers->table_value_columns_allocator);
+			s32 error = nm_OK;
+			nm_Table *table = nm_Measure_eval(measure, &buffers->table_index_columns_allocator, buffers->payload_services, &buffers->table_value_columns_allocator, &error);
 			// pf_END_BLOCK();
 
 			if (table == 0) {
-				Print_cstr(print_result, "Measure was evaluated to NULL.\n");
+				Print_cstr(print_result, nm_error_messages[error]);
 				Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 				app_nanocube_print_http_header_default_flags(print_header);
 				Print_cstr(print_header, "Content-Type: text/plain\r\n");
