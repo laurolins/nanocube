@@ -431,6 +431,7 @@ typedef struct {
 #define nm_ERROR_INVALID_ALIAS 4
 #define nm_ERROR_TYPE_INFERENCE_DIFFERENT_DIVE_DEPTHS 5
 #define nm_ERROR_TYPE_INFERENCE_INVALID_ALIAS 6
+#define nm_ERROR_INDEX_COLUMNS_OUT_OF_MEMORY 7
 
 static char *nm_error_messages[] = {
 	"nm_OK",
@@ -439,7 +440,8 @@ static char *nm_error_messages[] = {
 	"nm_ERROR_TIME_BIN_ALIGNMENT",
 	"nm_ERROR_INVALID_ALIAS",
 	"nm_ERROR_TYPE_INFERENCE_DIFFERENT_DIVE_DEPTHS",
-	"nm_ERROR_TYPE_INFERENCE_INVALID_ALIAS"
+	"nm_ERROR_TYPE_INFERENCE_INVALID_ALIAS",
+	"nm_ERROR_INDEX_COLUMNS_OUT_OF_MEMORY"
 };
 
 //------------------------------------------------------------------------------
@@ -1947,10 +1949,12 @@ nm_TableKeys_init(nm_TableKeys *self, nm_TableKeysType *type, LinearAllocator *m
 	self->keys.end = self->keys.begin;
 }
 
-internal void
+internal s32
 nm_TableKeys_push_anchor_column(nm_TableKeys *self, nx_Label *begin, nx_Label *end)
 {
-	Assert(self->current_column < self->columns);
+	if (self->current_column == self->columns) {
+		return nm_ERROR_INDEX_COLUMNS_OUT_OF_MEMORY;
+	}
 
 	nm_TableKeysColumnType *coltype = self->type->begin + self->current_column;
 
@@ -1971,6 +1975,8 @@ nm_TableKeys_push_anchor_column(nm_TableKeys *self, nx_Label *begin, nx_Label *e
 
 	self->current_offset += bytes;
 	++self->current_column;
+
+	return nm_OK;
 }
 
 internal void
@@ -2011,7 +2017,7 @@ nm_TableKeys_pop_column(nm_TableKeys *self)
 	}
 }
 
-internal void
+internal s32
 nm_TableKeys_commit_key(nm_TableKeys *self)
 {
 	Assert(self->current_column == self->columns);
@@ -2019,15 +2025,18 @@ nm_TableKeys_commit_key(nm_TableKeys *self)
 	u32 len = self->row_length;
 
 	// running record
-	char *running_key = LinearAllocator_alloc(self->memsrc, self->row_length);
+	char *running_key = LinearAllocator_alloc_if_available(self->memsrc, self->row_length);
+	if (!running_key)
+		return nm_ERROR_INDEX_COLUMNS_OUT_OF_MEMORY;
 	Assert(running_key == self->keys.end + len); // invariant: reserved space for one extra record
 
-	pt_copy_bytes(self->keys.end, self->keys.end + len,
-		      running_key, running_key + len);
+	pt_copy_bytes(self->keys.end, self->keys.end + len, running_key, running_key + len);
 
 	self->keys.end = running_key;
 
 	++self->rows;
+
+	return nm_OK;
 }
 
 internal void
@@ -2645,7 +2654,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
 						);
 
-				nm_TableKeys_commit_key(context->table_keys);
+				nm_RUN_AND_CHECK(
+						 nm_TableKeys_commit_key(context->table_keys)
+						);
 			} else {
 				nx_INode* inode     = (nx_INode*) root;
 				nx_Node*  next_root = nx_Ptr_Node_get(&inode->content_p);
@@ -2692,7 +2703,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 				nx_Label* begin = it.path.begin;
 				nx_Label* end   = begin + target_depth;
 
-				nm_TableKeys_push_anchor_column(context->table_keys, begin, end);
+				nm_RUN_AND_CHECK(
+					nm_TableKeys_push_anchor_column(context->table_keys, begin, end)
+				);
 
 				if (last_dimension)
 				{
@@ -2700,10 +2713,12 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit record
 					nm_RUN_AND_CHECK(
-						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
-					);
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							);
 
-					nm_TableKeys_commit_key(context->table_keys);
+					nm_RUN_AND_CHECK(
+							 nm_TableKeys_commit_key(context->table_keys)
+							);
 				} else {
 					nx_INode *inode = (nx_INode*) target_node;
 					nx_Node *next_root = nx_Ptr_Node_get(&inode->content_p);
@@ -2748,7 +2763,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 				nx_Label* begin = it.path.begin;
 				nx_Label* end   = begin + target_depth;
 
-				nm_TableKeys_push_anchor_column(context->table_keys, begin, end);
+				nm_RUN_AND_CHECK(
+					nm_TableKeys_push_anchor_column(context->table_keys, begin, end)
+				);
 
 				if (last_dimension)
 				{
@@ -2759,7 +2776,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
 					);
 
-					nm_TableKeys_commit_key(context->table_keys);
+					nm_RUN_AND_CHECK(
+							 nm_TableKeys_commit_key(context->table_keys)
+							);
 				} else {
 					nx_INode *inode = (nx_INode*) target_node;
 					nx_Node *next_root = nx_Ptr_Node_get(&inode->content_p);
@@ -2798,7 +2817,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 					nm_RUN_AND_CHECK(
 							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
 							);
-					nm_TableKeys_commit_key (context->table_keys);
+					nm_RUN_AND_CHECK(
+							 nm_TableKeys_commit_key (context->table_keys)
+							);
 				} else {
 					nx_INode* inode = (nx_INode*) target_node;
 					nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
@@ -2841,18 +2862,20 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit
 					nm_RUN_AND_CHECK(
-						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
-					);
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							);
 
-					nm_TableKeys_commit_key (context->table_keys);
+					nm_RUN_AND_CHECK(
+							 nm_TableKeys_commit_key(context->table_keys)
+							);
 
 				} else {
 					nx_INode* inode = (nx_INode*) target_node;
 					nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
 
 					nm_RUN_AND_CHECK(
-						nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
-					);
+							 nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+							);
 				}
 			}
 			++it_path;
@@ -2874,7 +2897,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
 						);
 
-				nm_TableKeys_commit_key(context->table_keys);
+				nm_RUN_AND_CHECK(
+						 nm_TableKeys_commit_key(context->table_keys)
+						);
 			} else {
 				nx_INode* inode = (nx_INode*) target_node;
 				nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
@@ -2926,7 +2951,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 					nm_RUN_AND_CHECK(
 						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
 					);
-					nm_TableKeys_commit_key (context->table_keys);
+					nm_RUN_AND_CHECK(
+						nm_TableKeys_commit_key (context->table_keys)
+					);
 				} else {
 					nx_INode* inode = (nx_INode*) target_node;
 					nx_Node* next_root = nx_Ptr_Node_get (&inode->content_p);
@@ -3018,7 +3045,9 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 						nm_RUN_AND_CHECK(
 							context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
 						);
-						nm_TableKeys_commit_key(context->table_keys);
+						nm_RUN_AND_CHECK(
+							nm_TableKeys_commit_key(context->table_keys)
+						);
 					} else {
 						nx_INode* inode = (nx_INode*) target_node;
 						nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
@@ -3618,6 +3647,8 @@ nm_Measure_eval_expression(nm_MeasureEvalContext *context, nm_MeasureExpression 
 internal nm_Table*
 nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_services, void *allocation_context, s32 *error)
 {
+	*error = nm_OK; // no error at first
+
 	// LinearAllocatorCheckpoint chkpt = LinearAllocator_checkpoint(memsrc);
 
 	LinearAllocator memsrc_scratch;
@@ -3659,7 +3690,7 @@ nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_servi
 		// inserting all records into table_keys
 		nm_TableKeys_init(table_keys, table_keys_type, &memsrc_tables);
 
-		// TODO(llins): this is error prone
+		// @todo(llins): this is error prone
 		Assert(source->num_nanocubes > 0);
 		table->table_values_handle = nm_services->create(source->nanocubes[0], payload_config, allocation_context);
 
@@ -3676,7 +3707,7 @@ nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_servi
 			it = it->next;
 		}
 
-		// TODO(llins): here is where we need to add all the results
+		// @todo(llins): here is where we need to add all the results
 		query_context.source              = source;
 		query_context.target_begin        = targets;
 		query_context.target_end          = targets + num_dimensions;
@@ -3692,10 +3723,12 @@ nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_servi
 				continue;
 			}
 
-			Assert(table_keys->current_column == 0 && table_keys->current_offset == 0);
+			// @verify did this come before multiple sources?
+			// Assert(table_keys->current_column == 0 && table_keys->current_offset == 0);
 
 			/* solve query for all indices within the measure source */
-			s32 error = nm_Measure_solve_query(&query_context, root, 0, j);
+			*error = nm_Measure_solve_query(&query_context, root, 0, j);
+			if (*error) { return 0; }
 
 			// compress table
 			if (table_keys->rows > 1)
