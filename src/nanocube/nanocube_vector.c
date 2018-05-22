@@ -649,8 +649,6 @@ nv_TableValues_init_src_indices(nv_TableValues *self, u32 *begin, u32 *end)
 	}
 }
 
-
-
 //------------------------------------------------------------------------------
 // Payload Table Algebra
 //------------------------------------------------------------------------------
@@ -658,7 +656,7 @@ nv_TableValues_init_src_indices(nv_TableValues *self, u32 *begin, u32 *end)
 #if 1
 
 /* Assume a global linear allocator */
-#define nv_TABLE_VALUE_MAX_SIZE Megabytes(8)
+static u64 nv_TABLE_VALUE_MAX_SIZE=Megabytes(8);
 
 internal nv_TableValues*
 nv_new_table_values(LinearAllocator *nv_table_value_allocator)
