@@ -19,32 +19,37 @@ Here is a link to the new [API](/api/README.md)
 git clone -b v4 https://github.com/laurolins/nanocube
 cd nanocube
 
-#Setup the environment
-. setenv.sh
-
 autoreconf -vi
 ./configure --with-polycover --prefix=$(pwd)/install
 make
 make install
 
-#Test if nanocubes is working
-nanocube
+# Test if nanocubes is working
+./install/bin/nanocube
 ```
 
 # Viewer
 
 ```shell
+# Setup the environment
+. setenv.sh
+
+
+cd data/
 nanocube create <(gunzip -c crime50k.csv.gz) crime50k.map crime50k.nanocube
 nanocube serve 51234 crime=crime50k.nanocube &
 
-cd ..
+cd ../
 
-#Install the python packages for the first time
-pip install --user requests future
+## If you need to install pip (e.g. on MacOS)
+## wget https://bootstrap.pypa.io/get-pip.py
+## python get-pip.py --user
+
+python -m pip install --user requests future
 
 ./scripts/ncwebviewer-config -p
 
-# open browser on port localhost 8000 and we should see the crime example
+# Open browser on http://localhost:8000/ and you should see the crime example
 ```
 
 # Compiling in Debug Mode
