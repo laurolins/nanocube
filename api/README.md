@@ -10,7 +10,7 @@ run the following script
 #
 # (1) create the nanocube index file 'crime50k.nanocube'
 #
-nanocube create <(zcat crime50k.csv.gz) crime50k.map crime50k.nanocube
+nanocube create <(gunzip -c crime50k.csv.gz) crime50k.map crime50k.nanocube
 #
 # (2) serve the index via http on port 51234 using the alias 'crimes'
 #

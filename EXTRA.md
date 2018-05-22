@@ -22,7 +22,7 @@ nanocube create paper.csv paper.map paper.nanocube
 nanocube draw paper.nanocube paper.dot
 
 # generate `.pdf` using graphviz
-dot -Tpdf -opaper.pdf paper.dot
+dot -Tpdf -opaper.dot.pdf paper.dot
 ```
 
 In the next figure we present the compressed-path version of the nanocube
