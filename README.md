@@ -11,8 +11,11 @@ Here is a link to the new [API](/api/README.md)
 # Compiling on Linux or Mac
 
 ```shell
+#Dependencies
+# apt install build-essentials autoconf libtool git
+
 # clone the v4 branch
-git clone -b v4 git@github.com:laurolins/nanocube
+git clone -b v4 https://github.com/laurolins/nanocube
 cd nanocube
 
 #Setup the environment
@@ -30,7 +33,7 @@ nanocube
 # Viewer
 
 ```shell
-nanocube create <(gzcat crime50k.csv.gz) crime50k.map crime50k.nanocube
+nanocube create <(gunzip -c crime50k.csv.gz) crime50k.map crime50k.nanocube
 nanocube serve 51234 crime=crime50k.nanocube &
 
 cd ..
