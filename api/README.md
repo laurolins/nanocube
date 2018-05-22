@@ -582,10 +582,10 @@ This yelds the following `.json` result:
 	}
 ]
 ```
-
-Note yet that we can combine region with algebraic operators and the resolution
-of the result region is specified as the first parameter of `region` (ie. 18).
-
+Note that the `region` constraint expects a resolution parameter
+(ie 18) and that we can define a `region` by combining `poly`s with
+algebraic operators: `poly_complement`, `poly_diff`, `poly_union`, 
+`poly_symdiff`, `poly_intersection`.
 ```python
 # Region
 # Region is a target based on lat/lon polygons. We define a region
