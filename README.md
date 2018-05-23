@@ -59,6 +59,11 @@ python -m pip install --user requests future
 
 ```
 
+Zoom into the Chicago region to see a heatmap of crimes.
+
+
+![image](./doc/chicago_crime.png?raw=true)
+
 # Extra
 
 For more advanced information follow this link: [extra](/EXTRA.md)

@@ -461,8 +461,9 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         opts.alpha_order = true;
     }
 
-    xAxis.ticks(3,opts.numformat);
-
+    xAxis.ticks(3)
+        .tickFormat(d3.format(opts.numformat)); 
+    
     //Save vars to "this"
     this.margin = margin;
     this.svg=svg;

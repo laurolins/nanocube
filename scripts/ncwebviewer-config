@@ -212,7 +212,7 @@ def catWidget(v):
     maxkeylen = max([len(v['aliases'][k]) for k in v['aliases']])
     marginleft = int(maxkeylen*11)
     width = marginleft+200
-    height = min(200,len(v['aliases'])*20+40)
+    height = min(640,len(v['aliases'])*20+40)
 
     return {
         'title':v['name'],
