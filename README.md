@@ -63,7 +63,14 @@ python -m pip install --user requests future
 #     --ncport   nanocube backend port
 #     -p         port of the webviewer to be opon in the localhost
 #
-nanocube_webconfig -s http://localhost --ncport 51234 -p 8000
+
+# get a more universal hostname instead of 'localhost'
+MYHOST=$(hostname -A 2>/dev/null)
+if [ $? -ne 0 ]; then
+   MYHOST=$(hostname -f)
+fi
+MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
+nanocube_webconfig -s $MYHOST --ncport 51234 -p 8000
 ```
 
 Zoom into the Chicago region to see a heatmap of crimes.
