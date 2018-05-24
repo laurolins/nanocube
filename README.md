@@ -55,6 +55,13 @@ curl 'localhost:51234/schema()'
 # python <(curl https://bootstrap.pypa.io/get-pip.py) --user
 python -m pip install --user requests future
 
+# get the proper host name for this machine
+MYHOST=$(hostname -A 2>/dev/null)
+if [ $? -ne 0 ]; then
+   MYHOST=$(hostname -f)
+fi
+MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
+
 # Setup a web viewer on port 8000 for the crimes nanocube previously opened 
 # on port 51234.
 #
@@ -63,13 +70,6 @@ python -m pip install --user requests future
 #     --ncport   nanocube backend port
 #     -p         port of the webviewer to be opon in the localhost
 #
-
-# get a more universal hostname instead of 'localhost'
-MYHOST=$(hostname -A 2>/dev/null)
-if [ $? -ne 0 ]; then
-   MYHOST=$(hostname -f)
-fi
-MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
 nanocube_webconfig -s $MYHOST --ncport 51234 -p 8000
 ```
 
