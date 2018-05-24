@@ -23,7 +23,7 @@ unzip v4.zip
 cd nanocube-4
 
 # modify --prefix to another installation folder if needed
-./configure --with-polycover --prefix=$(pwd)/install
+./configure --with-polycover --prefix="$(pwd)/install"
 make
 make install
 
