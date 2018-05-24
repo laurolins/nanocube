@@ -85,6 +85,6 @@ AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([memset sqrt])
 
-AC_CONFIG_FILES([Makefile src/Makefile web/Makefile])
+AC_CONFIG_FILES([Makefile web/Makefile])
 AC_OUTPUT
 
