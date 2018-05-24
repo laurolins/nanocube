@@ -30,7 +30,7 @@ make install
 ./install/bin/nanocube
 ```
 
-## Notes on the `nanocube` executable
+Notes on the `nanocube` executable
 
 ```shell
 #
