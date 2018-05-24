@@ -70,7 +70,7 @@ MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
 #     --ncport   nanocube backend port
 #     -p         port of the webviewer to be opon in the localhost
 #
-nanocube_webconfig -s $MYHOST --ncport 51234 -p 8000
+nanocube_webconfig -s "http://$MYHOST" --ncport 51234 -p 8000
 ```
 
 Zoom into the Chicago region to see a heatmap of crimes.
