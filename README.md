@@ -12,7 +12,7 @@ Here is a link to the new [API](/api/README.md)
 
 ```shell
 # Dependencies for Ubuntu 18.04
-# apt install build-essentials curl unzip python-pip
+# sudo apt install build-essential curl unzip python-pip
 #
 # Dependencies for Mac OS X 10.13.4
 # XCode
