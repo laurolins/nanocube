@@ -12,11 +12,15 @@ Here is a link to the new [API](/api/README.md)
 
 ```shell
 # Dependencies for Ubuntu 18.04
-# apt install build-essentials python-pip
+# apt install build-essentials curl python-pip
+#
+# Dependencies for Mac OS X 10.13.4
+# XCode
 
 # get the v4 branch
 curl -L -O https://github.com/laurolins/nanocube/archive/v4.zip
-cd nanocube
+unzip v4.zip
+cd nanocube-4
 
 ./configure --with-polycover --prefix=$(pwd)/install
 make
