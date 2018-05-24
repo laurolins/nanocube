@@ -28,6 +28,28 @@ make install
 
 # Test if nanocubes is working
 ./install/bin/nanocube
+
+#
+# The `nanocube` executable when compiled with `--with-polycover` depends on two 
+# dynamic libraries that are also generated when we compile the program:
+#
+#     libnanocube_app.(so|dylib)
+#     libpolycover.(so|dylib)
+#
+# These dynamic libraries are explicitly linked by the main `nanocube` executable
+# and only work if their relative path to the main `nanocube` executable
+# matches one of these paths
+#
+#     .                            <--- same directory as the executable
+#     ../lib                       <--- one level above and inside lib
+#     .libs                        <--- inside .libs at the same dir as the exec
+#
+# If you want to install the nanocubes in another folder, change the `--prefix`
+# path in the configure command.
+#
+#     make distclean
+#     ./configure --with-polycover --prefix=INSTALL_FOLDER
+#
 ```
 
 # Viewer
