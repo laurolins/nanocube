@@ -11,6 +11,25 @@ cd build
 ../configure --with-polycover --prefix=$(pwd)/release CFLAGS="-g -ggdb -O3" CXXFLAGS="-g -ggdb -O3" CPPFLAGS="-g -ggdb -O3"
 ```
 
+# Dependencies
+
+```shell
+# The `nanocube` executable when compiled with `--with-polycover` depends on two 
+# dynamic libraries that are also generated when we compile the program:
+#
+#     libnanocube_app.(so|dylib)
+#     libpolycover.(so|dylib)
+#
+# These dynamic libraries are explicitly linked by the main `nanocube` executable
+# and only work if their relative path to the main `nanocube` executable
+# matches one of these paths
+#
+#     .                            <--- same directory as the executable
+#     ../lib                       <--- one level above and inside lib
+#     .libs                        <--- inside .libs at the same dir as the exec
+#
+```
+
 # Paper Example
 
 ```shell
