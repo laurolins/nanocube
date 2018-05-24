@@ -28,7 +28,11 @@ make install
 
 # Test if nanocubes is working
 ./install/bin/nanocube
+```
 
+## Notes on the `nanocube` executable
+
+```shell
 #
 # The `nanocube` executable when compiled with `--with-polycover` depends on two 
 # dynamic libraries that are also generated when we compile the program:
