@@ -62,7 +62,6 @@ LT_LIB_DLLOAD
 # LT_INIT([dlopen])
 LT_INIT
 
-
 # echo "****************************************** --with-polycover=$with_polycover"
 
 # include this only if the --with-polycover option is set
@@ -73,7 +72,6 @@ AC_PROG_CXX
 AC_LANG([C++])
 AX_CXX_COMPILE_STDCXX_11(noext)
 AC_LANG([C])
-
 
 # Checks for libraries.
 
@@ -87,6 +85,6 @@ AC_TYPE_SIZE_T
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([memset sqrt])
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile web/Makefile])
 AC_OUTPUT
 

@@ -12,7 +12,7 @@ Here is a link to the new [API](/api/README.md)
 
 ```shell
 # Dependencies for Ubuntu 18.04
-# sudo apt install build-essential curl unzip python-pip
+# sudo apt install build-essential curl unzip
 #
 # Dependencies for Mac OS X 10.13.4
 # XCode
@@ -22,30 +22,37 @@ curl -L -O https://github.com/laurolins/nanocube/archive/v4.zip
 unzip v4.zip
 cd nanocube-4
 
-# modify --prefix to another installation folder if needed
-./configure --with-polycover --prefix="$(pwd)/install"
+# modify INSTALL_DIR to point to another installation folder if needed
+export INSTALL_DIR="$(pwd)/install"
+./configure --with-polycover --prefix="$INSTALL_DIR"
 make
 make install
 
 # Test if nanocubes is working
-./install/bin/nanocube
+$INSTALL_DIR/bin/nanocube
+
+# Add nanocube binaries to PATH (use alternative
+export PATH="$INSTALL_DIR/bin":$PATH
+```
+
+# Serving example nanocube index
+
+```shell
+# create a nanocube index for the example Chicago Crime dataset
+nanocube create <(gunzip -c data/crime50k.csv.gz) data/crime50k.map data/crime50k.nanocube
+
+# serve the index created in port 51234
+nanocube serve 51234 crime=data/crime50k.nanocube &
+
+# test querying the schema of the index
+curl 'localhost:51234/schema()'
 ```
 
 # Viewer
 
 ```shell
-# Setup the environment variables needed to run the Nanocubes binary just installed
-. setenv.sh
-
-cd data/
-nanocube create <(gunzip -c crime50k.csv.gz) crime50k.map crime50k.nanocube
-nanocube serve 51234 crime=crime50k.nanocube &
-
-cd ../
-
 # If you need to install pip (e.g. on MacOS)
 # python <(curl https://bootstrap.pypa.io/get-pip.py) --user
-
 python -m pip install --user requests future
 
 # Setup a web viewer on port 8000 for the crimes nanocube previously opened 
@@ -56,13 +63,10 @@ python -m pip install --user requests future
 #     --ncport   nanocube backend port
 #     -p         port of the webviewer to be opon in the localhost
 #
-
-./scripts/ncwebviewer-config -s http://localhost --ncport 51234 -p 8000
-
+nanocube_webconfig -s http://localhost --ncport 51234 -p 8000
 ```
 
 Zoom into the Chicago region to see a heatmap of crimes.
-
 
 ![image](./doc/chicago_crime.png)
 
