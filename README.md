@@ -12,13 +12,12 @@ Here is a link to the new [API](/api/README.md)
 
 ```shell
 # Dependencies for Ubuntu 18.04
-# apt install build-essentials autoconf libtool git python-pip
+# apt install build-essentials python-pip
 
-# clone the v4 branch
-git clone -b v4 https://github.com/laurolins/nanocube
+# get the v4 branch
+curl -L -O https://github.com/laurolins/nanocube/archive/v4.zip
 cd nanocube
 
-autoreconf -vi
 ./configure --with-polycover --prefix=$(pwd)/install
 make
 make install
@@ -40,12 +39,10 @@ nanocube serve 51234 crime=crime50k.nanocube &
 cd ../
 
 # If you need to install pip (e.g. on MacOS)
-# wget https://bootstrap.pypa.io/get-pip.py
-# python get-pip.py --user
+# python <(curl https://bootstrap.pypa.io/get-pip.py) --user
 
 python -m pip install --user requests future
 
-#
 # Setup a web viewer on port 8000 for the crimes nanocube previously opened 
 # on port 51234.
 #
@@ -62,7 +59,7 @@ python -m pip install --user requests future
 Zoom into the Chicago region to see a heatmap of crimes.
 
 
-![image](./doc/chicago_crime.png?raw=true)
+![image](./doc/chicago_crime.png)
 
 # Extra
 
