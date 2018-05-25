@@ -44,7 +44,7 @@ export PATH="$INSTALL_DIR/bin":$PATH
 nanocube create <(gunzip -c data/crime50k.csv.gz) data/crime50k.map data/crime50k.nanocube
 
 # serve the nanocube index just created on port 51234
-nanocube serve 51234 crime=data/crime50k.nanocube &
+nanocube serve 51234 crimes=data/crime50k.nanocube &
 
 # test querying the schema of the index
 curl 'localhost:51234/schema()'
