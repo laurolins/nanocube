@@ -41,7 +41,7 @@ export PATH="$INSTALL_DIR/bin":$PATH
 # create a nanocube index for the example Chicago Crime dataset
 nanocube create <(gunzip -c data/crime50k.csv.gz) data/crime50k.map data/crime50k.nanocube
 
-# serve the index created in port 51234
+# serve the nanocube index just created on port 51234
 nanocube serve 51234 crime=data/crime50k.nanocube &
 
 # test querying the schema of the index
