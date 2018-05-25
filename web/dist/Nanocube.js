@@ -461,6 +461,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         opts.alpha_order = true;
     }
 
+    //style
     xAxis.ticks(3)
         .tickFormat(d3.format(opts.numformat)); 
     
@@ -2743,7 +2744,7 @@ Timeseries.prototype={
         if(this.animating==null){
             this.animating = window.setInterval(function(){
                 widget.moveOneStep();
-            },1000/2.0);
+            },1000);
             return true;
         }
         else{

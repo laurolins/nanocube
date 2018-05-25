@@ -377,7 +377,7 @@ Timeseries.prototype={
         if(this.animating==null){
             this.animating = window.setInterval(function(){
                 widget.moveOneStep();
-            },1000/2.0);
+            },1000);
             return true;
         }
         else{
