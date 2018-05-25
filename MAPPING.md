@@ -1,10 +1,9 @@
 # Mapping files
 
-A mapping file consists of a series of specifications of which index
-and measure dimensions we want a nanocube index to have based
-on the columns of the input file (eg .csv, .psv).
-
 ```
+A mapping file consists of a series of specifications of which index
+and measure dimensions we want a nanocube index to have based on the 
+columns of the input file (eg .csv, .psv).
 
     index_dimension(NAME, INPUT, INDEX_SPEC)
         NAME        is the name of the nanocube dimension.
