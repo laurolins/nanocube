@@ -391,7 +391,6 @@ Heatmap.prototype = {
         var width = pb.max.x-pb.min.x+1;
         var height = pb.max.y-pb.min.y+1;
 
-        //var arr = new Array(width*height).map(function () { return 0;});
         var arr = [];
         //Explicit Loop for better performance
         var idx = Object.keys(data);
@@ -442,6 +441,7 @@ Heatmap.prototype = {
 
         //create a proxy canvas
         var c = $('<canvas>').attr("width", width).attr("height", height)[0];
+
         var proxyctx = c.getContext("2d");
         var imgData = proxyctx.createImageData(width,height);
         var buf = new ArrayBuffer(imgData.data.length);
@@ -452,7 +452,7 @@ Heatmap.prototype = {
         var idx = Object.keys(arr);
         var dom = d3.extent(colormap.domain());
 
-        for (var i = 0, len = idx.length; i < len; i++) {
+        for (var i = 0, len=idx.length; i < len; i++) {
             var ii= idx[i];
             var v = arr[ii];
             v = Math.max(v,dom[0]);
@@ -469,20 +469,14 @@ Heatmap.prototype = {
         imgData.data.set(buf8);
         proxyctx.putImageData(imgData, 0, 0);
 
-        //Clear
-        realctx.imageSmoothingEnabled = false;
-        realctx.mozImageSmoothingEnabled = false;
-        realctx.clearRect(0,0,canvas.width,canvas.height);
-
-        //draw onto the real canvas ...
+        //copy onto the real canvas ...
+        realctx.globalCompositeOperation = 'copy';
         realctx.drawImage(c,0,0,canvas.width,canvas.height);
     },
 
     _canvasDraw: function(layer,info){
         var canvas = info.canvas;
         var ctx = canvas.getContext('2d');
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-
         var map = this._map;
 
         var z = map.getZoom();
@@ -564,12 +558,6 @@ Heatmap.prototype = {
 
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
-
-                    //res.total_count =  res.data.reduce(function(p,c){
-                    //    return p+c.val;
-                    //},0);
-                    //widget.updateInfo('Total: '+
-                    //                  d3.format(',')(res.total_count));
                     
                 });
             });

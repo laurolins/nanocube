@@ -87,7 +87,8 @@ def initConfig(name,url):
     return config
 
 def myHostname():
-    return os.environ['MYHOST']
+    return socket.gethostname();
+    #return #os.environ['MYHOST']
 
     
 def main():
