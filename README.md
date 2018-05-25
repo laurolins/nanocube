@@ -35,18 +35,22 @@ $INSTALL_DIR/bin/nanocube
 export PATH="$INSTALL_DIR/bin":$PATH
 ```
 
-# Serving example nanocube index
+# Creating and serving a nanocube index
 
 ```shell
-# create a nanocube index for the example Chicago Crime dataset
+# create a nanocube index for the Chicago Crime dataset (small example included)
+# Inputs: (1) CSV data file, (2) mapping file (data/crime50k.map)
+# Output: (1) nanocube index called data/crime50k.nanocube
 nanocube create <(gunzip -c data/crime50k.csv.gz) data/crime50k.map data/crime50k.nanocube
 
 # serve the nanocube index just created on port 51234
-nanocube serve 51234 crime=data/crime50k.nanocube &
+nanocube serve 51234 crimes=data/crime50k.nanocube &
 
 # test querying the schema of the index
 curl 'localhost:51234/schema()'
 ```
+
+For more information on mapping files follow this link: [mapping files](/MAPPING.md)
 
 # Viewer
 

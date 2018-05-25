@@ -27,13 +27,13 @@
 # Location                     '(41.909371152 -87.665218629)'
 #
 
-# I1. quadtree index dimension for the pickup location
+# I1. quadtree index dimension for crime location
 index_dimension('location',input('Latitude','Longitude'),latlon(25));
 
-# I2. categorical dimension
+# I2. categorical dimension for the type of crime
 index_dimension('type',input('Primary Type'),categorical(8,1));
 
-# I3. quadtree index dimension for the dropoff location
+# I3. time dimension: index the data hourly
 index_dimension('time',
                 input('Date'),
                 time(16,                          # binary tree with 16 levels (slots 0 to 65535)
@@ -46,3 +46,4 @@ index_dimension('time',
 # if no input .csv column is used in a measure dimention, it functions as a count
 # (ie. one for each input record)
 measure_dimension('count',input(),u32);
+
