@@ -57,9 +57,9 @@ curl "localhost:51234/format('text');q(crimes.b('type',dive(1),'name'))"
 
 ```
 
-For more information on mapping files follow this link: [mapping files](/MAPPING.md)
+For more information on mapping go to [mapping files](/MAPPING.md)
 
-For more query examples go follow this link: [API](/api/README.md)
+For more query examples go to [API](/api/README.md)
 
 # Viewer
 
