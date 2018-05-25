@@ -119,13 +119,14 @@ columns of the input file (eg .csv, .psv).
 	with categorical index dimensions to point to alias mapping
 	descriptions (see categorical).
 
-Here is an example of a MAPPING file (it accepts line comments using #)
+Here is an example of a MAPPING file (it accepts line comments using #) based
+on taxi dataset: [taxi](http://www.nyc.gov/html/tlc/html/about/trip_record_data.shtml).
 
     # I1. quadtree index dimension for the pickup location
     index_dimension('pickup_location',input('pickup_latitude','pickup_longitude'),latlon(25));
     # I2. quadtree index dimension for the dropoff location
     index_dimension('dropoff_location',input('dropoff_latitude','dropoff_longitude'),latlon(25));
-    # I3. quadtree index dimension for the dropoff location
+    # I3. binary tree for the time dimension: hourly bins
     index_dimension('pickup_time', input('tpep_pickup_datetime'), time(17,'2009-01-01T00:00:00-05:00',3600,5*60));
     # I4. weekday of pickup
     index_dimension('weekday', input('tpep_pickup_datetime'), weekday());
