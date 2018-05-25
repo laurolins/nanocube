@@ -31,7 +31,7 @@ make install
 # Test if nanocubes is working
 $INSTALL_DIR/bin/nanocube
 
-# Add nanocube binaries to PATH (use alternative
+# Add nanocube binaries to the PATH environment variable
 export PATH="$INSTALL_DIR/bin":$PATH
 ```
 
