@@ -47,10 +47,19 @@ nanocube create <(gunzip -c data/crime50k.csv.gz) data/crime50k.map data/crime50
 nanocube serve 51234 crimes=data/crime50k.nanocube &
 
 # test querying the schema of the index
-curl 'localhost:51234/schema()'
+curl "localhost:51234/schema()"
+
+# test querying the number of indexed records
+curl "localhost:51234/format('text');q(crimes)"
+
+# test querying the number of records per crime type
+curl "localhost:51234/format('text');q(crimes.b('type',dive(1),'name'))"
+
 ```
 
 For more information on mapping files follow this link: [mapping files](/MAPPING.md)
+
+For more query examples go follow this link: [API](/api/README.md)
 
 # Viewer
 
