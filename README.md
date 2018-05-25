@@ -68,7 +68,7 @@ MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
 # Parameters:
 #     -s         nanocube backend server (any http heachable machine)
 #     --ncport   nanocube backend port
-#     -p         port of the webviewer to be opon in the localhost
+#     -p         port of the webviewer to be open in the localhost
 #
 nanocube_webconfig -s "http://$MYHOST" --ncport 51234 -p 8000
 ```
