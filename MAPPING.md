@@ -120,7 +120,7 @@ columns of the input file (eg .csv, .psv).
 	descriptions (see categorical).
 
 Here is an example of a MAPPING file (it accepts line comments using #) based
-on taxi dataset: [taxi](http://www.nyc.gov/html/tlc/html/about/trip_record_data.shtml).
+on New York City taxi datasets (http://www.nyc.gov/html/tlc/html/about/trip_record_data.shtml).
 
     # I1. quadtree index dimension for the pickup location
     index_dimension('pickup_location',input('pickup_latitude','pickup_longitude'),latlon(25));
