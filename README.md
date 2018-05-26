@@ -68,13 +68,6 @@ For more query examples go to [API](/api/README.md)
 # python <(curl https://bootstrap.pypa.io/get-pip.py) --user
 python -m pip install --user requests future
 
-# get the proper host name for this machine
-MYHOST=$(hostname -A 2>/dev/null)
-if [ $? -ne 0 ]; then
-   MYHOST=$(hostname -f)
-fi
-MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
-
 # Setup a web viewer on port 8000 for the crimes nanocube previously opened 
 # on port 51234.
 #
@@ -83,7 +76,8 @@ MYHOST=$(echo $MYHOST| cut -d ' ' -f 1)
 #     --ncport   nanocube backend port
 #     -p         port of the webviewer to be open in the localhost
 #
-nanocube_webconfig -s "http://$MYHOST" --ncport 51234 -p 8000
+
+nanocube_webconfig -s http://`hostname -f` --ncport 51234 -p 8000
 ```
 
 Zoom into the Chicago region to see a heatmap of crimes.
