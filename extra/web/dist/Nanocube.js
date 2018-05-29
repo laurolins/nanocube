@@ -461,8 +461,10 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         opts.alpha_order = true;
     }
 
-    xAxis.ticks(3,opts.numformat);
-
+    //style
+    xAxis.ticks(3)
+        .tickFormat(d3.format(opts.numformat)); 
+    
     //Save vars to "this"
     this.margin = margin;
     this.svg=svg;
@@ -797,15 +799,10 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
     this._logheatmap = true;
     this._opts = opts;
     
+
     var map = opts.map || this._initMap();
     
     this._map = map;
-
-    //add Legend
-    if (opts.legend){
-        this._addLegend(map);
-    }
-
     
     //set according to url
     if(opts.args){
@@ -821,6 +818,12 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
         else{
             this.setSelection('global', {c:{lat:0,lng:0},z:0});
         }
+    }
+
+
+    //add Legend
+    if (opts.legend){
+        this._addLegend(map);
     }
 
     if('layers' in opts){
@@ -959,6 +962,7 @@ Heatmap.prototype = {
         /*var infodiv = $('#'+this._name+" .info");
           infodiv.css({
           position: 'absolute',
+          'z-index':1,
           color: 'white',
           'right': '20ch',
           'top': '0.5em',
@@ -979,7 +983,8 @@ Heatmap.prototype = {
         var map = this._map;
         var args= {};
         args.global = {c:map.getCenter(),z:map.getZoom()};
-
+        args.range = this._range;
+        
         return JSON.stringify(args);
     },
 
@@ -987,6 +992,10 @@ Heatmap.prototype = {
         var map = this._map;
         var args = JSON.parse(s);
         var v = args.global;
+
+        if (args.range){
+            this._range = args.range;
+        }
         
         map.setView(v.c,v.z);
     },
@@ -1008,13 +1017,13 @@ Heatmap.prototype = {
             break;
         case 76: //l
             this._logheatmap = !this._logheatmap;
-            this._renormalize = true;
+            //this._renormalize = true;
             this.update();
             break;
-        case 78: //n
-            this._renormalize = true;
-            this.update();
-            break;
+        //case 78: //n
+            //this._renormalize = true;
+            //this.update();
+            //break;
         default:
             return;
         }
@@ -1166,7 +1175,6 @@ Heatmap.prototype = {
         var width = pb.max.x-pb.min.x+1;
         var height = pb.max.y-pb.min.y+1;
 
-        //var arr = new Array(width*height).map(function () { return 0;});
         var arr = [];
         //Explicit Loop for better performance
         var idx = Object.keys(data);
@@ -1184,10 +1192,12 @@ Heatmap.prototype = {
         return arr;
     },
 
-    normalizeColorMap: function(data,colors,log){
-        var ext = d3.extent(data,function(d){
-            return d.val;
-        });
+    genColorMap: function(data,colors,log,ext){
+        if (ext == undefined){
+            ext = d3.extent(data,function(d){
+                return d.val;
+            });
+        }
 
         var minv = ext[0];
         if (log){ //log
@@ -1196,9 +1206,10 @@ Heatmap.prototype = {
 
         //compute domain
         var interval = (ext[1]-ext[0])/(colors.length-1);
-        var domain=Array.apply(null,Array(colors.length)).map(function(d,i){
-            return i*interval+ext[0];
-        });
+        var domain=Array.apply(null,Array(colors.length))
+            .map(function(d,i){
+                return i*interval+ext[0];
+            });
 
         if (log){ //anti log
             domain = domain.map(function(d){return Math.exp(d)+minv-2;});
@@ -1214,6 +1225,7 @@ Heatmap.prototype = {
 
         //create a proxy canvas
         var c = $('<canvas>').attr("width", width).attr("height", height)[0];
+
         var proxyctx = c.getContext("2d");
         var imgData = proxyctx.createImageData(width,height);
         var buf = new ArrayBuffer(imgData.data.length);
@@ -1224,7 +1236,7 @@ Heatmap.prototype = {
         var idx = Object.keys(arr);
         var dom = d3.extent(colormap.domain());
 
-        for (var i = 0, len = idx.length; i < len; i++) {
+        for (var i = 0, len=idx.length; i < len; i++) {
             var ii= idx[i];
             var v = arr[ii];
             v = Math.max(v,dom[0]);
@@ -1241,19 +1253,14 @@ Heatmap.prototype = {
         imgData.data.set(buf8);
         proxyctx.putImageData(imgData, 0, 0);
 
-        //Clear
-        //realctx.imageSmoothingEnabled = true;
-        realctx.clearRect(0,0,canvas.width,canvas.height);
-
-        //draw onto the real canvas ...
+        //copy onto the real canvas ...
+        realctx.globalCompositeOperation = 'copy';
         realctx.drawImage(c,0,0,canvas.width,canvas.height);
     },
 
     _canvasDraw: function(layer,info){
         var canvas = info.canvas;
         var ctx = canvas.getContext('2d');
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-
         var map = this._map;
 
         var z = map.getZoom();
@@ -1282,31 +1289,48 @@ Heatmap.prototype = {
                     
                     var res = results[i];
                     widget._renormalize= true;
-
+                    
                     if(widget._renormalize){
-                        var cmap = widget.normalizeColorMap(res.data,
-                                                            layer._colormap,
-                                                            widget._logheatmap);
+                        var cmap = widget.genColorMap(res.data,
+                                                      layer._colormap,
+                                                      widget._logheatmap,
+                                                      widget._range);
                         layer._cmap = cmap;
                         widget._renormalize = false;
 
 
                         if(widget._opts.legend){
                             //update the legend
-                            var ext = d3.extent(res.data,function(d){
-                                return d.val;
-                            });
+                            var ext = widget._range;
+
+                            if(ext == undefined){
+                                ext = d3.extent(res.data,function(d){
+                                    return d.val;
+                                });
+                            }
                             
                             if (widget._logheatmap){ //log
-                                ext = ext.map(function(d){ return Math.log(d); });
+                                ext = ext.map(function(d){
+                                    return Math.log(d);
+                                });
                             }
-                            var valcolor = Array.apply(null, Array(5)).map(function (_, i) {return ext[0]+i * (ext[1]-ext[0])/5;});
+                            var valcolor = Array.apply(null, Array(5))
+                                .map(function (_, i) {
+                                    return ext[0]+i * (ext[1]-ext[0])/5;
+                                });
                             
                             if (widget._logheatmap){ //anti log
-                                valcolor = valcolor.map(function(d){ return Math.floor(Math.exp(d)+0.5); });
+                                valcolor = valcolor.map(function(d){
+                                    return Math.floor(Math.exp(d)+0.5); });
                             }
                             
-                            valcolor = valcolor.map(function(d) {return {val:d, color: JSON.parse(JSON.stringify(cmap(d)))};});
+                            valcolor = valcolor.map(function(d) {
+                                return {
+                                    val:d,
+                                    color: JSON.parse(JSON.stringify(cmap(d)))
+                                };
+                            });
+
                             widget.updateLegend(widget._map,valcolor);
                             console.log(widget._map);
                         }
@@ -1318,12 +1342,6 @@ Heatmap.prototype = {
 
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
-
-                    //res.total_count =  res.data.reduce(function(p,c){
-                    //    return p+c.val;
-                    //},0);
-                    //widget.updateInfo('Total: '+
-                    //                  d3.format(',')(res.total_count));
                     
                 });
             });
@@ -1362,9 +1380,22 @@ Heatmap.prototype = {
     },
     updateLegend: function(map,valcolor){
         var legend = d3.select(map._container).select('.legend');
-        var htmlstr= valcolor.map(function(d) {
-            var colorstr = 'rgb('+parseInt(d.color.r) +','+parseInt(d.color.g)+','+parseInt(d.color.b)+')';
-            return '<i style="background:'+colorstr+'"></i>' + d.val;
+        var htmlstr= valcolor.map(function(d,i) {
+            var colorstr = 'rgb('+parseInt(d.color.r) + ',' + 
+                parseInt(d.color.g)+','+parseInt(d.color.b)+')';
+            
+            
+            var prefix='';
+            if (i == 0){
+                prefix = '&le; ';
+            }
+
+            if(i == valcolor.length-1){
+                prefix = '&ge; ';
+            }
+            
+            return '<i style="background:'+colorstr+'"></i>' +
+                prefix + Math.floor(d.val*100)/100.0 ;
         });
         legend.html(htmlstr.join('<br />'));
     }
@@ -2306,25 +2337,27 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr('class','buttondiv');
 
     buttondiv.append('button')
-        .attr('class','btn')
+        .attr('class','btn fa fa-forward')
         .on('click',function(){
             widget.moveOneStep();
-        })
-        .html('forward');
+        });
 
     buttondiv.append('button')
-        .attr('class','btn')
+        .attr('class','btn fa fa-play')
         .on('click',function(){
-            widget.animationStartStop();
-        })
-        .html('play/pause');
+            if(widget.animationStartStop()){
+                d3.select(this).attr('class', 'btn fa fa-pause');
+            }
+            else{
+                d3.select(this).attr('class', 'btn fa fa-play');
+            }
+        });
 
     buttondiv.append('button')
-        .attr('class','btn')
+        .attr('class','btn fa fa-backward')
         .on('click',function(){
             widget.moveOneStep(false);
-        })
-        .html('backward');
+        });
 
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries");
@@ -2663,15 +2696,22 @@ Timeseries.prototype={
 
     animationStartStop: function(){
         var widget = this;
+
+        if(!widget.brush.selection){ //no selection
+            return false;
+        }
+
         if(this.animating==null){
             this.animating = window.setInterval(function(){
                 widget.moveOneStep();
-            },1000/3.0);
+            }, 1000);
+            return true;
         }
         else{
             window.clearInterval(widget.animating);
             widget.animating=null;
         }
+        return false;
     }
 };
 

@@ -10,25 +10,27 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr('class','buttondiv');
 
     buttondiv.append('button')
-        .attr('class','btn')
+        .attr('class','btn fa fa-forward')
         .on('click',function(){
             widget.moveOneStep();
-        })
-        .html('forward');
+        });
 
     buttondiv.append('button')
-        .attr('class','btn')
+        .attr('class','btn fa fa-play')
         .on('click',function(){
-            widget.animationStartStop();
-        })
-        .html('play/pause');
+            if(widget.animationStartStop()){
+                d3.select(this).attr('class', 'btn fa fa-pause');
+            }
+            else{
+                d3.select(this).attr('class', 'btn fa fa-play');
+            }
+        });
 
     buttondiv.append('button')
-        .attr('class','btn')
+        .attr('class','btn fa fa-backward')
         .on('click',function(){
             widget.moveOneStep(false);
-        })
-        .html('backward');
+        });
 
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries");
@@ -367,14 +369,21 @@ Timeseries.prototype={
 
     animationStartStop: function(){
         var widget = this;
+
+        if(!widget.brush.selection){ //no selection
+            return false;
+        }
+
         if(this.animating==null){
             this.animating = window.setInterval(function(){
                 widget.moveOneStep();
-            },1000/3.0);
+            }, 1000);
+            return true;
         }
         else{
             window.clearInterval(widget.animating);
             widget.animating=null;
         }
+        return false;
     }
 };

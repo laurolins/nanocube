@@ -18,8 +18,5 @@
     "leaflet-draw": "*",
     "requirejs": "*",
     "sprintf-js": "*"
-  },
-  "dependencies": {
-    "http-server": "*"
   }
 }
