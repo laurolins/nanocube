@@ -3,23 +3,38 @@
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
+
+    //Add play btn
+    var buttondiv = d3.select(id)
+        .append('div')
+        .attr('class','buttondiv');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.moveOneStep();
+        })
+        .html('forward');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.animationStartStop();
+        })
+        .html('play/pause');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.moveOneStep(false);
+        })
+        .html('backward');
+
     //Make draggable and resizable
-    d3.select(id).attr("class","timeseries resize-drag");
-    
+    d3.select(id).attr("class","timeseries");
+
     d3.select(id).on("divresize",function(){
         widget.redraw(widget.lastres);
-    });
-
-    //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style('height',widget.restoreHeight);
-        }
     });
 
 
@@ -33,87 +48,36 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin===undefined){
-        margin = {top: 30, right: 10, bottom: 30, left: 70};
+        margin = {top: 30, right: 20, bottom: 35, left: 35};
     }
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
 
-    widget.x = d3.time.scale.utc().range([0, width]);
-    widget.y = d3.scale.linear().range([height, 0]);
+    widget.x = d3.scaleUtc().range([0, width]);
+    widget.y = d3.scaleLinear().range([height, 0]);
 
-    widget.xAxis = d3.svg.axis().scale(widget.x)
-        .orient("bottom")
-        .innerTickSize(-height);
+    //x axis
+    widget.xz = widget.x; //zoomed scale
 
-    widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left")
+    widget.xAxis = d3.axisBottom(widget.x)
+        .tickSizeInner(-height);
+
+    widget.yAxis = d3.axisLeft(widget.y)
         .ticks(3)
         .tickFormat(d3.format(opts.numformat))
-        .innerTickSize(-width-3);
-    
-    // gridlines in x axis function
-    function make_x_gridlines() {		
-        return d3.axisBottom(widget.x);
-    }
-
-    // gridlines in y axis function
-    function make_y_gridlines() {		
-        return d3.axisLeft(widget.y)
-            .ticks(3);
-    }
-
-    
-    //Zoom
-    widget.zoom=d3.behavior.zoom()
-        .x(widget.x)
-        .on('zoom', function(){
-            widget.svg.select(".x.axis").call(widget.xAxis);
-            widget.redraw(widget.lastres);
-        })
-        .on('zoomend', function(){
-            widget.update();
-            widget.updateCallback(widget._encodeArgs());
-            widget.brush.x(widget.x);
-        });
-
-    
-    //Brush
-    widget.brush = d3.svg.brush().x(widget.x);
-
-    widget.brush.on('brushstart', function(){
-        if(d3.event.sourceEvent){
-            d3.event.sourceEvent.stopPropagation();
-        }
-    });
-
-    widget.brush.on('brushend', function(){
-        console.log(widget.brush.extent());
-
-        widget.updateCallback(widget._encodeArgs());
-    });
+        .tickSizeInner(-width-3);
 
     //SVG
-    widget.svg = d3.select(id).append("svg")
+    widget.svg = d3.select(id)
+        .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
-              margin.top + ")").call(widget.zoom);
+              margin.top + ")");
 
-    //Load config
-    if(opts.args){
-        widget._decodeArgs(opts.args);
-    }
-    else{
-        //set initial domain    
-        widget.x.domain(opts.timerange);
-    }
-    //Update scales
-    widget.zoom.x(widget.x);
-    widget.brush.x(widget.x);
-    
-    //add svg stuffs    
+    //add svg stuffs
     //add title
     widget.svg.append("text")
         .attr("x", -10)
@@ -122,7 +86,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     widget.svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + (height) + ")")
+        .attr("transform", "translate(0," + height + ")")
         .call(widget.xAxis);
 
     widget.svg.append("g")
@@ -130,25 +94,65 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("transform", "translate(-3,0)")
         .call(widget.yAxis);
 
-    //add the X gridlines
-    //widget.svg.append("g")			
-        //.attr("class", "grid")
-      //  .attr("transform", "translate(0," + height + ")")
-        //.call(make_x_gridlines().tickSize(-height).tickFormat(""));
-    
-    // add the Y gridlines
-    //widget.append("g")			
-    //    .attr("class", "grid")
-    //    .call(make_y_gridlines()
-    //          .tickSize(-width).tickFormat(""));
-    
-    //brush
-    widget.svg.append("g").attr("class", "x brush")
-        .call(widget.brush)
-        .selectAll("rect")
-        .attr("y", 0)
-        .attr("height", height);
 
+    //Zoom
+    widget.zoom=d3.zoom()
+        .on('zoom', function(){
+            //rescale
+            widget.xz = d3.event.transform.rescaleX(widget.x);
+
+            //redraw
+            widget.redraw(widget.lastres);
+
+            //update brush
+            if(widget.brush.selection){
+                widget.svg.select('g.brush')
+                    .call(widget.brush.move,
+                          widget.brush.selection.map(widget.xz));
+            }
+        })
+
+        .on('end', function(){
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());
+        });
+
+
+    //apply zoom to axis
+    widget.svg.call(widget.zoom);
+
+    //Brush
+    widget.brush = d3.brushX()
+        .extent([[0, 0], [width, height]])
+        .on('end', function(){
+            if(!d3.event.sourceEvent){
+                return;
+            }
+
+            if (d3.event.selection) {
+                var sel = d3.event.selection;
+                //save selection
+                widget.brush.selection = sel.map(widget.xz.invert);
+            }
+            else{
+                delete widget.brush.selection;
+            }
+            widget.updateCallback(widget._encodeArgs());
+        });
+
+    widget.svg.append("g")
+        .attr("class", "brush").call(widget.brush);
+
+    //Load config
+    if(opts.args){
+        widget._decodeArgs(opts.args);
+    }
+    else{
+        //set initial domain
+        widget.xz.domain(opts.timerange);
+    }
+
+    widget.animating = null;
     widget.width = width;
 }
 
@@ -172,7 +176,7 @@ Timeseries.prototype={
                 promises[k] = p[k];
             }
         }
-            
+
         var promarray = Object.keys(promises).map(function(k){
             return promises[k];
         });
@@ -185,7 +189,7 @@ Timeseries.prototype={
                 res[d] = results[i];
 
                 var label = d.split('&-&');
-                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);
                 if(isColor){
                     res[d].color = label[0];
                 }
@@ -203,11 +207,11 @@ Timeseries.prototype={
 
     getSelection: function(){
         var sel = {};
-        var timedom = this.x.domain();
+        var timedom = this.xz.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
-        if (!this.brush.empty()){
-            var bext = this.brush.extent();
+        if (this.brush.selection){
+            var bext = this.brush.selection;
             sel.brush = {start:bext[0], end:bext[1]};
         }
         return sel;
@@ -217,29 +221,24 @@ Timeseries.prototype={
         var args= this.getSelection();
         return JSON.stringify(args);
     },
-    
+
     _decodeArgs: function(s){
         var args = JSON.parse(s);
         this.x.domain([new Date(args.global.start),
                        new Date(args.global.end)]);
-        if(args.brush){
-            this.brush.extent([new Date(args.brush.start),
-                               new Date(args.brush.end)]);
 
-            this._updateBrush();
+        if(args.brush){
+            this.brush.selection = [new Date(args.brush.start),
+                                    new Date(args.brush.end)];
+            this.svg.select('g.brush')
+                .call(this.brush.move,
+                      this.brush.selection.map(this.xz));
         }
     },
-    
-    _updateBrush: function(){
-        //update brush
-        this.svg.select("g.x.brush")
-            .call(this.brush)
-            .call(this.brush.event);
-    },
-    
-    redraw: function(lines){            
+
+    redraw: function(lines){
         Object.keys(lines).forEach(function(k){
-            if(lines[k].data.length > 1){ 
+            if(lines[k].data.length > 1){
                 var last = lines[k].data[lines[k].data.length-1];
                 lines[k].data.push(last); //dup the last point for step line
             }
@@ -257,16 +256,14 @@ Timeseries.prototype={
 
         yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
-        
         this.y.domain(yext);
 
-        //update the axis
-        this.svg.select("g.x.axis").call(this.xAxis);
-        this.svg.select("g.y.axis").call(this.yAxis);
-
-        var widget = this;
+        //update axis
+        this.svg.select(".y.axis").call(this.yAxis.scale(this.y));
+        this.svg.select(".x.axis").call(this.xAxis.scale(this.xz));
 
         //Remove paths obsolete paths
+        var widget = this;
         var paths = widget.svg.selectAll('path.line');
         paths.each(function(){
             var p = this;
@@ -277,8 +274,7 @@ Timeseries.prototype={
                 d3.select(p).remove();
             }
         });
-        
-        
+
         //Draw Lines
         Object.keys(lines).forEach(function(k){
             lines[k].data.sort(function(a,b){return a.time - b.time;});
@@ -288,36 +284,97 @@ Timeseries.prototype={
 
     drawLine:function(data,color){
         var colorid = 'color_'+color.replace('#','');
-        
+
         if (data.length < 2){
             return;
         }
 
         var widget = this;
-        
         //create unexisted paths
         var path = widget.svg.select('path.line.'+colorid);
         if (path.empty()){
             path = widget.svg.append('path');
             path.attr('class', 'line '+colorid);
-            
+
             path.style('stroke-width','2px')
                 .style('fill','none')
                 .style('stroke',color);
         }
 
-
         //Transit to new data
-        var lineFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(d.val); })
-                .interpolate("step-before");
-        var zeroFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(0); });
+        var lineFunc = d3.line()
+            .x(function(d) { return widget.xz(d.time); })
+            .y(function(d) { return widget.y(d.val); })
+            .curve(d3.curveStepAfter);
 
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));
+    },
+
+    moveOneStep: function(forward,stepsize){
+        var widget = this;
+        if(!widget.brush.selection){
+            return;
+        }
+
+        if(forward == undefined){
+            forward = true;
+        }
+
+        if(stepsize == undefined){
+            stepsize = widget.brush.selection[1]-widget.brush.selection[0];
+        }
+
+        if(!forward){
+            stepsize = -stepsize;
+        }
+
+        //move the selection
+        var sel = [widget.brush.selection[0].getTime()+stepsize,
+                   widget.brush.selection[1].getTime()+stepsize];
+
+        var newsel = [Math.min.apply(null, sel),
+                      Math.max.apply(null, sel)]
+            .map(function(d){
+                return new Date(d);
+            });
+
+        widget.brush.selection = newsel; 
+
+        
+        //move the domain if needed
+        var xzdom = widget.xz.domain();
+        if(xzdom[1] < newsel[1]){
+            widget.xz.domain([newsel[1]-(xzdom[1]-xzdom[0]),
+                              newsel[1]]);
+        }
+
+        if(xzdom[0] > newsel[0]){
+            widget.xz.domain([newsel[0],
+                              newsel[0]+(xzdom[1]-xzdom[0])]);
+        }
+
+
+        //move the brush
+        widget.svg.select('g.brush')
+            .call(widget.brush.move,
+                  widget.brush.selection.map(widget.xz));
+
+        widget.update(); //redraw itself
+        widget.updateCallback(widget._encodeArgs());
+    },
+
+    animationStartStop: function(){
+        var widget = this;
+        if(this.animating==null){
+            this.animating = window.setInterval(function(){
+                widget.moveOneStep();
+            },1000/3.0);
+        }
+        else{
+            window.clearInterval(widget.animating);
+            widget.animating=null;
+        }
     }
 };

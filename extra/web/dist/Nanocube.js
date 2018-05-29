@@ -12,7 +12,7 @@ function loadCss(url) {
     if (typeof define === 'function' && define.amd) {
 	// AMD. Register as an anonymous module.
 	define(['jquery','colorbrewer','d3',
-		'jsep','leafletdraw','canvaslayer'], factory);
+		'jsep','sprintf','leafletdraw','canvaslayer'], factory);
     } else if (typeof exports === 'object') {
 	// Node. Does not work with strict CommonJS, but
 	// only CommonJS-like environments that support module.exports,
@@ -21,15 +21,16 @@ function loadCss(url) {
 				 require('colorbrewer'),
 				 require('d3'),
 				 require('jsep'),
+                                 require('sprintf'),
 				 require('leaflet'),
 				 require('leafletdraw'),
 				 require('canvaslayer'));
     } else {
 	// Browser globals (root is window)
 	root.Nanocube3 = factory(root.$,root.colorbrewer,root.d3,
-				 root.jsep,root.L);
+				 root.jsep,root.sprintf,root.L);
     }
-} (this, function($,colorbrewer,d3,jsep,L) {
+} (this, function($,colorbrewer,d3,jsep,sprintf,L) {
     loadCss('lib/leaflet/leaflet.css');
     loadCss('lib/leaflet-draw/leaflet.draw.css');
 
@@ -411,7 +412,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     //Add clear button
     this.clearbtn = d3.select(id)
         .append('button')
-        .attr('class','clear-btn')
+        .attr('class','btn')
         .on('click',function(){
             d3.event.stopPropagation();
             
@@ -423,25 +424,13 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     //Add sort button
     this.sortbtn = d3.select(id)
         .append('button')
-        .attr('class','sort-btn')
+        .attr('class','btn')
         .on('click',function(){
             d3.event.stopPropagation();
             widget._opts.alpha_order = !widget._opts.alpha_order;
             widget.redraw(widget.lastres);
         });
     
-    //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style("height",widget.restoreHeight);
-        }
-    });
-
     
     //SVG container
     var svg = d3.select(id).append("svg").append("g");
@@ -455,16 +444,16 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     svg.append("g").attr("class", "x axis");
     
     //Scales
-    var y0 = d3.scale.ordinal();
-    var y1 = d3.scale.ordinal();
-    var x = d3.scale.linear();
+    var y0 = d3.scaleBand();
+    var y1 = d3.scaleBand();
+    var x = d3.scaleLinear();
     if (opts.logaxis){
-        x = d3.scale.log();
+        x = d3.scaleLog();
     }
 
     //Axis
-    var xAxis = d3.svg.axis();
-    var yAxis = d3.svg.axis();
+    var xAxis = d3.axisBottom();
+    var yAxis = d3.axisLeft();
 
     //set default values 
     opts.numformat = opts.numformat || ",";    
@@ -472,9 +461,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
         opts.alpha_order = true;
     }
 
-    xAxis.orient("bottom")
-        .ticks(3,opts.numformat);
-    yAxis.orient("left");
+    xAxis.ticks(3,opts.numformat);
 
     //Save vars to "this"
     this.margin = margin;
@@ -599,18 +586,38 @@ GroupedBarChart.prototype = {
         
         //bind data
         var bars = this.svg.selectAll('.bar').data(fdata);
-        
-        //append new bars
-        bars.enter()
+
+        //exit
+        bars.exit()
+            .transition()
+            .duration(100)
+            .remove();
+
+        //append
+        var newbars = bars.enter()
             .append('rect')
             .attr('class', 'bar')
-            .on('click', function(d) { widget.clickFunc(d);})//toggle callback
-            .append("svg:title"); //tooltip
+            .on('click', function(d) {
+                widget.clickFunc(d); //toggle callback
+            });
 
-        //set shape
-        bars.attr('x', 0)
-            .attr('y', function(d){return widget.y0(d.cat) + //category
-                                   widget.y1(d.color);}) //selection group
+        newbars.append('svg:title');
+
+        //merge new with old
+        bars = newbars.merge(bars);
+
+        //update
+        bars.attr('x',0)
+            .attr('y', function(d){
+                return widget.y0(d.cat)+widget.y1(d.color);
+            })
+            .attr('height',function(d){
+                return widget.y1.bandwidth()-1;
+            })
+            .transition().duration(100)
+            .attr('width',function(d){
+                return (widget.x(d.val) || 0);
+            })
             .style('fill', function(d){
                 if (!widget.selection.brush || //no selection
                     widget.selection.brush.findIndex(function(b){
@@ -620,26 +627,12 @@ GroupedBarChart.prototype = {
                 else{
                     return 'gray';
                 }
-            })
-            .attr('height',function(d){
-                return widget.y1.rangeBand()-1;
-            })
-            .transition().duration(250)
-            .attr('width',function(d){
-                var w = widget.x(d.val);
-                if(isNaN(w) && d.val <=0 ){
-                    w = 0;
-                }
-                return w;
             });
-        
+
         //add tool tip
         bars.select('title').text(function(d){
             return d3.format(widget._opts.numformat)(d.val);
         });
-
-        //remove bars with no data
-        bars.exit().remove();
     },
 
     clickFunc:function(d){
@@ -766,8 +759,8 @@ GroupedBarChart.prototype = {
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
 
-        y0.rangeRoundBands([0, totalheight]);
-        y1.rangeRoundBands([0, y0.rangeBand()]);
+        y0.range([0, totalheight]);
+        y1.range([0, y0.bandwidth()]);
         yAxis.scale(y0);
         svg.select('.y.axis').call(yAxis);
 
@@ -966,7 +959,6 @@ Heatmap.prototype = {
         /*var infodiv = $('#'+this._name+" .info");
           infodiv.css({
           position: 'absolute',
-          'z-index':1,
           color: 'white',
           'right': '20ch',
           'top': '0.5em',
@@ -1212,7 +1204,7 @@ Heatmap.prototype = {
             domain = domain.map(function(d){return Math.exp(d)+minv-2;});
         }
 
-        return d3.scale.linear().domain(domain).range(colors);
+        return d3.scaleLinear().domain(domain).range(colors);
     },
 
     render: function(arr,pb,colormap,canvas,opacity){
@@ -1250,8 +1242,7 @@ Heatmap.prototype = {
         proxyctx.putImageData(imgData, 0, 0);
 
         //Clear
-        realctx.imageSmoothingEnabled = false;
-        realctx.mozImageSmoothingEnabled = false;
+        //realctx.imageSmoothingEnabled = true;
         realctx.clearRect(0,0,canvas.width,canvas.height);
 
         //draw onto the real canvas ...
@@ -1658,7 +1649,7 @@ Query.prototype = {
     },
 
 
-    categorialQuery: function(varname){
+    categoricalQuery: function(varname){
         var constraint = "a(\"" + varname + "\",dive([],1)) ";
         this.query_elements[varname] = constraint;
 
@@ -2091,28 +2082,255 @@ function latlong2tile(latlong,zoom) {
              z: zoom};
 }
 
+/*global $ L colorbrewer d3 window fetch turf */
+
+var PolygonMap=function(opts,getDataCallback,updateCallback){
+    this.getDataCallback = getDataCallback;
+    this.updateCallback = updateCallback;
+
+    this._datasrc = opts.datasrc;
+    this._coarse_offset = opts.coarse_offset || 0;
+    this._name = opts.name || 'defaultmap';
+    this._tilesurl = opts.tilesurl ||
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    this._opts = opts;
+    
+    this._map = opts.map || this._initMap();
+
+    this._selection=[];
+    
+    var widget = this;
+
+
+    //load the initial polygons 
+    fetch('sdma.geojson').then(function(data){
+        return data.json();
+    }).then(function(j){
+        widget._features = widget._initFeatures(j);
+    });
+
+    
+    //set according to url
+    if(opts.args){
+        this._decodeArgs(opts.args);
+    }
+    else{
+        if ('viewbox' in opts){
+            this.setSelection('global',opts.viewbox);
+        }
+        else if ('view' in opts){
+            this.setSelection('global', opts.view);
+        }
+        else{
+            this.setSelection('global', {c:{lat:0,lng:0},z:0});
+        }
+    }
+};
+
+var colormap = ['#009fdb','#ea7400'];
+function nextColor(){
+    var c = colormap.shift();
+    return c; 
+}
+
+function putbackColor(c){
+    colormap.unshift(c);
+}
+
+
+PolygonMap.prototype={
+    _initFeatures:function(f){
+        var map = this._map;
+        var features = L.geoJSON(f);
+        
+        var unselected_style ={color:'white',weight:1};
+        var selectedStyle = function(){
+            var c = nextColor();
+            if(c){
+                return {color:c, weight:3};
+            }
+            else{
+                return null;
+            }
+        };
+
+        features.setStyle(unselected_style);
+        
+        var widget = this;
+        features.eachLayer(function(layer){
+            //put the name there
+            layer.bindTooltip(layer.feature.properties.NAME);
+
+            layer.on('click',function(e){
+                var selection = widget._selection;
+
+                //Deselect old layer
+                if(selection.indexOf(layer) != -1){
+                    selection = selection.filter(function(d){
+                        return d !== layer;
+                    });
+                    putbackColor(layer.options.color);
+                    layer.setStyle(unselected_style); // deselect
+                }
+                else{ //Select new layer
+                    var selstyle= selectedStyle();
+                    if(! selstyle) { // run out of colors
+                        return;
+                    }
+                    layer.setStyle(selstyle);
+                    layer.bringToFront();
+                    selection.push(layer); //add to selection
+                    layer.openPopup();
+                }
+                widget._selection = selection;
+                widget.updateCallback(widget._encodeArgs(),[]);
+                
+            });
+        });
+        
+        features.addTo(map);
+        return features;
+    },
+    
+    _initMap:function(){
+        //Leaflet stuffs
+        var map = L.map(this._name);
+        
+        map.attributionControl
+            .addAttribution('<a href="http://www.nanocubes.net">Nanocubes&trade;</a>');
+        map.attributionControl
+            .addAttribution('<a href="http://www.osm.org">OpenStreetMap</a>');
+
+        //make the background black
+        $('.leaflet-container').css('background','#000');
+
+        //add an OpenStreetMap tile layer
+        var mapt = L.tileLayer(this._tilesurl,{
+            noWrap:true,
+            opacity:0.4,
+            detectRetina:true,
+            maxZoom: 18 //Math.min(this._maxlevels-8, 18)
+        });
+
+        mapt.addTo(map);
+
+        var widget = this;
+        //Refresh after move
+        map.on('moveend', function(){ //update other views
+            widget.updateCallback(widget._encodeArgs(),[]);
+        });
+        return map;
+    },
+
+    _encodeArgs: function(){
+        var map = this._map;
+        var args= {};
+        args.global = {c:map.getCenter(),z:map.getZoom()};
+
+        return JSON.stringify(args);
+    },
+    
+    _decodeArgs: function(s){
+        var map = this._map;
+        var args = JSON.parse(s);
+        var v = args.global;
+        
+        map.setView(v.c,v.z);
+    },
+
+    setSelection: function(key,v){
+        var map =this._map;
+        if (key == 'global'){
+            if('c' in v && 'z' in v){
+                //set the view
+                map.setView(v.c,v.z);
+            }
+            else if (v.length==2){  //viewbox
+                map.fitBounds(v);
+            }
+        }
+    },
+
+    getSelection: function(){
+        var res = {};
+        var map = this._map;
+
+        //global
+        var bb = map.getBounds();
+        var sw = bb.getSouthWest();
+        var ne = bb.getNorthEast();
+
+        res.global = {
+            coord: [[sw.lat,sw.lng],
+                    [sw.lat,ne.lng],
+                    [ne.lat,ne.lng],
+                    [ne.lat,sw.lng]],
+            zoom: map.getZoom() + 8
+        };
+
+
+        var selection = this._selection;
+        selection.forEach(function(layer){
+            var key = layer.options.color;
+            var ll = layer.getLatLngs()[0];
+            if (! ('lat' in ll[0])){
+                ll = ll[0];
+            }
+            
+            res[key] ={
+                coord: ll.map(function(d){ return [d.lat,d.lng];}),
+                zoom: map.getZoom() + 8
+            };
+        });
+        
+        console.log(res);
+        return res;
+    },
+
+    update: function(){
+        //force redraw
+        this._map.invalidateSize();  
+    }
+};
+
 /*global $,d3 */
 
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
+
+    //Add play btn
+    var buttondiv = d3.select(id)
+        .append('div')
+        .attr('class','buttondiv');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.moveOneStep();
+        })
+        .html('forward');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.animationStartStop();
+        })
+        .html('play/pause');
+
+    buttondiv.append('button')
+        .attr('class','btn')
+        .on('click',function(){
+            widget.moveOneStep(false);
+        })
+        .html('backward');
+
     //Make draggable and resizable
-    d3.select(id).attr("class","timeseries resize-drag");
-    
+    d3.select(id).attr("class","timeseries");
+
     d3.select(id).on("divresize",function(){
         widget.redraw(widget.lastres);
-    });
-
-    //Collapse on dbl click
-    d3.select(id).on('dblclick',function(d){
-        var currentheight = d3.select(id).style("height");
-        if ( currentheight != "40px"){
-            widget.restoreHeight =currentheight ;
-            d3.select(id).style('height','40px');
-        }
-        else{
-            d3.select(id).style('height',widget.restoreHeight);
-        }
     });
 
 
@@ -2126,87 +2344,36 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     var margin = opts.margin;
     if (margin===undefined){
-        margin = {top: 30, right: 10, bottom: 30, left: 70};
+        margin = {top: 30, right: 20, bottom: 35, left: 35};
     }
 
     var width = $(id).width() - margin.left - margin.right;
     var height = $(id).height() - margin.top - margin.bottom;
 
-    widget.x = d3.time.scale.utc().range([0, width]);
-    widget.y = d3.scale.linear().range([height, 0]);
+    widget.x = d3.scaleUtc().range([0, width]);
+    widget.y = d3.scaleLinear().range([height, 0]);
 
-    widget.xAxis = d3.svg.axis().scale(widget.x)
-        .orient("bottom")
-        .innerTickSize(-height);
+    //x axis
+    widget.xz = widget.x; //zoomed scale
 
-    widget.yAxis = d3.svg.axis().scale(widget.y)
-        .orient("left")
+    widget.xAxis = d3.axisBottom(widget.x)
+        .tickSizeInner(-height);
+
+    widget.yAxis = d3.axisLeft(widget.y)
         .ticks(3)
         .tickFormat(d3.format(opts.numformat))
-        .innerTickSize(-width-3);
-    
-    // gridlines in x axis function
-    function make_x_gridlines() {		
-        return d3.axisBottom(widget.x);
-    }
-
-    // gridlines in y axis function
-    function make_y_gridlines() {		
-        return d3.axisLeft(widget.y)
-            .ticks(3);
-    }
-
-    
-    //Zoom
-    widget.zoom=d3.behavior.zoom()
-        .x(widget.x)
-        .on('zoom', function(){
-            widget.svg.select(".x.axis").call(widget.xAxis);
-            widget.redraw(widget.lastres);
-        })
-        .on('zoomend', function(){
-            widget.update();
-            widget.updateCallback(widget._encodeArgs());
-            widget.brush.x(widget.x);
-        });
-
-    
-    //Brush
-    widget.brush = d3.svg.brush().x(widget.x);
-
-    widget.brush.on('brushstart', function(){
-        if(d3.event.sourceEvent){
-            d3.event.sourceEvent.stopPropagation();
-        }
-    });
-
-    widget.brush.on('brushend', function(){
-        console.log(widget.brush.extent());
-
-        widget.updateCallback(widget._encodeArgs());
-    });
+        .tickSizeInner(-width-3);
 
     //SVG
-    widget.svg = d3.select(id).append("svg")
+    widget.svg = d3.select(id)
+        .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," +
-              margin.top + ")").call(widget.zoom);
+              margin.top + ")");
 
-    //Load config
-    if(opts.args){
-        widget._decodeArgs(opts.args);
-    }
-    else{
-        //set initial domain    
-        widget.x.domain(opts.timerange);
-    }
-    //Update scales
-    widget.zoom.x(widget.x);
-    widget.brush.x(widget.x);
-    
-    //add svg stuffs    
+    //add svg stuffs
     //add title
     widget.svg.append("text")
         .attr("x", -10)
@@ -2215,7 +2382,7 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     widget.svg.append("g")
         .attr("class", "x axis")
-        .attr("transform", "translate(0," + (height) + ")")
+        .attr("transform", "translate(0," + height + ")")
         .call(widget.xAxis);
 
     widget.svg.append("g")
@@ -2223,25 +2390,65 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr("transform", "translate(-3,0)")
         .call(widget.yAxis);
 
-    //add the X gridlines
-    //widget.svg.append("g")			
-        //.attr("class", "grid")
-      //  .attr("transform", "translate(0," + height + ")")
-        //.call(make_x_gridlines().tickSize(-height).tickFormat(""));
-    
-    // add the Y gridlines
-    //widget.append("g")			
-    //    .attr("class", "grid")
-    //    .call(make_y_gridlines()
-    //          .tickSize(-width).tickFormat(""));
-    
-    //brush
-    widget.svg.append("g").attr("class", "x brush")
-        .call(widget.brush)
-        .selectAll("rect")
-        .attr("y", 0)
-        .attr("height", height);
 
+    //Zoom
+    widget.zoom=d3.zoom()
+        .on('zoom', function(){
+            //rescale
+            widget.xz = d3.event.transform.rescaleX(widget.x);
+
+            //redraw
+            widget.redraw(widget.lastres);
+
+            //update brush
+            if(widget.brush.selection){
+                widget.svg.select('g.brush')
+                    .call(widget.brush.move,
+                          widget.brush.selection.map(widget.xz));
+            }
+        })
+
+        .on('end', function(){
+            widget.update();
+            widget.updateCallback(widget._encodeArgs());
+        });
+
+
+    //apply zoom to axis
+    widget.svg.call(widget.zoom);
+
+    //Brush
+    widget.brush = d3.brushX()
+        .extent([[0, 0], [width, height]])
+        .on('end', function(){
+            if(!d3.event.sourceEvent){
+                return;
+            }
+
+            if (d3.event.selection) {
+                var sel = d3.event.selection;
+                //save selection
+                widget.brush.selection = sel.map(widget.xz.invert);
+            }
+            else{
+                delete widget.brush.selection;
+            }
+            widget.updateCallback(widget._encodeArgs());
+        });
+
+    widget.svg.append("g")
+        .attr("class", "brush").call(widget.brush);
+
+    //Load config
+    if(opts.args){
+        widget._decodeArgs(opts.args);
+    }
+    else{
+        //set initial domain
+        widget.xz.domain(opts.timerange);
+    }
+
+    widget.animating = null;
     widget.width = width;
 }
 
@@ -2265,7 +2472,7 @@ Timeseries.prototype={
                 promises[k] = p[k];
             }
         }
-            
+
         var promarray = Object.keys(promises).map(function(k){
             return promises[k];
         });
@@ -2278,7 +2485,7 @@ Timeseries.prototype={
                 res[d] = results[i];
 
                 var label = d.split('&-&');
-                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);                
+                var isColor  = /^#[0-9A-F]{6}$/i.test(label[0]);
                 if(isColor){
                     res[d].color = label[0];
                 }
@@ -2296,11 +2503,11 @@ Timeseries.prototype={
 
     getSelection: function(){
         var sel = {};
-        var timedom = this.x.domain();
+        var timedom = this.xz.domain();
         sel.global = {start:timedom[0], end:timedom[1]};
 
-        if (!this.brush.empty()){
-            var bext = this.brush.extent();
+        if (this.brush.selection){
+            var bext = this.brush.selection;
             sel.brush = {start:bext[0], end:bext[1]};
         }
         return sel;
@@ -2310,29 +2517,24 @@ Timeseries.prototype={
         var args= this.getSelection();
         return JSON.stringify(args);
     },
-    
+
     _decodeArgs: function(s){
         var args = JSON.parse(s);
         this.x.domain([new Date(args.global.start),
                        new Date(args.global.end)]);
-        if(args.brush){
-            this.brush.extent([new Date(args.brush.start),
-                               new Date(args.brush.end)]);
 
-            this._updateBrush();
+        if(args.brush){
+            this.brush.selection = [new Date(args.brush.start),
+                                    new Date(args.brush.end)];
+            this.svg.select('g.brush')
+                .call(this.brush.move,
+                      this.brush.selection.map(this.xz));
         }
     },
-    
-    _updateBrush: function(){
-        //update brush
-        this.svg.select("g.x.brush")
-            .call(this.brush)
-            .call(this.brush.event);
-    },
-    
-    redraw: function(lines){            
+
+    redraw: function(lines){
         Object.keys(lines).forEach(function(k){
-            if(lines[k].data.length > 1){ 
+            if(lines[k].data.length > 1){
                 var last = lines[k].data[lines[k].data.length-1];
                 lines[k].data.push(last); //dup the last point for step line
             }
@@ -2350,16 +2552,14 @@ Timeseries.prototype={
 
         yext[0]= yext[0]-0.05*(yext[1]-yext[0]); //show the line around min
         yext[0]= Math.min(yext[0],yext[1]*0.5);
-        
         this.y.domain(yext);
 
-        //update the axis
-        this.svg.select("g.x.axis").call(this.xAxis);
-        this.svg.select("g.y.axis").call(this.yAxis);
-
-        var widget = this;
+        //update axis
+        this.svg.select(".y.axis").call(this.yAxis.scale(this.y));
+        this.svg.select(".x.axis").call(this.xAxis.scale(this.xz));
 
         //Remove paths obsolete paths
+        var widget = this;
         var paths = widget.svg.selectAll('path.line');
         paths.each(function(){
             var p = this;
@@ -2370,8 +2570,7 @@ Timeseries.prototype={
                 d3.select(p).remove();
             }
         });
-        
-        
+
         //Draw Lines
         Object.keys(lines).forEach(function(k){
             lines[k].data.sort(function(a,b){return a.time - b.time;});
@@ -2381,37 +2580,98 @@ Timeseries.prototype={
 
     drawLine:function(data,color){
         var colorid = 'color_'+color.replace('#','');
-        
+
         if (data.length < 2){
             return;
         }
 
         var widget = this;
-        
         //create unexisted paths
         var path = widget.svg.select('path.line.'+colorid);
         if (path.empty()){
             path = widget.svg.append('path');
             path.attr('class', 'line '+colorid);
-            
+
             path.style('stroke-width','2px')
                 .style('fill','none')
                 .style('stroke',color);
         }
 
-
         //Transit to new data
-        var lineFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(d.val); })
-                .interpolate("step-before");
-        var zeroFunc = d3.svg.line()
-                .x(function(d) { return widget.x(d.time); })
-                .y(function(d) { return widget.y(0); });
+        var lineFunc = d3.line()
+            .x(function(d) { return widget.xz(d.time); })
+            .y(function(d) { return widget.y(d.val); })
+            .curve(d3.curveStepAfter);
 
         path.transition()
             .duration(500)
             .attr('d', lineFunc(data));
+    },
+
+    moveOneStep: function(forward,stepsize){
+        var widget = this;
+        if(!widget.brush.selection){
+            return;
+        }
+
+        if(forward == undefined){
+            forward = true;
+        }
+
+        if(stepsize == undefined){
+            stepsize = widget.brush.selection[1]-widget.brush.selection[0];
+        }
+
+        if(!forward){
+            stepsize = -stepsize;
+        }
+
+        //move the selection
+        var sel = [widget.brush.selection[0].getTime()+stepsize,
+                   widget.brush.selection[1].getTime()+stepsize];
+
+        var newsel = [Math.min.apply(null, sel),
+                      Math.max.apply(null, sel)]
+            .map(function(d){
+                return new Date(d);
+            });
+
+        widget.brush.selection = newsel; 
+
+        
+        //move the domain if needed
+        var xzdom = widget.xz.domain();
+        if(xzdom[1] < newsel[1]){
+            widget.xz.domain([newsel[1]-(xzdom[1]-xzdom[0]),
+                              newsel[1]]);
+        }
+
+        if(xzdom[0] > newsel[0]){
+            widget.xz.domain([newsel[0],
+                              newsel[0]+(xzdom[1]-xzdom[0])]);
+        }
+
+
+        //move the brush
+        widget.svg.select('g.brush')
+            .call(widget.brush.move,
+                  widget.brush.selection.map(widget.xz));
+
+        widget.update(); //redraw itself
+        widget.updateCallback(widget._encodeArgs());
+    },
+
+    animationStartStop: function(){
+        var widget = this;
+        if(this.animating==null){
+            this.animating = window.setInterval(function(){
+                widget.moveOneStep();
+            },1000/3.0);
+        }
+        else{
+            window.clearInterval(widget.animating);
+            widget.animating=null;
+        }
     }
 };
 
@@ -2429,6 +2689,11 @@ var Viewer = function(opts){
     }
     
     //overlays
+    var mapdiv = $('<div>');
+    mapdiv.addClass('map-overlay');
+    mapdiv.attr('id', 'map_overlay');
+    container.append(mapdiv);
+
     var catdiv = $('<div>');
     catdiv.addClass('chart-overlay');
     catdiv.attr('id', 'cat_overlay');
@@ -2445,6 +2710,7 @@ var Viewer = function(opts){
     var variables = [];
     
     this._container = container;
+    this._mapoverlay = mapdiv;
     this._catoverlay = catdiv;
     this._timeoverlay = timediv;
 
@@ -2510,7 +2776,7 @@ Viewer.prototype = {
         //Create the widget
         switch(widget.type){
         case 'spatial':            
-            this._container.append(newdiv);
+            this._mapoverlay.append(newdiv);
             options.levels = levels || 25;
             return new Heatmap(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
@@ -2770,7 +3036,7 @@ Viewer.prototype = {
         Object.keys(selq).forEach(function(s){
             var expr = data[datasrc].expr;
             res[s+'&-&'+datasrc] = expr.getData(selq[s],function(q){
-                return q.categorialQuery(varname);
+                return q.categoricalQuery(varname);
             });
         });
         return res;
