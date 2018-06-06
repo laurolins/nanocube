@@ -1198,20 +1198,34 @@ nix_tcp_Engine_consume_listen_task(nix_tcp_Engine *self, nix_tcp_Task *task)
 	nix_tcp_Socket *listen_socket = 0;
 	/* create self server socket */
 	int listen_socket_fd = socket(PF_INET, SOCK_STREAM, 0);
-	if (listen_socket_fd < 0) {
-		printf("pt_Engine_ERROR_SOCKET\n");
-		goto error;
-	}
+
+        if (listen_socket_fd < 0) {
+          printf("pt_Engine_ERROR_SOCKET\n");
+          goto error;
+        }
+
+        //Allow socket to be reused
+        int yes = 1;
+        if (setsockopt(listen_socket_fd,SOL_SOCKET,
+                       SO_REUSEADDR,&yes,
+                       sizeof(int)) == -1){
+          perror("setsockopt SO_REUSEADDR");
+        }
+
+        
 	/* set as non-blocking */
 	nix_tcp_set_nonblocking_fd(listen_socket_fd);
 	struct sockaddr_in listen_socket_addr;
 	listen_socket_addr.sin_family = AF_INET;
 	listen_socket_addr.sin_port = htons(task->port);
 	inet_aton(nix_tcp_LOCAL_ADDR, &(listen_socket_addr.sin_addr));
-	int bind_error = bind(listen_socket_fd, (struct sockaddr*) &listen_socket_addr, sizeof(listen_socket_addr));
-	if (bind_error) {
-		printf("pt_Engine_ERROR_BIND\n");
-		goto error;
+        
+	int bind_error = bind(listen_socket_fd,
+                              (struct sockaddr*) &listen_socket_addr,
+                              sizeof(listen_socket_addr));
+	if (bind_error != 0) {
+          printf("pt_Engine_ERROR_BIND\n");
+          goto error;
 	}
 	/* listen */
 	int listen_error = listen(listen_socket_fd, nix_tcp_MAX_CONNECTIONS);
