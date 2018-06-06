@@ -818,9 +818,13 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
         else{
             this.setSelection('global', {c:{lat:0,lng:0},z:0});
         }
+
+        this._range = opts.range || undefined;
     }
 
 
+
+    
     //add Legend
     if (opts.legend){
         this._addLegend(map);
@@ -2732,7 +2736,7 @@ Timeseries.prototype={
         if(this.animating==null){
             this.animating = window.setInterval(function(){
                 widget.moveOneStep();
-            }, 500);
+            }, 1000);
             return true;
         }
         else{
