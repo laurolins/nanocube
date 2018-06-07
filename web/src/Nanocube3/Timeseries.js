@@ -4,7 +4,14 @@ function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
 
-    //Add play btn
+    //Make draggable and resizable
+    d3.select(id).attr("class","timeseries");
+
+    d3.select(id).on("divresize",function(){
+        widget.redraw(widget.lastres);
+    });
+
+    //Add buttons
     var buttondiv = d3.select(id)
         .append('div')
         .attr('class','buttondiv');
@@ -32,18 +39,14 @@ function Timeseries(opts,getDataCallback,updateCallback){
             widget.moveOneStep(false);
         });
 
-    //Make draggable and resizable
-    d3.select(id).attr("class","timeseries");
-
-    d3.select(id).on("divresize",function(){
-        widget.redraw(widget.lastres);
-    });
-
-
+    //num format
     opts.numformat = opts.numformat || ",";
-
     this._datasrc = opts.datasrc;
 
+    //Set time limit
+    this.timelimits = opts.timelimits;
+
+    
     widget.getDataCallback = getDataCallback;
     widget.updateCallback =  updateCallback;
 
@@ -336,27 +339,37 @@ Timeseries.prototype={
         var sel = [widget.brush.selection[0].getTime()+stepsize,
                    widget.brush.selection[1].getTime()+stepsize];
 
+        //cycle
+        if(sel[1] > widget.timelimits[1]){
+            sel = [widget.timelimits[0],
+                   +widget.timelimits[0]+(sel[1]-sel[0])];
+        }
+        
+        if(sel[0] < widget.timelimits[0]){
+            sel = [+widget.timelimits[1]-(sel[1]-sel[0]),
+                   widget.timelimits[1]];            
+        }        
+
+        //make Dates
         var newsel = [Math.min.apply(null, sel),
-                      Math.max.apply(null, sel)]
-            .map(function(d){
-                return new Date(d);
-            });
+                      Math.max.apply(null, sel)].map(function(d){
+                          return new Date(d);
+                      });
 
         widget.brush.selection = newsel; 
-
         
         //move the domain if needed
+        //use + to convert dates to int for date arithmetic
         var xzdom = widget.xz.domain();
         if(xzdom[1] < newsel[1]){
-            widget.xz.domain([newsel[1]-(xzdom[1]-xzdom[0]),
+            widget.xz.domain([+newsel[1]-(xzdom[1]-xzdom[0]),
                               newsel[1]]);
         }
 
         if(xzdom[0] > newsel[0]){
             widget.xz.domain([newsel[0],
-                              newsel[0]+(xzdom[1]-xzdom[0])]);
+                              +newsel[0]+(xzdom[1]-xzdom[0])]);
         }
-
 
         //move the brush
         widget.svg.select('g.brush')

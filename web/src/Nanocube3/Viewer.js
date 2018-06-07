@@ -129,6 +129,8 @@ Viewer.prototype = {
         case 'time':
             this._timeoverlay.append(newdiv);
             options.timerange = viewer.getTimeRange();
+            options.timelimits = viewer.getTimeRange();
+            
             return new Timeseries(options,function(datasrc,start,end,interval){
                 return viewer.getTemporalData(id,datasrc,start,end,interval);
             },function(args,constraints){
