@@ -1,4 +1,9 @@
-/*global d3 $ */
+import jquery from 'jquery';
+let $ = window.$ = jquery;
+
+import * as d3 from 'd3';
+
+import './resize-drag';
 
 function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.getDataCallback=getDataCallback;
@@ -394,3 +399,6 @@ GroupedBarChart.prototype = {
         svg.select('text').text(this._opts.title+' ('+y0.domain().length+')');
     }    
 };
+
+
+export default GroupedBarChart;

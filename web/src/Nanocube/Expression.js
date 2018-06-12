@@ -1,4 +1,10 @@
-/*global $ jsep  */
+//JQuery
+import jquery from 'jquery';
+let $ = window.$ = jquery;
+
+//JSEP
+import jsep from 'jsep';
+
 
 var Expression = function(expr){
     this.parsetree = jsep(expr);
@@ -346,3 +352,5 @@ Expression.prototype = {
         }
     }
 };
+
+export default Expression;

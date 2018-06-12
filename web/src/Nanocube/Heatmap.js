@@ -1,4 +1,36 @@
-/*global $ L colorbrewer d3 window */
+//Leaflet
+import 'leaflet';
+import 'leaflet/dist/leaflet.css';
+let L = window.L;
+//Leaflet Icon Fix
+import markericon from 'leaflet/dist/images/marker-icon-2x.png';
+import markericon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markershadow from 'leaflet/dist/images/marker-shadow.png';
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: markericon,
+    iconUrl: markericon2x,
+    shadowUrl: markershadow
+});
+
+
+//Leaflet Draw
+import 'leaflet-draw';
+import 'leaflet-draw/dist/leaflet.draw.css';
+
+//Canvas Layer
+import './L.CanvasLayer';
+
+//JQuery
+import jquery from 'jquery';
+let $ = window.$ = jquery;
+
+//d3
+import * as d3 from 'd3';
+
+//colorbrewer
+
+import colorbrewer from 'colorbrewer';
 
 var Heatmap=function(opts,getDataCallback,updateCallback){
     this.getDataCallback = getDataCallback;
@@ -474,6 +506,10 @@ Heatmap.prototype = {
         proxyctx.putImageData(imgData, 0, 0);
 
         //copy onto the real canvas ...
+        realctx.mozImageSmoothingEnabled = false;
+        realctx.webkitImageSmoothingEnabled = false;
+        realctx.msImageSmoothingEnabled = false;
+        realctx.imageSmoothingEnabled = false;
         realctx.globalCompositeOperation = 'copy';
         realctx.drawImage(c,0,0,canvas.width,canvas.height);
     },
@@ -620,3 +656,5 @@ Heatmap.prototype = {
         legend.html(htmlstr.join('<br />'));
     }
 };
+
+export default Heatmap;

@@ -1,8 +1,9 @@
-/*global $ sprintf */
-/*jshint esversion: 6 */
+import jquery from 'jquery';
+let $ = window.$ = jquery;
 
-var cache = {};
-var sprintf = sprintf.sprintf; //make sprintf available
+import {sprintf} from 'sprintf-js';
+
+let cache = {};
 
 //Nanocube
 var Nanocube = function(opts) {
@@ -737,3 +738,6 @@ function latlong2tile(latlong,zoom) {
 	     y: lat2tile(latlong[0],zoom),
 	     z: zoom};
 }
+
+
+export default Nanocube;

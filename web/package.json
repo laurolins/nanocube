@@ -4,19 +4,25 @@
   "description": "Nanocube Web Frontend",
   "repository": "https://github.com/laurolins/nanocube",
   "license": "EPL-1.0",
+  "main": "index.js",
+  "dependencies": {},
   "devDependencies": {
     "colorbrewer": "*",
     "d3": "*",
-    "grunt": "*",
-    "grunt-cli": "*",
-    "grunt-contrib-concat": "*",
-    "grunt-contrib-jshint": "*",
-    "interact.js": "*",
+    "parcel": "*",
+    "interactjs": "*",
     "jquery": "*",
     "jsep": "*",
     "leaflet": "*",
     "leaflet-draw": "*",
-    "requirejs": "*",
-    "sprintf-js": "*"
-  }
+    "sprintf-js": "*",
+    "@fortawesome/fontawesome": "*",
+    "@fortawesome/fontawesome-free-solid": "*"
+  },
+  "scripts": {
+    "start": "parcel index.html",
+    "build": "rm -rf dist/ && parcel build index.html"
+  },
+  "keywords": [],
+  "author": "CY Ip <salivian@gmail.com>"
 }

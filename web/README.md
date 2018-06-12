@@ -3,11 +3,11 @@
 ## Configuration
 
 
-The configuration of the web viewer can be modified through a JSON
-file. The JSON file is named `config.json` or specified by a parameter
+The configuration of the web viewer can be modified through a JSON. The JSON file is named `config.json` or specified by a parameter
 
-`http://myhost.com/?config=myconfig.json`.
+`http://myhost.com/?config=./myconfig.json`.
 
+The `myconfig.json` file should reside with the directory that contains `index.html`.
 
 The `ncwebviewer-config` reads from the nanocube server and generates
 a JSON con figuration file with all the tweakable parameters for the
@@ -21,8 +21,6 @@ widgets.  Here are some handy examples.
 * Sort bar chart items by alphabetical order
 * Log scale axes and limits
 
-
-
 There is a `css` attribute for each widget, you may change the style
 of the widget by modifying or inserting standard css elements.
 
@@ -33,10 +31,13 @@ If you are interesting in developing this GUI, please install the dependencies f
 
 ```
 npm install
+npm start
 ```
+A development server will be started on `dist`.
+Please move your json configuration files in to the `dist` directory once the server has been started.
 
-Use `Grunt` to process the Javascript files.
+For production builds, please run:
 
 ```
-./node_modules/.bin/grunt
+npm run build
 ```

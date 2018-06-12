@@ -1,4 +1,21 @@
-/*global $,d3 */
+//JQuery
+import jquery from 'jquery';
+let $ = window.$ = jquery;
+
+//d3
+import * as d3 from 'd3';
+
+//fontawesome
+import fontawesome from '@fortawesome/fontawesome';
+import faForward from '@fortawesome/fontawesome-free-solid/faForward';
+import faPlay from '@fortawesome/fontawesome-free-solid/faPlay';
+import faBackward from '@fortawesome/fontawesome-free-solid/faBackward';
+import faPause from '@fortawesome/fontawesome-free-solid/faPause';
+
+fontawesome.library.add(faForward);
+fontawesome.library.add(faPlay);
+fontawesome.library.add(faBackward);
+fontawesome.library.add(faPause);
 
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
@@ -17,27 +34,33 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .attr('class','buttondiv');
 
     buttondiv.append('button')
-        .attr('class','btn fa fa-forward')
+        .attr('class','btn')
         .on('click',function(){
             widget.moveOneStep();
-        });
-
+        })
+        .append('i').attr('class','fas fa-forward');
+    
     buttondiv.append('button')
-        .attr('class','btn fa fa-play')
+        .attr('class','btn')
         .on('click',function(){
+            let btn = d3.select(this);
+            let icon = btn.select('[data-fa-i2svg]');
             if(widget.animationStartStop()){
-                d3.select(this).attr('class', 'btn fa fa-pause');
+                    icon.attr('class', 'fas fa-pause');
             }
             else{
-                d3.select(this).attr('class', 'btn fa fa-play');
+                icon.attr('class', 'fas fa-play');
             }
-        });
+        })
+        .append('i').attr('class', 'fas fa-play');
+
 
     buttondiv.append('button')
-        .attr('class','btn fa fa-backward')
+        .attr('class','btn')
         .on('click',function(){
             widget.moveOneStep(false);
-        });
+        })
+        .append('i').attr('class', 'fas fa-backward');
 
     //num format
     opts.numformat = opts.numformat || ",";
@@ -400,3 +423,5 @@ Timeseries.prototype={
         return false;
     }
 };
+
+export default Timeseries;

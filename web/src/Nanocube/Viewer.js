@@ -2,7 +2,22 @@
 
 PolygonMap  */
 
-var Viewer = function(opts){
+//JQuery
+import jquery from 'jquery';
+let $ = window.$ = jquery;
+
+//d3
+import * as d3 from 'd3';
+
+//Colorbrewer
+import colorbrewer from 'colorbrewer';
+
+import Heatmap from './Heatmap';
+import GroupedBarChart from './GroupedBarChart';
+import Timeseries from './Timeseries';
+import Expression from './Expression';
+
+let Viewer = function(opts){
     var container = $(opts.div_id);
     //set title
     if(opts.config.title){
@@ -386,3 +401,6 @@ Viewer.prototype = {
                                  argstr);
     }
 };
+
+
+export default Viewer;
