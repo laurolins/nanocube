@@ -1,7 +1,3 @@
-/*global $ d3 jsep colorbrewer Expression Heatmap Timeseries GroupedBarChart
-
-PolygonMap  */
-
 //JQuery
 import jquery from 'jquery';
 let $ = window.$ = jquery;
@@ -34,12 +30,14 @@ let Viewer = function(opts){
 
     var catdiv = $('<div>');
     catdiv.addClass('chart-overlay');
-    catdiv.attr('id', 'cat_overlay');
+    //catdiv.attr('id', 'cat-overlay');
     container.append(catdiv);
     
     var timediv = $('<div>');
-    timediv.addClass('chart-overlay');
-    timediv.attr('id', 'time_overlay');
+    var timebtndiv=$('<div>');
+    timediv.attr('id', 'time-overlay');
+    timebtndiv.addClass('tab');
+    timediv.append(timebtndiv);
     container.append(timediv);
     
 
@@ -142,7 +140,34 @@ Viewer.prototype = {
             });
             
         case 'time':
-            this._timeoverlay.append(newdiv);
+            let timeoverlay=this._timeoverlay;
+            let timetabname = options.tab;
+
+            if(timeoverlay.find('#'+ timetabname).length==0){
+                //create the button
+                let timetabbtn = $('<button>');
+                timetabbtn.addClass('tablinks');
+                timetabbtn.html(timetabname);
+                timetabbtn.click(function(e){ //open tab when click
+                    viewer.toggleTab(timetabname,e);
+                });
+                
+                timeoverlay.find('.tab').append(timetabbtn);
+
+                //create the content div
+                var timecontentdiv = $('<div>');
+                timecontentdiv.addClass('tabcontent');
+                timecontentdiv.attr('id',timetabname);
+                timeoverlay.append(timecontentdiv);
+
+                //open or close the tab
+                if(options.open){
+                    timetabbtn.addClass('active');
+                    timecontentdiv.show();
+                }
+            }
+
+            timeoverlay.find('#'+ timetabname).append(newdiv);
             options.timerange = viewer.getTimeRange();
             options.timelimits = viewer.getTimeRange();
             
@@ -156,6 +181,24 @@ Viewer.prototype = {
         }
     },
     
+    toggleTab: function(id, e){
+        var currentbtn=$(e.target);        
+        var viewer = this;
+        if($('#'+id+':hidden').length > 0){
+            currentbtn.parent().parent()
+                .find('.tabcontent').hide();
+            currentbtn.parent()
+                .find('button').removeClass('active');
+            $('#'+id).show();
+            viewer.update(); 
+            currentbtn.addClass('active');
+        }
+        else{
+            currentbtn.removeClass('active');
+            $('#'+id).hide();
+        }
+    },                
+
     setupDivs: function(config){
         for (var d in config){
             var newdiv = $('<div>');

@@ -29,7 +29,6 @@ let $ = window.$ = jquery;
 import * as d3 from 'd3';
 
 //colorbrewer
-
 import colorbrewer from 'colorbrewer';
 
 var Heatmap=function(opts,getDataCallback,updateCallback){

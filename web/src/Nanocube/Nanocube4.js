@@ -4,7 +4,6 @@ let $ = window.$ = jquery;
 import {sprintf} from 'sprintf-js';
 
 let cache = {};
-
 //Nanocube
 var Nanocube = function(opts) {
     this.schema = null ;

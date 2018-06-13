@@ -2,13 +2,36 @@ html,body,#nc {
     height:100%;
     width:100%;
     margin:0;
-    font: 10pt sans-serif;
+    font: 10pt Lato, sans-serif;
 }
 
 canvas {
     position:absolute;
     top:0px;
     left:0px;
+}
+
+#time-overlay{
+    position:absolute;
+    max-width:65%;
+    max-height:20%px;
+    bottom: 1em;
+    left: 1ch;
+    padding:1em;
+    border: 0;
+    z-index:1;
+}
+
+#cat-overlay{
+    position:absolute;
+    max-width:40%;
+    max-height:85%;
+    top: 1em;
+    right: 1em;
+    padding:1em;
+    border: 0;
+    overflow-y:auto;
+    z-index:1;
 }
 
 .map-overlay{
@@ -116,4 +139,34 @@ text {
     background: white;
     box-shadow: 0 0 15px rgba(0,0,0,0.2);
     border-radius: 5px;
+}
+
+
+/* Style the buttons that are used to open the tab content */
+.tab button {
+    background-color: #555;
+    color: white;
+    border: 1px solid white;
+    outline: none;
+    cursor: pointer;
+    padding: 1ch 1em;
+    opacity:1.0;
+    margin: 1px;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+    background-color: #aaa;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+    background-color: #ddd;
+    color:black;
+}
+
+/* Style the tab content */
+.tabcontent {
+    display: none;
+    width: 500px;
 }

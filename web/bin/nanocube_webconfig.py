@@ -197,14 +197,13 @@ def timeseriesWidget(v,w):
         'title': v['name'],
         'type':'time',
         'numformat':None,
+        'open':True,
+        'tab':'Timeseries',
         'css':{
             'opacity': 0.8,
-            'bottom': '0px',
             'height': '150px',
             'width': '%dpx'%(int(w)),
-            'position': 'absolute',
             'background-color': '#555',
-            'left': '0px'
         }
     }
 
