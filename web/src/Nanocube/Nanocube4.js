@@ -11,9 +11,10 @@ var Nanocube = function(opts) {
 };
 
 Nanocube.initNanocube = function(url){
-    var nc = new Nanocube();
-    return new Promise((resolve,reject)=>
-                       nc.setUrl(url).done((res)=>resolve(res)));
+    let nc = new Nanocube();
+    return new Promise((resolve,reject)=>{
+        nc.setUrl(url).done((res)=>resolve(res));
+    });
 };
 
 Nanocube.prototype = {
