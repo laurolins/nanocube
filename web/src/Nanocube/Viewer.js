@@ -23,24 +23,25 @@ let Viewer = function(opts){
     }
     
     //overlays
-    var mapdiv = $('<div>');
+    let mapdiv = $('<div>');
     mapdiv.addClass('map-overlay');
-    mapdiv.attr('id', 'map_overlay');
+    mapdiv.attr('id', 'map-overlay');
     container.append(mapdiv);
 
-    var catdiv = $('<div>');
-    catdiv.addClass('chart-overlay');
-    //catdiv.attr('id', 'cat-overlay');
+    let catdiv = $('<div>');
+    let catbtndiv = $('<div>');
+    catdiv.attr('id','cat-overlay');
+    catbtndiv.addClass('tab');
+    catdiv.append(catbtndiv);
     container.append(catdiv);
     
-    var timediv = $('<div>');
-    var timebtndiv=$('<div>');
+    let timediv = $('<div>');
+    let timebtndiv=$('<div>');
     timediv.attr('id', 'time-overlay');
     timebtndiv.addClass('tab');
     timediv.append(timebtndiv);
     container.append(timediv);
     
-
     //setup
     var nanocubes = opts.nanocubes;
     var variables = [];
@@ -122,7 +123,31 @@ Viewer.prototype = {
             });
             
         case 'cat':
-            this._catoverlay.append(newdiv);
+            let cattabname = options.tab;
+            let catoverlay = this._catoverlay;
+            if (catoverlay.find('#'+ cattabname).length == 0){
+                //create the button
+                let cattabbtn = $('<button>');
+                cattabbtn.addClass('tablinks');
+                cattabbtn.html(cattabname);
+                cattabbtn.click(function(e){ //open tab when click
+                    viewer.toggleTab(cattabname,$(e.target));
+                });
+                catoverlay.find('.tab').append(cattabbtn);
+                
+                //create the content div
+                var catcontentdiv = $('<div>');
+                catcontentdiv.addClass('tabcontent');
+                catcontentdiv.attr('id',cattabname);                                
+                catoverlay.append(catcontentdiv);
+
+                //open the tab
+                if(options.open){
+                    this.toggleTab(cattabname,cattabbtn);
+                }
+            }
+            
+            catoverlay.find('#'+ cattabname).append(newdiv);
             return new GroupedBarChart(options,function(datasrc){
                 return viewer.getCategoricalData(id,datasrc);
             },function(args,constraints){
@@ -149,7 +174,7 @@ Viewer.prototype = {
                 timetabbtn.addClass('tablinks');
                 timetabbtn.html(timetabname);
                 timetabbtn.click(function(e){ //open tab when click
-                    viewer.toggleTab(timetabname,e);
+                    viewer.toggleTab(timetabname,$(e.target));
                 });
                 
                 timeoverlay.find('.tab').append(timetabbtn);
@@ -160,10 +185,9 @@ Viewer.prototype = {
                 timecontentdiv.attr('id',timetabname);
                 timeoverlay.append(timecontentdiv);
 
-                //open or close the tab
+                //open the tab
                 if(options.open){
-                    timetabbtn.addClass('active');
-                    timecontentdiv.show();
+                    this.toggleTab(timetabname,timetabbtn);
                 }
             }
 
@@ -181,8 +205,7 @@ Viewer.prototype = {
         }
     },
     
-    toggleTab: function(id, e){
-        var currentbtn=$(e.target);        
+    toggleTab: function(id, currentbtn){
         var viewer = this;
         if($('#'+id+':hidden').length > 0){
             currentbtn.parent().parent()

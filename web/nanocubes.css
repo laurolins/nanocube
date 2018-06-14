@@ -19,19 +19,17 @@ canvas {
     left: 1ch;
     padding:1em;
     border: 0;
-    z-index:1;
 }
 
 #cat-overlay{
     position:absolute;
-    max-width:40%;
+    max-width:100%;
     max-height:85%;
     top: 1em;
     right: 1em;
     padding:1em;
     border: 0;
     overflow-y:auto;
-    z-index:1;
 }
 
 .map-overlay{
@@ -42,15 +40,6 @@ canvas {
     z-index:0;
 }
 
-.chart-overlay{
-    position:absolute;
-    height:100%;
-    width:100%;
-    margin:0;
-    pointer-events:none;
-    z-index:1;
-}
-
 .resize-drag{
     padding: 5px;
 }
@@ -59,7 +48,6 @@ canvas {
     position: relative;
     overflow-y:auto;
     overflow-x:hidden;
-    float:right;
     background-color: #555;
     margin: 5px;
     pointer-events:visible;
@@ -75,10 +63,6 @@ canvas {
     margin: 5px;
     border: 1px solid white;
     pointer-events:visible;
-}
-
-.btn{
-    float:right;              
 }
 
 .axis path,
@@ -148,10 +132,10 @@ text {
     color: white;
     border: 1px solid white;
     outline: none;
-    cursor: pointer;
+    cursor:  pointer;
     padding: 1ch 1em;
-    opacity:1.0;
-    margin: 1px;
+    opacity: 1.0;
+    margin:  1px;
 }
 
 /* Change background color of buttons on hover */
@@ -168,5 +152,9 @@ text {
 /* Style the tab content */
 .tabcontent {
     display: none;
-    width: 500px;
+}
+
+.timeseries button,
+.barchart button{
+    float: right
 }

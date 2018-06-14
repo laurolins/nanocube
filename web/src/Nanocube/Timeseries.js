@@ -20,7 +20,8 @@ fontawesome.library.add(faPause);
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
     var widget = this;
-
+    this._opts = opts;
+    
     //Make draggable and resizable
     d3.select(id).attr("class","timeseries");
 
@@ -28,19 +29,15 @@ function Timeseries(opts,getDataCallback,updateCallback){
         widget.redraw(widget.lastres);
     });
 
-    //Add buttons
-    var buttondiv = d3.select(id)
-        .append('div')
-        .attr('class','buttondiv');
-
-    buttondiv.append('button')
+    //Add playback buttons
+    d3.select(id).append('button')
         .attr('class','btn')
         .on('click',function(){
             widget.moveOneStep();
         })
         .append('i').attr('class','fas fa-forward');
     
-    buttondiv.append('button')
+    d3.select(id).append('button')
         .attr('class','btn')
         .on('click',function(){
             let btn = d3.select(this);
@@ -54,14 +51,22 @@ function Timeseries(opts,getDataCallback,updateCallback){
         })
         .append('i').attr('class', 'fas fa-play');
 
-
-    buttondiv.append('button')
+    d3.select(id).append('button')
         .attr('class','btn')
         .on('click',function(){
             widget.moveOneStep(false);
         })
         .append('i').attr('class', 'fas fa-backward');
 
+
+    //Add percent button
+    this.percentbtn = d3.select(id).append('button')
+        .on('click',function(){
+            d3.event.stopPropagation();
+            widget._opts.percent = !widget._opts.percent;
+            widget.redraw(widget.lastres);
+        });
+    
     //num format
     opts.numformat = opts.numformat || ",";
     this._datasrc = opts.datasrc;
@@ -264,7 +269,34 @@ Timeseries.prototype={
         }
     },
 
-    redraw: function(lines){
+    redraw: function(olines){
+        let lines = JSON.parse(JSON.stringify(olines));
+        Object.keys(lines).forEach(function(k){  //Fix time after serialization
+            lines[k].data = lines[k].data.map(function(d){
+                return {time:new Date(d.time), val:+d.val};
+            });
+        });
+        
+        let opts = this._opts;
+        let percentbtn = this.percentbtn;
+        if (opts.percent){            
+            percentbtn.html('raw');
+            this._numformat='0.2%';
+
+            //compute percentage
+            Object.keys(lines).forEach(function(k){
+                var total=lines[k].data.reduce(function(x,y){ return x+y.val;},0);
+                lines[k].data.forEach(function(d,i){
+                    lines[k].data[i].val /=total;
+                });
+            });
+        }
+        else{ //sort by data value
+            percentbtn.html('%');            
+            this._numformat = this._opts.numformat;
+        }
+
+        //construct the lines
         Object.keys(lines).forEach(function(k){
             if(lines[k].data.length > 1){
                 var last = lines[k].data[lines[k].data.length-1];
@@ -286,6 +318,9 @@ Timeseries.prototype={
         yext[0]= Math.min(yext[0],yext[1]*0.5);
         this.y.domain(yext);
 
+        //update y axis
+        this.yAxis.ticks(3).tickFormat(d3.format(this._numformat));
+        
         //update axis
         this.svg.select(".y.axis").call(this.yAxis.scale(this.y));
         this.svg.select(".x.axis").call(this.xAxis.scale(this.xz));
@@ -363,12 +398,12 @@ Timeseries.prototype={
                    widget.brush.selection[1].getTime()+stepsize];
 
         //cycle
-        if(sel[1] > widget.timelimits[1]){
+        if(sel[0] > widget.timelimits[1]){
             sel = [widget.timelimits[0],
                    +widget.timelimits[0]+(sel[1]-sel[0])];
         }
         
-        if(sel[0] < widget.timelimits[0]){
+        if(sel[1] < widget.timelimits[0]){
             sel = [+widget.timelimits[1]-(sel[1]-sel[0]),
                    widget.timelimits[1]];            
         }        

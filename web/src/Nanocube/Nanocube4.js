@@ -12,7 +12,8 @@ var Nanocube = function(opts) {
 
 Nanocube.initNanocube = function(url){
     var nc = new Nanocube();
-    return nc.setUrl(url);
+    return new Promise((resolve,reject)=>
+                       nc.setUrl(url).done((res)=>resolve(res)));
 };
 
 Nanocube.prototype = {

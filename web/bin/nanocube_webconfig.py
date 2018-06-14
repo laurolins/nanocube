@@ -221,6 +221,8 @@ def catWidget(v):
         'type':'cat',        
         'numformat':None,
         'topn':None,
+        'tab': 'Categorical',
+        'open': True,
         'domain':{
             'min':None,
             'max':None

@@ -7,17 +7,19 @@
   "main": "index.js",
   "dependencies": {},
   "devDependencies": {
+    "@fortawesome/fontawesome": "*",
+    "@fortawesome/fontawesome-free-solid": "*",
+    "babel-plugin-transform-runtime": "*",
+    "babel-runtime": "*",
     "colorbrewer": "*",
     "d3": "*",
-    "parcel": "*",
     "interactjs": "*",
     "jquery": "*",
     "jsep": "*",
     "leaflet": "*",
     "leaflet-draw": "*",
-    "sprintf-js": "*",
-    "@fortawesome/fontawesome": "*",
-    "@fortawesome/fontawesome-free-solid": "*"
+    "parcel": "*",
+    "sprintf-js": "*"
   },
   "scripts": {
     "start": "parcel index.html",

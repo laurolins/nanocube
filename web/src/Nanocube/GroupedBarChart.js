@@ -3,8 +3,6 @@ let $ = window.$ = jquery;
 
 import * as d3 from 'd3';
 
-import './resize-drag';
-
 function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.getDataCallback=getDataCallback;
     this.updateCallback=updateCallback;
@@ -21,7 +19,7 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     
     var widget = this;
     //Make draggable and resizable
-    d3.select(id).attr("class","barchart resize-drag");
+    d3.select(id).attr("class","barchart");
     
     d3.select(id).on("divresize",function(){
         widget.update();
@@ -49,6 +47,15 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
             widget.redraw(widget.lastres);
         });
     
+    //Add percent button
+    this.percentbtn = d3.select(id)
+        .append('button')
+        .attr('class','percent-btn')
+        .on('click',function(){
+            d3.event.stopPropagation();
+            widget._opts.percent = !widget._opts.percent;
+            widget.redraw(widget.lastres);
+        });
     
     //SVG container
     var svg = d3.select(id).append("svg").append("g");
@@ -74,15 +81,16 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     var yAxis = d3.axisLeft();
 
     //set default values 
-    opts.numformat = opts.numformat || ",";    
+    this._numformat = opts.numformat = opts.numformat || ",";    
     if(!opts.hasOwnProperty('alpha_order')) {
         opts.alpha_order = true;
     }
 
-    //style
-    xAxis.ticks(3)
-        .tickFormat(d3.format(opts.numformat)); 
-    
+    //set 'percent' or 'raw' display
+    if(!opts.hasOwnProperty('percent')) {
+        opts.percent = false;
+    }
+        
     //Save vars to "this"
     this.margin = margin;
     this.svg=svg;
@@ -165,7 +173,7 @@ GroupedBarChart.prototype = {
         }, []);
     },
 
-    redraw :function(res){
+    redraw :function(res){        
         var topn = this._opts.topn;
         if(topn > 0){
             var agg = {};
@@ -198,7 +206,7 @@ GroupedBarChart.prototype = {
         
         
         //update the axis and svgframe
-        this.updateYAxis(fdata);
+        fdata = this.updateYAxis(fdata);
         this.updateXAxis(fdata);
         this.updateSVG();
 
@@ -232,11 +240,10 @@ GroupedBarChart.prototype = {
                 return widget.y0(d.cat)+widget.y1(d.color);
             })
             .attr('height',function(d){
-                return widget.y1.bandwidth()-1;
+                return Math.max(0,widget.y1.bandwidth()-1);
             })
-            .transition().duration(100)
             .attr('width',function(d){
-                return (widget.x(d.val) || 0);
+                return Math.max(0,widget.x(d.val));
             })
             .style('fill', function(d){
                 if (!widget.selection.brush || //no selection
@@ -251,7 +258,7 @@ GroupedBarChart.prototype = {
 
         //add tool tip
         bars.select('title').text(function(d){
-            return d3.format(widget._opts.numformat)(d.val);
+            return d3.format(widget._numformat)(d.val);
         });
     },
 
@@ -339,10 +346,13 @@ GroupedBarChart.prototype = {
             }
         }
         
+        //update formatting
+        xAxis.ticks(3)
+            .tickFormat(d3.format(this._numformat)); 
+
         //set domain
         x.domain(d);        
-        x.range([0,width]);
-        
+        x.range([0,width]);        
         xAxis.scale(x);
 
         //move and draw the axis
@@ -352,14 +362,40 @@ GroupedBarChart.prototype = {
         this.width=width;
     },
 
-    updateYAxis:function(data){
+    updateYAxis:function(odata){
         var y0=this.y0;
         var y1=this.y1;
         var yAxis=this.yAxis;
         var svg = this.svg;
         var opts = this._opts;
         var sortbtn = this.sortbtn;
+        var percentbtn = this.percentbtn;
         
+        //Percent
+        let data = JSON.parse(JSON.stringify(odata)); //deep copy data
+        if (opts.percent){
+            //compute total
+            let totals = {};
+            data.forEach(function(d){
+                totals[d.color] = totals[d.color]+d.val || d.val;
+            });
+            data.forEach(function(d,i){
+                data[i].val= d.val/totals[d.color];
+            });
+            
+            percentbtn.html('raw');
+            this._numformat='0.2%';
+        }
+        else{ //sort by data value
+            percentbtn.html('%');            
+            this._numformat = this._opts.numformat;
+        }
+        
+        //Remove hidden cats
+        data = data.filter(function(d){
+            var hidden = opts.hidden || [];
+            return hidden.indexOf(d.cat)==-1;
+        });
         
         //Sort y axis
         if (opts.alpha_order){            
@@ -374,7 +410,6 @@ GroupedBarChart.prototype = {
             y0.domain(d.map(function(d){return d.cat;}));
             sortbtn.html('A');
         }
-        
         
         y1.domain(data.map(function(d){return d.color;}));
         var totalheight = y0.domain().length* y1.domain().length * 18;
@@ -397,7 +432,10 @@ GroupedBarChart.prototype = {
 
         //update title with cat count
         svg.select('text').text(this._opts.title+' ('+y0.domain().length+')');
-    }    
+
+        return data;
+    }
+    
 };
 
 
