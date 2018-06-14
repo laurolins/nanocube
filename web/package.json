@@ -9,8 +9,6 @@
   "devDependencies": {
     "@fortawesome/fontawesome": "*",
     "@fortawesome/fontawesome-free-solid": "*",
-    "babel-plugin-transform-runtime": "*",
-    "babel-runtime": "*",
     "colorbrewer": "*",
     "d3": "*",
     "interactjs": "*",
@@ -21,10 +19,14 @@
     "parcel": "*",
     "sprintf-js": "*"
   },
-  "scripts": {
+ "scripts": {
     "start": "parcel index.html",
     "build": "rm -rf dist/ && parcel build index.html"
   },
   "keywords": [],
-  "author": "CY Ip <salivian@gmail.com>"
+  "author": "CY Ip <salivian@gmail.com>",
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions"
+  ]
 }
