@@ -27,14 +27,14 @@ of the widget by modifying or inserting standard css elements.
 
 ## Development
 
-If you are interesting in developing this GUI, please install the dependencies for development by using `npm`.
+If you are interested in developing this GUI, please install the dependencies for development by using `npm` and start the development server.
 
 ```
 npm install
 npm start
 ```
-A development server will be started on `dist`.
-Please move your json configuration files in to the `dist` directory once the server has been started.
+The development server will be started on the `dist` directory.
+Please move your `json` configuration files into the `dist` directory after starting the server
 
 For production builds, please run:
 
