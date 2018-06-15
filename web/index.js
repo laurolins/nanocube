@@ -48,13 +48,15 @@ async function nc3or4(url){
     try{  //v4
         let response = await fetch(url + '/schema()');
         let schema = await response.json();
-        return Nanocube4.initNanocube(url);
+        let nc = new Nanocube4();
+        return nc.init(url);
     }
     catch(e){
         try{ //v3
             let response = await fetch(url + '/schema');
             let schema = await response.json();
-            return Nanocube3.initNanocube(url);
+            let nc = new Nanocube3();
+            return nc.init(url);
         }
         catch(e){
             console.log(url+' is not a Nanocube');
@@ -65,8 +67,8 @@ async function nc3or4(url){
 
 async function startViewer(config,urlargs){
     let ncnames = Object.keys(config.nanocube);
-    let ncpromises=ncnames.map((k)=>nc3or4(config.nanocube[k].url));
-    let nanocubes= await Promise.all(ncpromises);
+    let ncpromises = ncnames.map((k)=>nc3or4(config.nanocube[k].url));
+    let nanocubes = await Promise.all(ncpromises);
     
     let nchash = {};
     nanocubes.forEach(function(d,i){
