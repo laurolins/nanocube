@@ -388,8 +388,7 @@ typedef struct Request {
 	pt_File             *pfh_stdin;
 	pt_File             *pfh_stdout;
 	op_Options          options;
-	char		    print_buffer[Kilobytes(32)];
-	Print		    print;
+	Print               *print;
 	// nt_Tokenizer        tok; // request tokens
 } Request;
 
@@ -398,9 +397,9 @@ static Request *debug_request = 0;
 internal void
 Request_msg(Request *req, const char *cstr)
 {
-	Print_cstr(&req->print, cstr);
-	platform.write_to_file(req->pfh_stdout, req->print.begin, req->print.end);
-	Print_clear(&req->print);
+	Print_cstr(req->print, cstr);
+	platform.write_to_file(req->pfh_stdout, req->print->begin, req->print->end);
+	Print_clear(req->print);
 }
 
 internal void
@@ -682,7 +681,7 @@ END_DOC_STRING
 internal void
 service_version(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
@@ -741,7 +740,7 @@ END_DOC_STRING
 internal void
 service_memory(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
@@ -816,7 +815,7 @@ END_DOC_STRING
 internal void
 service_draw(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
@@ -879,7 +878,7 @@ service_draw(Request *request)
 internal void
 print_ast(Request *request, np_AST_Node* node, s32 level)
 {
-	Print *print = &request->print;
+	Print *print = request->print;
 	Print_clear(print);
 	Print_char(print,' ');
 	Print_align(print, level * 4, 0,' ');
@@ -972,7 +971,7 @@ END_DOC_STRING
 internal void
 service_ast(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
@@ -1062,7 +1061,7 @@ internal void
 service_btree(Request *request)
 {
 	// run a btree test
-	Print *print = &request->print;
+	Print *print = request->print;
 
 	pt_Memory btree_memory = platform.allocate_memory(Megabytes(32), 12, 0);  // page aligned
 
@@ -1160,7 +1159,7 @@ test_fill_in_event(char *input, nx_Label *labels)
 internal void
 service_test(Request *request)
 {
-	Print *print = &request->print;
+	Print *print = request->print;
 	op_Options *options = &request->options;
 
 	// Nanocube Cube will be hand build
@@ -1833,11 +1832,7 @@ typedef struct {
 	MemoryBlock    aliases[64];
 	u32            num_nanocubes;
 	u32            num_mapped_files;
-	struct {
-		u8             status;
-		Print          log;
-		char           log_buffer[1024];
-	} parse_result;
+	u8             parse_result;
 } app_NanocubesAndAliases;
 
 internal void
@@ -1846,10 +1841,7 @@ app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
 	BasicAllocator_init(&self->blocks);
 	self->num_mapped_files = 0;
 	self->num_nanocubes = 0;
-	self->parse_result.status = app_NanocubesAndAliases_OK;
-	Print_init(&self->parse_result.log,
-		   self->parse_result.log_buffer,
-		   self->parse_result.log_buffer + sizeof(self->parse_result.log_buffer));
+	self->parse_result = app_NanocubesAndAliases_OK;
 }
 
 // internal void
@@ -1909,11 +1901,9 @@ app_NanocubesAndAliases_copy_and_register_nanocube(app_NanocubesAndAliases *self
 }
 
 internal u8
-app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char *text_begin, char *text_end)
+app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char *text_begin, char *text_end, Print *log)
 {
-	Print *print = &self->parse_result.log;
-	Print_clear(print);
-
+	Assert(log);
 
 	MemoryBlock source_text = {.begin = text_begin, .end = text_end };
 	char *eq = pt_find_char(source_text.begin, source_text.end, '=');
@@ -1922,9 +1912,9 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 	char *alias_end   = eq;
 	s32 nanocubes_associated_with_this_alias = 0;
 	if (!alias || alias_begin == alias_end) {
-		Print_cstr(print, "[serve] Error: empty alias. Use an alias name for .nanocube index files");
-		self->parse_result.status = app_NanocubesAndAliases_EMPTY_ALIAS;
-		return self->parse_result.status;
+		Print_cstr(log, "[serve] Error: empty alias. Use an alias name for .nanocube index files");
+		self->parse_result = app_NanocubesAndAliases_EMPTY_ALIAS;
+		return self->parse_result;
 	}
 
 	nt_Tokenizer tok;
@@ -1935,7 +1925,7 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 	while (nt_Tokenizer_next(&tok)) {
 		++tok_number;
 		if (tok_number > 0) {
-			Print_char(print ,'\n');
+			Print_char(log,'\n');
 		}
 
 		char *filename_begin = tok.token.begin;
@@ -1955,21 +1945,21 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 		if (cache) {
 			pt_File nanocube_file = platform.open_read_file(filename_begin, filename_end);
 			if (!nanocube_file.open) {
-				Print_clear(print);
-				Print_cstr(print, "couldn't open file: ");
-				Print_str(print, filename_begin, filename_end);
-				self->parse_result.status = app_NanocubesAndAliases_COULDNT_OPEN_NANOCUBE_FILE;
-				return self->parse_result.status;
+				Print_cstr(log, "couldn't open file: ");
+				Print_str(log, filename_begin, filename_end);
+				Print_char(log,'\n');
+				self->parse_result = app_NanocubesAndAliases_COULDNT_OPEN_NANOCUBE_FILE;
+				return self->parse_result;
 			}
 			/* bring all file content to memory */
 
 			block_begin = BasicAllocator_alloc(&self->blocks, nanocube_file.size, 12);
 			if (!block_begin) {
-				Print_clear(print);
-				Print_cstr(print, "couldn't read file: ");
-				Print_str(print, filename_begin, filename_end);
-				self->parse_result.status = app_NanocubesAndAliases_NOT_ENOUGH_MEMORY;
-				return self->parse_result.status;
+				Print_cstr(log, "couldn't read file: ");
+				Print_str(log, filename_begin, filename_end);
+				Print_char(log,'\n');
+				self->parse_result = app_NanocubesAndAliases_NOT_ENOUGH_MEMORY;
+				return self->parse_result;
 			}
 			platform.read_next_file_chunk(&nanocube_file, block_begin, block_begin + nanocube_file.size);
 			Assert(nanocube_file.last_read == nanocube_file.size);
@@ -1980,25 +1970,25 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 			self->mapped_files[self->num_mapped_files] = platform.open_mmap_file(filename_begin, filename_end, 1, 0);
 			pt_MappedFile *mapped_file = self->mapped_files + self->num_mapped_files;
 			if (!mapped_file->mapped) {
-				Print_clear(print);
-				Print_cstr(print, "[serve] couldn't memory map file: ");
-				Print_str(print, filename_begin, filename_end);
-				self->parse_result.status = app_NanocubesAndAliases_COULD_NOT_MMAP_FILE;
-				return self->parse_result.status;
+				Print_cstr(log, "[serve] couldn't memory map file: ");
+				Print_str(log, filename_begin, filename_end);
+				Print_char(log,'\n');
+				self->parse_result = app_NanocubesAndAliases_COULD_NOT_MMAP_FILE;
+				return self->parse_result;
 			}
 			++self->num_mapped_files;
 			block_begin = mapped_file->begin;
 		}
 		/* messge */
-		Print_cstr(print, "[serve] Alias \"");
-		Print_str(print, alias_begin, alias_end);
+		Print_cstr(log, "[serve] Alias \"");
+		Print_str(log, alias_begin, alias_end);
 		if (cache) {
-			Print_cstr(print, "\" file copied in memory: ");
+			Print_cstr(log, "\" file copied in memory: ");
 		} else {
-			Print_cstr(print, "\" memory mapped file: ");
+			Print_cstr(log, "\" memory mapped file: ");
 		}
-		Print_str(print, filename_begin, filename_end);
-		// Print_cstr(print, "\n");
+		Print_str(log, filename_begin, filename_end);
+		// Print_cstr(log, "\n");
 		al_Allocator* allocator = (al_Allocator*)  block_begin;
 		/* TODO(llins): run some sanity check to see if content of mapped file seems valid */
 		nv_Nanocube* cube = (nv_Nanocube*)   al_Allocator_get_root(allocator);
@@ -2017,8 +2007,8 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 // 				self->parse_result.status = app_NanocubesAndAliases_NO_NANOCUBE_FOR_ALIAS;
 // 				return self->parse_result.status;
 // 	}
-	self->parse_result.status = app_NanocubesAndAliases_OK;
-	return self->parse_result.status;
+	self->parse_result = app_NanocubesAndAliases_OK;
+	return self->parse_result;
 }
 
 
@@ -2087,7 +2077,7 @@ service_serve(Request *request)
 	// maybe not necessary. Give it a shot without
 	// it.
 	//
-	Print        *print   = &request->print;
+	Print        *print   = request->print;
 	op_Options   *options = &request->options;
 
 	// get next two tokens
@@ -2158,8 +2148,9 @@ service_serve(Request *request)
 	MemoryBlock source_text = {.begin=0, .end=0};
 	for (u32 param=2;param<num_parameters;++param) {
 		op_Options_str(options, param, &source_text);
-		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end);
-		Request_print(request, &info.parse_result.log);
+		Print_clear(print);
+		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
+		Request_print(request, print);
 		Request_msg(request, "\n");
 		if (status != app_NanocubesAndAliases_OK) {
 			ok = 0;
@@ -2367,7 +2358,7 @@ service_query(Request *request)
 	// maybe not necessary. Give it a shot without
 	// it.
 	//
-	Print        *print   = &request->print;
+	Print        *print   = request->print;
 	op_Options   *options = &request->options;
 
 	// get next two tokens
@@ -2427,8 +2418,9 @@ service_query(Request *request)
 	MemoryBlock source_text = {.begin=0, .end=0};
 	for (u32 param=2;param<num_parameters;++param) {
 		op_Options_str(options, param, &source_text);
-		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end);
-		Request_print(request, &info.parse_result.log);
+		Print_clear(print);
+		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
+		Request_print(request, print);
 		Request_msg(request, "\n");
 		if (status != app_NanocubesAndAliases_OK) {
 			ok = 0;
@@ -2547,7 +2539,7 @@ internal void
 service_demo_create(Request *request)
 {
 
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	MemoryBlock input_filename  = { .begin=0, .end=0 };
@@ -3309,7 +3301,7 @@ app_QPart_consider_point(app_QPart *self, f32 lat, f32 lon)
 internal void
 service_sizes(Request *request)
 {
-	Print *print = &request->print;
+	Print *print = request->print;
 	print_size_of(nv_Nanocube);
 	print_size_of(nx_NanocubeIndex);
 	print_size_of(nm_Measure);
@@ -3323,7 +3315,7 @@ service_sizes(Request *request)
 internal void
 service_time(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	tm_initialize_timezones();
@@ -3451,7 +3443,7 @@ END_DOC_STRING
 internal void
 service_qpart(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 
@@ -3727,7 +3719,7 @@ service_qpart(Request *request)
 internal void
 service_qpart2(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 
@@ -4029,7 +4021,7 @@ service_qpart2(Request *request)
 internal void
 service_qpcount(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	b8  filter = 0;
@@ -4245,7 +4237,7 @@ internal void
 service_test_file_backed_mmap(Request *request)
 {
 
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	u64 prealloc_memory = 4;
@@ -4313,7 +4305,7 @@ service_test_file_backed_mmap(Request *request)
 internal void
 service_create_usage(Request *request, char *preamble_cstr)
 {
-	Print *print   = &request->print;
+	Print *print   = request->print;
 	if (preamble_cstr) {
 		Print_clear(print);
 		Print_cstr(print, "[create] ");
@@ -4335,7 +4327,7 @@ service_create_usage(Request *request, char *preamble_cstr)
 internal b8
 service_create_save_arena(Request *request, al_Allocator *allocator, char *filename_begin, char *filename_end, u64 part_number)
 {
-	Print *print = &request->print;
+	Print *print = request->print;
 
 	/* save current arena and create a smaller one from scratch for the new records */
 	FilePath filepath;
@@ -4400,7 +4392,7 @@ service_create_print_temporal_hint(Print *print, nm_TimeBinning *time_binning)
 internal al_Allocator*
 service_create_prepare_allocator_and_nanocube(Request *request, cm_Spec *spec, char *data_memory_begin, char *data_memory_end, nv_Nanocube *previous_part)
 {
-	Print *print = &request->print;
+	Print *print = request->print;
 
 	al_Allocator *allocator      = al_Allocator_new(data_memory_begin, data_memory_end);
 
@@ -4630,7 +4622,7 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 {
 	service_create_ServeConfig *serve_config = (service_create_ServeConfig*) data;
 	Request *request = serve_config->request;
-	Print   *print   = &request->print;
+	Print   *print   = request->print;
 	app_NanocubesAndAliases  *serve_info = serve_config->info;
 
 	static char *alias_name = "x";
@@ -5081,7 +5073,7 @@ END_DOC_STRING
 internal void
 service_create(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	pt_MappedFile              snap_mapped_file;
@@ -6680,7 +6672,7 @@ finalize_insertion:
 internal void
 service_bits(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	u64 offset = 0, bits = 0, repeat = 1;
@@ -6763,7 +6755,7 @@ internal
 PLATFORM_TCP_CALLBACK(service_client_callback)
 {
 	Request *request = (Request*) socket->user_data;
-	Print   *print   = &request->print;
+	Print   *print   = request->print;
 	Print_clear(print);
 	Print_cstr(print, "[client receive data]:\n");
 	Print_str(print, buffer, buffer+length);
@@ -6856,7 +6848,7 @@ PLATFORM_TCP_CALLBACK(service_http_tcp_server_callback)
 {
 	http_Channel *http_channel = (http_Channel*) socket->user_data;
 
-	Print *print = &debug_request->print;
+	Print *print = debug_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_tcp_server_callback]: dispatching raw tcp bytes to http message parser\n");
 	Print_str(print, buffer, buffer+length);
@@ -6875,7 +6867,7 @@ internal
 http_REQUEST_LINE_CALLBACK(service_http_request_line_callback)
 {
 	/* print request_target */
-	Print *print = &debug_request->print;
+	Print *print = debug_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_http_request_line_callback]: request-target is ");
 	/* rewrite on buffer of request_target */
@@ -6897,7 +6889,7 @@ internal
 http_HEADER_FIELD_CALLBACK(service_http_header_field_callback)
 {
 	/* print request_target */
-	Print *print = &debug_request->print;
+	Print *print = debug_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
 	Print_str(print, field_name_begin, field_name_end);
@@ -6964,7 +6956,7 @@ csv_PULL_CALLBACK(service_create_test_pull_callback)
 	platform.read_next_file_chunk(file, buffer, buffer + length);
 	Assert(file->last_read <= length);
 
-	Print *print = &debug_request->print;
+	Print *print = debug_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_create_test_pull_callback] buffer length: ");
 	Print_u64(print, length);
@@ -6985,7 +6977,7 @@ csv_PULL_CALLBACK(service_create_test_pull_callback)
 internal void
 service_create_test(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	// get next two tokens
@@ -7106,7 +7098,7 @@ END_DOC_STRING
 internal void
 service_create_col(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
@@ -7253,7 +7245,7 @@ service_polycover(Request *request)
 {
 	PolycoverAPI *polycover = &global_app_state->polycover;
 
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	// lat,lon pairs
@@ -7282,7 +7274,7 @@ service_polycover(Request *request)
 internal void
 service_polycover(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 	Print_cstr(print, "polycover is not available\n");
 	Request_print(request, print);
@@ -7293,7 +7285,7 @@ service_polycover(Request *request)
 internal void
 service_api(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 	Print_cstr(print, nanocube_api_doc);
 	Request_print(request, print);
@@ -7346,6 +7338,22 @@ Other COMMANDs:
 END_DOC_STRING
 */
 
+internal Print*
+print_new(PlatformAPI *platform, u64 size)
+{
+	u64 adjusted_size = RALIGN(size,Kilobytes(4));
+	u64 print_offset = RALIGN(sizeof(Print),8);
+	void *buffer = platform->allocate_memory(adjusted_size,3,0).memblock.begin;
+
+	Assert(buffer);
+	Print *print = buffer;
+	char *begin = (char*) buffer + print_offset;
+	char *end   = (char*) buffer + adjusted_size;
+	Print_init(print, begin, end);
+	return print;
+}
+
+
 APPLICATION_PROCESS_REQUEST(application_process_request)
 {
 	/* copy platform function pointers */
@@ -7365,11 +7373,12 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 	global_profile_table = (pf_Table*) app_state->global_profile_table;
 #endif
 
-	Request request;
-	request.app_state  = app_state;
-	request.pfh_stdout = pfh_stdout;
-	request.pfh_stdin  = pfh_stdin;
-	Print_init(&request.print, request.print_buffer, request.print_buffer + sizeof(request.print_buffer));
+	Request request = {
+		.app_state = app_state,
+		.pfh_stdout = pfh_stdout,
+		.pfh_stdin = pfh_stdin,
+		.print = print_new(&platform, Kilobytes(64))
+	};
 
 	pt_Memory options_memory = platform.allocate_memory(Kilobytes(16),3,0);
 	op_Options_init(&request.options, options_memory.memblock.begin, options_memory.memblock.end);

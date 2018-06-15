@@ -27,7 +27,7 @@ END_TODO
 internal void
 ra_service_scanner(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	MemoryBlock filename = { .begin=0, .end=0 };
@@ -71,7 +71,7 @@ ra_service_scanner(Request *request)
 internal void
 ra_service_parser(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	MemoryBlock filename = { .begin=0, .end=0 };
@@ -426,7 +426,7 @@ ra_print_object(Print *print, rg_Object *object)
 internal void
 ra_service_print(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	MemoryBlock filename = { .begin=0, .end=0 };
@@ -477,7 +477,7 @@ ra_service_print(Request *request)
 internal void
 ra_service_latlon(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	MemoryBlock filename = { .begin=0, .end=0 };
@@ -792,7 +792,7 @@ ra_service_create_snap_insert_way(ra_TmpObject *tmp_way)
 		rg_Graph_set_incident_locates_to_object(graph, way, nodes, nodes + num_nodes);
 	} else {
 		Request *request = ra_service_create_snap_info.request;
-		Print* print = &request->print;
+		Print* print = request->print;
 
 		platform.lock_mutex(ra_service_create_snap_info.mutex);
 
@@ -834,7 +834,7 @@ ra_service_create_snap_parse_ways_single_threaded(s32 input_index)
 	pt_MappedFile* mapped_file  = ra_service_create_snap_info.mapped_files + input_index;
 	Request        *request     = ra_service_create_snap_info.request;
 	rg_Graph       *graph       = ra_service_create_snap_info.graph;
-	Print          *print       = &request->print;
+	Print          *print       = request->print;
 
 	/* memory for .xml parsing */
 	pt_Memory work_memory = platform.allocate_memory(Megabytes(32), 12, 0);
@@ -1021,7 +1021,7 @@ ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 	pt_MappedFile* mapped_file  = ra_service_create_snap_info.mapped_files + input_index;
 	Request        *request     = ra_service_create_snap_info.request;
 	rg_Graph       *graph       = ra_service_create_snap_info.graph;
-	Print          *print       = &request->print;
+	Print          *print       = request->print;
 
 	ra_TmpObject_Queue *queue = &ra_service_create_snap_info.multithread.tmpway_queue;
 
@@ -1238,7 +1238,7 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 	pt_MappedFile*    mapped_file  = ra_service_create_snap_info.mapped_files + input_index;
 	Request           *request     = ra_service_create_snap_info.request;
 	rg_Graph          *graph       = ra_service_create_snap_info.graph;
-	Print             *print       = &request->print;
+	Print             *print       = request->print;
 
 	ra_Location_Queue *queue    = &ra_service_create_snap_info.multithread.location_queue;
 
@@ -1360,7 +1360,7 @@ ra_service_create_snap_parse_nodes_single_threaded(s32 input_index)
 	pt_MappedFile* mapped_file  = ra_service_create_snap_info.mapped_files + input_index;
 	Request        *request     = ra_service_create_snap_info.request;
 	rg_Graph       *graph       = ra_service_create_snap_info.graph;
-	Print          *print       = &request->print;
+	Print          *print       = request->print;
 
 	/* memory for .xml parsing */
 	pt_Memory work_memory = platform.allocate_memory(Megabytes(32), 12, 0);
@@ -1467,7 +1467,7 @@ END_DOC_STRING
 internal void
 ra_service_create_snap(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help")) {
@@ -1899,7 +1899,7 @@ ra_service_create_snap(Request *request)
 internal void
 ra_service_btree(Request *request)
 {
-	Print *print = &request->print;
+	Print *print = request->print;
 
 	pt_Memory data_memory = platform.allocate_memory(Gigabytes(2), 12, Terabytes(2));
 
@@ -1942,7 +1942,7 @@ ra_service_btree(Request *request)
 internal void
 ra_service_closest(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	MemoryBlock input_filename  = { .begin=0, .end=0 };
@@ -2092,7 +2092,7 @@ ra_print_vpitems(Print *print, rg_VPNode *begin, rg_VPNode *end, rg_VPNode *high
 internal void
 ra_service_ksmall(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	u64 k = 0;
@@ -4183,7 +4183,7 @@ END_DOC_STRING
 internal void
 ra_service_snap(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
@@ -4353,7 +4353,7 @@ END_DOC_STRING
 internal void
 ra_service_snap_cli(Request *request)
 {
-	Print      *print   = &request->print;
+	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
