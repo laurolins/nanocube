@@ -21,7 +21,7 @@
   },
  "scripts": {
     "start": "parcel index.html",
-    "build": "rm -rf dist/ && parcel build index.html && git add dist/"
+    "build": "rm -rf dist/ && parcel build --public-url=./ index.html && git add dist/"
   },
   "keywords": [],
   "author": "CY Ip <salivian@gmail.com>",

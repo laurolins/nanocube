@@ -430,12 +430,12 @@ Query.prototype = {
     }
 };
 
-var Nanocube = function(opts) {
+var Nanocube3 = function(opts) {
     this.schema = null ;
     this.dimensions = null ;
 };
 
-Nanocube.prototype = {
+Nanocube3.prototype = {
     init: function(url){
         var nc = this;
         return new Promise((resolve,reject)=>{
@@ -711,3 +711,5 @@ function latlong2tile(latlong,zoom) {
              y: lat2tile(latlong[0],zoom),
              z: zoom};
 }
+
+export default Nanocube3;
