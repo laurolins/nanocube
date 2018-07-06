@@ -398,11 +398,24 @@ GroupedBarChart.prototype = {
         });
         
         //Sort y axis
-        if (opts.alpha_order){            
-            y0.domain(data.map(function(d){return d.cat;}).sort());
-            if (y0.domain().every(function(d) {return !isNaN(d);})){
-                y0.domain(y0.domain().sort(function(a,b){return a-b;}));
-            }
+        y0.domain(data.map(function(d){return d.cat;}));
+        if (opts.alpha_order){
+            //sort the numbers
+            let numlabels = y0.domain().filter(function(d){
+                return !isNaN(parseFloat(d));
+            });
+
+            let strlabels = y0.domain().filter(function(d){
+                return isNaN(parseFloat(d));
+            });
+
+            //sort them independently
+            numlabels.sort(function(a,b){return parseFloat(a)-parseFloat(b);});
+            strlabels.sort();
+
+            //concat
+            y0.domain(numlabels.concat(strlabels));
+
             sortbtn.html('#');
         }
         else{ //sort by data value
