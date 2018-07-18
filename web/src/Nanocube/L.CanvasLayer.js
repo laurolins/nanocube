@@ -51,17 +51,16 @@ L.CanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     //-------------------------------------------------------------
     _onLayerDidMove: function () {
         //clear canvas
-        this._canvas.getContext('2d')
-            .clearRect(0,0,
-                       this._canvas.width,
-                       this._canvas.height);
+        this._canvas.getContext('2d').clearRect(0,0,
+                                                this._canvas.width,
+                                                this._canvas.height);
+        
+        //redraw
+        this.drawLayer();
 
         //move
         var topLeft = this._map.containerPointToLayerPoint([0, 0]);
         L.DomUtil.setPosition(this._canvas, topLeft);
-        
-        //redraw
-        this.drawLayer();
     },
     //-------------------------------------------------------------
     getEvents: function () {
