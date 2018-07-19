@@ -5935,7 +5935,7 @@ service_create(Request *request)
 					// storage space for path. guaranteed to fit any path
 					u8 path[128];
 					nx_Array path_array;
-					nx_Array_init(&path_array, path, 128);
+					nx_Array_init(&path_array, path, levels);
 
 					if (mode_normal) {
 
@@ -6381,7 +6381,9 @@ service_create(Request *request)
 					}
 					if (!lok) {
 						Print_clear(print);
-						Print_format(print, "[Warning] Could not prepare record on offset [line %lld]\n", line_no);
+						Print_format(print, "[Warning] Could not prepare record on line %lld because of index dimension '", line_no);
+						Print_str(print, dim->name.begin, dim->name.end);
+						Print_cstr(print, "'\n");
 						Request_print(request, print);
 						could_prepare_record = 0;
 						break;
