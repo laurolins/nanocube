@@ -10,14 +10,13 @@ var Nanocube = function(opts) {
     this.dimensions = null ;
 };
 
-Nanocube.initNanocube = function(url){
-    let nc = new Nanocube();
-    return new Promise((resolve,reject)=>{
-        nc.setUrl(url).done((res)=>resolve(res));
-    });
-};
-
 Nanocube.prototype = {
+    init:function(url){
+        let nc = this;
+        return new Promise((resolve,reject)=>{
+            nc.setUrl(url).done((res)=>resolve(res));
+        });
+    },
     setUrl: function(url){
 	var dfd  = new $.Deferred();
 	this.url = url;

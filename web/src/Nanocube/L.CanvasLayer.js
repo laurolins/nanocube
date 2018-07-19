@@ -1,9 +1,11 @@
 
 /*
-  Generic  Canvas Layer for leaflet 0.7 and 1.0-rc, 
-  copyright Stanislav Sumbera,  2016 , sumbera.com , license MIT
+  Generic  Canvas Layer for leaflet 0.7 and 1.0-rc, 1.2, 1.3
+  copyright Stanislav Sumbera,  2016-2018, sumbera.com , license MIT
   originally created and motivated by L.CanvasOverlay  available here: https://gist.github.com/Sumbera/11114288  
   
+  also thanks to contributors: heyyeyheman,andern,nikiv3, anyoneelse ?
+  enjoy !
 */
 
 // -- L.DomUtil.setTransform from leaflet 1.0.0 to work on 0.0.7
@@ -48,9 +50,17 @@ L.CanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     },
     //-------------------------------------------------------------
     _onLayerDidMove: function () {
+        //clear canvas
+        this._canvas.getContext('2d').clearRect(0,0,
+                                                this._canvas.width,
+                                                this._canvas.height);
+        
+        //redraw
+        this.drawLayer();
+
+        //move
         var topLeft = this._map.containerPointToLayerPoint([0, 0]);
         L.DomUtil.setPosition(this._canvas, topLeft);
-        this.drawLayer();
     },
     //-------------------------------------------------------------
     getEvents: function () {
@@ -68,13 +78,13 @@ L.CanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
     //-------------------------------------------------------------
     onAdd: function (map) {
         this._map = map;
-        this._canvas = L.DomUtil.create('canvas', 'leaflet-layer');
+        this._canvas = L.DomUtil.create('canvas', 'leaflet-layer');        
         this.tiles = {};
 
         var size = this._map.getSize();
         this._canvas.width = size.x;
         this._canvas.height = size.y;
-
+        
         var animated = this._map.options.zoomAnimation && L.Browser.any3d;
         L.DomUtil.addClass(this._canvas, 'leaflet-zoom-' + (animated ? 'animated' : 'hide'));
 
@@ -93,6 +103,9 @@ L.CanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
         var del = this._delegate || this;
         del.onLayerWillUnmount && del.onLayerWillUnmount(); // -- callback
    
+        if (this._frame) {
+            L.Util.cancelAnimFrame(this._frame);
+        }
 
         map.getPanes().overlayPane.removeChild(this._canvas);
  
@@ -135,7 +148,7 @@ L.CanvasLayer = (L.Layer ? L.Layer : L.Class).extend({
                                                 center : center,
                                                 corner : corner
                                             });
-        this._frame = null;
+        this._frame = null;        
     },
     // -- L.DomUtil.setTransform from leaflet 1.0.0 to work on 0.0.7
     //------------------------------------------------------------------------------

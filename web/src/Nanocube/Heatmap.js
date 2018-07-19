@@ -475,9 +475,11 @@ Heatmap.prototype = {
         var height = pb.max.y-pb.min.y+1;
 
         //create a proxy canvas
-        var c = $('<canvas>').attr("width", width).attr("height", height)[0];
-
-        var proxyctx = c.getContext("2d");
+        var c = document.createElement('canvas');
+        c.width = width;
+        c.height = height;
+        
+        var proxyctx = c.getContext('2d');
         var imgData = proxyctx.createImageData(width,height);
         var buf = new ArrayBuffer(imgData.data.length);
         var buf8 = new Uint8ClampedArray(buf);
