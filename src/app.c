@@ -4422,6 +4422,11 @@ service_create_prepare_allocator_and_nanocube(Request *request, cm_Spec *spec, c
 					nv_Nanocube_insert_index_dimension(nanocube, 2, levels, dim->name.begin, dim->name.end);
 					nv_Nanocube_set_dimension_hint_cstr(nanocube, dim->name.begin, dim->name.end, "spatial", print);
 				} break;
+				case cm_INDEX_MAPPING_XY_QUADTREE: {
+					u8 levels = dim->mapping_spec.index_mapping.xy.depth;
+					nv_Nanocube_insert_index_dimension(nanocube, 2, levels, dim->name.begin, dim->name.end);
+					nv_Nanocube_set_dimension_hint_cstr(nanocube, dim->name.begin, dim->name.end, "spatial", print);
+				} break;
 				case cm_INDEX_MAPPING_IP_HILBERT: {
 					u8 levels = dim->mapping_spec.index_mapping.ip_hilbert.depth;
 					nv_Nanocube_insert_index_dimension(nanocube, 2, levels, dim->name.begin, dim->name.end);
@@ -4485,6 +4490,10 @@ service_create_prepare_allocator_and_nanocube(Request *request, cm_Spec *spec, c
 				switch(dim->mapping_spec.index_mapping.type) {
 				case cm_INDEX_MAPPING_LATLON_MERCATOR_QUADTREE: {
 					u8 levels = dim->mapping_spec.index_mapping.latlon.depth;
+					nv_Nanocube_insert_index_dimension(nanocube, 2, levels, dim->name.begin, dim->name.end);
+				} break;
+				case cm_INDEX_MAPPING_XY_QUADTREE: {
+					u8 levels = dim->mapping_spec.index_mapping.xy.depth;
 					nv_Nanocube_insert_index_dimension(nanocube, 2, levels, dim->name.begin, dim->name.end);
 				} break;
 				case cm_INDEX_MAPPING_IP_HILBERT: {
@@ -4997,6 +5006,13 @@ on the columns of the input .csv file
 		        creates a quad-tree with L levels using the mercator
 			projection. Expects two input columns with floating
 			pointing numbers for latitude and longitude.
+
+		    xy(L)
+		    xy_slippy(L)
+		        creates a quad-tree with L levels using the coords of
+			2^L x 2^L grid (0 based coords). Expects input coming
+			from two input columns (y grows bottom-up on xy and
+			top down on xy_slippy).
 
 		    time(L,BASE,WIDTH_SECS,OFFSET_SECS)
 		        creates a binary-tree with L levels. Expects one input
@@ -5666,6 +5682,17 @@ service_create(Request *request)
 					it_paths += levels;
 					++it_addr;
 				} break;
+				case cm_INDEX_MAPPING_XY_QUADTREE: {
+					Assert(it_addr != end_addr);
+					u8 levels = dim->mapping_spec.index_mapping.xy.depth;
+					if (it_addr != address) {
+						(it_addr - 1)->next = it_addr;
+					}
+					it_addr->next = 0;
+					nx_Array_init(&it_addr->labels, it_paths, levels);
+					it_paths += levels;
+					++it_addr;
+				} break;
 				case cm_INDEX_MAPPING_IP_HILBERT: {
 					Assert(it_addr != end_addr);
 					u8 levels = dim->mapping_spec.index_mapping.ip_hilbert.depth;
@@ -6277,6 +6304,9 @@ service_create(Request *request)
 					switch (dim->mapping_spec.index_mapping.type) {
 					case cm_INDEX_MAPPING_LATLON_MERCATOR_QUADTREE: {
 						lok = cm_mapping_latlon(dim, &it_addr->labels, csv_fields, snap_function);
+					} break;
+					case cm_INDEX_MAPPING_XY_QUADTREE: {
+						lok = cm_mapping_xy(dim, &it_addr->labels, csv_fields);
 					} break;
 					case cm_INDEX_MAPPING_IP_HILBERT: {
 						lok = cm_mapping_ip_hilbert(dim, &it_addr->labels, csv_fields);

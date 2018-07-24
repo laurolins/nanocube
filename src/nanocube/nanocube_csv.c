@@ -45,7 +45,8 @@ typedef enum {
 	cm_INDEX_MAPPING_WEEKDAY,
 	cm_INDEX_MAPPING_HOUR,
 	cm_INDEX_MAPPING_CATEGORICAL,
-	cm_INDEX_MAPPING_IP_HILBERT
+	cm_INDEX_MAPPING_IP_HILBERT,
+	cm_INDEX_MAPPING_XY_QUADTREE,
 } cm_IndexMappingType;
 
 typedef enum {
@@ -67,6 +68,10 @@ typedef struct {
 	union {
 		struct {
 			cm_IndexMappingType type;
+			struct {
+				u8  depth;
+				b8  top_down;
+			} xy;
 			struct {
 				u8 depth;
 			} latlon;
@@ -178,6 +183,16 @@ cm_Mapping_latlon(cm_Mapping *self, u8 depth)
 	self->mapping_type	         = cm_INDEX_DIMENSION_MAPPING;
 	self->index_mapping.type         = cm_INDEX_MAPPING_LATLON_MERCATOR_QUADTREE;
 	self->index_mapping.latlon.depth = depth;
+}
+
+internal void
+cm_Mapping_xy(cm_Mapping *self, u8 depth, b8 top_down)
+{
+	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
+	self->mapping_type	         = cm_INDEX_DIMENSION_MAPPING;
+	self->index_mapping.type         = cm_INDEX_MAPPING_XY_QUADTREE;
+	self->index_mapping.xy.depth     = depth;
+	self->index_mapping.xy.top_down  = top_down;
 }
 
 internal void
@@ -405,6 +420,58 @@ np_FUNCTION_HANDLER(cm_compiler_func_latlon)
 
 	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
 	cm_Mapping_latlon(mapping_spec, depth);
+
+	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
+}
+
+/* xy */
+np_FUNCTION_HANDLER(cm_compiler_func_xy)
+{
+	s64 n = params_end - params_begin;
+	Assert(n == 1);
+
+	np_TypeValue *number = params_begin;
+
+	Assert(number->type_id = cm_compiler_types.number_type_id);
+
+	f64 depth_float = *((f64*) number->value);
+
+	if (depth_float < 1 || depth_float > 127) {
+		char *error = "xy function expects resolution in {1,2,...,127}\n";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+	u8 depth = (u8) depth_float;
+
+	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
+	cm_Mapping_xy(mapping_spec, depth, 0);
+
+	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
+}
+
+/* slippy */
+np_FUNCTION_HANDLER(cm_compiler_func_xy_slippy)
+{
+	s64 n = params_end - params_begin;
+	Assert(n == 1);
+
+	np_TypeValue *number = params_begin;
+
+	Assert(number->type_id = cm_compiler_types.number_type_id);
+
+	f64 depth_float = *((f64*) number->value);
+
+	if (depth_float < 1 || depth_float > 127) {
+		char *error = "xy_slippy function expects resolution in {1,2,...,127}\n";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+	u8 depth = (u8) depth_float;
+
+	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
+	cm_Mapping_xy(mapping_spec, depth, 1);
 
 	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
 }
@@ -799,6 +866,22 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 	// read latlon in degrees convert to mercator convert to quadtree
 	parameter_types[0] = cm_compiler_types.number_type_id;
 	np_Compiler_insert_function_cstr
+		(compiler, "xy", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+1, 0, 0,
+		 cm_compiler_func_xy);
+
+	// latlon: number -> mapping_spec
+	// read latlon in degrees convert to mercator convert to quadtree
+	parameter_types[0] = cm_compiler_types.number_type_id;
+	np_Compiler_insert_function_cstr
+		(compiler, "xy_slippy", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+1, 0, 0,
+		 cm_compiler_func_xy_slippy);
+
+	// latlon: number -> mapping_spec
+	// read latlon in degrees convert to mercator convert to quadtree
+	parameter_types[0] = cm_compiler_types.number_type_id;
+	np_Compiler_insert_function_cstr
 		(compiler, "ip", cm_compiler_types.mapping_spec_id,
 		 parameter_types, parameter_types+1, 0, 0,
 		 cm_compiler_func_ip_hilbert);
@@ -1040,6 +1123,88 @@ cm_mapping_latlon(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin,
 	return 1;
 }
 
+internal b8
+cm_mapping_xy(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin)
+{
+	// Print *print = &request->print;
+
+	Assert(dim->mapping_spec.index_mapping.type == cm_INDEX_MAPPING_XY_QUADTREE);
+
+	u8 levels   = dim->mapping_spec.index_mapping.xy.depth;
+	b8 top_down = dim->mapping_spec.index_mapping.xy.top_down;
+
+	Assert(levels == array->length);
+
+	cm_ColumnRef *basecol = dim->input_columns.begin;
+
+	Assert(dim->input_columns.end - dim->input_columns.begin == 2);
+
+	u32 x_idx = (basecol+0)->index;
+	u32 y_idx = (basecol+1)->index;
+
+	MemoryBlock *x_text = tokens_begin + x_idx;
+	MemoryBlock *y_text = tokens_begin + y_idx;
+
+	u64 cell_x=0, cell_y=0;
+
+	if (!pt_parse_u64(x_text->begin, x_text->end, &cell_x)) {
+		return 0;
+	}
+
+	if (!pt_parse_u64(y_text->begin, y_text->end, &cell_y)) {
+		return 0;
+	}
+
+	u64 cells_per_side = 1ull << levels;
+	if (cell_x >= cells_per_side || cell_y >= cells_per_side) {
+		return 0;
+	}
+
+	if (top_down) {
+		cell_y = cells_per_side - 1 - cell_y;
+	}
+
+	// quadtree path
+// 	Print_clear(print);
+// 	Print_cstr(print, "lat: ");
+// 	Print_f64(print,lat);
+// 	Print_align(print,24,1);
+// 	Print_cstr(print, "   lon: ");
+// 	Print_f64(print,lon);
+// 	Print_align(print,24,1);
+// 	Print_cstr(print, "   mx: ");
+// 	Print_f64(print,mercator_x);
+// 	Print_align(print,24,1);
+// 	Print_cstr(print, "   my: ");
+// 	Print_f64(print,mercator_y);
+// 	Print_align(print,24,1);
+// 	Print_cstr(print, "   cellx: ");
+// 	Print_u64(print,cell_x);
+// 	Print_align(print,24,1);
+// 	Print_cstr(print, "   celly: ");
+// 	Print_u64(print,cell_y);
+// 	Print_align(print,24,1);
+// 	Print_cstr(print, "\n");
+// 	Request_print(request,print);
+
+	for (u8 i=0;i<levels;i++) {
+		u8 label = ((cell_x & 1) ? 1 : 0) + ((cell_y & 1) ? 2 : 0);
+		cell_x >>= 1;
+		cell_y >>= 1;
+		nx_Array_set(array, levels - 1 - i, label);
+	}
+
+// 	Print_clear(print);
+// 	Print_cstr(print, "path: ");
+// 	for (u8 i=0;i<levels;i++) {
+// 		u8 label = nx_Array_get(array,i);
+// 		Print_u64(print, (u64) label);
+// 	}
+// 	Print_cstr(print, "\n");
+// 	Request_print(request,print);
+
+	return 1;
+}
 
 //rotate/flip a quadrant appropriately
 internal void
