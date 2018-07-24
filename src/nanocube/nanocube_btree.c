@@ -673,6 +673,9 @@ bt_BTree_new_block(bt_BTree *self, u64 min_capacity)
 	al_Allocator *allocator = al_Ptr_Allocator_get(&self->allocator);
 	al_PageBlock page_block = al_Allocator_back_reserve(allocator, new_block_pages);
 
+	if (page_block.page_size == 0) {
+		fputs("[nanocube create] Not enough initial memory (possible cause: label set is large). Try increasing -size0=S\n",stderr);
+	}
 	Assert(page_block.page_size>0);
 
 	char *base = (char*) al_Allocator_page_to_ptr(allocator, page_block.page_index);

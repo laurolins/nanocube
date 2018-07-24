@@ -463,6 +463,7 @@ Request_print(Request *req, Print *print)
 // Memory Limits
 //------------------------------------------------------------------------------
 
+static u64 app_service_create_MEM_LABELS             = Megabytes(16);
 static u64 app_service_serve_MEM_COMPILER            = Megabytes(8);
 static u64 app_service_serve_MEM_PRINT_RESULT        = Megabytes(64);
 static u64 app_service_serve_MEM_PRINT_HEADER        = Kilobytes(4);
@@ -4897,8 +4898,8 @@ Possible OPTIONS:
          initial nanocube index file size. This size doubles
 	 everytime the usage gets closer to the current capacity.
 	 Once the building process finishes the resulting index
-	 file shrinks to the actual used pages. Example values for S:
-	 4M, 16M, 256M, 1G.
+	 file shrinks to the actual used pages. Example values for
+         S: 4M, 16M, 32M, 256M, 1G. (default is 32MB)
     -max-size=S
          every time we need to increase the current capacity (initially
 	 equals to size0), we check to see if the new capacity exceeds
@@ -4932,6 +4933,8 @@ Possible OPTIONS:
 	 from solving queries.
     -serve-threads=N
          number of threads for solving queries.
+    -mem_labels=S
+         memory for the label sets.
 
 The MAPPING file consists of a series of specifications of which index
 and measure dimensions we want the output nanocube index to have based
@@ -5134,16 +5137,31 @@ service_create(Request *request)
 
 	}
 
-	s64 size0 = Megabytes(16);
+	s64 size0 = Megabytes(32);
 	if (op_Options_find_cstr(options,"-size0")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-size0",0,&st)) {
-			service_create_usage(request, "invalid memory value on -size0 (default: 16M)");
+			service_create_usage(request, "invalid memory value on -size0 (default: 32M)");
 			return;
 		} else {
 			size0 = ut_parse_storage_size(st.begin, st.end);
 			if (size0 < Megabytes(4)) {
 				service_create_usage(request, "invalid memory value on -size0 (needs to be at least 4M)");
+				return;
+			}
+		}
+	}
+
+	s64 mem_labels = Megabytes(16);
+	if (op_Options_find_cstr(options,"-mem_labels")) {
+		MemoryBlock st;
+		if (!op_Options_named_str_cstr(options,"-mem_labels",0,&st)) {
+			service_create_usage(request, "invalid memory value on -size0 (default: 16M)");
+			return;
+		} else {
+			mem_labels = ut_parse_storage_size(st.begin, st.end);
+			if (mem_labels < Megabytes(4)) {
+				service_create_usage(request, "invalid memory value on -mem_labels (needs to be at least 4M)");
 				return;
 			}
 		}
@@ -5900,7 +5918,7 @@ service_create(Request *request)
 				//     for now assume we can fit everything in 16M
 				// @leak
 				//
-				pt_Memory dim_memory = platform.allocate_memory(Megabytes(16),3,0);
+				pt_Memory dim_memory = platform.allocate_memory(mem_labels,3,0);
 
 				set_Set *set = (set_Set*) dim_memory.memblock.begin;
 				u32 set_offset = RALIGN(sizeof(set_Set),8);

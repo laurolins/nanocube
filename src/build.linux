@@ -171,7 +171,7 @@ if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
 ${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
 ${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
-# cp nanocube ${HOME}/local/bin/. ;\
-# cp libnanocube_app.so ${HOME}/local/bin/. ;\
+cp nanocube ${LOCAL}/bin/. ;\
+cp libnanocube_app.so ${LOCAL}/lib/. ;\
 popd
 
