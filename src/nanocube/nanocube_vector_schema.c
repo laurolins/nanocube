@@ -59,6 +59,12 @@ nvs_Schema_checkpoint(nvs_Schema *self)
 	};
 }
 
+static char*
+nvs_Schema_cstr(nvs_Schema *self, s32 right_offset)
+{
+	return (char*) RightOffsetedPointer(self, self->size, right_offset);
+}
+
 static void
 nvs_Schema_restore(nvs_Schema *self, nvs_CheckPoint cp)
 {
