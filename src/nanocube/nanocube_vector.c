@@ -3086,6 +3086,42 @@ nvr_new_table(void *buffer, u64 size, nm_Table *input_table)
 
 }
 
+
+//-------------------------------------------
+// nanocube vector schema
+//-------------------------------------------
+
+#include "nanocube_vector_schema.c"
+
+static nvs_Schema*
+nv_prepare_nvs_schema(nv_Nanocube *nanocube, char *name, s32 name_length, void *buffer, s32 buffer_length)
+{
+	nvs_Schema *schema = nvs_init_schema(buffer, buffer_length, name, name_length);
+
+	// schema doesn't fit on the given buffer_length
+	if (!schema) {
+		return 0;
+	}
+
+	for (s32 i=0;i<nanocube->num_index_dimensions;++i) {
+		// nvs_Schema_push_index_dimension(nvs_Schema *self, char *name, u8 bits_per_level, u8 num_levels, u8 hint)
+		// @todo write the hint instead of zero
+		nvs_Schema_push_index_dimension(schema,
+						nanocube->index_dimensions.names[i],
+						nanocube->index_dimensions.bits_per_level[i],
+						nanocube->index_dimensions.num_levels[i],
+						0);
+	}
+
+	for (s32 i=0;i<nanocube->num_measure_dimensions;++i) {
+		nvs_Schema_push_measure_dimension(schema,
+						nanocube->measure_dimensions.names[i],
+						(u8) nanocube->measure_dimensions.storage[i]);
+	}
+	return schema;
+}
+
+
 //-------------------------------------------
 // print
 //-------------------------------------------
@@ -3210,7 +3246,6 @@ nv_ResultStream_version(nv_ResultStream *self, char *api, char *executable)
 	} break;
 	case nv_FORMAT_TEXT: {
 	{
-
 		// TODO(llins) print aliases on the text schema?
 		Print_format(print, "# version\napi: %s\nexecutable: %s", api, executable);
 	}
@@ -3358,7 +3393,24 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 	}
 	} break;
 	case nv_FORMAT_BINARY: {
-		// TODO(llins): send as a table
+		//
+		// @todo if multiple schemas are printed, there is no way the client will
+		// be able to know it. For the moment, assume a single nanocube per
+		// server is being served for clients using the binary schema.
+		//
+		Assert(((u64)print->begin % 8)==0);
+		void *buffer = print->end;
+		s64 buffer_length = print->capacity - print->end;
+		buffer_length = LALIGN(buffer_length, 8);
+		// Assert(print->begin == print->end);
+		nvs_Schema *schema = nv_prepare_nvs_schema(nanocube, name.begin, (s32) MemoryBlock_length(&name), buffer, buffer_length);
+		if (!schema) {
+			fputs("[fatal] Not enough memory to write binary schema", stderr);
+			Assert(0 && "[fatal] Not enough memory to write binary schema");
+			exit(-1);
+		}
+		nvs_pack(schema, nvs_smallest_size(schema));
+		print->end = print->end + schema->size;
 	} break;
 	}
 }
@@ -3938,68 +3990,6 @@ nx_PayloadAggregate_insert(nx_PayloadAggregate* self, void* payload_unit, void* 
 		}
 	}
 }
-
-
-
-
-//
-// typedef struct {
-// 	nm_TableKeysType *type;
-// 	u32            rows;
-// 	u32            row_length;
-// 	u32            current_offset;
-// 	u8             columns;
-// 	u8             current_column;
-// 	struct {
-// 		char *begin;
-// 		char *end;
-// 	} keys;
-// 	LinearAllocator *memsrc; // should be exclusive while not consolidated
-// } nm_TableKeys;
-//
-//
-// typedef struct {
-// 	struct {
-// 		f64 *begin;
-// 		f64 *end;
-// 	} values;
-// 	struct {
-// 		MemoryBlock *begin;
-// 		MemoryBlock *end;
-// 	} names;
-// 	struct {
-// 		u32 *begin;
-// 		u32 *end;
-// 	} src_indices;
-// 	u32 columns;
-// 	u32 rows;
-// 	LinearAllocator *memsrc;
-// } nv_TableValues;
-//
-// typedef struct {
-// 	MemoryBlock    name;
-// 	u8             levels;
-// 	u8             bits;
-// 	b8             loop_column;
-// 	nm_BindingHint hint;
-// 	// b8          flags;
-// } nm_TableKeysColumnType;
-//
-// typedef struct {
-// 	nm_TableKeysColumnType *begin;
-// 	nm_TableKeysColumnType *end;
-// } nm_TableKeysType;
-//
-//
-//
-//
-//
-// 	nm_TableKeys         table_keys;
-// 	nm_TableValuesHandle table_values_handle;
-// 	nm_MeasureSource     *source;
-
-
-
 
 
 
