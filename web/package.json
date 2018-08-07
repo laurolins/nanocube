@@ -5,7 +5,9 @@
   "repository": "https://github.com/laurolins/nanocube",
   "license": "EPL-1.0",
   "main": "index.js",
-  "dependencies": {},
+  "dependencies": {
+    "parcel": "^1.9.7"
+  },
   "devDependencies": {
     "@fortawesome/fontawesome": "*",
     "@fortawesome/fontawesome-free-solid": "*",
@@ -16,10 +18,9 @@
     "jsep": "*",
     "leaflet": "*",
     "leaflet-draw": "*",
-    "parcel": "*",
     "sprintf-js": "*"
   },
- "scripts": {
+  "scripts": {
     "start": "parcel index.html",
     "build": "rm -rf dist/ && parcel build --public-url=./ index.html && git add dist/"
   },

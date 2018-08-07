@@ -262,15 +262,16 @@ Query.prototype = {
         }
         else{
             console.log(query_string);
-            $.ajax({url: query_string, context: ctx}).done(function(res){
-                if(Object.keys(cache).length > 10){
-                    var idx = Math.floor(Math.random() * (10+1)) ;
-                    var k = Object.keys(cache)[idx];
-                    delete cache[k];
-                }
-                cache[query_string] = $.extend(true, {}, res);
-                dfd.resolveWith(ctx, [res]);
-            });
+            $.ajax({url: query_string,
+                    context: ctx}).done(function(res){
+                        if(Object.keys(cache).length > 10){
+                            var idx = Math.floor(Math.random() * (10+1)) ;
+                            var k = Object.keys(cache)[idx];
+                            delete cache[k];
+                        }
+                        cache[query_string] = $.extend(true, {}, res);
+                        dfd.resolveWith(ctx, [res]);
+                    });
 
             return dfd.promise();
         }
@@ -447,17 +448,18 @@ Nanocube3.prototype = {
         var dfd  = new $.Deferred();
         this.url = url;
         var schema_q = this.url + '/schema';
-
-        $.ajax({url: schema_q, context:this}).done(function(schema) {
-            var nc = this;
-            this.setSchema(schema);
-            this.setTimeInfo().done(function() {
-                dfd.resolve(nc);
-            });
-        }).fail(function() {
-            console.log('Failed to get Schema from ', url);
-        });
-
+        
+        $.ajax({url: schema_q,
+                context:this}).done(function(schema) {
+                    var nc = this;
+                    this.setSchema(schema);
+                    this.setTimeInfo().done(function() {
+                        dfd.resolve(nc);
+                    });
+                }).fail(function() {
+                    console.log('Failed to get Schema from ', url);
+                });
+        
         return dfd.promise();
     },
     query: function() {

@@ -22,18 +22,16 @@ Nanocube.prototype = {
 	this.url = url;
 	var schema_q = this.url + '/schema()';
 
-	$.ajax({url: schema_q, context:this}).done(function(schema) {
-	    var nc = this;
-	    this.setSchema(schema);
-	    this.setTimeInfo().done(function() {
-		dfd.resolve(nc);
-	    });
-	}).fail(function() {
-	    console.log('Failed to get Schema from ', url);
-	});
-
+        let nc = this;
+        fetch(schema_q).then(response=>{
+            response.json().then((json)=>{
+                nc.setSchema(json);
+                nc.setTimeInfo().done(()=> dfd.resolve(nc));
+            });
+        }).catch(error=>console.log('Failed to get Schema from ', url)); 
 	return dfd.promise();
     },
+    
     query: function() {
 	return new Query(this);
     },
@@ -535,7 +533,23 @@ Query.prototype = {
 	}
 	else{
 	    console.log(query_string);
-	    $.ajax({url: query_string, context: ctx}).done(function(res){
+            let ctx = this;
+            fetch(query_string).then(response=>{
+                response.json().then((json)=>{
+		    if(Object.keys(cache).length > 10){
+		        var idx = Math.floor(Math.random() * (10+1)) ;
+		        var k = Object.keys(cache)[idx];
+		        delete cache[k];
+		    }
+		    cache[query_string] = $.extend(true, {}, json);
+		    dfd.resolveWith(ctx, [json]);
+                });
+            }).catch(error=>console.log('Failed: ', query_string)); 
+
+
+            /*
+            $.ajax({url: query_string,
+                    context: ctx}).done(function(res){
 		if(Object.keys(cache).length > 10){
 		    var idx = Math.floor(Math.random() * (10+1)) ;
 		    var k = Object.keys(cache)[idx];
@@ -543,7 +557,7 @@ Query.prototype = {
 		}
 		cache[query_string] = $.extend(true, {}, res);
 		dfd.resolveWith(ctx, [res]);
-	    });
+	    });*/
 
 	    return dfd.promise();
 	}

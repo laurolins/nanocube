@@ -120,6 +120,12 @@ GroupedBarChart.prototype = {
     },
     
     update: function(){        
+        //check it 
+        let display = d3.select('#'+this._opts.tab).style('display');
+        if(display == 'none'){ // no need to draw
+            return;
+        }
+        
         var widget = this;        
         var promises = {};
         
@@ -297,6 +303,7 @@ GroupedBarChart.prototype = {
         var margin = this.margin;
 
         var svgframe = d3.select(svg.node().parentNode);
+        
         var width=d3.select(svgframe.node().parentNode).style('width');       
         width = parseFloat(width);
         
@@ -441,7 +448,9 @@ GroupedBarChart.prototype = {
             });
         
         this.totalheight = totalheight;
-        this.margin.left = svg.select('.y.axis').node().getBBox().width+3;
+
+        //set margin
+        this.margin.left = svg.select('.y.axis').node().getBBox().width + 3;
 
         //update title with cat count
         svg.select('text').text(this._opts.title+' ('+y0.domain().length+')');
