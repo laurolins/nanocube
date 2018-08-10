@@ -6,23 +6,27 @@
 // nvs_ stands for Nanocube Vector Schema
 //
 
+//
+// [schema][idx_1...idx_n][m_1...m_n][a_{1,1} ... a_{1,k}][a_{2,1} ... a_{2,k}]----->....<-----[names]
+//
+
 typedef struct {
-	s32 name; // right offset to cstr
+	u32 name; // right offset to cstr
 	u8  bits_per_level;
 	u8  num_levels;
-	u8  hint;
-	u8  pad_;
+	u16 hint;
+	u32 alias_offset; // it is a left offset after the
+	u32 alias_count;  // number of aliases
 } nvs_IndexDimension;
 
 typedef struct {
-	s32 name; // right offset to cstr
+	u32 name; // right offset to cstr
 	u32 storage;
 } nvs_MeasureDimension;
 
-
 typedef struct {
-	s32 left;
-	s32 right;
+	u32 left;
+	u32 right;
 } nvs_CheckPoint;
 
 //
@@ -31,10 +35,10 @@ typedef struct {
 typedef struct {
 	u16 num_index_dimensions;
 	u16 num_measure_dimensions;
-	s32 name; // name of the nanocube
-	s32 left;
-	s32 right;
-	s32 size;
+	u32 name; // name of the nanocube
+	u32 left;
+	u32 right;
+	u32 size;
 	u32 flags; // to be used by client applications as they wish
 } nvs_Schema;
 
@@ -133,6 +137,60 @@ nvs_Schema_push_measure_dimension_(nvs_Schema *self)
 	return nvs_Schema_measure_dimension_at(self, self->num_measure_dimensions-1);
 }
 
+//
+// ready for a linear scan by adding length to current
+// alias address
+//
+typedef struct {
+	u16 value_offset;
+	u16 length;
+	char key[];
+} nvs_Alias;
+
+//
+// @warning this push_alias mechanism will only work if the
+// aliases are inserted in contiguous fashion per dimension,
+// otherwise it will be messed up without detection
+//
+static s32
+nvs_push_alias(nvs_Schema *self, s32 index_dimension, char *key_begin, char *key_end, char *value_begin, char *value_end)
+{
+	Assert(index_dimension < self->num_index_dimensions);
+	nvs_IndexDimension *idx_dim = nvs_Schema_index_dimension_at(self, index_dimension);
+
+	u16 key_length   = key_end - key_begin;
+	u16 value_length = value_end - value_begin;
+
+	u16 length = RALIGN(sizeof(nvs_Alias) + key_length + value_length + 2, 8);
+
+	if (self->left + length > self->right) { return 0; }
+
+	nvs_Alias *alias = OffsetedPointer(self, self->left);
+
+	if (idx_dim->alias_offset == 0) {
+		Assert(idx_dim->alias_count == 0);
+		idx_dim->alias_offset = self->left;
+	}
+
+	self->left += length;
+
+
+	char *dst_key   = &alias->key[0];
+	char *dst_value = dst_key + key_length + 1;
+
+	alias->value_offset = sizeof(nvs_Alias) + key_length + 1;
+	alias->length = length;
+
+	platform.copy_memory(dst_key, key_begin, key_length);
+	dst_key[key_length] = 0;
+	platform.copy_memory(dst_value, value_begin, value_length);
+	dst_value[value_length] = 0;
+
+	++idx_dim->alias_count;
+
+	return 1;
+}
+
 static s32
 nvs_Schema_push_index_dimension(nvs_Schema *self, char *name, u8 bits_per_level, u8 num_levels, u8 hint)
 {
@@ -157,7 +215,9 @@ nvs_Schema_push_index_dimension(nvs_Schema *self, char *name, u8 bits_per_level,
 		.name = name_right_offset,
 		.bits_per_level = bits_per_level,
 		.num_levels = num_levels,
-		.hint = hint
+		.hint = hint,
+		.alias_offset = 0,
+		.alias_count = 0
 	};
 
 	return 1;

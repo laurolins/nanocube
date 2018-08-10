@@ -3118,6 +3118,35 @@ nv_prepare_nvs_schema(nv_Nanocube *nanocube, char *name, s32 name_length, void *
 						nanocube->measure_dimensions.names[i],
 						(u8) nanocube->measure_dimensions.storage[i]);
 	}
+
+	for (s32 i=0;i<nanocube->num_index_dimensions;++i) {
+		// hacky way to get aliases. Iterate through all the path aliases of all dimensions
+		// to the the ones for the dimension we want
+		bt_Iter iter = { 0 };
+		bt_Iter_init(&iter, &nanocube->key_value_store);
+		bt_Hash     alias_hash;
+		MemoryBlock alias_key;
+		MemoryBlock alias_value;
+		char  buffer[256];
+		Print print_prefix;
+		Print_init(&print_prefix, buffer, buffer + sizeof(buffer));
+		Print_format(&print_prefix,"%s:kv:",nanocube->index_dimensions.names[i]);
+		u64 prefix_length = Print_length(&print_prefix);
+		s32 num_aliases = 0;
+		while (bt_Iter_next(&iter, &alias_hash, &alias_key, &alias_value))  {
+			if (MemoryBlock_length(&alias_key) < prefix_length) {
+				continue;
+			}
+			if (pt_compare_memory(alias_key.begin, alias_key.begin + prefix_length, print_prefix.begin, print_prefix.end)==0) {
+				s32 ok = nvs_push_alias(schema, i, alias_key.begin + prefix_length, alias_key.end, alias_value.begin, alias_value.end);
+				if (!ok) {
+					fputs("Not enough memory to prepare binary schema!",stderr);
+					exit(-1);
+				}
+			}
+		}
+	}
+
 	return schema;
 }
 
