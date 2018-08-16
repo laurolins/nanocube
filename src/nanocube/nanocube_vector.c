@@ -3122,7 +3122,7 @@ nv_prepare_nvs_schema(nv_Nanocube *nanocube, char *name, s32 name_length, void *
 	for (s32 i=0;i<nanocube->num_index_dimensions;++i) {
 		// hacky way to get aliases. Iterate through all the path aliases of all dimensions
 		// to the the ones for the dimension we want
-		bt_Iter iter = { 0 };
+		bt_Iter iter;
 		bt_Iter_init(&iter, &nanocube->key_value_store);
 		bt_Hash     alias_hash;
 		MemoryBlock alias_key;
