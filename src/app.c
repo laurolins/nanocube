@@ -4924,7 +4924,7 @@ Possible OPTIONS:
          report progress every N records.
     -report-cache={0,1}
          show cache utilization on every report (slower).
-    -serve=port
+    -serve-port=port
          port to serve cube while building and after finished.
     -serve-refresh-rate=SECONDS
          a large memory copy operation will be performed every SECONDS

@@ -50,6 +50,13 @@ typedef struct {
 #define global_variable static
 
 //---------------------------
+// offseted pointers
+//---------------------------
+
+#define OffsetedPointer(ptr,offset) ((void*) ((char*) ptr + offset))
+#define RightOffsetedPointer(ptr,size,offset) ((void*) ((char*) ptr + size - offset))
+
+//---------------------------
 // min and max
 //---------------------------
 
