@@ -2,6 +2,7 @@ AC_PREREQ([2.69])
 AC_INIT([test], [0.0.1], [lauro.lins@gmail.com])
 AC_CONFIG_SRCDIR([src/app.c])
 AC_CONFIG_HEADERS([config.h])
+AM_MAINTAINER_MODE([disable])
 
 # added mannually into the output of autoscan
 AC_CONFIG_AUX_DIR([ac_aux])
