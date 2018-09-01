@@ -18,9 +18,9 @@ Here is a link to the new [API](/api/README.md)
 # XCode
 
 # get the v4 branch
-curl -L -O https://github.com/laurolins/nanocube/archive/v4.zip
-unzip v4.zip
-cd nanocube-4
+curl -L -O https://github.com/laurolins/nanocube/archive/master.zip
+unzip master.zip
+cd nanocube-master
 
 # modify INSTALL_DIR to point to another installation folder if needed
 export INSTALL_DIR="$(pwd)/install"

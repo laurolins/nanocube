@@ -191,6 +191,11 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
 Timeseries.prototype={
     update: function(){
+        let display = d3.select('#'+this._opts.tab).style('display');
+        if(display == 'none'){ // no need to draw
+            return;
+        }
+        
         var widget = this;
         var sel = this.getSelection();
         var start = sel.global.start;
