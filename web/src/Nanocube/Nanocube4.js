@@ -1,3 +1,5 @@
+/*global  fetch*/
+
 import jquery from 'jquery';
 let $ = window.$ = jquery;
 
@@ -546,18 +548,6 @@ Query.prototype = {
                 });
             }).catch(error=>console.log('Failed: ', query_string)); 
 
-
-            /*
-            $.ajax({url: query_string,
-                    context: ctx}).done(function(res){
-		if(Object.keys(cache).length > 10){
-		    var idx = Math.floor(Math.random() * (10+1)) ;
-		    var k = Object.keys(cache)[idx];
-		    delete cache[k];
-		}
-		cache[query_string] = $.extend(true, {}, res);
-		dfd.resolveWith(ctx, [res]);
-	    });*/
 
 	    return dfd.promise();
 	}

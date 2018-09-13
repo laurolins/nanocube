@@ -9,6 +9,7 @@ import * as d3 from 'd3';
 import colorbrewer from 'colorbrewer';
 
 import Heatmap from './Heatmap';
+import PolygonMap from './PolygonMap';
 import GroupedBarChart from './GroupedBarChart';
 import Timeseries from './Timeseries';
 import Expression from './Expression';
@@ -117,6 +118,17 @@ Viewer.prototype = {
             options.levels = levels || 25;
             return new Heatmap(options,function(datasrc,bbox,zoom,maptilesize){
                 return viewer.getSpatialData(id,datasrc,bbox,zoom);
+            },function(args,constraints,datasrc){
+                return viewer.update([id],constraints,
+                                     id,args,datasrc);
+            });
+
+        case 'choropleth':            
+            this._mapoverlay.append(newdiv);
+            options.levels = levels || 25;
+            
+            return new PolygonMap(options, function(datasrc){
+                return viewer.getCategoricalData(id,datasrc);
             },function(args,constraints,datasrc){
                 return viewer.update([id],constraints,
                                      id,args,datasrc);
