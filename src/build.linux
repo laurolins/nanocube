@@ -80,19 +80,72 @@ fi
 
 BUILD="../../build/nanocube"
 SRC="../../nanocube/src"
+C="gcc"
 CXX="gcc"
 LIBS="-L${BUILD} -lm -ldl -lpthread"
 APP_EXTRA_LIBS=""
 
-#  if [ "$POLYCOVER_SUPPORT" = true ]; then
-#  	if [ ! -f "${POLYCOVER_PATH}/libpolycover.so" ]; then
-#  		echo "Error: file [${POLYCOVER_PATH}/libpolycover.so] doesn't exist";
-#  		exit 1;
-#  	else
-#  		echo "POLYCOVER dynamic library exists: [${POLYCOVER_PATH}/libpolycover.so]"
-#  		APP_EXTRA_LIBS="-L${POLYCOVER_PATH} -lpolycover"
-#  	fi
-#  fi
+if [ "$POLYCOVER_SUPPORT" = true ]; then
+	# build polycover
+	POLYCOVER_SRC=$(cat <(cat <<'EOF'
+polycover/area.cc
+polycover/area.hh
+polycover/boundary.cc
+polycover/boundary.hh
+polycover/cells.cc
+polycover/cells.hh
+polycover/geometry.cc
+polycover/geometry.hh
+polycover/glue.cc
+polycover/infix_iterator.hh
+polycover/labeled_tree.cc
+polycover/labeled_tree.hh
+polycover/maps.cc
+polycover/maps.hh
+polycover/mipmap.cc
+polycover/mipmap.hh
+polycover/polycover.cc
+polycover/polycover.h
+polycover/polycover.hh
+polycover/signal.hh
+polycover/tessellation.cc
+polycover/tessellation.hh
+polycover/tokenizer.cc
+polycover/tokenizer.hh
+polycover/glu/dict.c
+polycover/glu/memalloc.c
+polycover/glu/sweep.c
+polycover/glu/tessmono.c
+polycover/glu/geom.c
+polycover/glu/mesh.c
+polycover/glu/priorityq.c
+polycover/glu/tess.c
+polycover/glu/normal.c
+polycover/glu/render.c
+polycover/glu/tessellate.c
+EOF
+) | egrep -v "[.](hh|h)$" | paste -d' ' -s)
+	echo "---------------------"
+	echo $POLYCOVER_SRC
+	POLYCOVER_C_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]c$" | sed 's/^/..\//g' | paste -d' ' -s)
+	POLYCOVER_CXX_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]cc$" | sed 's/^/..\//g' | paste -d' ' -s)
+	echo "---------------------"
+	echo $POLYCOVER_C_SRC
+	echo "---------------------"
+	echo $POLYCOVER_CXX_SRC
+	# -stdlib=stdlib++ 
+	C_FLAGS="-std=gnu11 -fPIC"
+	CXX_FLAGS="-std=c++11 -fPIC"
+	# create the C and C++ objects separately
+	rm -rf .obj
+	mkdir .obj 
+	pushd .obj
+	${C} ${C_FLAGS} -c ${POLYCOVER_C_SRC}
+	${CXX} ${CXX_FLAGS} -c ${POLYCOVER_CXX_SRC}
+	${C} -shared -olibpolycover.so *.o -lm
+	cp libpolycover.so ${LOCAL}/lib/.
+	popd
+fi
 
 # prepare VERSION_NAME name based on repository updates
 BASE_VERSION="$(cat VERSION)"
