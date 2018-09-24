@@ -32,6 +32,17 @@ canvas {
     overflow-y:auto;
 }
 
+#fixed-overlay{
+    position:absolute;
+    max-width:100%;
+    max-height:85%;
+    top: 1em;
+    left: 7ch;
+    padding:1em;
+    border: 0;
+    overflow-y:auto;
+}
+
 .map-overlay{
     position:absolute;
     height:100%;

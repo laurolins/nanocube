@@ -120,10 +120,12 @@ GroupedBarChart.prototype = {
     },
     
     update: function(){        
-        //check it 
-        let display = d3.select('#'+this._opts.tab).style('display');
-        if(display == 'none'){ // no need to draw
-            return;
+        //check it
+        if(this._opts.tab != null){ //if the chart is in a tab
+            let display = d3.select('#'+this._opts.tab).style('display');
+            if(display == 'none'){ // no need to draw
+                return;
+            }
         }
         
         var widget = this;        
