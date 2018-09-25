@@ -58,7 +58,8 @@ let Viewer = function(opts){
     this._timeoverlay = timediv;
 
     this._nanocubes = nanocubes;
-    this._urlargs = opts.urlargs;
+    this._urlargs = Object.assign({}, opts.urlargs);
+    this._origargs = Object.assign({}, opts.urlargs);
     this._widget = {};
     this._datasrc = opts.config.datasrc;
     var viewer = this;
@@ -87,6 +88,28 @@ let Viewer = function(opts){
         viewer._widget[w] = viewer.setupWidget(w,opts.config.widget[w],
                                                opts.config.widget[w].levels);
     }
+
+    //clearall
+    let widget = this._widget;
+    let clearallbtn= d3.select(container[0])
+        .append('div')
+        .style('position', 'absolute')
+        .style('right', '1ch')
+        .style('top', '1em')
+        .append('button')
+        .on('click',()=>{
+            //console.log('clicked')
+            for (let v in widget){
+                let w = widget[v];
+                if (typeof w.selection !== 'undefined' &&
+                    typeof w.selection.brush !== 'undefined'){
+                    delete w.selection.brush; //clear selection
+                    w.update(); //redraw itself
+                    w.updateCallback(w._encodeArgs());
+                }
+            }
+        })
+        .html('Clear All');
 };
 
 

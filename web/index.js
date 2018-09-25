@@ -14,17 +14,19 @@ let fetch = window.fetch;
 let urlargs = getArgFromUrl();
 urlargs.config = urlargs.config || './config.json';
 
-(async function(urlargs){
+(async (urlargs)=>{
+    let config = null;
     try{
         let res = await fetch(urlargs.config);
-        let config = await res.json();
-
-        //start the viewer
-        await startViewer(config,urlargs);
+        config = await res.json();
     }
     catch(e){
         console.log('Fail to read '+ urlargs.config);
+        return;
     }
+
+    //start the viewer
+    await startViewer(config,urlargs);
 })(urlargs);
 
 
