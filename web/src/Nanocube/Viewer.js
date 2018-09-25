@@ -90,7 +90,7 @@ let Viewer = function(opts){
     }
 
     //clearall
-    let widget = this._widget;
+    let widget = viewer._widget;
     let clearallbtn= d3.select(container[0])
         .append('div')
         .style('position', 'absolute')
@@ -104,10 +104,11 @@ let Viewer = function(opts){
                 if (typeof w.selection !== 'undefined' &&
                     typeof w.selection.brush !== 'undefined'){
                     delete w.selection.brush; //clear selection
-                    w.update(); //redraw itself
+                    //w.update(); //redraw itself
                     w.updateCallback(w._encodeArgs());
                 }
             }
+            viewer.update();
         })
         .html('Clear All');
 };
