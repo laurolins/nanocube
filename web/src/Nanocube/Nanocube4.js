@@ -83,7 +83,6 @@ Nanocube.prototype = {
 	this.dimensions = dimensions;
     },
 
-
     setTimeInfo: function() {
 	var dfd = new $.Deferred();
         

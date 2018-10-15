@@ -31,7 +31,6 @@ import * as d3 from 'd3';
 
 //colorbrewer
 import colorbrewer from 'colorbrewer';
-
 var PolygonMap=function(opts,getDataCallback,updateCallback){
     this.getDataCallback = getDataCallback;
     this.updateCallback = updateCallback;
@@ -43,7 +42,6 @@ var PolygonMap=function(opts,getDataCallback,updateCallback){
     this._name = opts.name || 'defaultmap';
     this._tilesurl = opts.tilesurl ||
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-
     
     this._map = opts.map || this._initMap();
     this._selection={};
@@ -53,11 +51,11 @@ var PolygonMap=function(opts,getDataCallback,updateCallback){
 
     var mapdiv = d3.select('#'+this._name);
 
-    /*
     //Add dropbox
-    var norm_sel = mapdiv.append('select');
+    var norm_sel = mapdiv
+        .append('select').attr('class','dropdownlist');
     norm_sel.selectAll('option')
-        .data(['none', 'subscription_acct','total_hours']).enter()
+        .data(['none', 'total']).enter()
         .append('option')
         .attr('value',function(d){ return d;})
         .html(function(d){ return d;});    
@@ -65,8 +63,7 @@ var PolygonMap=function(opts,getDataCallback,updateCallback){
         widget.norm_const = norm_sel.property('value');
         widget.update();
     });
-    */
-        
+
     try{
         widget.transfunc = {
             trans: eval(opts.heatmapfunc['trans']),    //jshint ignore:line
@@ -128,10 +125,23 @@ PolygonMap.prototype={
         var datasrc = this._datasrc;
         var layers = {};
         var widget = this;
+        var datacallback =this.getDataCallback;
+
         Object.keys(datasrc).forEach(function(d){
             var layer = widget._initFeatures(d,features);
             layer.colormap = datasrc[d].colormap;
             layers[d]=layer;
+
+            //propagate total for normalization
+            var p = datacallback(layer._datasrc,true);
+            $.when.apply($,Object.keys(p).map(d=>p[d]))
+                .done(function(){
+                    let results =arguments[0];
+                    layer.eachLayer(polygon=>{                        
+                        let e = results.data.find(d => (+d.cat == polygon.feature.properties.KEY)) || {val:0}; 
+                        polygon.feature.properties.total = e.val;
+                    });
+                });
         });
         return layers;
     },
@@ -301,6 +311,7 @@ PolygonMap.prototype={
             }
         }
     },
+
     getSelection: function(){
         var selection = this._selection;
         var res = {};
@@ -448,7 +459,12 @@ PolygonMap.prototype={
                     }
                     */
 
-                    let v = d3.format('.2s')(pcolor[key].val);
+                    let v = d3.format('.0s')(pcolor[key].val);
+                    
+                    if(pcolor[key].val <= 1.0){
+                        v = d3.format('.2%')(pcolor[key].val);
+                    }
+                    
                     polygon.bindTooltip(polygon.feature.properties.NAME+
                                         '<br />'+ v);
                     polygon.feature.properties.id=pcolor[key].id;

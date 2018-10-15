@@ -36,9 +36,8 @@ canvas {
     position:absolute;
     max-width:100%;
     max-height:85%;
-    top: 1em;
+    top: 2em;
     left: 7ch;
-    padding:1em;
     border: 0;
     overflow-y:auto;
 }
@@ -167,5 +166,13 @@ text {
 
 .timeseries button,
 .barchart button{
-    float: right
+    float: right;
+}
+
+.dropdownlist {
+    position: absolute;
+    float: left;
+    left: 10ch;
+    top:  1em;
+    z-index:1000;
 }

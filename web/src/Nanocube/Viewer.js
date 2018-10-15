@@ -118,7 +118,7 @@ Viewer.prototype = {
     broadcastConstraint: function(skip,constraint){
         var widget=this._widget;
         for (var v in widget){
-            if(skip.indexOf(v) == -1){
+            if(skip != ['*'] && skip.indexOf(v) == -1){
                 if(widget[v].addConstraint){
                     widget[v].addConstraint(constraint);
                 }
@@ -156,8 +156,8 @@ Viewer.prototype = {
             this._mapoverlay.append(newdiv);
             options.levels = levels || 25;
             
-            return new PolygonMap(options, function(datasrc){
-                return viewer.getCategoricalData(id,datasrc);
+            return new PolygonMap(options, function(datasrc,baseq=false){
+                return viewer.getCategoricalData(id,datasrc,baseq);
             },function(args,constraints,datasrc){
                 return viewer.update([id],constraints,
                                      id,args,datasrc);
@@ -314,7 +314,7 @@ Viewer.prototype = {
         }
 
         Object.keys(viewer._widget).forEach(function(d){
-            if (skip.indexOf(d) == -1){
+            if (skip != ['*'] && skip.indexOf(d) == -1){
                 //re-render
                 viewer._widget[d].update();
             }
@@ -464,7 +464,7 @@ Viewer.prototype = {
         return res;
     },
 
-    getCategoricalData:function(varname,datasrc){
+    getCategoricalData:function(varname,datasrc,baseq=false){
         var k = Object.keys(this._nanocubes);
         var viewer = this;
 
@@ -472,7 +472,12 @@ Viewer.prototype = {
         var cq = {};
         k.forEach(function(d){
             var nc = viewer._nanocubes[d];
-            cq[d]=viewer.constructQuery(nc,[varname]);
+            var skip=[varname];
+            if(baseq){
+                skip=['*'];
+            }
+            
+            cq[d]=viewer.constructQuery(nc,skip);
         });
 
         //organize the queries by selection
