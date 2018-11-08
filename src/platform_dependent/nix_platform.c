@@ -1212,14 +1212,14 @@ nix_tcp_Engine_consume_listen_task(nix_tcp_Engine *self, nix_tcp_Task *task)
           perror("setsockopt SO_REUSEADDR");
         }
 
-        
+
 	/* set as non-blocking */
 	nix_tcp_set_nonblocking_fd(listen_socket_fd);
 	struct sockaddr_in listen_socket_addr;
 	listen_socket_addr.sin_family = AF_INET;
 	listen_socket_addr.sin_port = htons(task->port);
 	inet_aton(nix_tcp_LOCAL_ADDR, &(listen_socket_addr.sin_addr));
-        
+
 	int bind_error = bind(listen_socket_fd,
                               (struct sockaddr*) &listen_socket_addr,
                               sizeof(listen_socket_addr));

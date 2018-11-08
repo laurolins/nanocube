@@ -16,6 +16,7 @@ typedef struct {
 		  char *request_begin, \
 		  char *request_end, \
 		  pt_File *pfh_stdin, \
-		  pt_File *pfh_stdout)
+		  pt_File *pfh_stdout, \
+		  pt_File *pfh_stderr)
 typedef APPLICATION_PROCESS_REQUEST(ApplicationProcessRequest);
 

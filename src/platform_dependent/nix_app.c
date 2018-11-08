@@ -188,24 +188,36 @@ main(int num_args, char** args)
 	nix_init_platform(&app_state.platform);
 
 	// prepare platform file handle
-	pt_File platform_stdout;
-	platform_stdout.open = 1;
-	platform_stdout.eof = 0;
-	platform_stdout.write = 1;
-	platform_stdout.read = 0;
-	platform_stdout.last_seek_success = 0;
-	platform_stdout.last_read = 0;
-	platform_stdout.handle = stdout;
+	pt_File platform_stdout = {
+		.open = 1,
+		.eof = 0,
+		.write = 1,
+		.read = 0,
+		.last_seek_success = 0,
+		.last_read = 0,
+		.handle = stdout
+	};
 
 	// prepare platform file handle
-	pt_File platform_stdin;
-	platform_stdin.open = 1;
-	platform_stdin.eof = 0;
-	platform_stdin.write = 0;
-	platform_stdin.read = 1;
-	platform_stdin.last_seek_success = 0;
-	platform_stdin.last_read = 0;
-	platform_stdin.handle = stdin;
+	pt_File platform_stdin = {
+		.open = 1,
+		.eof = 0,
+		.write = 0,
+		.read = 1,
+		.last_seek_success = 0,
+		.last_read = 0,
+		.handle = stdin
+	};
+
+	pt_File platform_stderr = {
+		.open = 1,
+		.eof = 0,
+		.write = 1,
+		.read = 0,
+		.last_seek_success = 0,
+		.last_read = 0,
+		.handle = stderr
+	};
 
 	// buffer
 	Print *print               = print_new(main_BUFFER_SIZE);
@@ -278,7 +290,7 @@ main(int num_args, char** args)
 	// cannot append zero it messes up the options
 	// Print_char(print,0);
 
-	app_code.application_process_request(&app_state, print->begin, print->end, &platform_stdin, &platform_stdout);
+	app_code.application_process_request(&app_state, print->begin, print->end, &platform_stdin, &platform_stdout, &platform_stderr);
 
 #ifdef PROFILE
 	nix_free_memory(&profile_memory);
