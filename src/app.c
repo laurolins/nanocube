@@ -426,8 +426,34 @@ log_(Print *print)
 }
 
 
+//------------------------------------------------------------------------
+// base64 encode
+//-----------------------------------------------------------------------
 
+//
+// encode next block of data consumes MIN(len,3) bytes per call
+//
+// assuming little endian architecture for the u32
+//
+static u32
+b64_encode_block(void *raw, u64 len)
+{
+	u8 *in = raw;
+	static const char b64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	union {
+		u32 value;
+		u8  out[4];
+	} result;
+	result.out[0] = (unsigned char) b64_chars[ (s32)(in[0] >> 2) ];
+	result.out[1] = (unsigned char) b64_chars[ (s32)(((in[0] & 0x03) << 4) | ((in[1] & 0xf0) >> 4)) ];
+	result.out[2] = (unsigned char) (len > 1 ? b64_chars[ (s32)(((in[1] & 0x0f) << 2) | ((in[2] & 0xc0) >> 6)) ] : '=');
+	result.out[3] = (unsigned char) (len > 2 ? b64_chars[ (s32)(in[2] & 0x3f) ] : '=');
+	return result.value;
+}
 
+//------------------------------------------------------------------------
+// base64 decode
+//-----------------------------------------------------------------------
 
 /* parse date from text */
 #include "base/alloc.c"
@@ -4346,7 +4372,7 @@ service_create_usage(char *preamble_cstr)
 }
 
 internal b8
-service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *filename_end, u64 part_number)
+service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *filename_end, u64 part_number, s32 base64)
 {
 	Print *print = g_request->print;
 
@@ -4397,11 +4423,38 @@ service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *f
 		out = &output_file;
 	}
 
-	if (!platform.write_to_file(out, begin, begin + used_memory)) {
-		Print_clear(print);
-		Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
-		log_(print);
-		return 0;
+	if (!base64) {
+		if (!platform.write_to_file(out, begin, begin + used_memory)) {
+			Print_clear(print);
+			Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+			log_(print);
+			return 0;
+		}
+	} else {
+		u32 *buffer = (u32*) print->begin;
+		u64 buffer_cap = (print->capacity-print->begin)/sizeof(u32);
+		u64 buffer_count = 0;
+		for (u64 i=0;i<used_memory;i+=3) {
+			Assert(buffer_count < buffer_cap);
+			buffer[buffer_count++] = b64_encode_block(begin+i, used_memory-i);
+			if (buffer_count == buffer_cap) {
+				if (!platform.write_to_file(out, (char*) buffer, (char*) (buffer + buffer_count))) {
+					Print_clear(print);
+					Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+					log_(print);
+					return 0;
+				}
+				buffer_count = 0;
+			}
+		}
+		if (buffer_count > 0) {
+			if (!platform.write_to_file(out, (char*) buffer, (char*) (buffer + buffer_count))) {
+				Print_clear(print);
+				Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+				log_(print);
+				return 0;
+			}
+		}
 	}
 
 	return 1;
@@ -4968,6 +5021,10 @@ Possible OPTIONS:
          number of threads for solving queries.
     -mem_labels=S
          memory for the label sets.
+    -base64
+         Save output indices in base64 text format. This option was
+	 implemented to enable 'nanocube create' to be executed on
+	 hadoop reducers.
 
 The MAPPING file consists of a series of specifications of which index
 and measure dimensions we want the output nanocube index to have based
@@ -5199,6 +5256,8 @@ service_create()
 			}
 		}
 	}
+
+	b8 base64 = op_Options_find_cstr(options,"-base64") != 0;
 
 	b8 detail = op_Options_find_cstr(options, "-detail") != 0;
 
@@ -6575,7 +6634,7 @@ service_create()
 					/* fit memory to used pages to make arena more consistent */
 					al_Allocator_fit(allocator);
 
-					if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number)) {
+					if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number, base64)) {
 						Print_clear(print);
 						log_cstr_("[create] aborting loop\n");
 						return;
@@ -6700,7 +6759,7 @@ finalize_insertion:
 		}
 		log_(print);
 #else
-		if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number > 1 ? part_number : 0)) {
+		if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number > 1 ? part_number : 0, base64)) {
 			Print_clear(print);
 			Print_cstr(print,"[csv] couldn't save arena\n");
 			log_(print);
