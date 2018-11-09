@@ -226,17 +226,22 @@ main(int num_args, char** args)
 	// get .dll full path
 	FilePath executable_path;
 	app_state.platform.executable_path(&executable_path);
+	fprintf(stderr,"[Info] executable path: %s\n",executable_path.full_path);
+
+	NIXApplicationCode app_code = { 0 };
 
 	//
-	char *path = print->begin;
-	Print_str(print, executable_path.full_path, executable_path.name);
-	char *path_end = print->end;
-
-	char *lib_names[] = { "libnanocube_app.so", "libnanocube_app.dylib",
+	static char *lib_names[] = {
+		"libnanocube_app.so", "libnanocube_app.dylib",
 		"../lib/libnanocube_app.so", "../lib/libnanocube_app.dylib",
 		".libs/libnanocube_app.so", ".libs/libnanocube_app.dylib"
 	};
-	NIXApplicationCode app_code = { 0 };
+	char *path = print->begin;
+	char *path_end = path;
+
+	//
+	// try loading relative first
+	//
 	for (s32 i=0; i<ArrayCount(lib_names); ++i) {
 		print->end = path_end;
 		Print_cstr(print,lib_names[i]);
@@ -248,11 +253,39 @@ main(int num_args, char** args)
 		}
 	}
 
+	if (!app_code.is_valid) {
+		// try loading without the executable path (relative case)
+		Print_clear(print);
+		path = print->begin;
+		Print_str(print, executable_path.full_path, executable_path.name);
+		char *path_end = print->end;
+		for (s32 i=0; i<ArrayCount(lib_names); ++i) {
+			print->end = path_end;
+			Print_cstr(print,lib_names[i]);
+			Print_char(print,0);
+			NIXApplicationCode current_app_code = nix_load_application_code(path, print_dlopen_issues);
+			if (current_app_code.is_valid) {
+				app_code = current_app_code;
+				break;
+			}
+		}
+	}
+
+
+
+
+
+
+
 	if (app_code.application_code_dll == 0) {
 		app_state.platform.write_to_file(&platform_stdout, print_dlopen_issues->begin, print_dlopen_issues->end);
 		fputs("[Problem] Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n",stderr);
 		return -1;
 	}
+
+
+
+
 
 #ifdef POLYCOVER
 	char *polycover_lib_names[] = { "libpolycover.so", "libpolycover.dylib",
