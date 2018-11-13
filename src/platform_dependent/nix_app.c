@@ -65,6 +65,7 @@ nix_load_application_code(char *application_dll_path, Print *print)
 	// Assert(result.application_process_request);
 	if (!result.application_code_dll)
 	{
+		Print_cstr(print, "[FILE_NOT_FOUND] ");
 		Print_cstr(print, dlerror());
 		Print_cstr(print, "\n");
 		result.is_valid = 0;
@@ -75,6 +76,18 @@ nix_load_application_code(char *application_dll_path, Print *print)
 
 	// Assert(result.application_process_request);
 	result.is_valid = result.application_process_request != 0;
+
+	if (result.is_valid) {
+		Print_cstr(print, "[LOADED] ");
+		Print_cstr(print, application_dll_path);
+		Print_cstr(print, "\n");
+	} else {
+		Print_cstr(print, "[LOADING_PROBLEM] ");
+		Print_cstr(print, application_dll_path);
+		Print_cstr(print, "\n");
+	}
+
+
 
 	return result;
 }
@@ -91,6 +104,7 @@ nix_load_polycover_code(char *polycover_dll_path, Print *print)
 	// Assert(result.application_process_request);
 	if (!dll_code)
 	{
+		Print_cstr(print, "[FILE_NOT_FOUND] ");
 		Print_cstr(print, dlerror());
 		Print_cstr(print, "\n");
 		return result;
@@ -114,7 +128,14 @@ nix_load_polycover_code(char *polycover_dll_path, Print *print)
 	      && result.new_shape
 	      && result.free_shape
 	      && result.get_code)) {
+		Print_cstr(print, "[LOADING_PROBLEM] ");
+		Print_cstr(print, polycover_dll_path);
+		Print_cstr(print, "\n");
 		result = (PolycoverAPI) { 0 };
+	} else {
+		Print_cstr(print, "[LOADED] ");
+		Print_cstr(print, polycover_dll_path);
+		Print_cstr(print, "\n");
 	}
 
 	return result;
@@ -236,27 +257,21 @@ main(int num_args, char** args)
 		"../lib/libnanocube_app.so", "../lib/libnanocube_app.dylib",
 		".libs/libnanocube_app.so", ".libs/libnanocube_app.dylib"
 	};
-	char *path = print->begin;
-	char *path_end = path;
 
-	//
 	// try loading relative first
-	//
 	for (s32 i=0; i<ArrayCount(lib_names); ++i) {
-		print->end = path_end;
-		Print_cstr(print,lib_names[i]);
-		Print_char(print,0);
-		NIXApplicationCode current_app_code = nix_load_application_code(path, print_dlopen_issues);
+		NIXApplicationCode current_app_code = nix_load_application_code(lib_names[i], print_dlopen_issues);
 		if (current_app_code.is_valid) {
 			app_code = current_app_code;
 			break;
 		}
 	}
 
+	// try loading absolute second
 	if (!app_code.is_valid) {
-		// try loading without the executable path (relative case)
+		// try loading with the executable path second
 		Print_clear(print);
-		path = print->begin;
+		char *path = print->begin;
 		Print_str(print, executable_path.full_path, executable_path.name);
 		char *path_end = print->end;
 		for (s32 i=0; i<ArrayCount(lib_names); ++i) {
@@ -271,39 +286,48 @@ main(int num_args, char** args)
 		}
 	}
 
-
-
-
-
-
-
 	if (app_code.application_code_dll == 0) {
 		app_state.platform.write_to_file(&platform_stdout, print_dlopen_issues->begin, print_dlopen_issues->end);
 		fputs("[Problem] Couldn't load dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n",stderr);
 		return -1;
 	}
 
-
-
-
-
 #ifdef POLYCOVER
 	char *polycover_lib_names[] = { "libpolycover.so", "libpolycover.dylib",
 		"../lib/libpolycover.so", "../lib/libpolycover.dylib",
 		".libs/libpolycover.so", ".libs/libpolycover.dylib" };
+
+	s32 polycover_loaded = 0;
 	for (s32 i=0; i<ArrayCount(polycover_lib_names); ++i) {
-		print->end = path_end;
-		Print_cstr(print,polycover_lib_names[i]);
-		Print_char(print,0);
-		app_state.polycover = nix_load_polycover_code(path, print_dlopen_issues);
+		app_state.polycover = nix_load_polycover_code(polycover_lib_names[i], print_dlopen_issues);
 		if (app_state.polycover.get_code) {
+			polycover_loaded = 1;
 			break;
 		}
 	}
 
-	if (app_state.polycover.get_code == 0) {
+	// try loading absolute second
+	if (!polycover_loaded) {
+		// try loading with the executable path second
+		Print_clear(print);
+		char *path = print->begin;
+		Print_str(print, executable_path.full_path, executable_path.name);
+		char *path_end = print->end;
+		for (s32 i=0; i<ArrayCount(polycover_lib_names); ++i) {
+			print->end = path_end;
+			Print_cstr(print,polycover_lib_names[i]);
+			Print_char(print,0);
+			app_state.polycover = nix_load_polycover_code(path, print_dlopen_issues);
+			if (app_state.polycover.get_code) {
+				polycover_loaded = 1;
+				break;
+			}
+		}
+	}
+
+	if (!polycover_loaded) {
 		app_state.platform.write_to_file(&platform_stdout, print_dlopen_issues->begin, print_dlopen_issues->end);
-		fputs("[Problem] Couldn't load polycover dynamic library through any of its expected names (ie. libnanocube_app.so or libnanocube_app.dylib)\n", stderr);
+		fputs("[Problem] Couldn't load polycover dynamic library through any of its expected names\n", stderr);
 		return -1;
 	}
 #endif

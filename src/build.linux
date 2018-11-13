@@ -81,7 +81,7 @@ fi
 BUILD="../../build/nanocube"
 SRC="../../nanocube/src"
 C="gcc"
-CXX="gcc"
+CXX="g++"
 LIBS="-L${BUILD} -lm -ldl -lpthread"
 APP_EXTRA_LIBS=""
 
@@ -134,15 +134,15 @@ EOF
 	echo "---------------------"
 	echo $POLYCOVER_CXX_SRC
 	# -stdlib=stdlib++ 
-	C_FLAGS="-std=gnu11 -fPIC"
-	CXX_FLAGS="-std=c++11 -fPIC"
+	C_FLAGS="-std=gnu11 -fPIC -O2"
+	CXX_FLAGS="-std=c++11 -fPIC -O2"
 	# create the C and C++ objects separately
 	rm -rf .obj
 	mkdir .obj 
 	pushd .obj
 	${C} ${C_FLAGS} -c ${POLYCOVER_C_SRC}
 	${CXX} ${CXX_FLAGS} -c ${POLYCOVER_CXX_SRC}
-	${C} -shared -olibpolycover.so *.o -lm
+	${CXX} -shared -olibpolycover.so *.o -lm
 	cp libpolycover.so ${LOCAL}/lib/.
 	popd
 fi
@@ -222,8 +222,8 @@ done
 echo ${BUILD}; \
 if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
-${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
-${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
+${C} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
 cp nanocube ${LOCAL}/bin/. ;\
 cp libnanocube_app.so ${LOCAL}/lib/. ;\
 popd
