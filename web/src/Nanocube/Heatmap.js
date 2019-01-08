@@ -41,12 +41,14 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
     this._tilesurl = opts.tilesurl ||
         'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    this._heatmaps = this._genLayers(this._datasrc);
     this._maxlevels = opts.levels || 25;
     this._logheatmap = true;
+    opts.map_opacity=opts.map_opacity || 0.4;
+    opts.heatmap_opacity=opts.heatmap_opacity || 0.7;
     this._opts = opts;
     
-
+    this._heatmaps = this._genLayers(this._datasrc);
+    
     var map = opts.map || this._initMap();
     
     this._map = map;
@@ -118,7 +120,7 @@ Heatmap.prototype = {
         
         for (var d in data){
             var layer = new L.CanvasLayer();
-            layer.options.opacity=0.7;
+            layer.options.opacity=widget._opts.heatmap_opacity;
             layer.onDrawLayer=drawfunc;
             
             //set datasrc
@@ -156,7 +158,7 @@ Heatmap.prototype = {
         //add an OpenStreetMap tile layer
         var mapt = L.tileLayer(this._tilesurl,{
             noWrap:true,
-            opacity:0.4,
+            opacity: widget._opts.map_opacity,
             detectRetina:true,
             maxZoom: Math.min(this._maxlevels-8, 18)
         });

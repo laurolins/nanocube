@@ -118,7 +118,7 @@ Viewer.prototype = {
     broadcastConstraint: function(skip,constraint){
         var widget=this._widget;
         for (var v in widget){
-            if(skip != ['*'] && skip.indexOf(v) == -1){
+            if(skip[0] !='*' && skip.indexOf(v) == -1){
                 if(widget[v].addConstraint){
                     widget[v].addConstraint(constraint);
                 }
@@ -314,7 +314,7 @@ Viewer.prototype = {
         }
 
         Object.keys(viewer._widget).forEach(function(d){
-            if (skip != ['*'] && skip.indexOf(d) == -1){
+            if (skip[0] != '*' && skip.indexOf(d) == -1){
                 //re-render
                 viewer._widget[d].update();
             }
@@ -330,7 +330,7 @@ Viewer.prototype = {
 
         //brush
         Object.keys(this._widget).forEach(function(d){
-            if (skip.indexOf(d) == -1){
+            if (skip[0] != '*' && skip.indexOf(d) == -1){
                 var sel = viewer._widget[d].getSelection();
 
                 if(sel.global){
@@ -345,7 +345,7 @@ Viewer.prototype = {
         
         //then the rest
         Object.keys(this._widget).forEach(function(d){
-            if (skip.indexOf(d) == -1){
+            if (skip != ['*'] && skip.indexOf(d) == -1){
                 var sel = viewer._widget[d].getSelection();
                 Object.keys(sel).filter(function(d){
                     return (d != 'brush') && (d != 'global');

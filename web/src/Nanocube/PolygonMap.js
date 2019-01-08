@@ -52,18 +52,25 @@ var PolygonMap=function(opts,getDataCallback,updateCallback){
     var mapdiv = d3.select('#'+this._name);
 
     //Add dropbox
-    var norm_sel = mapdiv
+    this.norm_sel = mapdiv
         .append('select').attr('class','dropdownlist');
-    norm_sel.selectAll('option')
+    this.norm_sel.selectAll('option')
         .data(['none', 'total']).enter()
         .append('option')
         .attr('value',function(d){ return d;})
-        .html(function(d){ return d;});    
-    norm_sel.on('change', function(){
-        widget.norm_const = norm_sel.property('value');
+         .html(function(d){ return d;});    
+
+    this.norm_sel.on('change', function(){
+        widget.norm_const = widget.norm_sel.property('value');
         widget.update();
+        widget.updateCallback(widget._encodeArgs(),[]);
     });
 
+    if(opts.norm_const){
+        this.norm_sel.property('value',opts.norm_const);
+        this.norm_sel.dispatch('change');
+    }
+   
     try{
         widget.transfunc = {
             trans: eval(opts.heatmapfunc['trans']),    //jshint ignore:line
@@ -134,14 +141,15 @@ PolygonMap.prototype={
 
             //propagate total for normalization
             var p = datacallback(layer._datasrc,true);
-            $.when.apply($,Object.keys(p).map(d=>p[d]))
-                .done(function(){
-                    let results =arguments[0];
-                    layer.eachLayer(polygon=>{                        
-                        let e = results.data.find(d => (+d.cat == polygon.feature.properties.KEY)) || {val:0}; 
-                        polygon.feature.properties.total = e.val;
-                    });
+            $.when.apply($,Object.keys(p).map(d=>p[d])).done(function(){
+                let results =arguments[0];
+                layer.eachLayer(polygon=>{                        
+                    let e = results.data
+                        .find(d=>(+d.cat==polygon.feature.properties.KEY))||
+                        {val:0}; 
+                    polygon.feature.properties.total = e.val;
                 });
+            });
         });
         return layers;
     },
@@ -286,7 +294,7 @@ PolygonMap.prototype={
         var map = this._map;
         var args= this.getSelection();
         args.global = {c:map.getCenter(),z:map.getZoom()};
-        
+        args.norm_const = this.norm_sel.property('value') || 'none';
         
         return JSON.stringify(args);
     },
@@ -297,6 +305,11 @@ PolygonMap.prototype={
         var v = args.global;
         
         map.setView(v.c,v.z);
+
+        if(args.norm_const){
+            this.norm_sel.property('value',args.norm_const);
+            this.norm_sel.dispatch('change');
+        }
     },
 
     setSelection: function(key,v){
@@ -414,10 +427,15 @@ PolygonMap.prototype={
             });
 
             data = data.map(function(d){
-                d.val /= norm_const[d.cat] || 1 ;
+                if(widget._opts.thres){
+                    if (d.val < widget._opts.thres){
+                        d.val = 0;
+                    }
+                }
+                d.val /= norm_const[d.cat] || 1 ;                
                 return d;
             });
-
+            data = data.filter(d=> (d.val != 0));
             
             
             //normalize the data // hack !!!
@@ -434,46 +452,51 @@ PolygonMap.prototype={
                 widget.allcats.push(polygon);
 
                 var key=polygon.feature.properties.KEY;
+                var d = {color:cmap(0), val: 0}; 
                 if(key in pcolor){
-                    /*
-                    var v = d3.format(',.2f')(pcolor[key].val);
-                    v += ' hours';
-
-                    if (widget.norm_const == 'total_hours'){
-                        v = d3.format(',.2%')(pcolor[key].val);
-                    }                    
-
-                    if (widget.norm_const == 'subscription_acct'){
-                        v = d3.format(',.2f')(pcolor[key].val);
-                        v +=' hours';
-
-                        if(pcolor[key].val < 1){
-                            v = d3.format(',.2f')(pcolor[key].val * 60);
-                            v +=' minutes';
-                        }
-                    }                    
-
-                    if (pcolor[key].val > 1000){
-                        v = d3.format('.2s')(pcolor[key].val);
-                        v +=' hours';
-                    }
-                    */
-
-                    let v = d3.format('.0s')(pcolor[key].val);
-                    
-                    if(pcolor[key].val <= 1.0){
-                        v = d3.format('.2%')(pcolor[key].val);
-                    }
-                    
-                    polygon.bindTooltip(polygon.feature.properties.NAME+
-                                        '<br />'+ v);
-                    polygon.feature.properties.id=pcolor[key].id;
-                    polygon.setStyle({
-                        fillColor: pcolor[key].color,
-                        fillOpacity:0.6
-                    });
+                    d = pcolor[key];
                 }
 
+                /*
+                  var v = d3.format(',.2f')(pcolor[key].val);
+                  v += ' hours';
+
+                  if (widget.norm_const == 'total_hours'){
+                  v = d3.format(',.2%')(pcolor[key].val);
+                  }                    
+                  
+                  if (widget.norm_const == 'subscription_acct'){
+                  v = d3.format(',.2f')(pcolor[key].val);
+                  v +=' hours';
+                  
+                  if(pcolor[key].val < 1){
+                  v = d3.format(',.2f')(pcolor[key].val * 60);
+                  v +=' minutes';
+                  }
+                  }                    
+                  
+                  if (pcolor[key].val > 1000){
+                  v = d3.format('.2s')(pcolor[key].val);
+                  v +=' hours';
+                  }
+                */
+
+                let v = d3.format('.2s')(d.val);
+                    
+                if(widget.norm_const in polygon.feature.properties){
+                    v = d3.format('.2%')(d.val);
+                }
+
+                let name = polygon.feature.properties.NAME
+                    || polygon.feature.properties.KEY;
+                polygon.bindTooltip(name+'<br />'+ v);
+                polygon.feature.properties.id =
+                    polygon.feature.properties.id || d.id;
+                polygon.setStyle({
+                    fillColor: d.color,
+                    fillOpacity:0.6
+                });
+                
                 if(widget._selection.brush){
                     if(widget._selection.brush.indexOf(polygon) == -1){
                         polygon.setStyle({

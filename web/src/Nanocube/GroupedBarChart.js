@@ -45,7 +45,8 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
             d3.event.stopPropagation();
             widget._opts.alpha_order = !widget._opts.alpha_order;
             widget.redraw(widget.lastres);
-        });
+        })
+        .html('A');
     
     //Add percent button
     this.percentbtn = d3.select(id)
@@ -408,7 +409,13 @@ GroupedBarChart.prototype = {
         
         //Sort y axis
         y0.domain(data.map(function(d){return d.cat;}));
-        if (opts.alpha_order){
+
+
+        if(opts.labels_order){
+            y0.domain(opts.labels_order);
+        }
+        
+        if (opts.alpha_order && !opts.labels_order){
             //sort the numbers
             let numlabels = y0.domain().filter(function(d){
                 return !isNaN(parseFloat(d));
@@ -427,7 +434,8 @@ GroupedBarChart.prototype = {
 
             sortbtn.html('#');
         }
-        else{ //sort by data value
+
+        if(!opts.alpha_order){ //sort by data value
             var d = data.sort(function(x,y){ return y.val - x.val;});
             y0.domain(d.map(function(d){return d.cat;}));
             sortbtn.html('A');
