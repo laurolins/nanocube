@@ -32,7 +32,7 @@ ra_service_scanner(Request *request)
 
 	MemoryBlock filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &filename)) {
-		Request_msg(request, "[roadmap scanner] no filename provided\n");
+		log_cstr_("[roadmap scanner] no filename provided\n");
 		return;
 	}
 
@@ -42,7 +42,7 @@ ra_service_scanner(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(filename.begin, filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[roadmap scanner] couldn't open of the <xml> file.\n");
+		log_cstr_("[roadmap scanner] couldn't open of the <xml> file.\n");
 		return;
 	}
 
@@ -53,13 +53,13 @@ ra_service_scanner(Request *request)
 		Print_clear(print);
 		rp_print_token(print, &tokenizer.token);
 		Print_cstr(print,"\n");
-		Request_print(request, print);
+		output_( print);
 	}
 
 	if (tokenizer.next_result_detail != nt_TOKENIZER_NEXT_RESULT_DONE) {
 		Print_clear(print);
 		Print_cstr(print,"No transition found!\n");
-		Request_print(request, print);
+		output_( print);
 	}
 
 	platform.close_mmap_file(&mapped_file);
@@ -76,7 +76,7 @@ ra_service_parser(Request *request)
 
 	MemoryBlock filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &filename)) {
-		Request_msg(request, "[roadmap scanner] no filename provided\n");
+		log_cstr_("[roadmap scanner] no filename provided\n");
 		return;
 	}
 
@@ -87,7 +87,7 @@ ra_service_parser(Request *request)
 
 	pt_MappedFile mapped_file = platform.open_mmap_file(filename.begin, filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[roadmap parser] couldn't open of the <xml> file.\n");
+		log_cstr_("[roadmap parser] couldn't open of the <xml> file.\n");
 		return;
 	}
 
@@ -114,7 +114,7 @@ ra_service_parser(Request *request)
 			Print_align(print,8 * depth,-1,' ');
 			Print_str(print, element->tag.begin, element->tag.end);
 			Print_cstr(print,"\n");
-			Request_print(request,print);
+			output_(print);
 		}
 		if (ra_result(OPEN)) {
 			++depth;
@@ -131,21 +131,21 @@ ra_service_parser(Request *request)
 // 		Print_cstr(print,"  line: ");
 // 		Print_u64(print,parser.tokenizer.line);
 // 		Print_cstr(print,"\n");
-// 		Request_print(request, print);
+// 		output_( print);
 	}
 
 	Print_clear(print);
 	Print_cstr(print,"#elements: ");
 	Print_s64(print,num_elements);
 	Print_cstr(print,"\n");
-	Request_print(request, print);
+	output_( print);
 
 	if (parser.error) {
 		Print_clear(print);
 		Print_cstr(print,"there was an error: line ");
 		Print_u64(print,parser.tokenizer.line);
 		Print_cstr(print,"\n");
-		Request_print(request, print);
+		output_( print);
 	}
 
 	platform.free_memory(&parser_memory);
@@ -431,7 +431,7 @@ ra_service_print(Request *request)
 
 	MemoryBlock filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &filename)) {
-		Request_msg(request, "[ra_latlon] no filename provided\n");
+		log_cstr_("[ra_latlon] no filename provided\n");
 		return;
 	}
 
@@ -441,7 +441,7 @@ ra_service_print(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(filename.begin, filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[xml] couldn't open of the <xml> file.\n");
+		log_cstr_("[xml] couldn't open of the <xml> file.\n");
 		return;
 	}
 
@@ -467,7 +467,7 @@ ra_service_print(Request *request)
 
 		ra_print_object(print, way);
 
-		Request_print(request, print);
+		output_( print);
 	}
 
 	platform.close_mmap_file(&mapped_file);
@@ -482,7 +482,7 @@ ra_service_latlon(Request *request)
 
 	MemoryBlock filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &filename)) {
-		Request_msg(request, "[ra_latlon] no filename provided\n");
+		log_cstr_("[ra_latlon] no filename provided\n");
 		return;
 	}
 
@@ -492,7 +492,7 @@ ra_service_latlon(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(filename.begin, filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[xml] couldn't open of the <xml> file.\n");
+		log_cstr_("[xml] couldn't open of the <xml> file.\n");
 		return;
 	}
 
@@ -501,7 +501,7 @@ ra_service_latlon(Request *request)
 
 	Print_clear(print);
 	Print_cstr(print,"id|lat|lon\n");
-	Request_print(request, print);
+	output_( print);
 
 	rbt_Iter iter;
 	rbt_Iter_init(&iter, &graph->nodes);
@@ -520,7 +520,7 @@ ra_service_latlon(Request *request)
 		Print_cstr(print,"|");
 		Print_f64(print,node->lon);
 		Print_cstr(print,"\n");
-		Request_print(request, print);
+		output_( print);
 	}
 
 	platform.close_mmap_file(&mapped_file);
@@ -537,18 +537,18 @@ ra_service_latlon(Request *request)
 internal void
 ra_service_create_snap_error_cstr(Request *request, char *msg)
 {
-	Request_msg(request, "[ra_service_create_snap] ");
-	Request_msg(request, msg);
-	Request_msg(request, "\n[ra_service_create_snap] usage: nanocube roadmap <output> <input0> <input1> <input2> ... <inputN> [-size0=<size>] [-threads=n].\n");
+	log_cstr_("[ra_service_create_snap] ");
+	log_cstr_(msg);
+	log_cstr_("\n[ra_service_create_snap] usage: nanocube roadmap <output> <input0> <input1> <input2> ... <inputN> [-size0=<size>] [-threads=n].\n");
 	return;
 }
 
 internal void
 ra_service_create_snap_error_print(Request *request, Print *print)
 {
-	Request_msg(request, "[ra_service_create_snap] ");
-	Request_print(request, print);
-	Request_msg(request, "\n[ra_service_create_snap] usage: nanocube roadmap <output> <input0> <input1> <input2> ... <inputN> [-size0=<size>] [-threads=n].\n");
+	log_cstr_("[ra_service_create_snap] ");
+	output_( print);
+	log_cstr_("\n[ra_service_create_snap] usage: nanocube roadmap <output> <input0> <input1> <input2> ... <inputN> [-size0=<size>] [-threads=n].\n");
 	return;
 }
 
@@ -798,7 +798,7 @@ ra_service_create_snap_insert_way(ra_TmpObject *tmp_way)
 
 		Print_clear(print);
 		Print_format(print,"Duplicate way ID. Keeping only the 1st occurrence %llu.\n", tmp_way->id);
-		Request_print(request, print);
+		output_( print);
 // 		MemoryBlock *input_filename = ra_service_create_snap_info.input_filenames + input_index;
 // 		Print_str(print, input_filename->begin, input_filename->end);
 // 		Print_cstr(print, "\n");
@@ -873,7 +873,7 @@ ra_service_create_snap_parse_ways_single_threaded(s32 input_index)
 				Print_clear(print);
 				Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 					     input_index, num_elements, num_objects, num_nodes);
-				Request_print(request, print);
+				output_( print);
 			}
 
 			/* new way record on its way */
@@ -995,14 +995,14 @@ ra_service_create_snap_parse_ways_single_threaded(s32 input_index)
 	if (parser.error) {
 		Print_clear(print);
 		Print_format(print, "Parsing error detected on line %d column %d\n", parser.tokenizer.line, parser.tokenizer.column);
-		Request_print(request, print);
+		output_( print);
 		return;
 	}
 
 	Print_clear(print);
 	Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 		     input_index, num_elements, num_objects, num_nodes);
-	Request_print(request, print);
+	output_( print);
 
 	/* free parsing memory */
 	platform.free_memory(&work_memory);
@@ -1063,7 +1063,7 @@ ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 				Print_clear(print);
 				Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 					     input_index, num_elements, num_objects, num_nodes);
-				Request_print(request, print);
+				output_( print);
 
 				platform.unlock_mutex(mutex);
 			}
@@ -1210,7 +1210,7 @@ ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 		platform.lock_mutex(mutex);
 		Print_clear(print);
 		Print_format(print, "Parsing error detected on line %d column %d\n", parser.tokenizer.line, parser.tokenizer.column);
-		Request_print(request, print);
+		output_( print);
 		platform.unlock_mutex(mutex);
 		return;
 	}
@@ -1219,7 +1219,7 @@ ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 	Print_clear(print);
 	Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 		     input_index, num_elements, num_objects, num_nodes);
-	Request_print(request, print);
+	output_( print);
 	platform.unlock_mutex(mutex);
 
 	/* free parsing memory */
@@ -1268,7 +1268,7 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 				platform.lock_mutex(mutex);
 				Print_clear(print);
 				Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu\n", input_index, num_elements, num_nodes);
-				Request_print(request, print);
+				output_( print);
 				platform.unlock_mutex(mutex);
 			}
 		}
@@ -1319,7 +1319,7 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 // 				Print_clear(print);
 // 				Print_format(print, "index: %6d slot: %6lld left: %6llu  right: %6llu\n",
 // 					     input_index, slot - queue->buffer, queue->left % queue->length, queue->right % queue->length);
-// 				Request_print(request, print);
+// 				output_( print);
 // 				platform.unlock_mutex(mutex);
 			// }
 
@@ -1341,7 +1341,7 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 	platform.lock_mutex(mutex);
 	Print_clear(print);
 	Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu\n", input_index, num_elements, num_nodes);
-	Request_print(request, print);
+	output_( print);
 	platform.unlock_mutex(mutex);
 
 	/* free parsing memory */
@@ -1387,7 +1387,7 @@ ra_service_create_snap_parse_nodes_single_threaded(s32 input_index)
 			if (ra_service_create_snap_info.report_frequency && ((num_elements % ra_service_create_snap_info.report_frequency) == 0)) {
 				Print_clear(print);
 				Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu \n", input_index, num_elements, num_nodes);
-				Request_print(request, print);
+				output_( print);
 			}
 		}
 
@@ -1418,7 +1418,7 @@ ra_service_create_snap_parse_nodes_single_threaded(s32 input_index)
 
 	Print_clear(print);
 	Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu \n", input_index, num_elements, num_nodes);
-	Request_print(request, print);
+	output_( print);
 
 	/* free parsing memory */
 	platform.free_memory(&work_memory);
@@ -1473,7 +1473,7 @@ ra_service_create_snap(Request *request)
 	if (op_Options_find_cstr(options,"-help")) {
 		Print_clear(print);
 		Print_cstr(print, ra_service_create_snap_doc);
-		Request_print(request, print);
+		output_( print);
 		return;
 	}
 
@@ -1483,7 +1483,7 @@ ra_service_create_snap(Request *request)
 		Print_clear(print);
 		Print_cstr(print, ra_service_create_snap_doc);
 		Print_cstr(print, "[issue] not enough input parameters (one output filename and at least one input filename).\n");
-		Request_print(request, print);
+		output_( print);
 		return;
 	}
 
@@ -1557,7 +1557,7 @@ ra_service_create_snap(Request *request)
 
 	Print_clear(print);
 	Print_format(print, "Mode: roads %d   buildings %d   tagged nodes %d   cells %d\n", roads, buildings, tagged_nodes, cells);
-	Request_print(request, print);
+	output_( print);
 
 	pt_MappedFile mapped_files[ra_service_create_snap_MAX_INPUT_FILES];
 	MemoryBlock   input_filenames[ra_service_create_snap_MAX_INPUT_FILES];
@@ -1590,7 +1590,7 @@ ra_service_create_snap(Request *request)
 	u64 num_threads = 0;
 	if (op_Options_find_cstr(options,"-threads")) {
 		if (!op_Options_named_u64_cstr(options,"-threads",0,&num_threads)) {
-			Request_msg(request, "[serve] incorrect usage of options: -threads=<num-threads>\n");
+			log_cstr_("[serve] incorrect usage of options: -threads=<num-threads>\n");
 			return;
 		}
 	}
@@ -1598,7 +1598,7 @@ ra_service_create_snap(Request *request)
 	u64 report_frequency = 0;
 	if (op_Options_find_cstr(options,"-report-frequency")) {
 		if (!op_Options_named_u64_cstr(options,"-report-frequency",0,&report_frequency)) {
-			Request_msg(request, "[serve] incorrect usage of options: -report-frequency=<num-xml-elements>\n");
+			log_cstr_("[serve] incorrect usage of options: -report-frequency=<num-xml-elements>\n");
 			return;
 		}
 	}
@@ -1717,7 +1717,7 @@ ra_service_create_snap(Request *request)
 		// log message to differentiate from sequential server
 		Print_clear(print);
 		Print_format(print, "[ra_service_create_snap] using %llu threads\n", num_threads);
-		Request_print(request, print);
+		output_( print);
 	}
 
 	// Stage 1: find all ways in all files
@@ -1776,7 +1776,7 @@ ra_service_create_snap(Request *request)
 		Print_clear(print);
 		Print_cstr(print, "Initializing incidence of nodes...");
 		Print_align(print, 80, -1, '.');
-		Request_print(request, print);
+		output_( print);
 
 		f64 t0 = platform.get_time();
 
@@ -1787,14 +1787,14 @@ ra_service_create_snap(Request *request)
 		Print_u64(print, (u64) (platform.get_time() - t0));
 		Print_align(print, 14, 1, '.');
 		Print_cstr(print, " secs\n");
-		Request_print(request, print);
+		output_( print);
 	}
 
 	f32 t0 = platform.get_time();
 	Print_clear(print);
 	Print_cstr(print, "Second pass over the data (capture nodes lat/lon)...\n");
 // 	Print_align(print, 80, -1, '.');
-	Request_print(request, print);
+	output_( print);
 
 // 	for (s32 i=0;i<num_input_files;++i) {
 // 		ra_service_create_snap_parse_nodes(request, graph, i, mapped_files + i);
@@ -1854,7 +1854,7 @@ ra_service_create_snap(Request *request)
 
 	Print_clear(print);
 	Print_cstr(print, "Creating Vantage Point Tree...");
-	Request_print(request, print);
+	output_( print);
 
 	pt_Memory vp_buffer = platform.allocate_memory(graph->nodes.size * sizeof(rg_VPNode), 3, 0);
 	rg_Graph_initalize_vantage_point_tree(graph, vp_buffer.memblock.begin, vp_buffer.memblock.end);
@@ -1864,7 +1864,7 @@ ra_service_create_snap(Request *request)
 
 	Print_clear(print);
 	Print_format(print, "%.2fs\n",t0);
-	Request_print(request, print);
+	output_( print);
 
 	/* save graph on file */
 	t0 = platform.get_time();
@@ -1882,7 +1882,7 @@ ra_service_create_snap(Request *request)
 	Print_cstr(print, "s    size:");
 	Print_u64(print, (u64) al_Allocator_used_memory(allocator));
 	Print_cstr(print, "\n");
-	Request_print(request, print);
+	output_( print);
 
 	platform.free_memory(&tmp_way_memory);
 	platform.free_memory(&tmp_location_memory);
@@ -1934,7 +1934,7 @@ ra_service_btree(Request *request)
 		Print_u64(print, *((u64*) &value));
 		Print_align(print, 20, 1, ' ');
 		Print_cstr(print, "\n");
-		Request_print(request, print);
+		output_( print);
 	}
 	platform.free_memory(&data_memory);
 }
@@ -1954,8 +1954,8 @@ ra_service_closest(Request *request)
 	    || !op_Options_u64(options, 2, &k)
 	    || !op_Options_f32(options, 3, &lat)
 	    || !op_Options_f32(options, 4, &lon)) {
-		Request_msg(request, "[ra_closest] invalid arguments\n");
-		Request_msg(request, "[ra_closese] usage: closest <roadmap-filename> <k> <lat> <lon>>\n");
+		log_cstr_("[ra_closest] invalid arguments\n");
+		log_cstr_("[ra_closese] usage: closest <roadmap-filename> <k> <lat> <lon>>\n");
 		return;
 	}
 
@@ -1965,7 +1965,7 @@ ra_service_closest(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(input_filename.begin, input_filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[closest] couldn't open of the <xml> file.\n");
+		log_cstr_("[closest] couldn't open of the <xml> file.\n");
 		return;
 	}
 
@@ -2025,14 +2025,14 @@ ra_service_closest(Request *request)
 		Print_f64(print,-it->value);
 		Print_align(print,16,1,' ');
 		Print_cstr(print,"\n");
-		Request_print(request, print);
+		output_( print);
 
 		if (node->num_objects == 1) {
 			rg_Object *object = rg_Ptr_Object_get(&node->singleton);
 			Print_clear(print);
 			Print_cstr(print,"  ");
 			ra_print_object(print, object);
-			Request_print(request, print);
+			output_( print);
 			ra_print_object(print, object);
 		} else if (node->num_objects > 1) {
 			rg_Ptr_Object *objects_begin = (rg_Ptr_Object*) al_Ptr_char_get(&node->objects);
@@ -2043,14 +2043,14 @@ ra_service_closest(Request *request)
 				Print_clear(print);
 				Print_cstr(print,"  ");
 				ra_print_object(print, object);
-				Request_print(request, print);
+				output_( print);
 				++it_object;
 			}
 		}
 
 		Print_clear(print);
 		Print_cstr(print,"\n");
-		Request_print(request, print);
+		output_( print);
 
 		++it;
 	}
@@ -2059,7 +2059,7 @@ ra_service_closest(Request *request)
 	Print_cstr(print,"Time to find closest points: ");
 	Print_f64(print, (f64) t0);
 	Print_cstr(print, "s\n");
-	Request_print(request, print);
+	output_( print);
 
 	platform.free_memory(&heap_memory);
 	platform.close_mmap_file(&mapped_file);
@@ -2097,8 +2097,8 @@ ra_service_ksmall(Request *request)
 
 	u64 k = 0;
 	if (!op_Options_u64(options, 1, &k)) {
-		Request_msg(request, "[ra_ksmall] no filename provided\n");
-		Request_msg(request, "[ra_ksmall] 6 9 6 5 6 2 4\n");
+		log_cstr_("[ra_ksmall] no filename provided\n");
+		log_cstr_("[ra_ksmall] 6 9 6 5 6 2 4\n");
 		return;
 	}
 
@@ -2129,14 +2129,14 @@ ra_service_ksmall(Request *request)
 	Print_clear(print);
 	Print_cstr(print, "Before: \n");
 	ra_print_vpitems(print, begin, end, 0);
-	Request_print(request, print);
+	output_( print);
 
 	rg_VPNode *result = rg_vp_kth_smallest(begin, end, k);
 
 	Print_clear(print);
 	Print_cstr(print, "After: \n");
 	ra_print_vpitems(print, begin, end, result);
-	Request_print(request, print);
+	output_( print);
 }
 
 //
@@ -3095,7 +3095,7 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
 		Print_cstr(print_header, "\r\n");
 
-		Request_print(ra_service_snap_info.request, print_result);
+		output_(print_result);
 		return;
 	}
 
@@ -3112,7 +3112,7 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
 		Print_cstr(print_header, "\r\n");
 
-		Request_print(ra_service_snap_info.request, print_result);
+		output_(print_result);
 		return;
 	}
 
@@ -4189,14 +4189,14 @@ ra_service_snap(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, ra_service_snap_doc);
-		Request_print(request, print);
+		output_( print);
 		return;
 	}
 
 	u64 num_threads = 1;
 	if (op_Options_find_cstr(options,"-threads")) {
 		if (!op_Options_named_u64_cstr(options,"-threads",0,&num_threads)) {
-			Request_msg(request, "[serve] incorrect usage of options: -threads=<num-threads>\n");
+			log_cstr_("[serve] incorrect usage of options: -threads=<num-threads>\n");
 			return;
 		}
 	}
@@ -4207,8 +4207,8 @@ ra_service_snap(Request *request)
 	MemoryBlock input_filename  = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename) ||
 	    !op_Options_u64(options, 2, &port)) {
-		Request_msg(request, "[ra_service_roadnsap_http_server] invalid arguments\n");
-		Request_msg(request, "[ra_service_roadnsap_http_server] usage: snap <roadmap> <port> [-threads=<num-threads>] [-buffer=<max-get-message-size>] [-timeout=<kill-any-query-that-takes-too-much-time>]\n");
+		log_cstr_("[ra_service_roadnsap_http_server] invalid arguments\n");
+		log_cstr_("[ra_service_roadnsap_http_server] usage: snap <roadmap> <port> [-threads=<num-threads>] [-buffer=<max-get-message-size>] [-timeout=<kill-any-query-that-takes-too-much-time>]\n");
 		return;
 	}
 
@@ -4233,7 +4233,7 @@ ra_service_snap(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(input_filename.begin, input_filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[ra_service_roadnsap_http_server] couldn't open of the road database.\n");
+		log_cstr_("[ra_service_roadnsap_http_server] couldn't open of the road database.\n");
 		return;
 	}
 
@@ -4313,11 +4313,11 @@ ra_service_snap(Request *request)
 		// log message to differentiate from sequential server
 		Print_clear(print);
 		Print_format(print,"[ra_service_roadnsap_http_server] threads %llu\n", num_threads);
-		Request_print(request, print);
+		output_( print);
 	} else {
 		Print_clear(print);
 		Print_format(print,"[ra_service_roadnsap_http_server] single threaded\n");
-		Request_print(request, print);
+		output_( print);
 	}
 
 	while (!global_app_state->interrupted) {
@@ -4359,14 +4359,14 @@ ra_service_snap_cli(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, ra_service_snap_cli_doc);
-		Request_print(request, print);
+		output_( print);
 		return;
 	}
 
 	if (op_Options_find_cstr(options,"-help-api")) {
 		Print_clear(print);
 		Print_cstr(print, ra_service_snap_api_doc);
-		Request_print(request, print);
+		output_( print);
 		return;
 	}
 
@@ -4389,8 +4389,8 @@ ra_service_snap_cli(Request *request)
 	MemoryBlock query           = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename) ||
 	    !op_Options_str(options, 2, &query)) {
-		Request_msg(request, "[ra_service_snap_cli] invalid arguments\n");
-		Request_msg(request, "[ra_service_snap_cli] usage: snap <roadmap> <query> [-threads=<num-threads>] [-buffer=<max-get-message-size>] [-timeout=<kill-any-query-that-takes-too-much-time>]\n");
+		log_cstr_("[ra_service_snap_cli] invalid arguments\n");
+		log_cstr_("[ra_service_snap_cli] usage: snap <roadmap> <query> [-threads=<num-threads>] [-buffer=<max-get-message-size>] [-timeout=<kill-any-query-that-takes-too-much-time>]\n");
 		return;
 	}
 
@@ -4400,7 +4400,7 @@ ra_service_snap_cli(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(input_filename.begin, input_filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[ra_service_snap_cli] couldn't open of the road database.\n");
+		log_cstr_("[ra_service_snap_cli] couldn't open of the road database.\n");
 		return;
 	}
 
@@ -4447,8 +4447,8 @@ ra_service_snap_cli(Request *request)
 		platform.write_to_file(&output_file, print_header->begin, print_header->end);
 		platform.write_to_file(&output_file, print_result->begin, print_result->end);
 	} else {
-		Request_print(request, print_header);
-		Request_print(request, print_result);
+		output_( print_header);
+		output_( print_result);
 	}
 
 	platform.close_mmap_file(&mapped_file);

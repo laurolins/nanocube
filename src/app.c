@@ -387,26 +387,73 @@ typedef struct Request {
 	ApplicationState    *app_state;
 	pt_File             *pfh_stdin;
 	pt_File             *pfh_stdout;
+	pt_File             *pfh_stderr;
 	op_Options          options;
 	Print               *print;
 	// nt_Tokenizer        tok; // request tokens
 } Request;
 
-static Request *debug_request = 0;
+
+// global variable should be initialized on entry point
+static Request *g_request = 0;
 
 internal void
-Request_msg(Request *req, const char *cstr)
+output_cstr_(const char *cstr)
 {
-	Print_cstr(req->print, cstr);
-	platform.write_to_file(req->pfh_stdout, req->print->begin, req->print->end);
-	Print_clear(req->print);
+	Print_cstr(g_request->print, cstr);
+	platform.write_to_file(g_request->pfh_stdout, g_request->print->begin, g_request->print->end);
+	Print_clear(g_request->print);
 }
 
 internal void
-Request_print(Request *req, Print *print)
+output_(Print *print)
 {
-	platform.write_to_file(req->pfh_stdout, print->begin, print->end);
+	platform.write_to_file(g_request->pfh_stdout, print->begin, print->end);
 }
+
+internal void
+log_cstr_(const char *cstr)
+{
+	Print_cstr(g_request->print, cstr);
+	platform.write_to_file(g_request->pfh_stderr, g_request->print->begin, g_request->print->end);
+	Print_clear(g_request->print);
+}
+
+internal void
+log_(Print *print)
+{
+	platform.write_to_file(g_request->pfh_stderr, print->begin, print->end);
+}
+
+
+//------------------------------------------------------------------------
+// base64 encode
+//-----------------------------------------------------------------------
+
+//
+// encode next block of data consumes MIN(len,3) bytes per call
+//
+// assuming little endian architecture for the u32
+//
+static u32
+b64_encode_block(void *raw, u64 len)
+{
+	u8 *in = raw;
+	static const char b64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	union {
+		u32 value;
+		u8  out[4];
+	} result;
+	result.out[0] = (unsigned char) b64_chars[ (s32)(in[0] >> 2) ];
+	result.out[1] = (unsigned char) b64_chars[ (s32)(((in[0] & 0x03) << 4) | ((in[1] & 0xf0) >> 4)) ];
+	result.out[2] = (unsigned char) (len > 1 ? b64_chars[ (s32)(((in[1] & 0x0f) << 2) | ((in[2] & 0xc0) >> 6)) ] : '=');
+	result.out[3] = (unsigned char) (len > 2 ? b64_chars[ (s32)(in[2] & 0x3f) ] : '=');
+	return result.value;
+}
+
+//------------------------------------------------------------------------
+// base64 decode
+//-----------------------------------------------------------------------
 
 /* parse date from text */
 #include "base/alloc.c"
@@ -688,14 +735,14 @@ service_version(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_service_version_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
 	// get next two tokens
 	MemoryBlock input_filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename)) {
-		Request_msg(request, "[memory:fail] no input filename given.\n");
+		output_cstr_("[memory:fail] no input filename given.\n");
 		return;
 	}
 
@@ -705,7 +752,7 @@ service_version(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(input_filename.begin, input_filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[memory:fail] couldn't open of the .nc file.\n");
+		output_cstr_("[memory:fail] couldn't open of the .nc file.\n");
 		return;
 	}
 
@@ -715,7 +762,7 @@ service_version(Request *request)
 	Print_clear(print);
 	Print_cstr_safe(print, watermark_block.begin, watermark_block.end);
 	Print_char(print, '\n');
-	Request_print(request, print);
+	output_(print);
 
 	platform.close_mmap_file(&mapped_file);
 }
@@ -747,14 +794,14 @@ service_memory(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_memory_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
 	// get next two tokens
 	MemoryBlock input_filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename)) {
-		Request_msg(request, "[memory:fail] no input filename given.\n");
+		output_cstr_("[memory:fail] no input filename given.\n");
 		return;
 	}
 
@@ -767,7 +814,7 @@ service_memory(Request *request)
 	//
 	pt_MappedFile mapped_file = platform.open_mmap_file(input_filename.begin, input_filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[memory:fail] couldn't open of the .nc file.\n");
+		output_cstr_("[memory:fail] couldn't open of the .nc file.\n");
 		return;
 	}
 
@@ -776,7 +823,7 @@ service_memory(Request *request)
 
 	nu_log_memory(allocator, &cube->index, print, detail, print_empty_caches);
 
-	Request_print(request, print);
+	output_(print);
 
 	platform.close_mmap_file(&mapped_file);
 }
@@ -822,7 +869,7 @@ service_draw(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_draw_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
@@ -832,8 +879,8 @@ service_draw(Request *request)
 	MemoryBlock output_filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename) ||
 	    !op_Options_str(options, 2, &output_filename)) {
-		Request_msg(request, "[draw] not enough input parameters.\n");
-		Request_msg(request, "[draw] usage: nanocube draw <input> <output>.\n");
+		output_cstr_("[draw] not enough input parameters.\n");
+		output_cstr_("[draw] usage: nanocube draw <input> <output>.\n");
 		return;
 	}
 
@@ -843,7 +890,7 @@ service_draw(Request *request)
 	//
 	pt_File pfh = platform.open_read_file(input_filename.begin, input_filename.end);
 	if (!pfh.open) {
-		Request_msg(request, "[draw:fail] couldn't open of the .nc file.\n");
+		output_cstr_("[draw:fail] couldn't open of the .nc file.\n");
 		return;
 	}
 
@@ -869,7 +916,7 @@ service_draw(Request *request)
 	Print_cstr(print, ".pdf ");
 	Print_str(print, output_filename.begin, output_filename.end);
 	Print_cstr(print, "\n");
-	Request_print(request, print);
+	output_(print);
 }
 
 //------------------------------------------------------------------------------
@@ -894,25 +941,25 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 				Print_f64(print, x->fp);
 			}
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 		} break;
 	case np_AST_Node_Type_String: {
 			np_AST_String* x = (np_AST_String*) node->detail;
 			Print_str(print, x->str.begin, x->str.end);
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 		} break;
 	case np_AST_Node_Type_Variable: {
 			np_AST_Variable* x = (np_AST_Variable*) node->detail;
 			Print_str(print, x->name.begin, x->name.end);
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 		} break;
 	case np_AST_Node_Type_Group:
 		{
 			np_AST_Group* x = (np_AST_Group*) node->detail;
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 			print_ast(request, x->node, level+1);
 		}
 		break;
@@ -921,7 +968,7 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 			np_AST_Function* x = (np_AST_Function*) node->detail;
 			Print_str(print, x->name.begin, x->name.end);
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 			np_AST_Function_Parameter *it = x->first_parameter;
 			while(it) {
 				print_ast(request, it->node, level+1);
@@ -935,7 +982,7 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 				= (np_AST_Binary_Operation*) node->detail;
 			Print_str(print, x->name.begin, x->name.end);
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 			print_ast(request, x->left, level+1);
 			print_ast(request, x->right, level+1);
 		}
@@ -946,7 +993,7 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 				= (np_AST_Assignment*) node->detail;
 			Print_str(print, x->name.begin, x->name.end);
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 			print_ast(request, x->node, level+1);
 		}
 		break;
@@ -978,20 +1025,20 @@ service_ast(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_ast_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
 	MemoryBlock filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &filename)) {
-		Request_msg(request, "[ast-fail] missing filename\n");
+		output_cstr_("[ast-fail] missing filename\n");
 		return;
 	}
 
 	// map file to read
 	pt_MappedFile mapped_file = platform.open_mmap_file(filename.begin, filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[memory:fail] couldn't open of input file.\n");
+		output_cstr_("[memory:fail] couldn't open of input file.\n");
 		return;
 	}
 
@@ -1044,8 +1091,8 @@ service_ast(Request *request)
 	} else {
 		Print_clear(print);
 		Print_cstr(print,"[Error running ast]\n");
-		Request_print(request, print);
-		Request_print(request, &parser.log);
+		output_(print);
+		output_(&parser.log);
 	}
 
 	platform.close_mmap_file(&mapped_file);
@@ -1092,7 +1139,7 @@ service_btree(Request *request)
 	Print_cstr(print, "[btree] hashes: ");
 	Print_u64(print, btree->num_hashes);
 	Print_cstr(print, "\n");
-	Request_print(request,print);
+	output_(print);
 
 	MemoryBlock mem;
 	if (bt_BTree_get_value(btree, data[2], cstr_end(data[2]), &mem))
@@ -1103,7 +1150,7 @@ service_btree(Request *request)
 		Print_cstr(print, " for key ");
 		Print_cstr(print, data[2]);
 		Print_cstr(print, ".\n");
-		Request_print(request, print);
+		output_(print);
 	}
 	else
 	{
@@ -1111,7 +1158,7 @@ service_btree(Request *request)
 		Print_cstr(print, "[btree] value for key ");
 		Print_cstr(print, data[2]);
 		Print_cstr(print, " NOT found.\n");
-		Request_print(request, print);
+		output_(print);
 	}
 
 
@@ -1130,7 +1177,7 @@ service_btree(Request *request)
 		Print_str(print, value.begin, value.end);
 		Print_align(print, 32, 1, ' ');
 		Print_cstr(print, "\n");
-		Request_print(request, print);
+		output_(print);
 	}
 
 	platform.free_memory(&btree_memory);
@@ -1257,12 +1304,12 @@ service_test(Request *request)
 	if (op_Options_find_cstr(options,"-save")) {
 		MemoryBlock output_filename;
 		if (!op_Options_named_str_cstr(options,"-save",0,&output_filename)) {
-			Request_msg(request,"usage: -save=<fname>\n");
+			output_cstr_("usage: -save=<fname>\n");
 			return;
 		}
 		pt_File f = platform.open_write_file(output_filename.begin, output_filename.end);
 		if (!f.open) {
-			Request_msg(request,"could not open file for saving\n");
+			output_cstr_("could not open file for saving\n");
 			return;
 		}
 		platform.write_to_file(&f, (char*) allocator, (char*) allocator + allocator->used_pages * al_PAGE_SIZE);
@@ -1368,7 +1415,7 @@ service_test(Request *request)
 				Print_cstr(print,"--- query ");
 				Print_u64(print,(u64) query_index);
 				Print_cstr(print," ---\n");
-				Request_print(request, print);
+				output_(print);
 			}
 
 			// @todo test table order and permuting columns
@@ -1389,7 +1436,7 @@ service_test(Request *request)
 			np_TypeValue last_statement = np_Compiler_reduce(&compiler, parser.ast_first, text_begin, text_end);
 
 			if (!compiler.reduce.success) {
-				Request_print(request, &compiler.reduce.log);
+				output_(&compiler.reduce.log);
 			}
 
 			Assert(!last_statement.error);
@@ -1416,9 +1463,9 @@ service_test(Request *request)
 					// nv_print_table(print, table);
 					++table;
 				}
-				Request_print(request, print);
+				output_(print);
 			} else {
-				Request_msg(request, nm_error_messages[error]);
+				output_cstr_(nm_error_messages[error]);
 			}
 		}
 		platform.free_memory(&table_index_columns_buffer);
@@ -1429,8 +1476,7 @@ service_test(Request *request)
 
 	Print_clear(print);
 	Print_cstr(print, "Done testing...\n");
-	platform.write_to_file
-		(request->pfh_stdout, print->begin, print->end);
+	platform.write_to_file(request->pfh_stdout, print->begin, print->end);
 
 	// free memory
 	platform.free_memory(&insert_buffer_memory);
@@ -1767,14 +1813,14 @@ internal
 http_HEADER_FIELD_CALLBACK(service_serve_http_header_field_callback)
 {
 	/* print request_target */
-// 	Print *print = &debug_request->print;
+// 	Print *print = &g_request->print;
 // 	Print_clear(print);
 // 	Print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
 // 	Print_str(print, field_name_begin, field_name_end);
 // 	Print_cstr(print, "', value:'");
 // 	Print_str(print, field_value_begin, field_value_end);
 // 	Print_cstr(print, "'\n");
-// 	Request_print(debug_request, print);
+// 	output_(print);
 }
 
 // (pt_TCP_Socket *socket, char *begin, char *end)
@@ -2086,27 +2132,27 @@ service_serve(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_serve_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
 	s32 port = 0;
 	if (!op_Options_s32(options, 1, &port)) {
-		Request_msg(request, "[serve] could not parse port number.\n");
+		output_cstr_("[serve] could not parse port number.\n");
 		return;
 	}
 
 	u32 num_parameters = op_Options_num_positioned_parameters(options);
 	if (num_parameters < 3) {
-		Request_msg(request, "[serve] requires at least one source.\n");
-		Request_msg(request, "[serve] usage: nanocube serve <port> (<src>)+.\n");
+		output_cstr_("[serve] requires at least one source.\n");
+		output_cstr_("[serve] usage: nanocube serve <port> (<src>)+.\n");
 		return;
 	}
 
 	u64 num_threads = 0;
 	if (op_Options_find_cstr(options,"-threads")) {
 		if (!op_Options_named_u64_cstr(options,"-threads",0,&num_threads)) {
-			Request_msg(request, "[serve] incorrect usage of options: -threads=<num-threads>\n");
+			output_cstr_("[serve] incorrect usage of options: -threads=<num-threads>\n");
 			return;
 		}
 	}
@@ -2133,7 +2179,7 @@ service_serve(Request *request)
 
 	Print_clear(print);
 	Print_format(print,"Ver: %s\n",nanocube_executable_version_doc);
-	Request_print(request, print);
+	output_(print);
 	Print_clear(print);
 
 	app_NanocubesAndAliases info;
@@ -2151,8 +2197,8 @@ service_serve(Request *request)
 		op_Options_str(options, param, &source_text);
 		Print_clear(print);
 		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
-		Request_print(request, print);
-		Request_msg(request, "\n");
+		output_(print);
+		output_cstr_("\n");
 		if (status != app_NanocubesAndAliases_OK) {
 			ok = 0;
 			break;
@@ -2263,7 +2309,7 @@ service_serve(Request *request)
 	// log message to differentiate from sequential server
 	Print_clear(print);
 	Print_format(print, "[serve] port: %d\n", port);
-	Request_print(request, print);
+	output_(print);
 
 	pt_WorkQueue *work_queue = 0;
 	if (num_threads > 1) {
@@ -2273,7 +2319,7 @@ service_serve(Request *request)
 		Print_cstr(print, "[serve] using ");
 		Print_u64(print, num_threads);
 		Print_cstr(print, " threads\n");
-		Request_print(request, print);
+		output_(print);
 	}
 
 #ifdef PROFILE
@@ -2295,7 +2341,7 @@ service_serve(Request *request)
 #ifdef PROFILE
 	// pf_generate_log_events();
 	pf_generate_report();
-	Request_print(request, &pf_report.print);
+	output_(&pf_report.print);
 	pf_end();
 
 	{
@@ -2311,7 +2357,7 @@ service_serve(Request *request)
 		Print_u64(print, (100 * count)/capacity);
 		Print_char(print, '%');
 		Print_char(print, '\n');
-		Request_print(request, print);
+		output_(print);
 	}
 #endif
 
@@ -2366,7 +2412,7 @@ service_query(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_query_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
@@ -2394,16 +2440,16 @@ service_query(Request *request)
 
 	u32 num_parameters = op_Options_num_positioned_parameters(options);
 	if (num_parameters < 3) {
-		Request_msg(request, "[query] requires at least one source.\n");
-		Request_msg(request, "[query] usage: nanocube query <query-fname> (<src>)+.\n");
+		output_cstr_("[query] requires at least one source.\n");
+		output_cstr_("[query] usage: nanocube query <query-fname> (<src>)+.\n");
 		return;
 	}
 
 
 	MemoryBlock query  = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &query)) {
-		Request_msg(request, "[create] not enough input parameters.\n");
-		Request_msg(request, "[create] usage: nanocube draw <input> <output>.\n");
+		output_cstr_("[create] not enough input parameters.\n");
+		output_cstr_("[create] usage: nanocube draw <input> <output>.\n");
 		return;
 	}
 
@@ -2421,8 +2467,8 @@ service_query(Request *request)
 		op_Options_str(options, param, &source_text);
 		Print_clear(print);
 		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
-		Request_print(request, print);
-		Request_msg(request, "\n");
+		output_(print);
+		output_cstr_("\n");
 		if (status != app_NanocubesAndAliases_OK) {
 			ok = 0;
 			break;
@@ -2498,14 +2544,14 @@ service_query(Request *request)
 
 	app_nanocube_solve_query(query, buffer);
 
-	Request_print(request, &buffer->print_header);
-	Request_print(request, &buffer->print_result);
+	output_(&buffer->print_header);
+	output_(&buffer->print_result);
 
 
 #ifdef PROFILE
 	// pf_generate_log_events();
 	pf_generate_report();
-	Request_print(request, &pf_report.print);
+	output_(&pf_report.print);
 	pf_end();
 
 	{
@@ -2521,7 +2567,7 @@ service_query(Request *request)
 		Print_u64(print, (100 * count)/capacity);
 		Print_char(print, '%');
 		Print_char(print, '\n');
-		Request_print(request, print);
+		output_(print);
 	}
 #endif
 
@@ -2537,18 +2583,18 @@ free_resources:
 //------------------------------------------------------------------------------
 
 internal void
-service_demo_create(Request *request)
+service_demo_create()
 {
 
-	Print      *print   = request->print;
-	op_Options *options = &request->options;
+	Print      *print   = g_request->print;
+	op_Options *options = &g_request->options;
 
 	MemoryBlock input_filename  = { .begin=0, .end=0 };
 	MemoryBlock output_filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename) ||
 	    !op_Options_str(options, 2, &output_filename)) {
-		Request_msg(request, "[create] not enough input parameters.\n");
-		Request_msg(request, "[create] usage: nanocube draw <input> <output>.\n");
+		output_cstr_("[create] not enough input parameters.\n");
+		output_cstr_("[create] usage: nanocube draw <input> <output>.\n");
 		return;
 	}
 
@@ -2558,8 +2604,8 @@ service_demo_create(Request *request)
 	if (op_Options_find_cstr(options,"-filter")) {
 		if (!op_Options_named_u64_cstr(options,"-filter",0,&filter_offset)
 		    ||!op_Options_named_u64_cstr(options,"-filter",1,&filter_count)) {
-			Request_msg(request, "[create] invalid offset or count in option -filter.\n");
-			Request_msg(request, "[create] option usage: -filter=<offset>,<count>\n");
+			output_cstr_("[create] invalid offset or count in option -filter.\n");
+			output_cstr_("[create] option usage: -filter=<offset>,<count>\n");
 			return;
 		} else {
 			filter = 1;
@@ -2587,7 +2633,7 @@ service_demo_create(Request *request)
 
 	if (error)
 	{
-		Request_msg(request, "[create-fail] could not extract info from input file.\n");
+		output_cstr_("[create-fail] could not extract info from input file.\n");
 		return;
 	}
 
@@ -2619,7 +2665,7 @@ service_demo_create(Request *request)
 
 	if (!pfh.last_seek_success)
 	{
-		Request_msg(request, "[create-fail] could not seek input file to first requested record.\n");
+		output_cstr_("[create-fail] could not seek input file to first requested record.\n");
 		return;
 	}
 
@@ -2728,7 +2774,7 @@ service_demo_create(Request *request)
 // 			Print_cstr(print, " records in #pages is ");
 // 			Print_u64(print, allocator->used_pages);
 // 			Print_char(print, '\n');
-// 			Request_print(request, print);
+// 			output_(print);
 // 			Print_clear(print);
 			Print_clear(print);
 			Print_cstr(print, "[dmp] progress ");
@@ -2743,7 +2789,7 @@ service_demo_create(Request *request)
 					       al_PAGE_SIZE)/Megabytes(1));
 			Print_align(print, 10, 1, ' ');
 			Print_cstr(print,"\n");
-			Request_print(request, print);
+			output_(print);
 			Print_clear(print);
 		}
 	}
@@ -2754,11 +2800,11 @@ service_demo_create(Request *request)
 	Print_cstr(print, " records in #pages is ");
 	Print_u64(print, allocator->used_pages);
 	Print_char(print, '\n');
-	platform.write_to_file(request->pfh_stdout, print->begin, print->end);
+	platform.write_to_file(g_request->pfh_stdout, print->begin, print->end);
 	Print_clear(print);
 
 	nu_log_memory(allocator, &nanocube->index, print, 0, 0);
-	Request_print(request, print);
+	output_(print);
 	Print_clear(print);
 
 
@@ -2769,7 +2815,7 @@ service_demo_create(Request *request)
 			       (char*) allocator + allocator->used_pages
 			       * al_PAGE_SIZE);
 	platform.close_file(&pfh_db);
-	Request_msg(request, "[create-success] file saved!\n");
+	output_cstr_("[create-success] file saved!\n");
 
 	//     Print_cstr(&print,"sizeof(Threads): ");
 	//     Print_u64(&print, sizeof(Threads));
@@ -3306,7 +3352,7 @@ service_sizes(Request *request)
 	print_size_of(nv_Nanocube);
 	print_size_of(nx_NanocubeIndex);
 	print_size_of(nm_Measure);
-	Request_print(request, print);
+	output_(print);
 }
 
 //------------------------------------------------------------------------------
@@ -3324,7 +3370,7 @@ service_time(Request *request)
 	s32 a=1900, b=1901;
 
 	if (!op_Options_s32(options,1,&a) || !op_Options_s32(options,2,&b)) {
-		Request_msg(request, "[time] usage is 'nanocube time <year> <year>\n");
+		output_cstr_("[time] usage is 'nanocube time <year> <year>\n");
 		return;
 	}
 
@@ -3339,7 +3385,7 @@ service_time(Request *request)
 	Print_cstr(print, "Days: ");
 	Print_u64(print, (u64) tm_days_between_years(a,b));
 	Print_cstr(print, "\n");
-	Request_print(request, print);
+	output_(print);
 
 	tm_Label label = {.year=2016, .month=3, .day=1,
 		.hour=23, .minute=18, .second=15,
@@ -3348,14 +3394,14 @@ service_time(Request *request)
 	Print_clear(print);
 	tm_Label_print(&label, print);
 	Print_cstr(print,"\n");
-	Request_print(debug_request, print);
+	output_(print);
 
 	tm_Label_adjust_offset(&label, 5 *60);
 
 	Print_clear(print);
 	tm_Label_print(&label, print);
 	Print_cstr(print,"\n");
-	Request_print(debug_request, print);
+	output_(print);
 
 	tm_Time time;
 	tm_Time_init_from_label(&time, &label);
@@ -3363,7 +3409,7 @@ service_time(Request *request)
 	Print_clear(print);
 	Print_s64(print, time.time);
 	Print_cstr(print, "\n");
-	Request_print(request, print);
+	output_(print);
 
 	// time.time = 2698012800;
 	tm_Label_init(&label, time);
@@ -3371,7 +3417,7 @@ service_time(Request *request)
 	Print_clear(print);
 	tm_Label_print(&label, print);
 	Print_cstr(print,"\n");
-	Request_print(request, print);
+	output_(print);
 
 
 	/* try to parse previous label */
@@ -3386,30 +3432,30 @@ service_time(Request *request)
 	ntp_Parser   parser;
 	ntp_Parser_init(&parser);
 	if (!ntp_Parser_run(&parser, print->begin, print->end)) {
-		Request_print(request, &parser.log);
+		output_(&parser.log);
 	} else {
 		Print_clear(print);
 		tm_Label_print(&parser.label, print);
 		Print_cstr(print,"\n");
-		Request_print(request, print);
+		output_(print);
 	}
 
 	Print_clear(print);
 	Print_cstr(print, "Weekday of 2016-06-09: ");
 	Print_u64(print, tm_weekday(2016,6,9));
 	Print_cstr(print,"\n");
-	Request_print(request, print);
+	output_(print);
 
 	/* test parsing chicago crime formatted date */
 	Print_clear(print);
 	Print_cstr(print, "04/29/2010 10:15:00 PM");
 	if (!ntp_Parser_run(&parser, print->begin, print->end)) {
-		Request_print(request, &parser.log);
+		output_(&parser.log);
 	} else {
 		Print_clear(print);
 		tm_Label_print(&parser.label, print);
 		Print_cstr(print,"\n");
-		Request_print(request, print);
+		output_(print);
 	}
 }
 
@@ -3451,7 +3497,7 @@ service_qpart(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_qpart_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
@@ -3469,9 +3515,9 @@ service_qpart(Request *request)
 	separator.end   = cstr_end(sep);
 	if (op_Options_find_cstr(options,"-sep")) {
 		if (!op_Options_named_str_cstr(options,"-sep",0,&separator)) {
-			Request_msg(request, "[qpart] invalid separator\n");
-			Request_msg(request, "[qpart] option usage: -sep=<sep>\n");
-			Request_msg(request, "[qpart] option usage: -filter=<offset>,<count>\n");
+			output_cstr_("[qpart] invalid separator\n");
+			output_cstr_("[qpart] option usage: -sep=<sep>\n");
+			output_cstr_("[qpart] option usage: -filter=<offset>,<count>\n");
 			return;
 		}
 	}
@@ -3485,8 +3531,8 @@ service_qpart(Request *request)
 	if (op_Options_find_cstr(options,"-filter")) {
 		if (!op_Options_named_u64_cstr(options,"-filter",0,&filter_offset)
 		    ||!op_Options_named_u64_cstr(options,"-filter",1,&filter_count)) {
-			Request_msg(request, "[qpart] invalid offset or count in option -filter.\n");
-			Request_msg(request, "[qpart] option usage: -filter=<offset>,<count>\n");
+			output_cstr_("[qpart] invalid offset or count in option -filter.\n");
+			output_cstr_("[qpart] option usage: -filter=<offset>,<count>\n");
 			return;
 		} else {
 			filter = 1;
@@ -3498,27 +3544,27 @@ service_qpart(Request *request)
 	cm_SnappingLatLonFunction *snap_function = 0;
 	if (op_Options_find_cstr(options,"-snap")) {
 		if (!op_Options_named_f32_cstr(options,"-snap",1,&g_snap_maxdist)) {
-			Request_msg(request, "[qpart] missing maxdist\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] missing maxdist\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 		}
 		MemoryBlock roadmap_filename = {.begin=0, .end=0};
 		if (!op_Options_named_str_cstr(options,"-snap",0, &roadmap_filename)) {
-			Request_msg(request, "[qpart] -snap: missing roadmap filename\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] -snap: missing roadmap filename\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		snap_mapped_file = platform.open_mmap_file(roadmap_filename.begin, roadmap_filename.end, 1, 0);
 		if (!snap_mapped_file.mapped) {
-			Request_msg(request, "[qpart] couldn't open snap file\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] couldn't open snap file\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		/* set graph */
 		al_Allocator *allocator = (al_Allocator*) snap_mapped_file.begin;
 		g_snap_graph = (rg_Graph*) al_Allocator_get_root(allocator);
 		if (!g_snap_graph) {
-			Request_msg(request, "[qpart] couldn't find snap graph inside roadmap file\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] couldn't find snap graph inside roadmap file\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		snap_function = g_snap;
@@ -3529,17 +3575,17 @@ service_qpart(Request *request)
 	    || !op_Options_str(options, 3, &longitude)
 	    || !op_Options_u64(options, 4, &sample_size)
 	    || !op_Options_u64(options, 5, &k)) {
-		Request_msg(request, "[qpart] missing some parameters.\n");
-		Request_msg(request, "[qpart] usage:  qpart <csv-fname> <latcol> <loncol> <sample-size> <k>\n");
-		Request_msg(request, "[qpart] option: -sep=<sep>\n");
-		Request_msg(request, "[qpart] option: -filter=<offset>,<count>\n");
-		Request_msg(request, "[qpart] option: -snap=<roadmap-filename>,<maxdist-f32>\n");
+		output_cstr_("[qpart] missing some parameters.\n");
+		output_cstr_("[qpart] usage:  qpart <csv-fname> <latcol> <loncol> <sample-size> <k>\n");
+		output_cstr_("[qpart] option: -sep=<sep>\n");
+		output_cstr_("[qpart] option: -filter=<offset>,<count>\n");
+		output_cstr_("[qpart] option: -snap=<roadmap-filename>,<maxdist-f32>\n");
 		return;
 	}
 
 	pt_MappedFile mapped_file = platform.open_mmap_file(csv_filename.begin, csv_filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[qpart] couldn't map .csv file.\n");
+		output_cstr_("[qpart] couldn't map .csv file.\n");
 		return;
 	}
 
@@ -3597,7 +3643,7 @@ service_qpart(Request *request)
 	}
 
 	if (!ok) {
-		Request_msg(request, "[qpart] couldn't find latitude or longitude columns.\n");
+		output_cstr_("[qpart] couldn't find latitude or longitude columns.\n");
 		return;
 	}
 
@@ -3653,7 +3699,7 @@ service_qpart(Request *request)
 // 		Print_align(print, 12, 1, ' ');
 // 		Print_cstr(print, "]");
 // 		Print_cstr(print, "\n");
-// 		Request_print(request, print);
+// 		output_(print);
 
 		/* convert to path using mercator projection */
 		u64 path_number  = app_quadtree_path_number(lat, lon);
@@ -3661,7 +3707,7 @@ service_qpart(Request *request)
 // 		Print_clear(print);
 // 		Print_u64(print, path_number);
 // 		Print_cstr(print, "\n");
-// 		Request_print(request, print);
+// 		output_(print);
 
 		if (point_index >= sample_size) {
 			/* choose random point to replace */
@@ -3684,7 +3730,7 @@ service_qpart(Request *request)
 		if (!check_sorted_u64(sample.begin, sample.end)) {
 			Print_clear(print);
 			Print_cstr(print, "PROBLEM IN SORTING!\n");
-			Request_print(request, print);
+			output_(print);
 		}
 
 		if (uniq) {
@@ -3692,7 +3738,7 @@ service_qpart(Request *request)
 			if (!check_sorted_uniqueness_u64(sample.begin, sample.end)) {
 				Print_clear(print);
 				Print_cstr(print, "PROBLEM IN UNIQUENESS!\n");
-				Request_print(request, print);
+				output_(print);
 			}
 		}
 
@@ -3704,7 +3750,7 @@ service_qpart(Request *request)
 			Print_clear(print);
 			Print_u64(print, value);
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 		}
 	}
 
@@ -3739,9 +3785,9 @@ service_qpart2(Request *request)
 	separator.end   = cstr_end(sep);
 	if (op_Options_find_cstr(options,"-sep")) {
 		if (!op_Options_named_str_cstr(options,"-sep",0,&separator)) {
-			Request_msg(request, "[qpart] invalid separator\n");
-			Request_msg(request, "[qpart] option usage: -sep=<sep>\n");
-			Request_msg(request, "[qpart] option usage: -filter=<offset>,<count>\n");
+			output_cstr_("[qpart] invalid separator\n");
+			output_cstr_("[qpart] option usage: -sep=<sep>\n");
+			output_cstr_("[qpart] option usage: -filter=<offset>,<count>\n");
 			return;
 		}
 	}
@@ -3755,8 +3801,8 @@ service_qpart2(Request *request)
 	if (op_Options_find_cstr(options,"-filter")) {
 		if (!op_Options_named_u64_cstr(options,"-filter",0,&filter_offset)
 		    ||!op_Options_named_u64_cstr(options,"-filter",1,&filter_count)) {
-			Request_msg(request, "[qpart] invalid offset or count in option -filter.\n");
-			Request_msg(request, "[qpart] option usage: -filter=<offset>,<count>\n");
+			output_cstr_("[qpart] invalid offset or count in option -filter.\n");
+			output_cstr_("[qpart] option usage: -filter=<offset>,<count>\n");
 			return;
 		} else {
 			filter = 1;
@@ -3768,27 +3814,27 @@ service_qpart2(Request *request)
 	cm_SnappingLatLonFunction *snap_function = 0;
 	if (op_Options_find_cstr(options,"-snap")) {
 		if (!op_Options_named_f32_cstr(options,"-snap",1,&g_snap_maxdist)) {
-			Request_msg(request, "[qpart] missing maxdist\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] missing maxdist\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 		}
 		MemoryBlock roadmap_filename = {.begin=0, .end=0};
 		if (!op_Options_named_str_cstr(options,"-snap",0, &roadmap_filename)) {
-			Request_msg(request, "[qpart] -snap: missing roadmap filename\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] -snap: missing roadmap filename\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		snap_mapped_file = platform.open_mmap_file(roadmap_filename.begin, roadmap_filename.end, 1, 0);
 		if (!snap_mapped_file.mapped) {
-			Request_msg(request, "[qpart] couldn't open snap file\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] couldn't open snap file\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		/* set graph */
 		al_Allocator *allocator = (al_Allocator*) snap_mapped_file.begin;
 		g_snap_graph = (rg_Graph*) al_Allocator_get_root(allocator);
 		if (!g_snap_graph) {
-			Request_msg(request, "[qpart] couldn't find snap graph inside roadmap file\n");
-			Request_msg(request, "[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[qpart] couldn't find snap graph inside roadmap file\n");
+			output_cstr_("[qpart] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		snap_function = g_snap;
@@ -3801,17 +3847,17 @@ service_qpart2(Request *request)
 	    || !op_Options_str(options, 5, &longitude2)
 	    || !op_Options_u64(options, 6, &sample_size)
 	    || !op_Options_u64(options, 7, &k)) {
-		Request_msg(request, "[qpart] missing some parameters.\n");
-		Request_msg(request, "[qpart] usage:  qpart <csv-fname> <latcol1> <loncol1> <latcol2> <loncol2> <sample-size> <k>\n");
-		Request_msg(request, "[qpart] option: -sep=<sep>\n");
-		Request_msg(request, "[qpart] option: -filter=<offset>,<count>\n");
-		Request_msg(request, "[qpart] option: -snap=<roadmap-filename>,<maxdist-f32>\n");
+		output_cstr_("[qpart] missing some parameters.\n");
+		output_cstr_("[qpart] usage:  qpart <csv-fname> <latcol1> <loncol1> <latcol2> <loncol2> <sample-size> <k>\n");
+		output_cstr_("[qpart] option: -sep=<sep>\n");
+		output_cstr_("[qpart] option: -filter=<offset>,<count>\n");
+		output_cstr_("[qpart] option: -snap=<roadmap-filename>,<maxdist-f32>\n");
 		return;
 	}
 
 	pt_MappedFile mapped_file = platform.open_mmap_file(csv_filename.begin, csv_filename.end, 1, 0);
 	if (!mapped_file.mapped) {
-		Request_msg(request, "[qpart] couldn't map .csv file.\n");
+		output_cstr_("[qpart] couldn't map .csv file.\n");
 		return;
 	}
 
@@ -3887,7 +3933,7 @@ service_qpart2(Request *request)
 	}
 
 	if (!ok) {
-		Request_msg(request, "[qpart] couldn't find latitude or longitude columns.\n");
+		output_cstr_("[qpart] couldn't find latitude or longitude columns.\n");
 		return;
 	}
 
@@ -3953,7 +3999,7 @@ service_qpart2(Request *request)
 // 		Print_align(print, 12, 1, ' ');
 // 		Print_cstr(print, "]");
 // 		Print_cstr(print, "\n");
-// 		Request_print(request, print);
+// 		output_(print);
 
 		/* convert to path using mercator projection */
 		u128 path_number  = app_quadtree2_path_number(lat1, lon1, lat2, lon2);
@@ -3961,7 +4007,7 @@ service_qpart2(Request *request)
 // 		Print_clear(print);
 // 		Print_u64(print, path_number);
 // 		Print_cstr(print, "\n");
-// 		Request_print(request, print);
+// 		output_(print);
 
 		if (point_index >= sample_size) {
 			/* choose random point to replace */
@@ -3984,7 +4030,7 @@ service_qpart2(Request *request)
 		if (!check_sorted_u128(sample.begin, sample.end)) {
 			Print_clear(print);
 			Print_cstr(print, "PROBLEM IN SORTING!\n");
-			Request_print(request, print);
+			output_(print);
 		}
 
 // 		if (uniq) {
@@ -3992,7 +4038,7 @@ service_qpart2(Request *request)
 // 			if (!check_sorted_uniqueness_u64(sample.begin, sample.end)) {
 // 				Print_clear(print);
 // 				Print_cstr(print, "PROBLEM IN UNIQUENESS!\n");
-// 				Request_print(request, print);
+// 				output_(print);
 // 			}
 // 		}
 
@@ -4006,7 +4052,7 @@ service_qpart2(Request *request)
 			Print_char(print,' ');
 			Print_u64(print, value.low);
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 		}
 	}
 
@@ -4031,8 +4077,8 @@ service_qpcount(Request *request)
 	if (op_Options_find_cstr(options,"-filter")) {
 		if (!op_Options_named_u64_cstr(options,"-filter",0,&filter_offset)
 		    ||!op_Options_named_u64_cstr(options,"-filter",1,&filter_count)) {
-			Request_msg(request, "[csv] invalid offset or count in option -filter.\n");
-			Request_msg(request, "[csv] option usage: -filter=<offset>,<count>\n");
+			output_cstr_("[csv] invalid offset or count in option -filter.\n");
+			output_cstr_("[csv] option usage: -filter=<offset>,<count>\n");
 			return;
 		} else {
 			filter = 1;
@@ -4043,27 +4089,27 @@ service_qpcount(Request *request)
 	cm_SnappingLatLonFunction *snap_function = 0;
 	if (op_Options_find_cstr(options,"-snap")) {
 		if (!op_Options_named_f32_cstr(options,"-snap",1,&g_snap_maxdist)) {
-			Request_msg(request, "[csv] missing maxdist\n");
-			Request_msg(request, "[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[csv] missing maxdist\n");
+			output_cstr_("[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 		}
 		MemoryBlock roadmap_filename = {.begin=0, .end=0};
 		if (!op_Options_named_str_cstr(options,"-snap",0, &roadmap_filename)) {
-			Request_msg(request, "[csv] -snap: missing roadmap filename\n");
-			Request_msg(request, "[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[csv] -snap: missing roadmap filename\n");
+			output_cstr_("[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		snap_mapped_file = platform.open_mmap_file(roadmap_filename.begin, roadmap_filename.end, 1, 0);
 		if (!snap_mapped_file.mapped) {
-			Request_msg(request, "[csvsnap] couldn't open snap file\n");
-			Request_msg(request, "[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[csvsnap] couldn't open snap file\n");
+			output_cstr_("[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		/* set graph */
 		al_Allocator *allocator = (al_Allocator*) snap_mapped_file.begin;
 		g_snap_graph = (rg_Graph*) al_Allocator_get_root(allocator);
 		if (!g_snap_graph) {
-			Request_msg(request, "[csvsnap] couldn't find snap graph inside roadmap file\n");
-			Request_msg(request, "[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+			output_cstr_("[csvsnap] couldn't find snap graph inside roadmap file\n");
+			output_cstr_("[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 			return;
 		}
 		snap_function = g_snap;
@@ -4079,14 +4125,14 @@ service_qpcount(Request *request)
 	    || !op_Options_str(options,2,&qpart.filename)
 	    || !op_Options_str(options,3,&qpart.lat_name)
 	    || !op_Options_str(options,4,&qpart.lon_name)) {
-		Request_msg(request, "[csv] problem with required parameters.\n");
-		Request_msg(request, "[csv] option usage: qpcount <csv-filename> <qpart-filename> <latloc> <loncol>\n");
+		output_cstr_("[csv] problem with required parameters.\n");
+		output_cstr_("[csv] option usage: qpcount <csv-filename> <qpart-filename> <latloc> <loncol>\n");
 		return;
 	} else {
 		qpart.active = 1;
 		if (!app_QPart_read(&qpart)) {
-			Request_msg(request, "[csv] -qpart problem (could not read u64 entries from input file).\n");
-			Request_msg(request, "[csv] option usage: -qpart=<qpart-filename>,<include-bitset>,<latcol>,<loncol>\n");
+			output_cstr_("[csv] -qpart problem (could not read u64 entries from input file).\n");
+			output_cstr_("[csv] option usage: -qpart=<qpart-filename>,<include-bitset>,<latcol>,<loncol>\n");
 			return;
 		}
 	}
@@ -4121,11 +4167,11 @@ service_qpcount(Request *request)
 			if (!tokens.parse_overflow) {
 				nu_TokensArray_split(&tokens, &tokens_tokens);
 			} else {
-				Request_msg(request, "[csv] parse overflow when reading tokens tokens.\n");
+				output_cstr_("[csv] parse overflow when reading tokens tokens.\n");
 				break;
 			}
 		} else {
-			Request_msg(request, "[csv] tokens line not found.");
+			output_cstr_("[csv] tokens line not found.");
 			break;
 		}
 
@@ -4134,13 +4180,13 @@ service_qpcount(Request *request)
 			s32 idx;
 			idx = nu_TokensArray_find(&tokens_tokens, qpart.lat_name.begin, qpart.lat_name.end);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart latitude column not found.\n");
+				output_cstr_("[csv] qpart latitude column not found.\n");
 				return;
 			}
 			qpart.lat_index = (u32) idx;
 			idx = nu_TokensArray_find(&tokens_tokens, qpart.lon_name.begin, qpart.lon_name.end);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart longitude column not found.\n");
+				output_cstr_("[csv] qpart longitude column not found.\n");
 				return;
 			}
 			qpart.lon_index = (u32) idx;
@@ -4204,7 +4250,7 @@ service_qpcount(Request *request)
 		Print_cstr(print, "[qpcount] records inserted ");
 		Print_u64(print, records_inserted);
 		Print_cstr(print, "\n");
-		Request_print(request,print);
+		output_(print);
 		Print_clear(print);
 		break;
 	}
@@ -4244,14 +4290,14 @@ service_test_file_backed_mmap(Request *request)
 	u64 prealloc_memory = 4;
 	if (op_Options_find_cstr(options,"-gigs")) {
 		if (!op_Options_named_u64_cstr(options,"-gigs",0,&prealloc_memory)) {
-			Request_msg(request, "invalid memory value on -gigs (default: 4GB)\n");
+			output_cstr_("invalid memory value on -gigs (default: 4GB)\n");
 			return;
 		}
 	}
 
 	MemoryBlock filename     = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &filename)) {
-		Request_msg(request, "no filename provided\n");
+		output_cstr_("no filename provided\n");
 		return;
 	}
 
@@ -4267,12 +4313,12 @@ service_test_file_backed_mmap(Request *request)
 	Print_cstr(print, " in ");
 	Print_f64(print, time);
 	Print_cstr(print, "s.\n");
-	Request_print(request, print);
+	output_(print);
 
 	time = platform.get_time();
 	pt_MappedFile file2 = platform.open_mmap_file(filename.begin, filename.end, 1, 1);
 	if (!file2.mapped) {
-		Request_msg(request, "could not map file for reading/writing\n");
+		output_cstr_("could not map file for reading/writing\n");
 	}
 	u64 size = file2.size/sizeof(u64);
 	u64 *it = (u64*) file2.begin;
@@ -4287,7 +4333,7 @@ service_test_file_backed_mmap(Request *request)
 	Print_cstr(print, " in ");
 	Print_f64(print, time);
 	Print_cstr(print, "s.\n");
-	Request_print(request, print);
+	output_(print);
 
 	time = platform.get_time();
 	platform.close_mmap_file(&file2);
@@ -4298,77 +4344,117 @@ service_test_file_backed_mmap(Request *request)
 	Print_cstr(print, " in ");
 	Print_f64(print, time);
 	Print_cstr(print, "s.\n");
-	Request_print(request, print);
+	output_(print);
 
 }
 
 /* csv */
 internal void
-service_create_usage(Request *request, char *preamble_cstr)
+service_create_usage(char *preamble_cstr)
 {
-	Print *print   = request->print;
+	Print *print   = g_request->print;
 	if (preamble_cstr) {
 		Print_clear(print);
 		Print_cstr(print, "[create] ");
 		Print_cstr(print, preamble_cstr);
 		Print_char(print,'\n');
-		Request_print(request,print);
+		log_(print);
 	}
-// 	Request_msg(request, "[csv] usage:  csv <csv-fname> <mapping-fname> <output-fname>\n");
-// 	Request_msg(request, "[csv] usage:  csv -stdin <mapping-fname> <output-fname>\n");
-// 	Request_msg(request, "[csv] option: -filter=<offet>,<count>\n");
-// 	Request_msg(request, "[csv] option: -snap=<roadmap-file>,<maxdist>\n");
-// 	Request_msg(request, "[csv] option: -qpart=<qpart-filename>,<include-bitset>,<latcol>,<loncol> \n");
-// 	Request_msg(request, "[csv] option: -qpart2=<qpart2-filename>,<include-bitset>,<latcol1>,<loncol1>,<latcol2>,<loncol2> \n");
-// 	Request_msg(request, "[csv] option: -tpart2=<tpart2-filename>,<include-bitset>,<latcol1>,<loncol1>,<latcol2>,<loncol2> \n");
-// 	Request_msg(request, "[csv] missing maxdist\n");
-// 	Request_msg(request, "[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
+// 	output_cstr_("[csv] usage:  csv <csv-fname> <mapping-fname> <output-fname>\n");
+// 	output_cstr_("[csv] usage:  csv -stdin <mapping-fname> <output-fname>\n");
+// 	output_cstr_("[csv] option: -filter=<offet>,<count>\n");
+// 	output_cstr_("[csv] option: -snap=<roadmap-file>,<maxdist>\n");
+// 	output_cstr_("[csv] option: -qpart=<qpart-filename>,<include-bitset>,<latcol>,<loncol> \n");
+// 	output_cstr_("[csv] option: -qpart2=<qpart2-filename>,<include-bitset>,<latcol1>,<loncol1>,<latcol2>,<loncol2> \n");
+// 	output_cstr_("[csv] option: -tpart2=<tpart2-filename>,<include-bitset>,<latcol1>,<loncol1>,<latcol2>,<loncol2> \n");
+// 	output_cstr_("[csv] missing maxdist\n");
+// 	output_cstr_("[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 }
 
 internal b8
-service_create_save_arena(Request *request, al_Allocator *allocator, char *filename_begin, char *filename_end, u64 part_number)
+service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *filename_end, u64 part_number, s32 base64)
 {
-	Print *print = request->print;
+	Print *print = g_request->print;
 
-	/* save current arena and create a smaller one from scratch for the new records */
-	FilePath filepath;
-	FilePath_init(&filepath, filename_begin, filename_end);
-
-	if (part_number > 0) {
-		Print_clear(print);
-		Print_str(print, filepath.full_path, filepath.extension);
-		Print_cstr(print,"-");
-		Print_u64(print,part_number);
-		Print_align(print, 3, 1, '0');
-		Print_str(print,filepath.extension, filepath.end);
-		FilePath_init(&filepath, print->begin, print->end);
-	}
-
-	pt_File output_file = platform.open_write_file(filepath.full_path, filepath.end);
-	if (!output_file.open) {
-		Print_clear(print);
-		Print_cstr(print,"[csv] couldn't open file to write: ");
-		Print_str(print,filepath.full_path, filepath.end);
-		Print_cstr(print,"\n");
-		Request_print(request, print);
-		return 0;
-	}
-
-	/* fit memory to used pages */
 	al_Allocator_fit(allocator);
-
 	char *begin = (char*) allocator;
 	u64  used_memory = al_Allocator_used_memory(allocator);
-	if (!platform.write_to_file(&output_file, begin, begin + used_memory)) {
-		Print_clear(print);
-		Print_cstr(print,"[csv] couldn't write to file ");
-		Print_str(print,filepath.full_path, filepath.end);
-		Print_cstr(print,"\n");
-		Print_cstr(print,"[csv] when trying to write ");
-		Print_u64(print,used_memory);
-		Print_cstr(print," bytes\n");
-		Request_print(request, print);
-		return 0;
+
+	static char *stdout_filename = ".";
+	s32 write_to_stdout = (filename_end-filename_begin == 1) && (filename_begin[0] == stdout_filename[0]);
+
+	// is the filename the alias '.' for stdout?
+	pt_File output_file = { 0 };
+	pt_File *out = 0;
+	char *filename = 0;
+
+	if (write_to_stdout) {
+		out = g_request->pfh_stdout;
+		filename = stdout_filename;
+	} else {
+
+
+		/* save current arena and create a smaller one from scratch for the new records */
+		FilePath filepath;
+		FilePath_init(&filepath, filename_begin, filename_end);
+
+		if (part_number > 0) {
+			Print_clear(print);
+			Print_str(print, filepath.full_path, filepath.extension);
+			Print_cstr(print,"-");
+			Print_u64(print,part_number);
+			Print_align(print, 3, 1, '0');
+			Print_str(print,filepath.extension, filepath.end);
+			FilePath_init(&filepath, print->begin, print->end);
+		}
+		filename = print->begin;
+
+		// check if we can open the file
+		output_file = platform.open_write_file(filepath.full_path, filepath.end);
+		if (!output_file.open) {
+			Print_clear(print);
+			Print_cstr(print,"[service_create_save_arena] couldn't open file to write: ");
+			Print_str(print,filepath.full_path, filepath.end);
+			Print_cstr(print,"\n");
+			log_(print);
+			return 0;
+		}
+
+		out = &output_file;
+	}
+
+	if (!base64) {
+		if (!platform.write_to_file(out, begin, begin + used_memory)) {
+			Print_clear(print);
+			Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+			log_(print);
+			return 0;
+		}
+	} else {
+		u32 *buffer = (u32*) print->begin;
+		u64 buffer_cap = (print->capacity-print->begin)/sizeof(u32);
+		u64 buffer_count = 0;
+		for (u64 i=0;i<used_memory;i+=3) {
+			Assert(buffer_count < buffer_cap);
+			buffer[buffer_count++] = b64_encode_block(begin+i, used_memory-i);
+			if (buffer_count == buffer_cap) {
+				if (!platform.write_to_file(out, (char*) buffer, (char*) (buffer + buffer_count))) {
+					Print_clear(print);
+					Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+					log_(print);
+					return 0;
+				}
+				buffer_count = 0;
+			}
+		}
+		if (buffer_count > 0) {
+			if (!platform.write_to_file(out, (char*) buffer, (char*) (buffer + buffer_count))) {
+				Print_clear(print);
+				Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+				log_(print);
+				return 0;
+			}
+		}
 	}
 
 	return 1;
@@ -4391,9 +4477,9 @@ service_create_print_temporal_hint(Print *print, nm_TimeBinning *time_binning)
 // scratch.
 //
 internal al_Allocator*
-service_create_prepare_allocator_and_nanocube(Request *request, cm_Spec *spec, char *data_memory_begin, char *data_memory_end, nv_Nanocube *previous_part)
+service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_begin, char *data_memory_end, nv_Nanocube *previous_part)
 {
-	Print *print = request->print;
+	Print *print = g_request->print;
 
 	al_Allocator *allocator      = al_Allocator_new(data_memory_begin, data_memory_end);
 
@@ -4548,7 +4634,7 @@ service_create_prepare_allocator_and_nanocube(Request *request, cm_Spec *spec, c
 	Print_cstr(print, "Fresh nanocube address: ");
 	Print_u64(print, (u64) nanocube);
 	Print_cstr(print, "\n");
-	Request_print(request, print);
+	output_(print);
 #endif
 
 	return allocator;
@@ -4565,12 +4651,12 @@ csv_PULL_CALLBACK(service_create_pull_callback)
 	platform.read_next_file_chunk(file, buffer, buffer + length);
 	Assert(file->last_read <= length);
 
-// 	Print *print = &debug_request->print;
+// 	Print *print = &g_request->print;
 // 	Print_clear(print);
 // 	Print_cstr(print, "[service_create_test_pull_callback] buffer length: ");
 // 	Print_u64(print, length);
 // 	Print_cstr(print, "\n");
-// 	Request_print(debug_request, print);
+// 	output_(print);
 
 	if (file->last_read > 0) {
 		return buffer + file->last_read;
@@ -4800,7 +4886,7 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 
 			if (!copy_ok) {
 
-				Request_msg(request, "[create] PROBLEM: not enough memory to copy updated index to serve area.");
+				output_cstr_("[create] PROBLEM: not enough memory to copy updated index to serve area.");
 
 				serve_config->refresh_data = 0;
 
@@ -4935,6 +5021,10 @@ Possible OPTIONS:
          number of threads for solving queries.
     -mem_labels=S
          memory for the label sets.
+    -base64
+         Save output indices in base64 text format. This option was
+	 implemented to enable 'nanocube create' to be executed on
+	 hadoop reducers.
 
 The MAPPING file consists of a series of specifications of which index
 and measure dimensions we want the output nanocube index to have based
@@ -5090,10 +5180,10 @@ END_DOC_STRING
 */
 
 internal void
-service_create(Request *request)
+service_create()
 {
-	Print      *print   = request->print;
-	op_Options *options = &request->options;
+	Print      *print   = g_request->print;
+	op_Options *options = &g_request->options;
 
 	pt_MappedFile              snap_mapped_file;
 	cm_SnappingLatLonFunction *snap_function = 0;
@@ -5101,26 +5191,26 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_csv_doc);
-		Request_print(request, print);
+		log_(print);
 		return;
 	}
 
 	if (op_Options_find_cstr(options,"-snap")) {
 
 		if (!op_Options_named_f32_cstr(options,"-snap",1,&g_snap_maxdist)) {
-			service_create_usage(request, "missing maxdist");
+			service_create_usage("missing maxdist");
 			return;
 		}
 
 		MemoryBlock roadmap_filename = {.begin=0, .end=0};
 		if (!op_Options_named_str_cstr(options,"-snap",0, &roadmap_filename)) {
-			service_create_usage(request, "missing roadmap filename (-snap)");
+			service_create_usage("missing roadmap filename (-snap)");
 			return;
 		}
 
 		snap_mapped_file = platform.open_mmap_file(roadmap_filename.begin, roadmap_filename.end, 1, 0);
 		if (!snap_mapped_file.mapped) {
-			service_create_usage(request, "couldn't open snap file (-snap)");
+			service_create_usage("couldn't open snap file (-snap)");
 			return;
 		}
 
@@ -5129,7 +5219,7 @@ service_create(Request *request)
 		g_snap_graph = (rg_Graph*) al_Allocator_get_root(allocator);
 
 		if (!g_snap_graph) {
-			service_create_usage(request, "couldn't find snap graph inside roadmap file (-snap)");
+			service_create_usage("couldn't find snap graph inside roadmap file (-snap)");
 			return;
 		}
 
@@ -5141,12 +5231,12 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-size0")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-size0",0,&st)) {
-			service_create_usage(request, "invalid memory value on -size0 (default: 32M)");
+			service_create_usage("invalid memory value on -size0 (default: 32M)");
 			return;
 		} else {
 			size0 = ut_parse_storage_size(st.begin, st.end);
 			if (size0 < Megabytes(4)) {
-				service_create_usage(request, "invalid memory value on -size0 (needs to be at least 4M)");
+				service_create_usage("invalid memory value on -size0 (needs to be at least 4M)");
 				return;
 			}
 		}
@@ -5156,16 +5246,18 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-mem_labels")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-mem_labels",0,&st)) {
-			service_create_usage(request, "invalid memory value on -size0 (default: 16M)");
+			service_create_usage("invalid memory value on -size0 (default: 16M)");
 			return;
 		} else {
 			mem_labels = ut_parse_storage_size(st.begin, st.end);
 			if (mem_labels < Megabytes(4)) {
-				service_create_usage(request, "invalid memory value on -mem_labels (needs to be at least 4M)");
+				service_create_usage("invalid memory value on -mem_labels (needs to be at least 4M)");
 				return;
 			}
 		}
 	}
+
+	b8 base64 = op_Options_find_cstr(options,"-base64") != 0;
 
 	b8 detail = op_Options_find_cstr(options, "-detail") != 0;
 
@@ -5173,12 +5265,12 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-max-size")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-max-size",0,&st)) {
-			service_create_usage(request, "invalid memory value on -max-size (default: 16T)");
+			service_create_usage("invalid memory value on -max-size (default: 16T)");
 			return;
 		} else {
 			max_file_size = ut_parse_storage_size(st.begin, st.end);
 			if (max_file_size < size0) {
-				service_create_usage(request, "invalid memory value on -max-size (needs to be at least size0)");
+				service_create_usage("invalid memory value on -max-size (needs to be at least size0)");
 				return;
 			}
 		}
@@ -5188,12 +5280,12 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-scan-buffer-size")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-scan-buffer-size",0,&st)) {
-			service_create_usage(request, "invalid scan buffer size (default: 4M)");
+			service_create_usage("invalid scan buffer size (default: 4M)");
 			return;
 		} else {
 			scan_buffer_size = ut_parse_storage_size(st.begin, st.end);
 			if (scan_buffer_size < 128) {
-				service_create_usage(request, "scan buffer size of at least 128 bytes");
+				service_create_usage("scan buffer size of at least 128 bytes");
 				return;
 			}
 		}
@@ -5205,11 +5297,11 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-report-frequency")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-report-frequency",0,&st)) {
-			service_create_usage(request, "invalid report frequency value (default: 100000)");
+			service_create_usage("invalid report frequency value (default: 100000)");
 			return;
 		} else {
 			if (!pt_parse_u64(st.begin, st.end, &report_frequency)) {
-				service_create_usage(request, "invalid report frequency value (default: 100000)");
+				service_create_usage("invalid report frequency value (default: 100000)");
 				return;
 			}
 		}
@@ -5219,11 +5311,11 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-report-cache")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-report-cache",0,&st)) {
-			service_create_usage(request, "invalid report cache value (default: 1)");
+			service_create_usage("invalid report cache value (default: 1)");
 			return;
 		} else {
 			if (!pt_parse_u64(st.begin, st.end, &report_cache)) {
-				service_create_usage(request, "invalid report cache value (default: 1)");
+				service_create_usage("invalid report cache value (default: 1)");
 				return;
 			}
 		}
@@ -5235,7 +5327,7 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options,"-filter")) {
 		if (!op_Options_named_u64_cstr(options,"-filter",0,&filter_offset)
 		    ||!op_Options_named_u64_cstr(options,"-filter",1,&filter_count)) {
-			service_create_usage(request, "invalid filter offset or count values");
+			service_create_usage("invalid filter offset or count values");
 			return;
 		} else {
 			filter = 1;
@@ -5249,12 +5341,12 @@ service_create(Request *request)
 		    || !op_Options_named_u64_cstr(options,"-qpart",1,&qpart.set)
 		    || !op_Options_named_str_cstr(options,"-qpart",2,&qpart.lat_name)
 		    || !op_Options_named_str_cstr(options,"-qpart",3,&qpart.lon_name)) {
-			service_create_usage(request, "invalid -qpart");
+			service_create_usage("invalid -qpart");
 			return;
 		} else {
 			qpart.active = 1;
 			if (!app_QPart_read(&qpart)) {
-				service_create_usage(request, "-qpart problem (could not read u64 entries from input file)");
+				service_create_usage("-qpart problem (could not read u64 entries from input file)");
 				return;
 			}
 		}
@@ -5269,19 +5361,19 @@ service_create(Request *request)
 		    || !op_Options_named_str_cstr(options,"-qpart2",3,&qpart2.lon1_name)
 		    || !op_Options_named_str_cstr(options,"-qpart2",4,&qpart2.lat2_name)
 		    || !op_Options_named_str_cstr(options,"-qpart2",5,&qpart2.lon2_name)) {
-			service_create_usage(request, "-qpart2 problem");
+			service_create_usage("-qpart2 problem");
 			return;
 		} else {
 			qpart2.active = 1;
 			if (!app_QPart2_read(&qpart2)) {
-				service_create_usage(request, "qpart2 problem (could not read u64 entries from input file)");
+				service_create_usage("qpart2 problem (could not read u64 entries from input file)");
 				return;
 			}
 		}
 	}
 
 	if (qpart.active && qpart2.active) {
-		service_create_usage(request, "only one of the options can be active: -qpart or -qpart2");
+		service_create_usage("only one of the options can be active: -qpart or -qpart2");
 		return;
 	}
 
@@ -5294,12 +5386,12 @@ service_create(Request *request)
 		    || !op_Options_named_str_cstr(options,"-tpart2",3,&tpart2.lon1_name)
 		    || !op_Options_named_str_cstr(options,"-tpart2",4,&tpart2.lat2_name)
 		    || !op_Options_named_str_cstr(options,"-tpart2",5,&tpart2.lon2_name)) {
-			service_create_usage(request, "problem with -tpart2 parameters");
+			service_create_usage("problem with -tpart2 parameters");
 			return;
 		} else {
 			tpart2.active = 1;
 			if (!app_TPart2_read(&tpart2)) {
-				service_create_usage(request, "problem with -tpart2 parameters");
+				service_create_usage("problem with -tpart2 parameters");
 				return;
 			}
 		}
@@ -5309,25 +5401,25 @@ service_create(Request *request)
 
 	MemoryBlock csv_filename     = { .begin=0, .end=0 };
 	MemoryBlock mapping_filename = { .begin=0, .end=0 };
-	MemoryBlock output_filename  = { .begin=0, .end=0 };
+	MemoryBlock log_filename  = { .begin=0, .end=0 };
 
 	if (use_stdin) {
 		if (op_Options_num_positioned_parameters(options) != 3) {
-			service_create_usage(request, "csv with -stdin uses two required parameters: <mapping-fname> <output-fname>");
+			service_create_usage("csv with -stdin uses two required parameters: <mapping-fname> <output-fname>");
 			return;
 		} else if (!op_Options_str(options, 1, &mapping_filename)
-			   || !op_Options_str(options, 2, &output_filename)) {
-			service_create_usage(request, "[csv] couldn't parse csv -stdin required params");
+			   || !op_Options_str(options, 2, &log_filename)) {
+			service_create_usage("[csv] couldn't parse csv -stdin required params");
 			return;
 		}
 	} else {
 		if (op_Options_num_positioned_parameters(options) != 4) {
-			service_create_usage(request, "csv without -stdin uses three required parameters: <csv-fname> <mapping-fname> <output-fname>");
+			service_create_usage("csv without -stdin uses three required parameters: <csv-fname> <mapping-fname> <output-fname>");
 			return;
 		} else if (!op_Options_str(options, 1, &csv_filename)
 			   || !op_Options_str(options, 2, &mapping_filename)
-			   || !op_Options_str(options, 3, &output_filename)) {
-			service_create_usage(request, "couldn't parser three parameters for csv without -stdin");
+			   || !op_Options_str(options, 3, &log_filename)) {
+			service_create_usage("couldn't parser three parameters for csv without -stdin");
 			return;
 		}
 	}
@@ -5339,7 +5431,7 @@ service_create(Request *request)
 	MemoryBlock external_header_filename = { .begin = 0, .end = 0 };
 	if (op_Options_find_cstr(options, "-header")) {
 		if (!op_Options_named_str_cstr(options, "-header", 0, &external_header_filename)) {
-			service_create_usage(request, "invalid header option: missing filename;");
+			service_create_usage("invalid header option: missing filename;");
 			return;
 		} else {
 			external_header = 1;
@@ -5351,10 +5443,10 @@ service_create(Request *request)
 	if (op_Options_find_cstr(options, "-sep")) {
 		MemoryBlock st = {.begin = 0, .end = 0};
 		if (!op_Options_named_str_cstr(options, "-sep", 0, &st)) {
-			service_create_usage(request, "invalid header option: missing filename;");
+			service_create_usage("invalid header option: missing filename;");
 			return;
 		} else if (MemoryBlock_length(&st) > 1) {
-			service_create_usage(request, "-sep should be one character only");
+			service_create_usage("-sep should be one character only");
 			return;
 		} else {
 			sep = *st.begin;
@@ -5365,12 +5457,12 @@ service_create(Request *request)
 	{
 		pt_File pfh = platform.open_read_file(mapping_filename.begin, mapping_filename.end);
 		if (!pfh.open) {
-			Request_msg(request, "[csv] could not open mapping filename.\n");
+			log_cstr_("[csv] could not open mapping filename.\n");
 			return;
 		}
 
 		if (pfh.size==0) {
-			Request_msg(request, "[csv] file is empty.\n");
+			log_cstr_("[csv] file is empty.\n");
 			return;
 		}
 		mapping_text = platform.allocate_memory(pfh.size,0,0);
@@ -5396,21 +5488,21 @@ service_create(Request *request)
 	np_initialize_tokenizer(&tok, mapping_text.memblock.begin, mapping_text.memblock.end);
 	np_Parser_init(&csv_mapping_parser, &tok, &csv_mapping_parse_and_compile_allocator);
 
-	/* dummy loop just to goto relese resources bt using break */
+	/* dummy loop just to goto release resources bt using break */
 	for (;;) {
 
 		// parse
 		if (!np_Parser_run(&csv_mapping_parser)) {
-			Request_msg(request, "[csv] parsing error.\n");
-			Request_print(request, &csv_mapping_parser.log);
+			log_cstr_("[csv] parsing error.\n");
+			log_(&csv_mapping_parser.log);
 			break;
 		}
 
 		// compile
 		np_Compiler_reduce(&csv_mapping_compiler, csv_mapping_parser.ast_first, mapping_text.memblock.begin, mapping_text.memblock.end);
 		if (!csv_mapping_compiler.reduce.success) {
-			Request_print(request, &csv_mapping_compiler.reduce.log);
-			Request_msg(request, "[csv] compile error.\n");
+			log_(&csv_mapping_compiler.reduce.log);
+			log_cstr_("[csv] compile error.\n");
 			break;
 		}
 
@@ -5428,7 +5520,7 @@ service_create(Request *request)
 		}
 
 		if (!cm_Spec_is_valid(&spec)) {
-			Request_msg(request, "[csv] csv mapping spec is"
+			log_cstr_("[csv] csv mapping spec is"
 				    " incompatible with a nanocube: needs at"
 				    " least one indexing and one measure"
 				    " dimension");
@@ -5443,11 +5535,11 @@ service_create(Request *request)
 		if (!use_stdin) {
 			csv_file = platform.open_read_file(csv_filename.begin, csv_filename.end);
 			if (!csv_file.open) {
-				service_create_usage(request, "couldn't open csv file.");
+				service_create_usage("couldn't open csv file.");
 				return;
 			}
 		}
-		pt_File *csv_file_ptr = use_stdin ? request->pfh_stdin : &csv_file;
+		pt_File *csv_file_ptr = use_stdin ? g_request->pfh_stdin : &csv_file;
 
 
 		csv_Stream       csv_stream;
@@ -5467,7 +5559,7 @@ service_create(Request *request)
 			if (external_header) {
 				csv_header_file = platform.open_read_file(external_header_filename.begin, external_header_filename.end);
 				if (!csv_header_file.open) {
-					service_create_usage(request, "couldn't open external header file;");
+					service_create_usage("couldn't open external header file;");
 					return;
 				}
 				csv_Stream_init(&csv_stream, sep,
@@ -5484,12 +5576,12 @@ service_create(Request *request)
 			if (csv_Stream_next(&csv_stream)) {
 				u32 csv_fields_count = csv_Stream_num_fields(&csv_stream);
 				if (csv_fields_count > service_create_MAX_FIELDS) {
-					service_create_usage(request, ".csv header has too many fields.");
+					service_create_usage(".csv header has too many fields.");
 					return;
 				}
 				b8 ok = csv_Stream_get_fields(&csv_stream, csv_fields, 0, csv_fields_count);
 				if (!ok) {
-					service_create_usage(request, "couldn't read .csv header fields.");
+					service_create_usage("couldn't read .csv header fields.");
 					return;
 				}
 
@@ -5506,11 +5598,11 @@ service_create(Request *request)
 				}
 
 				if (header_print.overflow) {
-					service_create_usage(request, "couldn't copy header fields.");
+					service_create_usage("couldn't copy header fields.");
 					return;
 				}
 			} else {
-				service_create_usage(request, "couldn't read .csv header;");
+				service_create_usage("couldn't read .csv header;");
 				return;
 			}
 
@@ -5531,13 +5623,13 @@ service_create(Request *request)
 			s64 idx;
 			idx = service_create_which_field(qpart.lat_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart latitude column not found.\n");
+				log_cstr_("[csv] qpart latitude column not found.\n");
 				return;
 			}
 			qpart.lat_index = (u32) idx;
 			idx = service_create_which_field(qpart.lon_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart longitude column not found.\n");
+				log_cstr_("[csv] qpart longitude column not found.\n");
 				return;
 			}
 			qpart.lon_index = (u32) idx;
@@ -5547,25 +5639,25 @@ service_create(Request *request)
 			s32 idx;
 			idx = service_create_which_field(qpart2.lat1_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart2 latitude1 column not found.\n");
+				log_cstr_("[csv] qpart2 latitude1 column not found.\n");
 				return;
 			}
 			qpart2.lat1_index = (u32) idx;
 			idx = service_create_which_field(qpart2.lon1_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart2 longitude1 column not found.\n");
+				log_cstr_("[csv] qpart2 longitude1 column not found.\n");
 				return;
 			}
 			qpart2.lon1_index = (u32) idx;
 			idx = service_create_which_field(qpart2.lat2_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart2 latitude2 column not found.\n");
+				log_cstr_("[csv] qpart2 latitude2 column not found.\n");
 				return;
 			}
 			qpart2.lat2_index = (u32) idx;
 			idx = service_create_which_field(qpart2.lon2_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] qpart2 longitude2 column not found.\n");
+				log_cstr_("[csv] qpart2 longitude2 column not found.\n");
 				return;
 			}
 			qpart2.lon2_index = (u32) idx;
@@ -5575,25 +5667,25 @@ service_create(Request *request)
 			s32 idx;
 			idx = service_create_which_field(tpart2.lat1_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] tpart2 latitude1 column not found.\n");
+				log_cstr_("[csv] tpart2 latitude1 column not found.\n");
 				return;
 			}
 			tpart2.lat1_index = (u32) idx;
 			idx = service_create_which_field(tpart2.lon1_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] tpart2 longitude1 column not found.\n");
+				log_cstr_("[csv] tpart2 longitude1 column not found.\n");
 				return;
 			}
 			tpart2.lon1_index = (u32) idx;
 			idx = service_create_which_field(tpart2.lat2_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] tpart2 latitude2 column not found.\n");
+				log_cstr_("[csv] tpart2 latitude2 column not found.\n");
 				return;
 			}
 			tpart2.lat2_index = (u32) idx;
 			idx = service_create_which_field(tpart2.lon2_name);
 			if (idx < 0) {
-				Request_msg(request, "[csv] tpart2 longitude2 column not found.\n");
+				log_cstr_("[csv] tpart2 longitude2 column not found.\n");
 				return;
 			}
 			tpart2.lon2_index = (u32) idx;
@@ -5636,7 +5728,7 @@ service_create(Request *request)
 			char *chkpt = print->end;
 			Print_cstr(print,"[csv] Columns not found:\n");
 			pt_rotate(print->begin, chkpt, print->end);
-			Request_print(request, print);
+			log_(print);
 			break;
 		}
 
@@ -5652,11 +5744,11 @@ service_create(Request *request)
 		s64 size = size0;
 #define xxxxCSV_USING_MMAPED_SHARED_FILE
 #ifdef CSV_USING_MMAPED_SHARED_FILE
-		if (!app_create_tmp_file(output_filename, size)) {
+		if (!app_create_tmp_file(log_filename, size)) {
 			Print_cstr(print,"[csv] couldn't create output file\n");
 			break;
 		}
-		pt_MappedFile mmap_output = platform.open_mmap_file(output_filename.begin, output_filename.end, 1, 1);
+		pt_MappedFile mmap_output = platform.open_mmap_file(log_filename.begin, log_filename.end, 1, 1);
 		if (!mmap_output.mapped) {
 			Print_cstr(print,"[csv] couldn't mmap output file\n");
 			break;
@@ -5671,7 +5763,7 @@ service_create(Request *request)
 		u64 part_number         = 1;
 #endif
 
-		al_Allocator *allocator = service_create_prepare_allocator_and_nanocube(request, &spec, data_memory_begin, data_memory_end, 0);
+		al_Allocator *allocator = service_create_prepare_allocator_and_nanocube(&spec, data_memory_begin, data_memory_end, 0);
 		nv_Nanocube  *nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
 
 		pt_Memory insert_buffer_memory = platform.allocate_memory(sizeof(nx_Threads) + Megabytes(1), 12, 0);
@@ -5787,7 +5879,7 @@ service_create(Request *request)
 		u64 serve_num_threads = 1;
 		if (op_Options_find_cstr(options,"-serve-threads")) {
 			if (!op_Options_named_u64_cstr(options,"-serve-threads",0,&serve_num_threads)) {
-				Request_msg(request, "[create] incorrect usage of options: -serve-threads=<num-threads>\n");
+				log_cstr_("[create] incorrect usage of options: -serve-threads=<num-threads>\n");
 				return;
 			}
 		}
@@ -5795,7 +5887,7 @@ service_create(Request *request)
 		u64 serve_port = 0;
 		if (op_Options_find_cstr(options,"-serve-port")) {
 			if (!op_Options_named_u64_cstr(options,"-serve-port",0,&serve_port)) {
-				Request_msg(request, "[create] incorrect usage of options: -serve-port=<num-port>\n");
+				log_cstr_("[create] incorrect usage of options: -serve-port=<num-port>\n");
 				return;
 			}
 		}
@@ -5803,7 +5895,7 @@ service_create(Request *request)
 		u64 serve_refresh_rate = 60; // sixty seconds is the default
 		if (op_Options_find_cstr(options,"-serve-refresh-rate")) {
 			if (!op_Options_named_u64_cstr(options,"-serve-refresh-rate",0,&serve_refresh_rate)) {
-				Request_msg(request, "[create] incorrect usage of options: -serve-refresh-rate=<seconds>\n");
+				log_cstr_("[create] incorrect usage of options: -serve-refresh-rate=<seconds>\n");
 				return;
 			}
 		}
@@ -5817,7 +5909,7 @@ service_create(Request *request)
 			.info = &serve_info,
 			.num_threads = (s32) serve_num_threads,
 			.port = (s32) serve_port,
-			.request = request,
+			.request = g_request,
 			.status = service_create_serve_NOT_INITIALIZED,
 			.refresh_status = service_create_serve_refresh_NO_REFRESH,
 			.refresh_data = 0
@@ -5837,14 +5929,14 @@ service_create(Request *request)
 			b8 copy_ok = app_NanocubesAndAliases_copy_and_register_nanocube(&serve_info, nanocube, name, cstr_end(name));
 
 			if (!copy_ok) {
-				Request_msg(request, "[create] not enough memory to create and serve.\n");
+				log_cstr_("[create] not enough memory to create and serve.\n");
 				return;
 			}
 
 			serve_work_queue = platform.work_queue_create(1);
 
 			if (!serve_work_queue) {
-				Request_msg(request, "[create] could not create work queue for server listener loop.\n");
+				log_cstr_("[create] could not create work queue for server listener loop.\n");
 				return;
 			}
 
@@ -5864,16 +5956,16 @@ service_create(Request *request)
 			if (status == service_create_serve_FAILED) {
 				Print_clear(print);
 				Print_cstr(print,"[create] failed to initialize 'serve' engine.\n");
-				Request_print(request, print);
+				log_(print);
 				return;
 			} else if (status == service_create_serve_RUNNING) {
 				Print_clear(print);
 				Print_format(print,"[create] 'serve' engine running on port %d with %d threads.\n", serve_config.port, serve_config.num_threads);
-				Request_print(request, print);
+				log_(print);
 			} else if (status == service_create_serve_DONE) {
 				Print_clear(print);
 				Print_format(print,"[create] 'serve' engine is done. didn't expect it to happen.\n");
-				Request_print(request, print);
+				log_(print);
 				return;
 			}
 
@@ -5946,7 +6038,7 @@ service_create(Request *request)
 							Print_cstr(print, "' for dimension '");
 							Print_str(print, dim->name.begin, dim->name.end);
 							Print_cstr(print, "'\n");
-							Request_print(request, print);
+							log_(print);
 							return;
 						}
 						labels_table.begin = mapped_file.begin;
@@ -6070,7 +6162,7 @@ service_create(Request *request)
 							// every time we return to
 							if (line_level == 0) {
 								if (root_alias_defined) {
-									Request_msg(request, "[create] @hierarchy: multiple definition of root alias\n");
+									log_cstr_("[create] @hierarchy: multiple definition of root alias\n");
 									return;
 								}
 
@@ -6085,7 +6177,7 @@ service_create(Request *request)
 
 								b8 ok = nu_HOdom_advance(&hodom, line_level-1);
 								if (!ok) {
-									Request_msg(request, "[create] @hierarchy: overflow");
+									log_cstr_("[create] @hierarchy: overflow");
 									return;
 								}
 
@@ -6098,7 +6190,7 @@ service_create(Request *request)
 
 								if (line_level < levels - 1) {
 									if (first_tab != end_of_line) {
-										Request_msg(request, "[create] @hierarchy: intermediate levels cannot have multiple tab separated text\n");
+										log_cstr_("[create] @hierarchy: intermediate levels cannot have multiple tab separated text\n");
 										return;
 									}
 
@@ -6189,7 +6281,7 @@ service_create(Request *request)
 			// check every line beign inserted
 // 			Print_clear(print);
 // 			Print_str(print, csv_stream.buffer.record, csv_stream.buffer.cursor);
-// 			Request_print(request, print);
+// 			log_(print);
 #endif
 
 
@@ -6215,7 +6307,7 @@ service_create(Request *request)
 
 // 				Print_clear(print);
 // 				Print_format(print, "[create] Updating index being served\n");
-// 				Request_print(request, print);
+// 				log_(print);
 
 				u64 current_time = platform.get_time();
 				if (current_time - serve_last_update >= serve_refresh_rate) {
@@ -6241,7 +6333,7 @@ service_create(Request *request)
 
 // 				Print_clear(print);
 // 				Print_format(print, "[create] Time elapsed to update index being served in seconds: %llu\n", serve_last_update - current_time);
-// 				Request_print(request, print);
+// 				log_(print);
 
 			}
 #endif
@@ -6383,7 +6475,7 @@ service_create(Request *request)
 									entry = 0;
 									Print_clear(print);
 									Print_cstr(print, "[Warning] Categorical names buffer is full. Disconsidering record\n");
-									Request_print(request, print);
+									log_(print);
 								} else {
 									Assert(0 && "should not reach this point");
 								}
@@ -6393,7 +6485,7 @@ service_create(Request *request)
 								Print_str(print, cat_text->begin, cat_text->end);
 								Print_format(print, "' (max. of %d categories already reached).", max_entries);
 								Print_format(print, " [line: %lld]\n", (s64) line_no);
-								Request_print(request, print);
+								log_(print);
 							}
 						}
 
@@ -6424,7 +6516,7 @@ service_create(Request *request)
 						Print_format(print, "[Warning] Could not prepare record on line %lld because of index dimension '", line_no);
 						Print_str(print, dim->name.begin, dim->name.end);
 						Print_cstr(print, "'\n");
-						Request_print(request, print);
+						log_(print);
 						could_prepare_record = 0;
 						break;
 					}
@@ -6445,7 +6537,7 @@ service_create(Request *request)
 // 				Print_cstr(print, "[service_create] Error parsing record on line ");
 // 				Print_u64(print,(u64) offset + 1);
 // 				Print_cstr(print,"\n");
-// 				Request_print(request, print);
+// 				log_(print);
 // 				Print_clear(print);
 				// continue;
 				goto finalize_insertion;
@@ -6458,7 +6550,7 @@ service_create(Request *request)
 #ifdef PROFILE
 			pf_generate_report();
 			pf_clear_events();
-			Request_print(request, &pf_report.print);
+			log_(&pf_report.print);
 #endif
 
 
@@ -6486,21 +6578,21 @@ service_create(Request *request)
 
 				Print_clear(print);
 				Print_format(print, "[csv] resizing file from %lluM to %lluM\n", size/Megabytes(1), (2*size)/Megabytes(1));
-				Request_print(request,print);
+				log_(print);
 				size = 2 * size;
 				/* @TODO(llins): check for a clean exit in these return cases */
-				if (!platform.resize_file(output_filename.begin, output_filename.end, size)) {
+				if (!platform.resize_file(log_filename.begin, log_filename.end, size)) {
 					Print_clear(print);
 					Print_cstr(print, "[csv] Couldn't resize file exiting! Partial file should be consistent");
-					Request_print(request,print);
+					log_(print);
 					return;
 				}
 
-				mmap_output = platform.open_mmap_file(output_filename.begin, output_filename.end, 1, 1);
+				mmap_output = platform.open_mmap_file(log_filename.begin, log_filename.end, 1, 1);
 				if (!mmap_output.mapped) {
 					Print_clear(print);
 					Print_cstr(print,"[csv] couldn't mmap output file\n");
-					Request_print(request, print);
+					log_(print);
 					return;
 				}
 
@@ -6508,7 +6600,7 @@ service_create(Request *request)
 				if (!al_Allocator_resize(allocator, mmap_output.size)) {
 					Print_clear(print);
 					Print_cstr(print,"[csv] couldn't resize allocator size (strange)\n");
-					Request_print(request, print);
+					log_(print);
 					return;
 				}
 				nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
@@ -6516,7 +6608,7 @@ service_create(Request *request)
 				time_to_resize = platform.get_time() - time_to_resize;
 				Print_clear(print);
 				Print_format(print, "Time to resize in seconds: %llu\n", time_to_resize);
-				Request_print(request, print);
+				log_(print);
 #else
 				/* try doubling the arena size */
 				if (2*size <= max_file_size && platform.resize_memory(&data_memory, 2*size, 12)) {
@@ -6524,14 +6616,14 @@ service_create(Request *request)
 
 					Print_clear(print);
 					Print_format(print,"[create] resizing arena of part %llu to %llu bytes\n", part_number, size);
-					Request_print(request, print);
+					log_(print);
 
 					data_memory_begin = data_memory.memblock.begin;
 					data_memory_end   = data_memory.memblock.end;
 					allocator = (al_Allocator*) data_memory_begin;
 					if (!al_Allocator_resize(allocator, size)) {
 						Print_clear(print);
-						Request_msg(request,"[create] couldn't resize allocator size (strange)\n");
+						log_cstr_("[create] couldn't resize allocator size (strange)\n");
 						return;
 					}
 					nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
@@ -6542,16 +6634,16 @@ service_create(Request *request)
 					/* fit memory to used pages to make arena more consistent */
 					al_Allocator_fit(allocator);
 
-					if (!service_create_save_arena(request, allocator, output_filename.begin, output_filename.end, part_number)) {
+					if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number, base64)) {
 						Print_clear(print);
-						Request_msg(request,"[create] aborting loop\n");
+						log_cstr_("[create] aborting loop\n");
 						return;
 					}
 
 					u64 used_memory = al_Allocator_used_memory(allocator);
 					Print_clear(print);
 					Print_format(print,"[create] saved part %llu size %llu bytes\n", part_number, used_memory);
-					Request_print(request, print);
+					log_(print);
 
 					platform.free_memory(&data_memory);
 
@@ -6566,23 +6658,23 @@ service_create(Request *request)
 
 					Print_clear(print);
 					Print_format(print,"[create] starting a fresh arena for part %llu\n", part_number);
-					Request_print(request, print);
+					log_(print);
 
 					// we need to initialize the key value store of the next part
 					// with a copy of the current part. current solution can be
 					// slow, but we assume this op doesnt happen often. It will
 					// be loaded from mmapped file.
 
-					pt_MappedFile mapped_file = platform.open_mmap_file(output_filename.begin, output_filename.end, 1, 0);
+					pt_MappedFile mapped_file = platform.open_mmap_file(log_filename.begin, log_filename.end, 1, 0);
 					if (!mapped_file.mapped) {
-						Request_msg(request, "[create] couldn't open previous part.\n");
+						log_cstr_("[create] couldn't open previous part.\n");
 						return;
 					}
 
 					al_Allocator*  previous_part_allocator = (al_Allocator*) mapped_file.begin;
 					nv_Nanocube*   previous_part_nanocube = (nv_Nanocube*) al_Allocator_get_root(previous_part_allocator);
 
-					allocator = service_create_prepare_allocator_and_nanocube(request, &spec, data_memory_begin, data_memory_end, previous_part_nanocube);
+					allocator = service_create_prepare_allocator_and_nanocube(&spec, data_memory_begin, data_memory_end, previous_part_nanocube);
 					nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
 
 
@@ -6603,7 +6695,7 @@ finalize_insertion:
 					     (f32) ((100.0f*al_Allocator_used_memory(allocator)) / al_Allocator_capacity(allocator)),
 					     (u64) records_inserted,
 					     (f32) (100.0f*(f32)records_inserted/(f32)(offset + 1)));
-				Request_print(request, print);
+				log_(print);
 				Print_clear(print);
 				last_printed = offset;
 
@@ -6612,7 +6704,7 @@ finalize_insertion:
 				/* @NOTE(llins): if cube doesn't fit in memory, scanning all the records is very slow */
 				if (report_cache) {
 					nu_log_memory(allocator, &nanocube->index, print, detail, 0);
-					Request_print(request, print);
+					log_(print);
 				}
 			}
 
@@ -6628,7 +6720,7 @@ finalize_insertion:
 				     (f32) ((100.0f*al_Allocator_used_memory(allocator)) / al_Allocator_capacity(allocator)),
 				     (u64) records_inserted,
 				     (f32) (100.0f*(f32)records_inserted/(f32)(offset+1)));
-			Request_print(request,print);
+			log_(print);
 			Print_clear(print);
 		}
 
@@ -6647,7 +6739,7 @@ finalize_insertion:
 
 		f64 t0s = platform.get_time();
 
-		// pt_File pfh_db = platform.open_write_file (output_filename.begin, output_filename.end);
+		// pt_File pfh_db = platform.open_write_file (log_filename.begin, log_filename.end);
 		// platform.write_to_file (&pfh_db, (char*) allocator, (char*) allocator + al_Allocator_used_memory(allocator));
 		// platform.close_file(&pfh_db);
 
@@ -6660,17 +6752,17 @@ finalize_insertion:
 		platform.close_mmap_file(&mmap_output);
 		Print_clear(print);
 		Print_cstr(print, "[csv] resizing file...");
-		if (platform.resize_file(output_filename.begin, output_filename.end, used_size)) {
+		if (platform.resize_file(log_filename.begin, log_filename.end, used_size)) {
 			Print_cstr(print, "OK\n");
 		} else {
 			Print_cstr(print, "FAILED\n");
 		}
-		Request_print(request,print);
+		log_(print);
 #else
-		if (!service_create_save_arena(request, allocator, output_filename.begin, output_filename.end, part_number > 1 ? part_number : 0)) {
+		if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number > 1 ? part_number : 0, base64)) {
 			Print_clear(print);
 			Print_cstr(print,"[csv] couldn't save arena\n");
-			Request_print(request, print);
+			log_(print);
 			return;
 		}
 
@@ -6727,15 +6819,15 @@ service_bits(Request *request)
 
 	u64 offset = 0, bits = 0, repeat = 1;
 	if (!op_Options_u64(options, 1, &offset)) {
-		Request_msg(request, "[bits] missing offset (usage: bits <offset> <bits> <repeat>)\n");
+		output_cstr_("[bits] missing offset (usage: bits <offset> <bits> <repeat>)\n");
 		return;
 	}
 	if (!op_Options_u64(options, 2, &bits)) {
-		Request_msg(request, "[bits] missing offset (usage: bits <offset> <bits> <repeat>)\n");
+		output_cstr_("[bits] missing offset (usage: bits <offset> <bits> <repeat>)\n");
 		return;
 	}
 	if (!op_Options_u64(options, 3, &repeat)) {
-		Request_msg(request, "[bits] missing offset (usage: bits <offset> <bits> <repeat>)\n");
+		output_cstr_("[bits] missing offset (usage: bits <offset> <bits> <repeat>)\n");
 		return;
 	}
 
@@ -6785,14 +6877,14 @@ service_bits(Request *request)
 			Print_align(print,  14, 1, ' ');
 
 			Print_char(print,'\n');
-			Request_print(request, print);
+			output_(print);
 		}
 	}
 	Print_clear(print);
 	Print_cstr(print,"sum outputs: ");
 	Print_u64(print, sum_output);
 	Print_cstr(print,"\n");
-	Request_print(request, print);
+	output_(print);
 
 }
 
@@ -6809,7 +6901,7 @@ PLATFORM_TCP_CALLBACK(service_client_callback)
 	Print_clear(print);
 	Print_cstr(print, "[client receive data]:\n");
 	Print_str(print, buffer, buffer+length);
-	Request_print(request, print);
+	output_(print);
 }
 
 internal void
@@ -6827,12 +6919,12 @@ service_client(Request *request)
 	MemoryBlock hostname;
 	u64 port_u64;
 	if (!op_Options_str(options, 1, &hostname)) {
-		Request_msg(request, "[service_client] Usage <hostname> <port>.\n");
+		output_cstr_("[service_client] Usage <hostname> <port>.\n");
 		return;
 	}
 	*hostname.end = 0; // make sure it is null terminated (hack)
 	if (!op_Options_u64(options, 2, &port_u64)) {
-		Request_msg(request, "[service_client] Usage <hostname> <port>.\n");
+		output_cstr_("[service_client] Usage <hostname> <port>.\n");
 		return;
 	}
 	s32 port = (s32) port_u64;
@@ -6849,7 +6941,7 @@ service_client(Request *request)
 	platform.tcp_process_events(tcp, 0);
 
 	if (feedback.status != pt_TCP_SOCKET_OK) {
-		Request_msg(request, "[service_client] Could not connect to server:port.\n");
+		output_cstr_("[service_client] Could not connect to server:port.\n");
 		return;
 	}
 
@@ -6898,14 +6990,14 @@ PLATFORM_TCP_CALLBACK(service_http_tcp_server_callback)
 {
 	http_Channel *http_channel = (http_Channel*) socket->user_data;
 
-	Print *print = debug_request->print;
+	Print *print = g_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_tcp_server_callback]: dispatching raw tcp bytes to http message parser\n");
 	Print_str(print, buffer, buffer+length);
-	Request_print(debug_request, print);
+	output_(print);
 
 	http_Channel_receive_data(http_channel, buffer, length);
-	// Request_print(request, print);
+	// output_(print);
 }
 
 // #define http_REQUEST_LINE_CALLBACK(name)
@@ -6917,7 +7009,7 @@ internal
 http_REQUEST_LINE_CALLBACK(service_http_request_line_callback)
 {
 	/* print request_target */
-	Print *print = debug_request->print;
+	Print *print = g_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_http_request_line_callback]: request-target is ");
 	/* rewrite on buffer of request_target */
@@ -6928,7 +7020,7 @@ http_REQUEST_LINE_CALLBACK(service_http_request_line_callback)
 		Print_str(print, request_target_begin, request_target_end);
 	}
 	Print_cstr(print, "\n");
-	Request_print(debug_request, print);
+	output_(print);
 }
 
 // #define http_HEADER_FIELD_CALLBACK(name)
@@ -6939,14 +7031,14 @@ internal
 http_HEADER_FIELD_CALLBACK(service_http_header_field_callback)
 {
 	/* print request_target */
-	Print *print = debug_request->print;
+	Print *print = g_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
 	Print_str(print, field_name_begin, field_name_end);
 	Print_cstr(print, "', value:'");
 	Print_str(print, field_value_begin, field_value_end);
 	Print_cstr(print, "'\n");
-	Request_print(debug_request, print);
+	output_(print);
 }
 
 internal void
@@ -6956,7 +7048,7 @@ service_http(Request *request)
 	op_Options *options = &request->options;
 	u64 port_u64;
 	if (!op_Options_u64(options, 1, &port_u64)) {
-		Request_msg(request, "[service_http] Usage <port>.\n");
+		output_cstr_("[service_http] Usage <port>.\n");
 		return;
 	}
 	s32 port = (s32) port_u64;
@@ -6983,7 +7075,7 @@ service_http(Request *request)
 	platform.tcp_process_events(tcp, 0);
 
 	if (feedback.status != pt_TCP_SOCKET_OK) {
-		Request_msg(request, "[service_http] Could not connect to server:port.\n");
+		output_cstr_("[service_http] Could not connect to server:port.\n");
 		return;
 	}
 
@@ -7006,12 +7098,12 @@ csv_PULL_CALLBACK(service_create_test_pull_callback)
 	platform.read_next_file_chunk(file, buffer, buffer + length);
 	Assert(file->last_read <= length);
 
-	Print *print = debug_request->print;
+	Print *print = g_request->print;
 	Print_clear(print);
 	Print_cstr(print, "[service_create_test_pull_callback] buffer length: ");
 	Print_u64(print, length);
 	Print_cstr(print, "\n");
-	Request_print(debug_request, print);
+	output_(print);
 
 	if (file->last_read > 0) {
 		return buffer + file->last_read;
@@ -7033,7 +7125,7 @@ service_create_test(Request *request)
 	// get next two tokens
 	MemoryBlock input_filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename)) {
-		Request_msg(request, "[csv-test] usage: nanocube csv-test <filename>.\n");
+		output_cstr_("[csv-test] usage: nanocube csv-test <filename>.\n");
 		return;
 	}
 
@@ -7050,7 +7142,7 @@ service_create_test(Request *request)
 		Print_cstr(print, "[csv-test] couldn't open file: ");
 		Print_str(print, input_filename.begin, input_filename.end);
 		Print_cstr(print, "\n");
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
@@ -7072,7 +7164,7 @@ service_create_test(Request *request)
 		Print_cstr(print," has ");
 		Print_u64(print, (u64) csv_fields_count);
 		Print_cstr(print," columns\n");
-		Request_print(request, print);
+		output_(print);
 
 		Assert(csv_fields_count < ArrayCount(fields));
 
@@ -7086,16 +7178,16 @@ service_create_test(Request *request)
 				Print_cstr(print,"] -> ");
 				Print_str(print,fields[i].begin,fields[i].end);
 				Print_cstr(print,"\n");
-				Request_print(request, print);
+				output_(print);
 			}
 		} else {
-			Request_msg(request, "[csv-test]     could not read num fields");
+			output_cstr_("[csv-test]     could not read num fields");
 		}
 
 	}
 
 	if (csv_stream.error != csv_OK) {
-		Request_msg(request, "[csv-test] error on parsing csv file");
+		output_cstr_("[csv-test] error on parsing csv file");
 	}
 
 }
@@ -7112,12 +7204,12 @@ csv_PULL_CALLBACK(service_create_col_pull_callback)
 	platform.read_next_file_chunk(file, buffer, buffer + length);
 	Assert(file->last_read <= length);
 
-// 	Print *print = &debug_request->print;
+// 	Print *print = &g_request->print;
 // 	Print_clear(print);
 // 	Print_cstr(print, "[service_create_col_pull_callback] buffer length: ");
 // 	Print_u64(print, length);
 // 	Print_cstr(print, "\n");
-// 	Request_print(debug_request, print);
+// 	output_(print);
 
 	if (file->last_read > 0) {
 		return buffer + file->last_read;
@@ -7154,14 +7246,14 @@ service_create_col(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_csv_col_doc);
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
 	// get next two tokens
 	MemoryBlock input_filename = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &input_filename)) {
-		Request_msg(request, "[csv-test] usage: nanocube csv-col <filename> <column>"
+		output_cstr_("[csv-test] usage: nanocube csv-col <filename> <column>"
 			   " [-buffer-size=<memory>]"
 			   " [-record-size=<memory>]"
 			   );
@@ -7170,7 +7262,7 @@ service_create_col(Request *request)
 
 	s32 column = 0;
 	if (!op_Options_s32(options, 2, &column)) {
-		Request_msg(request, "[serve] could not parse port number.\n");
+		output_cstr_("[serve] could not parse port number.\n");
 		return;
 	}
 
@@ -7178,12 +7270,12 @@ service_create_col(Request *request)
 	if (op_Options_find_cstr(options,"-buffer-size")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-buffer-size",0,&st)) {
-			Request_msg(request,  "invalid memory value on -buffer-size (default: 16M)");
+			output_cstr_( "invalid memory value on -buffer-size (default: 16M)");
 			return;
 		} else {
 			buffer_size = ut_parse_storage_size(st.begin, st.end);
 			if (buffer_size < Kilobytes(2)) {
-				Request_msg(request,  "invalid memory value on -buffer-size (needs to be at least 2K)");
+				output_cstr_( "invalid memory value on -buffer-size (needs to be at least 2K)");
 				return;
 			}
 		}
@@ -7193,12 +7285,12 @@ service_create_col(Request *request)
 	if (op_Options_find_cstr(options,"-record-size")) {
 		MemoryBlock st;
 		if (!op_Options_named_str_cstr(options,"-record-size",0,&st)) {
-			Request_msg(request,  "invalid memory value on -record-size (default: 16M)");
+			output_cstr_( "invalid memory value on -record-size (default: 16M)");
 			return;
 		} else {
 			record_size = ut_parse_storage_size(st.begin, st.end);
 			if (record_size < Kilobytes(2)) {
-				Request_msg(request,  "invalid memory value on -record-size (needs to be at least 2K)");
+				output_cstr_( "invalid memory value on -record-size (needs to be at least 2K)");
 				return;
 			}
 		}
@@ -7210,7 +7302,7 @@ service_create_col(Request *request)
 		Print_cstr(print, "[csv-col] couldn't open file: ");
 		Print_str(print, input_filename.begin, input_filename.end);
 		Print_cstr(print, "\n");
-		Request_print(request, print);
+		output_(print);
 		return;
 	}
 
@@ -7236,14 +7328,14 @@ service_create_col(Request *request)
 		if (offset % 100000 == 0) {
 			Print_clear(print);
 			Print_format(print, "records: %9d    unique values: %6d\n", offset, set.num_entries);
-			Request_print(request, print);
+			output_(print);
 // 			for (s32 i=0;i<set.num_entries;++i) {
 // 				MemoryBlock st = set_Set_get(&set, i);
 // 				Print_clear(print);
 // 				Print_format(print, "%3d ", i+1);
 // 				Print_str(print, st.begin, st.end);
 // 				Print_char(print, '\n');
-// 				Request_print(request, print);
+// 				output_(print);
 // 			}
 		}
 
@@ -7255,7 +7347,7 @@ service_create_col(Request *request)
 			Print_cstr(print," has not enough columns (");
 			Print_u64(print, (u64) csv_fields_count);
 			Print_cstr(print,")\n");
-			Request_print(request, print);
+			output_(print);
 			continue;
 		}
 
@@ -7264,7 +7356,7 @@ service_create_col(Request *request)
 			s32 insert_status = 0;
 			set_Set_insert(&set, fields[0].begin, fields[0].end, &insert_status);
 		} else {
-			Request_msg(request, "[csv-log]     could not read num fields");
+			output_cstr_("[csv-log]     could not read num fields");
 		}
 	}
 
@@ -7276,11 +7368,11 @@ service_create_col(Request *request)
 		Print_format(print, "%3d ", i+1);
 		Print_str(print, st.begin, st.end);
 		Print_char(print, '\n');
-		Request_print(request, print);
+		output_(print);
 	}
 
 	if (csv_stream.error != csv_OK) {
-		Request_msg(request, "[csv-col] error on parsing csv file");
+		output_cstr_("[csv-col] error on parsing csv file");
 	}
 
 }
@@ -7315,7 +7407,7 @@ service_polycover(Request *request)
 		Print_cstr(print, memory.memblock.begin);
 		Print_cstr(print, "\n");
 	}
-	Request_print(request, print);
+	output_(print);
 	platform.free_memory(&memory);
 }
 
@@ -7327,7 +7419,7 @@ service_polycover(Request *request)
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 	Print_cstr(print, "polycover is not available\n");
-	Request_print(request, print);
+	output_(print);
 }
 
 #endif
@@ -7338,7 +7430,7 @@ service_api(Request *request)
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 	Print_cstr(print, nanocube_api_doc);
-	Request_print(request, print);
+	output_(print);
 }
 
 /*
@@ -7427,21 +7519,24 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 		.app_state = app_state,
 		.pfh_stdout = pfh_stdout,
 		.pfh_stdin = pfh_stdin,
+		.pfh_stderr = pfh_stderr,
 		.print = print_new(&platform, Kilobytes(64))
 	};
+	g_request = &request;
+	op_Options *options = &request.options;
 
 	pt_Memory options_memory = platform.allocate_memory(Kilobytes(16),3,0);
-	op_Options_init(&request.options, options_memory.memblock.begin, options_memory.memblock.end);
+	op_Options_init(options, options_memory.memblock.begin, options_memory.memblock.end);
 	op_Parser options_parser;
-	op_Parser_init(&options_parser, &request.options);
+	op_Parser_init(&options_parser, options);
 	if (!op_Parser_run(&options_parser, request_begin, request_end)) {
-		Request_msg(&request,"[fail] problem parsing command line: <command> <params> <options>\n");
+		output_cstr_("[fail] problem parsing command line: <command> <params> <options>\n");
 		return;
 	}
 
 	MemoryBlock command = {.begin = 0, .end = 0 };
 	if (!op_Options_str(&request.options, 0, &command)) {
-		Request_msg(&request, nanocube_doc);
+		output_cstr_(nanocube_doc);
 		return;
 	}
 
@@ -7450,13 +7545,12 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 // 	Print_cstr(print, "command: ");
 // 	Print_str(print, command.begin, command.end);
 // 	Print_cstr(print, "\n");
-// 	Request_print(&request, print);
+// 	output_(&request, print);
 
-	debug_request = &request;
 
 	// switch case based on first token
 	if (cmd_is("demo_create")) {
-		service_demo_create(&request);
+		service_demo_create();
 	} else if (cmd_is("memory")) {
 		service_memory(&request);
 	} else if (cmd_is("api")) {
@@ -7476,7 +7570,7 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 	} else if (cmd_is("btree")) {
 		service_btree(&request);
 	} else if (cmd_is("create")) {
-		service_create(&request);
+		service_create();
 	} else if (cmd_is("draw")) {
 		service_draw(&request);
 	} else if (cmd_is("time")) {
@@ -7522,7 +7616,7 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 	} else if (cmd_is("ksmall")) {
 		ra_service_ksmall(&request);
 	} else {
-		Request_msg(&request,"[fail] first parameter is not a valid command\n");
+		output_cstr_("[fail] first parameter is not a valid command\n");
 	}
 
 	/* deinitialize nx_ module */

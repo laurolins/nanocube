@@ -21,6 +21,14 @@ for i in $( seq 1 $(($#-1)) ); do
 done
 # echo "${CUSTOM_DEFINES}"
 
+#
+# 2018-11-13T13:41 
+#      Included 
+#            -Wno-misleading-indentation
+#            -Wno-implicit-fallthrough
+#      to avoid compilation errors on gcc version 7.3.0 (Ubuntu 7.3.0-16ubuntu3)
+#
+
 # FLAGS=-std=c++11 -stdlib=libc++ -O3 -Wall -Werror -Weverything
 FLAGS="-Wall \
 -Werror \
@@ -31,6 +39,8 @@ FLAGS="-Wall \
 -Wno-unused-function \
 -Wno-unused-variable \
 -Wno-implicit-function-declaration \
+-Wno-misleading-indentation \
+-Wno-implicit-fallthrough \
 -std=gnu11 \
 -DOS_LINUX"
 # -pedantic \
@@ -81,7 +91,7 @@ fi
 BUILD="../../build/nanocube"
 SRC="../../nanocube/src"
 C="gcc"
-CXX="gcc"
+CXX="g++"
 LIBS="-L${BUILD} -lm -ldl -lpthread"
 APP_EXTRA_LIBS=""
 
@@ -134,15 +144,15 @@ EOF
 	echo "---------------------"
 	echo $POLYCOVER_CXX_SRC
 	# -stdlib=stdlib++ 
-	C_FLAGS="-std=gnu11 -fPIC"
-	CXX_FLAGS="-std=c++11 -fPIC"
+	C_FLAGS="-std=gnu11 -fPIC -O2"
+	CXX_FLAGS="-std=c++11 -fPIC -O2"
 	# create the C and C++ objects separately
 	rm -rf .obj
 	mkdir .obj 
 	pushd .obj
 	${C} ${C_FLAGS} -c ${POLYCOVER_C_SRC}
 	${CXX} ${CXX_FLAGS} -c ${POLYCOVER_CXX_SRC}
-	${C} -shared -olibpolycover.so *.o -lm
+	${CXX} -shared -olibpolycover.so *.o -lm
 	cp libpolycover.so ${LOCAL}/lib/.
 	popd
 fi
@@ -183,32 +193,59 @@ function f_file_modified {
 # of the tracked repository, we don't want to updated
 # those files everytime we compile, only when there
 # is a potential change
+# function f_update_doc {
+# 	INPUT="$1"
+# 	VER="$2"
+# 	OUTPUT="${INPUT}.doc"
+# 
+# 	# find all BEGIN_DOC_STRING lines
+# 	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 2 -d \ > /tmp/n
+# 	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 1 -d : > /tmp/b
+# 	grep -n "^END_DOC_STRING"   "${INPUT}" | cut -f 1 -d : > /tmp/e
+# 	paste /tmp/b /tmp/e /tmp/n > /tmp/r
+# 
+# 	echo "" > "${OUTPUT}"
+# 	# read each line as an array
+# 	while read -ra LINE; do
+# 		FIRST="$((${LINE[0]}+1))"
+# 		LAST="$((${LINE[1]}-1))"
+# 		NAME="${LINE[2]}"
+# 		echo "static const char ${NAME}[] = {" >> "${OUTPUT}"
+# 		sed -n ${FIRST},${LAST}p ${INPUT} | sed 's/__VERSION__/'${VER}'/g' > /tmp/i
+# 		head -c -1 /tmp/i > /tmp/ii
+# 		cat /tmp/ii | xxd -i >> ${OUTPUT}
+# 		echo ", 0x00 };" >> "${OUTPUT}"
+# 	done < /tmp/r
+# 
+# 	echo "updated ${OUTPUT}"
+# }
+
+# Update documentation if its source file has changed.
+# Since the output of documentation files are also part
+# of the tracked repository, we don't want to updated
+# those files everytime we compile, only when there
+# is a potential change
 function f_update_doc {
-	INPUT="$1"
-	VER="$2"
-	OUTPUT="${INPUT}.doc"
+        INPUT="$1"
+        VER="$2"
+        OUTPUT="${INPUT}.doc"
 
-	# find all BEGIN_DOC_STRING lines
-	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 2 -d \ > /tmp/n
-	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 1 -d : > /tmp/b
-	grep -n "^END_DOC_STRING"   "${INPUT}" | cut -f 1 -d : > /tmp/e
-	paste /tmp/b /tmp/e /tmp/n > /tmp/r
+        ${C} -o xdoc xdoc.c
+        cat $INPUT | sed 's/__VERSION__/'${VER}'/g' > .docaux
+	./xdoc .docaux > $OUTPUT
 
-	echo "" > "${OUTPUT}"
-	# read each line as an array
-	while read -ra LINE; do
-		FIRST="$((${LINE[0]}+1))"
-		LAST="$((${LINE[1]}-1))"
-		NAME="${LINE[2]}"
-		echo "static const char ${NAME}[] = {" >> "${OUTPUT}"
-		sed -n ${FIRST},${LAST}p ${INPUT} | sed 's/__VERSION__/'${VER}'/g' > /tmp/i
-		head -c -1 /tmp/i > /tmp/ii
-		cat /tmp/ii | xxd -i >> ${OUTPUT}
-		echo ", 0x00 };" >> "${OUTPUT}"
-	done < /tmp/r
-
-	echo "updated ${OUTPUT}"
+        echo "updated ${OUTPUT}"
 }
+
+
+
+
+
+
+
+
+
+
 
 DOC_FILES=(app.c app_roadmap.c)
 BASE_DIR=$(pwd)
@@ -222,8 +259,8 @@ done
 echo ${BUILD}; \
 if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
-${CXX} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
-${CXX} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
+${C} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
 cp nanocube ${LOCAL}/bin/. ;\
 cp libnanocube_app.so ${LOCAL}/lib/. ;\
 popd

@@ -893,26 +893,73 @@ NanocubeIndex_Interval_Item;
 typedef struct
 {
 	nx_NanocubeIndex *nci;
-	s32            index;
+	nx_Node          *root;
 
-	nx_Node       *root;
+	u64              begin;
+	u64              end;
 
-	u8             bits_per_label;
+	s32              index;
+	s32              stack_size;
 
-	u64            begin;
-	u64            end;
-
-	u8             depth;
+	u8               bits_per_label;
+	u8               depth;
 
 	NanocubeIndex_Interval_Item stack[nx_MAX_PATH_LENGTH];
-	s32                         stack_size;
-
 }
 NanocubeIndex_Interval;
 
 internal void
 NanocubeIndex_Interval_init(NanocubeIndex_Interval *self, nx_NanocubeIndex* nci, nx_Node* root, s32 index, u8  depth, u64 begin, u64 end)
 {
+#if 1
+	// index is the dimension in the cube
+	self[0] = (NanocubeIndex_Interval) {
+		.nci    = nci,
+		.root   = root,
+		.index  = index,
+		.begin  = begin,
+		.end    = end,
+		.depth  = depth,
+		.stack_size = 0,
+		.bits_per_label = nci->bits_per_label[index]
+	};
+
+	if (!self->root)
+		return;
+
+	// check precision for now
+	Assert(self->bits_per_label * self->depth < 64);
+
+	nx_NodeWrap root_wrap  = nx_NanocubeIndex_to_node(self->nci, self->root, self->index);
+	u8          root_depth = self->root->path_length;
+
+	// compute sequential number for the root
+	u64 child_begin_suffix = 0;
+	for (u8 i=0;i<root_depth;++i) {
+		nx_Label label = nx_Path_get(&root_wrap.path, i);
+		child_begin_suffix = (child_begin_suffix << self->bits_per_label) + label;
+	}
+
+	// depth is the target depth
+	u8 shift_left = (u8) ((self->depth - root_depth) * self->bits_per_label);
+
+	// sequential range in numbers with (depth * bits_per_label) bits starting at root
+	u64 root_range_begin = child_begin_suffix << shift_left;
+	u64 root_range_end   = root_range_begin + (1ull << shift_left);
+
+	// simulate pushing first element into stack
+	NanocubeIndex_Interval_Item *item = self->stack;
+	item[0] = (NanocubeIndex_Interval_Item) {
+		.node = root_wrap,
+		.child_index = -1,
+		.depth = root_depth,
+		.begin = root_range_begin,
+		.end   = root_range_end
+	};
+	self->stack_size = 1;
+
+#else
+
 	pt_fill((char*) self, (char*) self + sizeof(NanocubeIndex_Interval), 0);
 
 	self->nci    = nci;
@@ -955,6 +1002,7 @@ NanocubeIndex_Interval_init(NanocubeIndex_Interval *self, nx_NanocubeIndex* nci,
 	//     // numerical range of root (needs to fit u64 precision)
 	//     self->stack[0].begin = 0;
 	//     self->stack[0].end   = 1ull << (self->bits_per_label * self->depth);
+#endif
 }
 
 typedef union
