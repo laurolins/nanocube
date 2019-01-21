@@ -230,7 +230,7 @@ function f_update_doc {
         VER="$2"
         OUTPUT="${INPUT}.doc"
 
-        ${C} -o xdoc xdoc.c
+        ${C} -std=gnu11 -o xdoc xdoc.c
         cat $INPUT | sed 's/__VERSION__/'${VER}'/g' > .docaux
 	./xdoc .docaux > $OUTPUT
 

@@ -1875,8 +1875,8 @@ PLATFORM_TCP_CALLBACK(serve_request_handler)
 typedef struct {
 	BasicAllocator blocks;
 	pt_MappedFile  mapped_files[1024];
-	nv_Nanocube    *nanocubes[64];
-	MemoryBlock    aliases[64];
+	nv_Nanocube    *nanocubes[1024];
+	MemoryBlock    aliases[1024];
 	u32            num_nanocubes;
 	u32            num_mapped_files;
 	u8             parse_result;
