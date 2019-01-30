@@ -62,12 +62,7 @@ For more information on `.map` files go to [mapping files](/MAPPING.md)
 For more query examples go to [API](/api/README.md)
 
 # Viewer
-
 ```shell
-# If you need to install pip (e.g. on MacOS)
-# python <(curl https://bootstrap.pypa.io/get-pip.py) --user
-python -m pip install --user requests future
-
 # Setup a web viewer on port 8000 for the crimes nanocube previously opened 
 # on port 51234.
 #
