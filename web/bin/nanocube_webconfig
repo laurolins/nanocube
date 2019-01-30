@@ -1,4 +1,265 @@
-#!/bin/bash
-export BASE="$(dirname "${BASH_SOURCE[0]}")"
-# export NANOCUBE_BIN="$NANOCUBE_SRC/install/bin"
-NANOCUBE_SRC="$BASE/../share/nanocube" python "$BASE/nanocube_webconfig.py" $@
+#!/usr/bin/env python
+
+from __future__ import print_function,division
+
+try:
+    from urllib.parse import urlparse, urlencode
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError
+except ImportError:
+    from urlparse import urlparse
+    from urllib import urlencode
+    from urllib2 import urlopen, Request, HTTPError
+
+import os,json,sys,argparse,socket,tempfile,shutil,math,random,subprocess
+#import http.server,requests
+
+### bbox
+## Find the bounding box
+def findext(server,dim,tiles,maxlevel,func,initp,numoftiles=5):
+    query_url='%s/count.a("%s",dive(tile2d({x},{y},{z}),{drill}),"img")'%(server,dim)
+    
+    p = initp
+    newtiles=[]
+    for location in tiles:
+        res =  requests.get(query_url.format(**location),
+                            verify=False).json()
+
+        res = res['root']['children']
+        offset = {'x':location['x']*2**location['drill'],
+                  'y':location['y']*2**location['drill'],
+                  'z':location['z']+location['drill']}
+
+        if 'path' in res[0]:  #if the result is path and not x y ... (lauro...)
+            res =  [ {'x':r['path'][0], 'y':r['path'][1], 'val':r['val']} 
+                     for r in res]
+  
+        #add offset
+        res = [{'x':d['x']+offset['x'],
+                'y':d['y']+offset['y'],
+                'z':offset['z']} for d in res]
+        
+        #find extrememum
+        p={'x':func(p['x'],func(res,key=lambda d: d['x'])['x']),
+           'y':func(p['y'],func(res,key=lambda d: d['y'])['y']),
+           'z':offset['z']}
+
+        newtiles += [ t for t in res \
+                      if  (t['x'] == p['x'] or t['y'] == p['y'])]
+
+    if p['z'] >= maxlevel: # base case
+        return p
+
+    #filter out excessive tiles
+    newtiles = [ t for t in newtiles \
+                 if  (t['x'] == p['x'] or t['y'] == p['y'])]
+
+    random.shuffle(newtiles)
+
+    #Go into the next level
+    nextdrill = min(8,maxlevel-p['z'])
+    for t in newtiles: t['drill'] = nextdrill
+
+    return findext(server,dim,newtiles[:numoftiles],maxlevel,
+                   func,initp,numoftiles)
+
+def num2deg(p):
+    xtile = p['x']
+    ytile = p['y']
+    zoom = p['z']
+    
+    n = 2.0 ** zoom
+    ytile = n-ytile-1
+
+    lon_deg = xtile / n * 360.0 - 180.0
+    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * ytile / n)))
+    lat_deg = math.degrees(lat_rad)
+    return [lat_deg, lon_deg]
+
+def findbox(server,dim,maxlevel):
+    # min query
+    minp = findext(server,dim,[{'x':0,'y':0,'z':0,'drill':8}],maxlevel,min,
+                   {'x':float('inf'),'y':float('inf')})
+    # max query
+    maxp = findext(server,dim,[{'x':0,'y':0,'z':0,'drill':8}],maxlevel,max,
+                   {'x':float('-inf'),'y':float('-inf')})
+    
+    return (num2deg(minp),num2deg(maxp))
+
+
+### configs
+def initConfig(name,url):
+    config = {}
+    config['nanocube'] = {name: {'url':url}}
+    config['datasrc'] = {name:{'expr':name, 'colormap': 'YlOrRd'}}
+    config['widget'] = {}
+    return config
+
+def myHostname():
+    return socket.gethostname();
+    #return #os.environ['MYHOST']
+
+    
+def main():
+    #parse the simple arguments
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--width',type=int,default=1920)
+    argparser.add_argument('--height',type=int,default=1080)
+    argparser.add_argument('-s','--server',type=str, required=False,
+                           default='http://%s'%(myHostname()))
+
+    argparser.add_argument('--ncport',type=int,required=False,
+                           default=51234)
+
+    argparser.add_argument('-p','--port',type=int,required=False,
+                           const=8000,nargs='?')
+
+    webdir = os.path.dirname(os.path.realpath(__file__))+'/../'
+    if 'NANOCUBE_SRC' in os.environ:
+        webdir = os.environ['NANOCUBE_SRC']+'/web'
+        
+    argparser.add_argument('-w','--web',type=str,required=False,
+                           default=webdir,
+                           nargs='?')
+
+    args = argparser.parse_args()
+
+    #download the schema
+    url = '%s:%d'%(args.server,args.ncport);
+    try:
+        print(url)
+        r = urlopen(url+'/schema()')
+        schema = json.loads(r.read())[0]
+    except:
+        print ('Fail to read schema from %s'%(url),file=sys.stderr)
+        sys.exit(1)
+
+    spatialvars = [ x for x in schema['index_dimensions'] if
+                    x['hint'] == 'spatial' ]
+    catvars = [ x for x in schema['index_dimensions'] if
+                    x['hint'] == 'categorical' ]
+    timevars = [ x for x in schema['index_dimensions'] if
+                    x['hint'].startswith('temporal') ]
+
+    #schema['metadata'] = {s['key']:s['value'] for s in schema['metadata']}
+    ncname = schema['name']
+    ncname = ncname.replace(' ','_').replace('-','_').replace('.','_')
+    config = initConfig(ncname, url)
+
+    sp = {v['name']: spatialWidget(v,w=1.0/len(spatialvars)) for
+          v in spatialvars}
+    ts = {v['name']: timeseriesWidget(v,w=0.5*args.width) for
+          v in timevars}
+    cats = {v['name']: catWidget(v) for
+            v in catvars}
+
+    for c in cats:
+        config['widget'][c] = cats[c]
+
+    for s in sp:
+        #sp[s]['viewbox'] = findbox(url,s,sp[s]['levels']-8)
+
+        sp[s]['view'] = {'c':[0,0],'z':3}
+        config['widget'][s] = sp[s]
+
+    for t in ts:
+        config['widget'][t] = ts[t]
+
+    if args.port is None:
+        print(json.dumps(config,indent=2))
+    else:        
+        #copy the webgui to a tmp dir start a webserver
+        tmpdir = tempfile.mkdtemp()
+        shutil.copytree(args.web+'/dist',
+                        tmpdir+'/web')
+        os.chdir(tmpdir+'/web')
+        print(tmpdir)
+        
+        f = open('config.json','w')
+        f.write(json.dumps(config))
+        f.close()
+        
+        #start httpserver
+        try:
+            import http.server
+            
+            handler= http.server.SimpleHTTPRequestHandler
+            httpd = http.server.HTTPServer(('', args.port),handler);
+        except:
+            import SimpleHTTPServer
+            import SocketServer
+            handler = SimpleHTTPServer.SimpleHTTPRequestHandler
+            httpd = SocketServer.TCPServer(("", args.port), handler)
+            
+        print("See Nanocubes at http://%s:%d/"%(myHostname(),args.port))
+        httpd.serve_forever()
+        httpd.socket.close()
+
+
+        shutil.rmtree(tmpdir)
+        
+def spatialWidget(v,w=1.0):
+    levels = v['num_levels'] #['type'].replace('nc_dim_quadtree_','')
+    levels = int(levels)
+    return {
+        'type':'spatial',
+        'title': v['name'],
+        'tilesurl':'http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
+        'coarse_offset':2,
+        'view':{'c':[0,0],'z':0},
+        'levels':levels,
+        'legend':'true',
+        'layers':{
+            'markers':[]
+        },
+        'css':{
+            'width':'%d%%'%(int(w*100)),
+            'height': '100%',
+            'float':'left'
+        }
+    }
+
+def timeseriesWidget(v,w):
+    return {
+        'title': v['name'],
+        'type':'time',
+        'numformat':None,
+        'open':True,
+        'tab':'Timeseries',
+        'css':{
+            'opacity': 0.8,
+            'height': '150px',
+            'width': '%dpx'%(int(w)),
+            'background-color': '#555',
+        }
+    }
+
+def catWidget(v):
+    #maxkeylen = max([ len(k) for k in v['valnames'].keys() ])
+    maxkeylen = max([len(v['aliases'][k]) for k in v['aliases']])
+    marginleft = int(maxkeylen*11)
+    width = marginleft+200
+    height = min(640,len(v['aliases'])*20+40)
+
+    return {
+        'title':v['name'],
+        'logaxis': False,
+        'alpha_order': True,
+        'type':'cat',        
+        'numformat':None,
+        'topn':None,
+        'tab': 'Categorical',
+        'open': True,
+        'domain':{
+            'min':None,
+            'max':None
+        },
+        'css':{
+            'opacity': 0.8,
+            'height': '%dpx'%(height),
+            'width': '%dpx'%(width),
+        }
+    }
+
+if __name__ == '__main__':
+    main()
