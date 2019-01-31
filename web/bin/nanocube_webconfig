@@ -127,7 +127,6 @@ def main():
     #download the schema
     url = '%s:%d'%(args.server,args.ncport);
     try:
-        print(url)
         r = urlopen(url+'/schema()')
         schema = json.loads(r.read())[0]
     except:
@@ -173,7 +172,6 @@ def main():
         shutil.copytree(args.web+'/dist',
                         tmpdir+'/web')
         os.chdir(tmpdir+'/web')
-        print(tmpdir)
         
         f = open('config.json','w')
         f.write(json.dumps(config))
@@ -250,6 +248,7 @@ def catWidget(v):
         'topn':None,
         'tab': 'Categorical',
         'open': True,
+        'aliases': None,
         'domain':{
             'min':None,
             'max':None

@@ -154,6 +154,18 @@ GroupedBarChart.prototype = {
             promkeys.forEach(function(d,i){
                 res[d] = results[i];
             });
+
+            //rename results by aliases
+            var aliases = widget._opts.aliases || {};
+            Object.keys(res).forEach(d =>{
+                var data = res[d].data;
+                res[d].data.forEach(dd => {
+                    if(dd['cat'] in aliases){
+                        dd['cat'] = aliases[dd['cat']];
+                    }
+                });
+            });
+            
             
             widget.lastres = res;
             widget.redraw(res);
