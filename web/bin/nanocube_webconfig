@@ -114,9 +114,18 @@ def main():
     argparser.add_argument('-p','--port',type=int,required=False,
                            const=8000,nargs='?')
 
-    webdir = os.path.dirname(os.path.realpath(__file__))+'/../'
+    #default path if installed
+    webdir = os.path.dirname(os.path.realpath(__file__))
+    webdir += '/../share/nanocube/web'
+
+    #special case if in src
+    src_webdir = os.path.dirname(os.path.realpath(__file__))+'/../dist';
+    if os.path.isdir(src_webdir):
+        webdir = src_webdir
+
+    #custom path
     if 'NANOCUBE_SRC' in os.environ:
-        webdir = os.environ['NANOCUBE_SRC']+'/web'
+        webdir = os.environ['NANOCUBE_SRC']+'/web/dist'
         
     argparser.add_argument('-w','--web',type=str,required=False,
                            default=webdir,
@@ -169,7 +178,7 @@ def main():
     else:        
         #copy the webgui to a tmp dir start a webserver
         tmpdir = tempfile.mkdtemp()
-        shutil.copytree(args.web+'/dist',
+        shutil.copytree(args.web,
                         tmpdir+'/web')
         os.chdir(tmpdir+'/web')
         
