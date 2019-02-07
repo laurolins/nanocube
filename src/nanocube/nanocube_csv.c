@@ -34,6 +34,15 @@ cm_ColumnRef_init(cm_ColumnRef *self, MemoryBlock *name)
 	self->name = *name;
 }
 
+internal void
+cm_ColumnRef_init_index(cm_ColumnRef *self, u32 index)
+{
+	self->is_index = 1;
+	self->is_name  = 0;
+	self->index    = index;
+	self->name     = (MemoryBlock) { 0 };
+}
+
 typedef struct {
 	cm_ColumnRef *begin;
 	cm_ColumnRef *end;
@@ -398,6 +407,43 @@ np_FUNCTION_HANDLER(cm_compiler_func_input)
 	return np_TypeValue_value(cm_compiler_types.column_ref_array_id, result);
 }
 
+
+// input: (string_type_id)* -> column_reference_
+np_FUNCTION_HANDLER(cm_compiler_func_input_indices)
+{
+	{ // check if all types are string
+		np_TypeValue *it = params_begin;
+		while (it != params_end) {
+			Assert(it->type_id == cm_compiler_types.number_type_id);
+			++it;
+		}
+	}
+
+	s64 n = params_end - params_begin;
+
+	cm_ColumnRef* colref_begin = 0;
+	cm_ColumnRef* colref_end   = 0;
+	if (n > 0) {
+		colref_begin = (cm_ColumnRef*) np_Compiler_alloc(compiler, n * sizeof(cm_ColumnRef));
+		colref_end   = colref_begin + n;
+		np_TypeValue *it_str = params_begin;
+		cm_ColumnRef *it_col = colref_begin;
+		while (it_str != params_end) {
+			u32 index = (u32) (((f64*) it_str->value)[0]);
+			cm_ColumnRef_init_index(it_col, index - 1);
+			++it_str;
+			++it_col;
+		}
+	}
+
+	// allocate a contiguous sequence of
+	cm_ColumnRefArray *result = (cm_ColumnRefArray*) np_Compiler_alloc(compiler, sizeof(cm_ColumnRefArray));
+	result->begin = colref_begin;
+	result->end   = colref_end;
+
+	return np_TypeValue_value(cm_compiler_types.column_ref_array_id, result);
+}
+
 /* latlon */
 np_FUNCTION_HANDLER(cm_compiler_func_latlon)
 {
@@ -411,7 +457,7 @@ np_FUNCTION_HANDLER(cm_compiler_func_latlon)
 	f64 depth_float = *((f64*) number->value);
 
 	if (depth_float < 1 || depth_float > 127) {
-		char *error = "latlon function expects resolution in {1,2,...,127}\n";
+		static char *error = "latlon function expects resolution in {1,2,...,127}\n";
 		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
 		np_Compiler_log_ast_node_context(compiler);
 		return np_TypeValue_error();
@@ -516,11 +562,6 @@ cm_compiler_funct_time_base(np_Compiler* compiler, np_TypeValue *params_begin, n
 	np_TypeValue *bin_width      = params_begin + 2;
 	np_TypeValue *minutes_to_add = params_begin + 3;
 
-	Assert(number->type_id         = cm_compiler_types.number_type_id);
-	Assert(base_date->type_id      = cm_compiler_types.string_type_id);
-	Assert(bin_width->type_id      = cm_compiler_types.number_type_id);
-	Assert(minutes_to_add->type_id = cm_compiler_types.number_type_id);
-
 	f64 depth_float = *((f64*) number->value);
 	if (depth_float < 1 || depth_float > 127) {
 		char *error = "time function expects resolution in {1,2,...,127}\n";
@@ -553,6 +594,44 @@ cm_compiler_funct_time_base(np_Compiler* compiler, np_TypeValue *params_begin, n
 	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
 }
 
+internal np_TypeValue
+cm_compiler_funct_time_base_short(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, b8 unix_time)
+{
+	/*
+	 * time(16,"2015-01-01",1*HOUR,0)
+	 */
+	s64 n = params_end - params_begin;
+	Assert(n == 2);
+
+	np_TypeValue *base_date      = params_begin + 0;
+	np_TypeValue *bin_width      = params_begin + 1;
+
+	u8 depth = 16;
+	s64 minadd = 0;
+
+	MemoryBlock *base_date_text = (MemoryBlock*) base_date->value;
+
+	ntp_Parser parser;
+	ntp_Parser_init(&parser);
+
+	if (!ntp_Parser_run(&parser, base_date_text->begin, base_date_text->end)) {
+		char *error = "time function expects date as second parameter.\n";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+
+	f64 bin_width_float = *((f64*) bin_width->value);
+	u64 binw = (u64) bin_width_float;
+
+	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
+	cm_Mapping_time(mapping_spec, depth, parser.time, (s64) parser.label.offset_minutes, (u64) binw, minadd, unix_time);
+
+	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
+}
+
+
+
 /* time */
 np_FUNCTION_HANDLER(cm_compiler_func_time)
 {
@@ -560,11 +639,23 @@ np_FUNCTION_HANDLER(cm_compiler_func_time)
 	return cm_compiler_funct_time_base(compiler, params_begin, params_end, not_unix_time);
 }
 
+np_FUNCTION_HANDLER(cm_compiler_func_time_short)
+{
+	b8 not_unix_time = 0;
+	return cm_compiler_funct_time_base_short(compiler, params_begin, params_end, not_unix_time);
+}
+
 /* unix time */
 np_FUNCTION_HANDLER(cm_compiler_func_unix_time)
 {
 	b8 unix_time = 1;
 	return cm_compiler_funct_time_base(compiler, params_begin, params_end, unix_time);
+}
+
+np_FUNCTION_HANDLER(cm_compiler_func_unix_time_short)
+{
+	b8 unix_time = 1;
+	return cm_compiler_funct_time_base_short(compiler, params_begin, params_end, unix_time);
 }
 
 /* weekday */
@@ -598,7 +689,41 @@ np_FUNCTION_HANDLER(cm_compiler_func_weekday)
 }
 
 
+/* categorical */
+np_FUNCTION_HANDLER(cm_compiler_func_categorical_short)
+{
+	s64 n = params_end - params_begin;
+	Assert(n == 0);
 
+	u8 bits = 8;
+	u8 levels = 1;
+
+	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
+	cm_Mapping_categorical(mapping_spec, bits, levels, (MemoryBlock) { .begin=0, .end=0 }, 0);
+
+	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
+}
+
+/* categorical */
+np_FUNCTION_HANDLER(cm_compiler_func_categorical_short_with_labels)
+{
+	s64 n = params_end - params_begin;
+	Assert(n == 1);
+
+	np_TypeValue *labels_tv = params_begin;
+
+	Assert(labels_tv->type_id == cm_compiler_types.string_type_id);
+
+	MemoryBlock labels_table = *((MemoryBlock*) labels_tv->value);
+
+	u8 bits   = (u8) 8;
+	u8 levels = (u8) 1;
+
+	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
+	cm_Mapping_categorical(mapping_spec, bits, levels, labels_table, 0);
+
+	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
+}
 
 /* categorical */
 np_FUNCTION_HANDLER(cm_compiler_func_categorical)
@@ -854,6 +979,12 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		 0, 0, 1, cm_compiler_types.string_type_id,
 		 cm_compiler_func_input);
 
+	// input: int* -> column_ref_array
+	np_Compiler_insert_function_cstr
+		(compiler, "input", cm_compiler_types.column_ref_array_id,
+		 0, 0, 1, cm_compiler_types.number_type_id,
+		 cm_compiler_func_input_indices);
+
 	// latlon: number -> mapping_spec
 	// read latlon in degrees convert to mercator convert to quadtree
 	parameter_types[0] = cm_compiler_types.number_type_id;
@@ -885,6 +1016,22 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		(compiler, "ip", cm_compiler_types.mapping_spec_id,
 		 parameter_types, parameter_types+1, 0, 0,
 		 cm_compiler_func_ip_hilbert);
+
+
+	// categorical: string -> mapping_spec
+	// read mapping from string
+	parameter_types[0] = cm_compiler_types.string_type_id;
+	np_Compiler_insert_function_cstr
+		(compiler, "categorical", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+1, 0, 0,
+		 cm_compiler_func_categorical_short_with_labels);
+
+	// categorical: none -> mapping_spec
+	// read mapping from string
+	np_Compiler_insert_function_cstr
+		(compiler, "categorical", cm_compiler_types.mapping_spec_id,
+		 0, 0, 0, 0,
+		 cm_compiler_func_categorical_short);
 
 	// categorical: number -> mapping_spec
 	// read latlon in degrees convert to mercator convert to quadtree
@@ -923,8 +1070,7 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		 parameter_types, parameter_types+1, 0, 0,
 		 cm_compiler_func_file);
 
-	// latlon: number -> mapping_spec
-	// read latlon in degrees convert to mercator convert to quadtree
+	// time
 	parameter_types[0] = cm_compiler_types.number_type_id;
 	parameter_types[1] = cm_compiler_types.string_type_id;
 	parameter_types[2] = cm_compiler_types.number_type_id;
@@ -933,6 +1079,16 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		(compiler, "time", cm_compiler_types.mapping_spec_id,
 		 parameter_types, parameter_types+4, 0, 0,
 		 cm_compiler_func_time);
+
+	// time
+	parameter_types[0] = cm_compiler_types.string_type_id;
+	parameter_types[1] = cm_compiler_types.number_type_id;
+	np_Compiler_insert_function_cstr
+		(compiler, "time", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+2, 0, 0,
+		 cm_compiler_func_time_short);
+
+
 
 	// latlon: number -> mapping_spec
 	// read latlon in degrees convert to mercator convert to quadtree
@@ -944,6 +1100,15 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		(compiler, "unixtime", cm_compiler_types.mapping_spec_id,
 		 parameter_types, parameter_types+4, 0, 0,
 		 cm_compiler_func_unix_time);
+
+
+	parameter_types[0] = cm_compiler_types.string_type_id;
+	parameter_types[1] = cm_compiler_types.number_type_id;
+	np_Compiler_insert_function_cstr
+		(compiler, "unixtime", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+2, 0, 0,
+		 cm_compiler_func_unix_time_short);
+
 
 	// hour
 	np_Compiler_insert_function_cstr(compiler, "hour", cm_compiler_types.mapping_spec_id, 0, 0, 0, 0,
