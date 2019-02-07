@@ -2412,7 +2412,7 @@ service_query(Request *request)
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
 		Print_clear(print);
 		Print_cstr(print, nanocube_query_doc);
-		output_(print);
+		log_(print);
 		return;
 	}
 
@@ -2422,7 +2422,7 @@ service_query(Request *request)
 
 #define app_MEM_OPTION(name,variable) \
 		if (op_Options_find_cstr(options,name)) { if (!op_Options_named_num_bytes_cstr(options,name,0,&variable)) {  \
-			fprintf(stderr,"[serve] invalid memory limit: %s\n", name); return; \
+			fprintf(stderr,"[query] invalid memory limit: %s\n", name); return; \
 		} }
 
 		app_MEM_OPTION("-mem_compiler",            app_service_serve_MEM_COMPILER);
@@ -2440,16 +2440,16 @@ service_query(Request *request)
 
 	u32 num_parameters = op_Options_num_positioned_parameters(options);
 	if (num_parameters < 3) {
-		output_cstr_("[query] requires at least one source.\n");
-		output_cstr_("[query] usage: nanocube query <query-fname> (<src>)+.\n");
+		log_cstr_("[query] requires at least one source.\n");
+		log_cstr_("[query] usage: nanocube query <query-fname> (<src>)+.\n");
 		return;
 	}
 
 
 	MemoryBlock query  = { .begin=0, .end=0 };
 	if (!op_Options_str(options, 1, &query)) {
-		output_cstr_("[create] not enough input parameters.\n");
-		output_cstr_("[create] usage: nanocube draw <input> <output>.\n");
+		log_cstr_("[query] not enough input parameters.\n");
+		log_cstr_("[query] usage: nanocube draw <input> <output>.\n");
 		return;
 	}
 
@@ -2467,8 +2467,8 @@ service_query(Request *request)
 		op_Options_str(options, param, &source_text);
 		Print_clear(print);
 		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
-		output_(print);
-		output_cstr_("\n");
+		log_(print);
+		log_cstr_("\n");
 		if (status != app_NanocubesAndAliases_OK) {
 			ok = 0;
 			break;

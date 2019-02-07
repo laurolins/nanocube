@@ -3,7 +3,7 @@
 - 2019-02-07T08:40 Multi-threaded http server might switch state machines between connections causing bad responses
 - 2019-02-07T08:45 Add format option to output csv-like results
 - 2019-02-07T13:53 Warn when labels are the same for different input values on categorical dimensions
-
+- 2019-02-07T14:31 HTTPs support
 
 # DONE
 

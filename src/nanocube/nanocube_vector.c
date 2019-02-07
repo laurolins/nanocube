@@ -1094,6 +1094,8 @@ nv_payload_services_init(nm_Services *services)
 #define nv_FORMAT_JSON   1
 #define nv_FORMAT_TEXT   2
 #define nv_FORMAT_BINARY 3
+#define nv_FORMAT_PSV    4
+#define nv_FORMAT_CSV    5
 
 typedef struct {
 	nm_Measure *measure;
@@ -1201,6 +1203,10 @@ np_FUNCTION_HANDLER(nv_function_format)
 		result->format = nv_FORMAT_TEXT;
 	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "bin") == 0) {
 		result->format = nv_FORMAT_BINARY;
+	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "psv") == 0) {
+		result->format = nv_FORMAT_PSV;
+	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "csv") == 0) {
+		result->format = nv_FORMAT_CSV;
 	} else {
 		char *error = "Invalid format (it needs to be either 'text', 'json', 'bin')\n";
 		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
@@ -3176,6 +3182,10 @@ nv_ResultStream_init(nv_ResultStream *self, Print *print, nv_Format format)
 	case nv_FORMAT_BINARY: {
 		ut_PrintStack_init(&self->print_stack, print, "", "");
 	} break;
+	case nv_FORMAT_PSV:
+	case nv_FORMAT_CSV: {
+		ut_PrintStack_init(&self->print_stack, print, 0, 0);
+	} break;
 	default: {
 	} break;
 	}
@@ -3378,7 +3388,6 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 		ut_PrintStack_pop(print_stack);
 	} break;
 	case nv_FORMAT_TEXT: {
-	{
 
 		// TODO(llins) print aliases on the text schema?
 
@@ -3419,7 +3428,112 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 				     nanocube->measure_dimensions.names[i],
 				     nv_storage_name_cstr(nanocube->measure_dimensions.storage[i]));
 		}
-	}
+	} break;
+	case nv_FORMAT_CSV: {
+		Print_cstr(print, "nc,num,dim,type,spec,hint,alias\n");
+		for (u32 i=0;i<nanocube->num_index_dimensions;++i) {
+			Print_str(print, name.begin, name.end);
+			MemoryBlock hint = nv_Nanocube_get_dimension_hint(nanocube,
+									  nanocube->index_dimensions.names[i],
+									  cstr_end(nanocube->index_dimensions.names[i]),
+									  print);
+
+			// the parameters for the temporal interpretation on
+			// binary trees is encoded as
+			//      temporal,2009-01-01T05:00:00Z_3600s
+			// replace pipe with _ for this schema query on psv
+			// and csv formats
+			char *hint_cstr = 0;
+			char *capacity_bkup = print->capacity;
+			{
+				char *end_bkup      = print->end;
+				s32 len = hint.end - hint.begin;
+				Assert(print->end + len + 2 <= print->capacity);
+				hint_cstr = print->capacity - len - 1;
+				print->end = hint_cstr;
+				Print_str(print, hint.begin, hint.end);
+				print->end[len]=0;
+				for (s32 k=0;k<len;++k) if (hint_cstr[k] == ',') hint_cstr[k] = '_';
+				print->capacity = hint_cstr - 1;
+				print->end = end_bkup;
+			}
+
+			Print_format(print,
+				     ",%d,%s,%s,b%d:l%d,%s,\n",
+				     i,
+				     nanocube->index_dimensions.names[i],
+				     "index",
+				     nanocube->index_dimensions.bits_per_level[i],
+				     nanocube->index_dimensions.num_levels[i],
+				     hint_cstr);
+
+			{
+				print->capacity = capacity_bkup;
+			}
+		}
+		for (u32 i=0;i<nanocube->num_measure_dimensions;++i) {
+			Print_str(print, name.begin, name.end);
+			Print_format(print,
+				     ",%d,%s,%s,%s,%s,\n",
+				     i,
+				     nanocube->measure_dimensions.names[i],
+				     "measure",
+				     nv_storage_name_cstr(nanocube->measure_dimensions.storage[i]),
+				     "");
+		}
+	} break;
+	case nv_FORMAT_PSV: {
+		Print_cstr(print, "nc|num|dim|type|spec|hint|alias\n");
+		for (u32 i=0;i<nanocube->num_index_dimensions;++i) {
+			Print_str(print, name.begin, name.end);
+			MemoryBlock hint = nv_Nanocube_get_dimension_hint(nanocube,
+									  nanocube->index_dimensions.names[i],
+									  cstr_end(nanocube->index_dimensions.names[i]),
+									  print);
+
+			// the parameters for the temporal interpretation on
+			// binary trees is encoded as
+			//      temporal|2009-01-01T05:00:00Z_3600s
+			// replace pipe with _ for this schema query on psv
+			// and csv formats
+			char *hint_cstr = 0;
+			char *capacity_bkup = print->capacity;
+			{
+				char *end_bkup      = print->end;
+				s32 len = hint.end - hint.begin;
+				Assert(print->end + len + 2 <= print->capacity);
+				hint_cstr = print->capacity - len - 1;
+				print->end = hint_cstr;
+				Print_str(print, hint.begin, hint.end);
+				print->end[len]=0;
+				for (s32 k=0;k<len;++k) if (hint_cstr[k] == '|') hint_cstr[k] = '_';
+				print->capacity = hint_cstr - 1;
+				print->end = end_bkup;
+			}
+
+			Print_format(print,
+				     "|%d|%s|%s|b%d:l%d|%s|\n",
+				     i,
+				     nanocube->index_dimensions.names[i],
+				     "index",
+				     nanocube->index_dimensions.bits_per_level[i],
+				     nanocube->index_dimensions.num_levels[i],
+				     hint_cstr);
+
+			{
+				print->capacity = capacity_bkup;
+			}
+		}
+		for (u32 i=0;i<nanocube->num_measure_dimensions;++i) {
+			Print_str(print, name.begin, name.end);
+			Print_format(print,
+				     "|%d|%s|%s|%s|%s|\n",
+				     i,
+				     nanocube->measure_dimensions.names[i],
+				     "measure",
+				     nv_storage_name_cstr(nanocube->measure_dimensions.storage[i]),
+				     "");
+		}
 	} break;
 	case nv_FORMAT_BINARY: {
 		//
@@ -3837,6 +3951,163 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					f64 value = *(it + j);
 					Print_format(print, "%f", value);
 					Print_align(print, value_col_fixed_width, 1, ' ');
+				}
+			}
+			Print_char(print, '\n');
+
+		} // end row printing loop
+	} break;
+	case nv_FORMAT_PSV:
+	case nv_FORMAT_CSV: {
+
+		char sep = (self->format.format == nv_FORMAT_PSV) ? '|' : ',';
+
+		//
+		// going to use the print object directly since we don't
+		// nest anything in the text output
+		//
+
+		nm_TableKeys   *table_keys   = &table->table_keys;
+		nv_TableValues *table_values = (nv_TableValues*) table->table_values_handle;
+
+		s32 rows = table_keys->rows;
+		Assert(rows == table_values->rows);
+
+		// print header
+		{
+			s32 continuation = 0;
+			{ // index part
+				nm_TableKeysColumnType *it = table_keys->type->begin;
+				while (it != table_keys->type->end) {
+					if (continuation) Print_char(print,sep);
+					continuation=1;
+					Print_str(print, it->name.begin, it->name.end);
+					++it;
+				}
+			}
+			{ // value part
+				MemoryBlock *it = table_values->names.begin;
+				while (it != table_values->names.end) {
+					if (continuation) Print_char(print,sep);
+					continuation=1;
+					Print_str(print, it->begin, it->end);
+					++it;
+				}
+			}
+			Print_char(print, '\n');
+		}
+		// print rows
+		for (u32 row=0;row<rows;++row) {
+#if 1
+			s32 continuation = 0;
+			{ // index columns
+				char *it = table_keys->keys.begin + table_keys->row_length * row;
+				u32 column_offset = 0;
+				u32 record_size   = table_keys->row_length;
+				for (u32 i=0;i<table_keys->columns;++i) {
+
+					if (continuation) Print_char(print,sep);
+					continuation = 1;
+
+					nm_TableKeysColumnType *it_coltype = table_keys->type->begin + i;
+
+					switch(it_coltype->hint.hint_id) {
+					case nm_BINDING_HINT_NONE: {
+						if (it_coltype->loop_column) {
+							u32 val = *((u32*) it);
+							Print_u64(print, (u64) val);
+							it += sizeof(u32);
+						} else {
+							u32 bits   = it_coltype->bits;
+							u32 levels = it_coltype->levels;
+							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+
+							// it_coltype specific stuff
+
+							for (u32 j=0;j<levels;++j) {
+								nx_Label label = 0;
+								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
+								if (j > 0) {
+									Print_cstr(print, ":");
+								}
+								Print_u64(print, (u64) label);
+							}
+							it += bytes;
+						}
+					} break;
+					case nm_BINDING_HINT_IMG: {
+						// TODO(llins): generalize to 2d
+						if (it_coltype->loop_column) {
+							Print_cstr(print, "error: expected a path, received a loop column");
+						} else if (it_coltype->bits != 2) {
+							Print_cstr(print, "error: expected a quadtree path");
+						} else {
+							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+							u32 bits   = it_coltype->bits;
+							u32 levels = it_coltype->levels;
+							u32 param = (u32) ((u64) it_coltype->hint.param);
+							u64 x = 0;
+							u64 y = 0;
+							u32 j0 = (param < levels) ? (levels - param) : 0;
+							for (u32 j=j0;j<levels;++j) {
+								x = x * 2;
+								y = y * 2;
+								nx_Label label = 0;
+								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
+								if (label & 0x1) {
+									x += 1;
+								}
+								if (label & 0x2) {
+									y += 1;
+								}
+							}
+							it += bytes;
+							Print_format(print,"%llu:%llu", x, y);
+						}
+					} break;
+					case nm_BINDING_HINT_NAME: {
+						if (it_coltype->loop_column) {
+							Print_cstr(print, "error: expected a path, received a loop column");
+						} else {
+							// with the column name and the source, try to find the column names
+							Assert(table->source->num_nanocubes > 0);
+							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+
+							u32 bits   = it_coltype->bits;
+							u32 levels = it_coltype->levels;
+
+							u8 *path = (u8*) print->end;
+							print->end += levels;
+
+							for (u32 j=0;j<levels;++j) {
+								nx_Label label = 0;
+								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
+								path[j] = label;
+							}
+							it += record_size;
+							MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube,
+												    it_coltype->name.begin, it_coltype->name.end,
+												    path, (u8) levels, print);
+							print->end = (char*) path;
+							Print_str(print, label.begin, label.end);
+						}
+					}
+					default:{
+					}break;
+					}
+
+					column_offset += nm_TableKeysColumnType_bytes(it_coltype);
+				}
+			}
+#endif
+			{ // value columns
+				f64 *it = table_values->values.begin + table_values->columns * row;
+				for (u32 j=0;j<table_values->columns;++j) {
+					if (continuation) Print_char(print,sep);
+					continuation = 1;
+
+					f64 value = *(it + j);
+					Print_format(print, "%f", value);
 				}
 			}
 			Print_char(print, '\n');
