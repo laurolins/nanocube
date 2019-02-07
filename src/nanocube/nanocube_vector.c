@@ -3284,10 +3284,13 @@ nv_ResultStream_version(nv_ResultStream *self, char *api, char *executable)
 		ut_PrintStack_pop(print_stack);
 	} break;
 	case nv_FORMAT_TEXT: {
-	{
-		// TODO(llins) print aliases on the text schema?
 		Print_format(print, "# version\napi: %s\nexecutable: %s", api, executable);
-	}
+	} break;
+	case nv_FORMAT_PSV: {
+		Print_format(print, "version|api\n%s|%s\n", api, executable);
+	} break;
+	case nv_FORMAT_CSV: {
+		Print_format(print, "version,api\n%s,%s\n", api, executable);
 	} break;
 	case nv_FORMAT_BINARY: {
 		// TODO(llins): send as a table

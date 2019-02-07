@@ -173,6 +173,12 @@ main(int argc, char *argv[])
 				char *end_marker = ((blocks[block_index].type == BLOCK_TYPE_DOC_FILE) ? "END_DOC_STRING" : "END_AUX_FILE");
 				if (match_str(tok, end_marker)) {
 					blocks[block_index].content.end = line.begin;
+					{
+						int b = blocks[block_index].content.begin;
+						int e = blocks[block_index].content.end;
+						if (b < e && text[e-1] == '\n' || text[e-1] == '\r') --e;
+						blocks[block_index].content.end = e;
+					}
 					++block_index;
 					if (next_nonempty_token(&line, "\t ", &tok)) {
 						// warning: extra symbols on the END_DOC_STRING line being disconsidered

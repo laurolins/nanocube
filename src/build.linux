@@ -238,15 +238,6 @@ function f_update_doc {
 }
 
 
-
-
-
-
-
-
-
-
-
 DOC_FILES=(app.c app_roadmap.c)
 BASE_DIR=$(pwd)
 for f in "${DOC_FILES[@]}"; do
