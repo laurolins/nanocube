@@ -244,8 +244,18 @@ Quadtree path entry convention:
     -----
     0 | 1
 
-So path(2,1,2) is equivalent to tile2d at z=3 (path length) with
+So path(2,1,2) is equivalent to tile2d at z=3 (path length) with x and y
+having three binary digits each following the convention:
 
+    x binary digit is 0 if path entry is 0 or 2
+                   is 1 if path entry is 1 or 3
+
+    y binary digit is 0 if path entry is 0 or 1
+                   is 1 if path entry is 2 or 3
+
+So, in this case the tile2d coordinates are:
+
+    p: 212
     x: 010b = 2
     y: 101b = 5
 
