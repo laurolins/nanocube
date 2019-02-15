@@ -238,17 +238,26 @@ bottom-up, or `img2d(3,2,2)` where the y coordinate grows top down (like the sta
 slippy tiles on open street maps or the conventional pixel coordinates in an image).
 
 ```
-path(2,1,2):
+Quadtree path entry convention:
 
- 2 | 3
- -----
- 0 | 1
+    2 | 3
+    -----
+    0 | 1
 
-x: 010b = 2
-y: 101b = 5
+So path(2,1,2) is equivalent to tile2d at z=3 (path length) with
 
-path(2,1,2) <==> tile2d(3,2,5)
-path(2,1,2) <==> img2d(3,2,2)
+    x: 010b = 2
+    y: 101b = 5
+
+    path(2,1,2) <==> tile2d(3,2,5)
+
+In general
+
+    tile2d(z,x,y) <==> img2d(z,x,(2^z)-1-y)
+
+So
+
+    path(2,1,2) <==> img2d(3,2,2)
 ```
 
 ## type
