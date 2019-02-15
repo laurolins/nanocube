@@ -259,15 +259,15 @@ So, in this case the tile2d coordinates are:
                  x: 0 1 0 = 010b = 2
                  y: 1 0 1 = 101b = 5
 
-    path(2,1,2) <==> tile2d(3,2,5)
+    path(2,1,2) = tile2d(3,2,5)
 
 In general
 
-    tile2d(z,x,y) <==> img2d(z,x,(2^z)-1-y)
+    tile2d(z,x,y) = img2d(z,x,(2^z)-1-y)
 
 So
 
-    path(2,1,2) <==> img2d(3,2,2)
+    path(2,1,2) = img2d(3,2,2)
 ```
 
 ## type
