@@ -232,6 +232,25 @@ coordinate of the cells grow bottom-up, Chicago is above the Equator and
                                           525,1287                     7609.000000
 ```
 
+A path on a quadtree can also be specified using `tile2d(z,x,y)` or `img2d(z,x,y)`.
+The path `p(2,1,2)` is equivalent to `tile2d(3,2,5)` where the y coordinate grows
+bottom-up, or `img2d(3,2,2)` where the y coordinate grows top down (like the standard
+slippy tiles on open street maps or the conventional pixel coordinates in an image).
+
+```
+path(2,1,2):
+
+ 2 | 3
+ -----
+ 0 | 1
+
+x: 010b = 2
+y: 101b = 5
+
+path(2,1,2) <==> tile2d(3,2,5)
+path(2,1,2) <==> img2d(3,2,2)
+```
+
 ## type
 
 If we want to count the number of crimes by `type` of crime, we run the query
