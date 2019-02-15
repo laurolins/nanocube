@@ -227,12 +227,22 @@ typedef struct {
 	b8            error;
 } np_TypeValue;
 
+static s32 np_s32(np_TypeValue *self) { return (s32) ((f64*) self->value)[0]; }
+static s32 np_f32(np_TypeValue *self) { return (f32) ((f64*) self->value)[0]; }
+static s32 np_f64(np_TypeValue *self) { return ((f64*) self->value)[0]; }
+static s32 np_s64(np_TypeValue *self) { return (s64) ((f64*) self->value)[0]; }
+static s32 np_u32(np_TypeValue *self) { return (u32) ((f64*) self->value)[0]; }
+
 typedef np_TypeValue (*FunctionSymbolPtr)(np_Compiler*, np_TypeValue*,
 					  np_TypeValue*);
 
 #define np_FUNCTION_HANDLER(name) \
 	internal np_TypeValue name(np_Compiler* compiler, \
 	np_TypeValue *params_begin, np_TypeValue *params_end)
+
+#define np_FUNCTION_HANDLER_FLAG(name) \
+	internal np_TypeValue name(np_Compiler* compiler, \
+	np_TypeValue *params_begin, np_TypeValue *params_end, s32 flag)
 
 typedef struct {
 	np_SymbolID id;

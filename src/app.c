@@ -197,6 +197,8 @@ be used to specify a path.
 ```
 tile2d(level, x, y)
 img2d(level, x, y)    # this one is the slippy tile coords
+tile2d_range(level, x0, y0, x1, y1)
+img2d_range(level, x0, y0, x1, y1)    # this one is the slippy tile coords
 ```
 
 Returns a path target.
@@ -222,8 +224,8 @@ We can combine POLY objects using
     poly_intersection(POLY [, POLY]*)
 
 #
-# contour(lat1,lon1,lat2,lon2,...,latN,lonN)
-# region(contour_negate(contour_union(contour(lat,lon,lat,lon,...,lat,lon),...,)))
+# contour('lat1,lon1,lat2,lon2,...,latN,lonN')
+# region(contour_negate(contour_union(contour('lat,lon,lat,lon,...,lat,lon'),...,)))
 #
 
 ### Path List

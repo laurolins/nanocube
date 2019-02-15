@@ -1503,8 +1503,6 @@ np_FUNCTION_HANDLER(nv_function_cumulative_time_series)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
-
-
 np_FUNCTION_HANDLER(nv_function_time_series_aggregate)
 {
 	Assert(params_end - params_begin == 4);
@@ -1672,7 +1670,78 @@ np_FUNCTION_HANDLER(nv_function_dive_by_alias)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
+np_FUNCTION_HANDLER_FLAG(nv_function_tile2d_range_core)
+{
+	Assert(params_end - params_begin == 5);
 
+	np_TypeValue *z_value_type  = params_begin;
+	np_TypeValue *x0_value_type = params_begin + 1;
+	np_TypeValue *y0_value_type = params_begin + 2;
+	np_TypeValue *x1_value_type = params_begin + 3;
+	np_TypeValue *y1_value_type = params_begin + 4;
+
+	// Make sure single parameter is a number
+	Assert(z_value_type->type_id  == nv_compiler_types.number);
+	Assert(x0_value_type->type_id == nv_compiler_types.number);
+	Assert(x1_value_type->type_id == nv_compiler_types.number);
+	Assert(y0_value_type->type_id == nv_compiler_types.number);
+	Assert(y1_value_type->type_id == nv_compiler_types.number);
+
+	// value should be an integer number
+	u32 z  = np_u32(z_value_type);
+	u32 x0 = np_u32(x0_value_type);
+	u32 y0 = np_u32(y0_value_type);
+	u32 x1 = np_u32(x1_value_type);
+	u32 y1 = np_u32(y1_value_type);
+
+	u32 bins = 1u << z;
+	if (x0 >= bins || y0 >= bins || x1 >= bins || y1 >= bins) {
+		char *error = "Invalid tile2d_range or img2d_range values: overflow coords at level z";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+
+	if (flag == 1) {
+		y0 = bins - 1 - y0;
+		y1 = bins - 1 - y1;
+	}
+
+	{
+		u32 aux = x0;
+		x0 = MIN(x0,x1);
+		x1 = MAX(x1,aux);
+	}
+
+	{
+		u32 aux = y0;
+		y0 = MIN(y0,y1);
+		y1 = MAX(y1,aux);
+	}
+
+	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	target->type = nm_TARGET_TILE2D_RANGE;
+	target->anchor=0;
+	target->loop=0;
+	target->tile2d_range.z = z;
+	target->tile2d_range.x0 = x0;
+	target->tile2d_range.y0 = x1;
+	target->tile2d_range.x1 = y0;
+	target->tile2d_range.y1 = y1;
+
+	return np_TypeValue_value(nv_compiler_types.target, target);
+}
+
+np_FUNCTION_HANDLER(nv_function_tile2d_range)
+{
+	return nv_function_tile2d_range_core(compiler, params_begin, params_end, 0);
+}
+
+np_FUNCTION_HANDLER(nv_function_img2d_range)
+{
+	// last parameter is one if we want to flip the y (slippy tile)
+	return nv_function_tile2d_range_core(compiler, params_begin, params_end, 1);
+}
 
 np_FUNCTION_HANDLER(nv_function_mask)
 {
@@ -2594,7 +2663,7 @@ nv_Compiler_init(np_Compiler *compiler)
 	nv_compiler_types.poly      = np_Compiler_insert_type_cstr(compiler, "Poly")->id;
 
 	// and operators
-	np_TypeID parameter_types[4];
+	np_TypeID parameter_types[10];
 
 	// p: number* -> path
 	parameter_types[0] = nv_compiler_types.number;
@@ -2739,6 +2808,32 @@ nv_Compiler_init(np_Compiler *compiler)
 				 nv_function_dive_by_alias);
 		}
 	}
+
+
+	//
+	// tile2d_range(z,x0,y0,x1,y1)
+	// img2d_range(z,x0,y0,x1,y1)
+	//
+	parameter_types[0] = nv_compiler_types.number;
+	parameter_types[1] = nv_compiler_types.number;
+	parameter_types[2] = nv_compiler_types.number;
+	parameter_types[3] = nv_compiler_types.number;
+	parameter_types[4] = nv_compiler_types.number;
+	np_Compiler_insert_function_cstr
+		(compiler, "tile2d_range", nv_compiler_types.target,
+		 parameter_types, parameter_types + 5, 0, 0,
+		 nv_function_tile2d_range);
+
+
+	parameter_types[0] = nv_compiler_types.number;
+	parameter_types[1] = nv_compiler_types.number;
+	parameter_types[2] = nv_compiler_types.number;
+	parameter_types[3] = nv_compiler_types.number;
+	parameter_types[4] = nv_compiler_types.number;
+	np_Compiler_insert_function_cstr
+		(compiler, "img2d_range", nv_compiler_types.target,
+		 parameter_types, parameter_types + 5, 0, 0,
+		 nv_function_img2d_range);
 
 	// dive_list -> target that is a dive list
 	//

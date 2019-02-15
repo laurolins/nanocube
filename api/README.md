@@ -270,6 +270,9 @@ So
     path(2,1,2) = img2d(3,2,2)
 ```
 
+We can also use the options of `tile2d_range(z,x0,y0,x1,y1)` or `img2d_range(z,x0,y0,x1,y1)`
+to restrict query to a rectangular range of tiles.
+
 ## type
 
 If we want to count the number of crimes by `type` of crime, we run the query

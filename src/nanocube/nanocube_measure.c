@@ -15,7 +15,8 @@ typedef enum {
 	/* no loop, no anchor */
 	nm_TARGET_TIME_SERIES_AGGREGATE,
 	nm_TARGET_PATH_LIST,
-	nm_TARGET_FIND_DIVE_LIST
+	nm_TARGET_FIND_DIVE_LIST,
+	nm_TARGET_TILE2D_RANGE
 } nm_TargetType;
 
 
@@ -59,6 +60,13 @@ typedef struct {
 			s64     stride;
 			s64     cumulative; // fix the start point and move only the end point
 		} time_sequence;
+		struct {
+			u32 z;
+			u32 x0;
+			u32 y0;
+			u32 x1;
+			u32 y1;
+		} tile2d_range;
 	};
 } nm_Target;
 
@@ -419,6 +427,44 @@ typedef struct {
 	s32               cursor_num_nodes;
 } nm_Mask;
 
+//
+// This might streamline range 2d queries on quadtree dimensions.
+// Mask is the more general, but this one is more efficient for
+// this specific case.
+//
+
+#define nm_Tile2D_Range_Iterator_test_DISJOINT   0
+#define nm_Tile2D_Range_Iterator_test_CONTAINED  1
+#define nm_Tile2D_Range_Iterator_test_INTERSECTS 2
+
+typedef struct {
+	nx_NodeWrap node;
+	u32         z;
+	u32         x;
+	u32         y;
+	s32         action;
+	s32         test; // result of the test when we pushed this into the stack
+} nm_Tile2D_Range_Iterator_Item;
+
+typedef struct {
+
+	nx_NanocubeIndex *nci;
+	nx_Node          *root;
+	s32              index;
+
+	u32              z;
+	u32              x0;
+	u32              y0;
+	u32              x1;
+	u32              y1;
+
+	nx_List_u8       path;
+	nx_Label         path_storage[nx_MAX_PATH_LENGTH];
+
+	nm_Tile2D_Range_Iterator_Item stack_items[nx_MAX_PATH_LENGTH];
+	s32                           stack_size;
+
+} nm_Tile2D_Range_Iterator;
 
 //------------------------------------------------------------------------------
 // error codes
@@ -460,6 +506,170 @@ nm_Path_is_equal(nm_Path *self, nm_Path *other)
 	}
 }
 
+
+//------------------------------------------------------------------------------
+// nm_Tile2D_Range_Iterator
+//------------------------------------------------------------------------------
+
+internal s32
+nm_Tile2D_Range_Iterator_test(nm_Tile2D_Range_Iterator *self, u32 z, u32 x, u32 y)
+{
+	if (z < self->z) {
+		u32 gap = self->z - z;
+		u32 xx0  = (x << gap);
+		u32 yy0  = (y << gap);
+		u32 xx1  = ((x + 1) << gap) - 1;
+		u32 yy1  = ((y + 1) << gap) - 1;
+		if (self->x1 < xx0 || self->y1 < yy0 || xx1 < self->x0 || yy1 < self->y0) {
+			return nm_Tile2D_Range_Iterator_test_DISJOINT;
+		} else if (self->x0 <= xx0 && xx1 <= self->x1 && self->y0 <= yy0 && yy1 <= self->y1) {
+			return nm_Tile2D_Range_Iterator_test_CONTAINED;
+		} else {
+			return nm_Tile2D_Range_Iterator_test_INTERSECTS;
+		}
+	} else {
+		u32 gap  = z - self->z;
+		u32 xx0  = (x >> gap);
+		u32 yy0  = (y >> gap);
+		u32 xx1  = xx0;
+		u32 yy1  = yy0;
+		if (self->x1 < xx0 || self->y1 < yy0 || xx1 < self->x0 || yy1 < self->y0) {
+			return nm_Tile2D_Range_Iterator_test_DISJOINT;
+		} else {
+			return nm_Tile2D_Range_Iterator_test_CONTAINED;
+		}
+	}
+}
+
+internal void
+nm_Tile2D_Range_Iterator_init(nm_Tile2D_Range_Iterator* self, nx_NanocubeIndex* nci, nx_Node* root, u32 index, u32 z, u32 x0, u32 x1, u32 y0, u32 y1)
+{
+	self[0] = (nm_Tile2D_Range_Iterator) { 0 };
+
+	self->nci   = nci;
+	self->root  = root;
+	self->index = index;
+
+	self->z  = z;
+	self->x0 = x0;
+	self->y0 = y0;
+        self->x1 = x1;
+	self->y1 = y1;
+
+	nx_List_u8_init(&self->path,
+			self->path_storage,
+			self->path_storage,
+			self->path_storage + nx_MAX_PATH_LENGTH);
+
+	// check if root is disjoint from the 2d range
+	// if so don't stack it, otherwise it is the root
+	// of the stack
+
+	nx_Node       *child              = root;
+	nx_NodeWrap   child_w             = nx_NanocubeIndex_to_node(nci, child, index);
+	u8            child_suffix_length = child->path_length;
+
+	u32 x = 0;
+	u32 y = 0;
+	u32 zz = 0;
+	for (u8 i=0; i<child->path_length; ++i) {
+		nx_Label label = nx_Path_get(&child_w.path, i);
+
+		// print a warning
+		if (label > 3) fprintf(stderr, "[Warning] nm_Tile2D_Range_Iterator dealing with a non-quadtree hierarchy: result is invalid\n");
+		x = (x << 1) + ((label & 1) ? 1 : 0);
+		y = (y << 1) + ((label & 2) ? 1 : 0);
+		++zz;
+		nx_List_u8_push_back(&self->path, label);
+	}
+
+	// check if there is any intersection between the root
+	// node and the target range
+
+	s32 test_result = nm_Tile2D_Range_Iterator_test(self, zz, x, y);
+	self->stack_items[0] = (nm_Tile2D_Range_Iterator_Item) { .node = child_w, .z = zz, .x = x, .y = y, .action = 0, .test = test_result };
+	++self->stack_size;
+}
+
+internal nx_Node*
+nm_Tile2D_Range_Iterator_next(nm_Tile2D_Range_Iterator *self)
+{
+	while (self->stack_size > 0) {
+		nm_Tile2D_Range_Iterator_Item *item = self->stack_items + self->stack_size - 1;
+		if (item->action == 0) {
+			if (item->test == nm_Tile2D_Range_Iterator_test_CONTAINED) {
+				--self->stack_size;
+				return item->node.raw_node;
+			} else if (item->test == nm_Tile2D_Range_Iterator_test_INTERSECTS) {
+				// needs to test its children
+				if (item->node.children.length > 0) {
+					nx_Child    *child_slot = nx_Children_get_child(&item->node.children, 0);
+					nx_Node     *child      = nx_Child_get_node(child_slot);
+					nx_NodeWrap  child_w    = nx_NanocubeIndex_to_node(self->nci, child, self->index);
+
+					// make sure the path is truncated to the parent
+					// depth before inserting new labels into it
+					self->path.end = self->path.begin + item->z;
+					Assert(self->path.end <= self->path.capacity);
+
+					u8 child_offset = child->path_length - child_slot->suffix_length;
+
+					u32 x = item->x;
+					u32 y = item->y;
+					u32 z = item->z;
+					for (u8 i=child_offset; i<child->path_length; ++i) {
+						nx_Label label = nx_Path_get(&child_w.path, i);
+						if (label > 3) fprintf(stderr, "[Warning] nm_Tile2D_Range_Iterator dealing with a non-quadtree hierarchy: result is invalid\n");
+						x = (x << 1) + ((label & 1) ? 1 : 0);
+						y = (y << 1) + ((label & 2) ? 1 : 0);
+						++z;
+						nx_List_u8_push_back(&self->path, label);
+					}
+
+					s32 test_result = nm_Tile2D_Range_Iterator_test(self, z, x, y);
+					++item->action;
+					self->stack_items[self->stack_size] = (nm_Tile2D_Range_Iterator_Item) { .node = child_w, .z = z, .x = x, .y = y, .action = 0, .test = test_result };
+					++self->stack_size;
+				} else {
+					--self->stack_size;
+				}
+			} else {
+				--self->stack_size;
+			}
+		} else if (item->action < item->node.children.length) {
+			nx_Child    *child_slot = nx_Children_get_child(&item->node.children, item->action);
+			nx_Node     *child      = nx_Child_get_node(child_slot);
+			nx_NodeWrap  child_w    = nx_NanocubeIndex_to_node(self->nci, child, self->index);
+
+			// make sure the path is truncated to the parent
+			// depth before inserting new labels into it
+			self->path.end = self->path.begin + item->z;
+			Assert(self->path.end <= self->path.capacity);
+
+			u8 child_offset = child->path_length - child_slot->suffix_length;
+
+			u32 x = item->x;
+			u32 y = item->y;
+			u32 z = item->z;
+			for (u8 i=child_offset; i<child->path_length; ++i) {
+				nx_Label label = nx_Path_get(&child_w.path, i);
+				if (label > 3) fprintf(stderr, "[Warning] nm_Tile2D_Range_Iterator dealing with a non-quadtree hierarchy: result is invalid\n");
+				x = (x << 1) + ((label & 1) ? 1 : 0);
+				y = (y << 1) + ((label & 2) ? 1 : 0);
+				++z;
+				nx_List_u8_push_back(&self->path, label);
+			}
+
+			s32 test_result = nm_Tile2D_Range_Iterator_test(self, z, x, y);
+			++item->action;
+			self->stack_items[self->stack_size] = (nm_Tile2D_Range_Iterator_Item) { .node = child_w, .z = z, .x = x, .y = y, .action = 0, .test = test_result };
+			++self->stack_size;
+		} else {
+			--self->stack_size;
+		}
+	}
+	return 0;
+}
 
 //------------------------------------------------------------------------------
 // find and dive iterator
@@ -1220,6 +1430,14 @@ nm_Target_is_equal(nm_Target *self, nm_Target *other)
 					       other->mask.begin, other->mask.end) == 0) {
 				return 1;
 			}
+		}
+	} else if (self->type == nm_TARGET_TILE2D_RANGE) {
+		if (self->tile2d_range.z == other->tile2d_range.z &&
+		    self->tile2d_range.x0 == other->tile2d_range.x0 &&
+		    self->tile2d_range.x1 == other->tile2d_range.x1 &&
+		    self->tile2d_range.y0 == other->tile2d_range.y0 &&
+		    self->tile2d_range.y1 == other->tile2d_range.y1) {
+			return 1;
 		}
 	} else if (self->type == nm_TARGET_INTERVAL_SEQUENCE || self->type == nm_TARGET_INTERVAL_SEQUENCE_AGGREGATE) {
 		if ((self->interval_sequence.base == other->interval_sequence.base)
@@ -2936,6 +3154,42 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 		nx_Node *target_node;
 		while ( (target_node = nm_Mask_next(&it) ) )
+		{
+			if (last_dimension) {
+				nx_PNode* pnode = (nx_PNode*) target_node;
+
+				// commit
+				nm_RUN_AND_CHECK(
+						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						);
+
+				nm_RUN_AND_CHECK(
+						 nm_TableKeys_commit_key(context->table_keys)
+						);
+			} else {
+				nx_INode* inode = (nx_INode*) target_node;
+				nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
+
+				// recursive
+				nm_RUN_AND_CHECK(
+					nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+				);
+			}
+		}
+	} else if (target->type == nm_TARGET_TILE2D_RANGE) {
+		Assert(target->anchor == 0);
+		Assert(target->loop == 0);
+
+		nm_Tile2D_Range_Iterator it;
+		nm_Tile2D_Range_Iterator_init(&it, context->source->indices[nanocube_index], root, index,
+					      target->tile2d_range.z,
+					      target->tile2d_range.x0,
+					      target->tile2d_range.y0,
+					      target->tile2d_range.x1,
+					      target->tile2d_range.y1
+					     );
+		nx_Node *target_node;
+		while ( (target_node = nm_Tile2D_Range_Iterator_next(&it) ) )
 		{
 			if (last_dimension) {
 				nx_PNode* pnode = (nx_PNode*) target_node;
