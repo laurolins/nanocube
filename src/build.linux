@@ -65,7 +65,6 @@ else
 	exit;
 fi
 
-
 # -ftime-report
 # -DCHECK_ASSERTIONS
 # -DPROFILE
@@ -90,13 +89,17 @@ fi
 
 BUILD="../../build/nanocube"
 SRC="../../nanocube/src"
-C="gcc"
+CC="gcc"
 CXX="g++"
-LIBS="-L${BUILD} -lm -ldl -lpthread"
+LIBS="-L${BUILD} -lm -lpthread"
 APP_EXTRA_LIBS=""
 
+#
+# avoid the dynamic linking for now
+#
+
 if [ "$POLYCOVER_SUPPORT" = true ]; then
-	# build polycover
+
 	POLYCOVER_SRC=$(cat <(cat <<'EOF'
 polycover/area.cc
 polycover/area.hh
@@ -134,26 +137,67 @@ polycover/glu/normal.c
 polycover/glu/render.c
 polycover/glu/tessellate.c
 EOF
-) | egrep -v "[.](hh|h)$" | paste -d' ' -s)
-	echo "---------------------"
-	echo $POLYCOVER_SRC
-	POLYCOVER_C_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]c$" | sed 's/^/..\//g' | paste -d' ' -s)
-	POLYCOVER_CXX_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]cc$" | sed 's/^/..\//g' | paste -d' ' -s)
-	echo "---------------------"
-	echo $POLYCOVER_C_SRC
-	echo "---------------------"
-	echo $POLYCOVER_CXX_SRC
-	# -stdlib=stdlib++ 
-	C_FLAGS="-std=gnu11 -fPIC -O2"
-	CXX_FLAGS="-std=c++11 -fPIC -O2"
-	# create the C and C++ objects separately
-	rm -rf .obj
-	mkdir .obj 
-	pushd .obj
-	${C} ${C_FLAGS} -c ${POLYCOVER_C_SRC}
-	${CXX} ${CXX_FLAGS} -c ${POLYCOVER_CXX_SRC}
-	${CXX} -shared -olibpolycover.so *.o -lm
-	cp libpolycover.so ${LOCAL}/lib/.
+) | egrep -v "[.](hh|h)$" | paste -d' ' -s -)
+
+	pushd $BUILD	
+
+	f_cmd="tmp_cmd"
+	if [ -f $f_cmd ]; then rm $f_cmd; fi
+
+	C_FLAGS="-std=gnu11 -O2"
+	C_FILENAMES="$(echo $POLYCOVER_SRC | tr ' ' '\n' | grep "[.]c$" | paste -d' ' -s -)"
+	# echo "C_FILENAMES: $C_FILENAMES"
+	POLYCOVER_OBJ_FILES=""
+	for C_FILENAME in $C_FILENAMES; do
+		OBJ_FILENAME=$(echo $C_FILENAME | tr '/' '_' | sed 's/[.]c$/.o/')
+		POLYCOVER_OBJ_FILES="$POLYCOVER_OBJ_FILES $OBJ_FILENAME"
+		C_SRC="$SRC/$C_FILENAME"
+		if [ ! -f $OBJ_FILENAME ] || [ $OBJ_FILENAME -ot $C_SRC ]; then
+			echo "${CC} ${C_FLAGS} -c $C_SRC -o $OBJ_FILENAME" >> $f_cmd
+			${CC} ${C_FLAGS} -c $C_SRC -o $OBJ_FILENAME
+		fi
+	done
+
+	CXX_FLAGS="-std=c++11 -O2"
+	CXX_FILENAMES="$(echo $POLYCOVER_SRC | tr ' ' '\n' | grep "[.]cc$" | paste -d' ' -s -)"
+	# echo "CXX_FILENAMES: $CXX_FILENAMES"
+	for CXX_FILENAME in $CXX_FILENAMES; do
+		OBJ_FILENAME=$(echo $CXX_FILENAME | tr '/' '_' | sed 's/[.]cc$/.o/')
+		POLYCOVER_OBJ_FILES="$POLYCOVER_OBJ_FILES $OBJ_FILENAME"
+		CXX_SRC="$SRC/$CXX_FILENAME"
+		if [ ! -f $OBJ_FILENAME ] || [ $OBJ_FILENAME -ot $CXX_SRC ]; then
+			echo "${CXX} ${CXX_FLAGS} -c $CXX_SRC -o $OBJ_FILENAME" >> $f_cmd
+			${CXX} ${CXX_FLAGS} -c $CXX_SRC -o $OBJ_FILENAME
+		fi
+	done
+
+	ar rcs libpolycover.a $POLYCOVER_OBJ_FILES
+	LIBS="$LIBS -lstdc++ -lpolycover"
+
+
+	# echo "---------------------"
+	# echo $POLYCOVER_SRC
+	# POLYCOVER_C_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]c$" | sed 's/^/..\//g' | paste -d' ' -s)
+	# POLYCOVER_CXX_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]cc$" | sed 's/^/..\//g' | paste -d' ' -s)
+	# echo "---------------------"
+	# echo $POLYCOVER_C_SRC
+	# echo "---------------------"
+	# echo $POLYCOVER_CXX_SRC
+	# # -stdlib=stdlib++
+	# # C_FLAGS="-std=gnu11 -fPIC -O2"
+	# # CXX_FLAGS="-std=c++11 -fPIC -O2"
+	# C_FLAGS="-std=gnu11 -O2"
+	# CXX_FLAGS="-std=c++11 -O2"
+	# # create the C and C++ objects separately
+	# rm -rf .obj
+	# mkdir .obj
+	# pushd .obj
+	# ${C} ${C_FLAGS} -c ${POLYCOVER_C_SRC}
+	# ${CXX} ${CXX_FLAGS} -c ${POLYCOVER_CXX_SRC}
+
+
+	#${CXX} -shared -olibpolycover.so *.o -lm
+	#cp libpolycover.so ${LOCAL}/lib/.
 	popd
 fi
 
@@ -197,13 +241,13 @@ function f_file_modified {
 # 	INPUT="$1"
 # 	VER="$2"
 # 	OUTPUT="${INPUT}.doc"
-# 
+#
 # 	# find all BEGIN_DOC_STRING lines
 # 	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 2 -d \ > /tmp/n
 # 	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 1 -d : > /tmp/b
 # 	grep -n "^END_DOC_STRING"   "${INPUT}" | cut -f 1 -d : > /tmp/e
 # 	paste /tmp/b /tmp/e /tmp/n > /tmp/r
-# 
+#
 # 	echo "" > "${OUTPUT}"
 # 	# read each line as an array
 # 	while read -ra LINE; do
@@ -216,7 +260,7 @@ function f_file_modified {
 # 		cat /tmp/ii | xxd -i >> ${OUTPUT}
 # 		echo ", 0x00 };" >> "${OUTPUT}"
 # 	done < /tmp/r
-# 
+#
 # 	echo "updated ${OUTPUT}"
 # }
 
@@ -230,7 +274,7 @@ function f_update_doc {
         VER="$2"
         OUTPUT="${INPUT}.doc"
 
-        ${C} -std=gnu11 -o xdoc xdoc.c
+        ${CC} -std=gnu11 -o xdoc xdoc.c
         cat $INPUT | sed 's/__VERSION__/'${VER}'/g' > .docaux
 	./xdoc .docaux > $OUTPUT
 
@@ -250,9 +294,8 @@ done
 echo ${BUILD}; \
 if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
-${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
-${C} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+# ${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
+${CC} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
 cp nanocube ${LOCAL}/bin/. ;\
-cp libnanocube_app.so ${LOCAL}/lib/. ;\
 popd
 

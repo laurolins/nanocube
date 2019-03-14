@@ -98,6 +98,7 @@ next_nonempty_token(Segment *context, char *delim, Segment *result)
 		int i=c;
 		while (i<end) {
 			if (match_any(text[i],delim)) {
+				// sequence of delimiters is treated as one
 				context->begin = i + 1;
 				break;
 			}

@@ -4,7 +4,6 @@
 #include <math.h>
 #include <limits.h>
 
-
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -578,6 +577,9 @@ typedef struct PlatformAPI {
 
 } PlatformAPI;
 
+// anyone who includes platform.c (should only be included once)
+// will have this global platform variable
+global_variable PlatformAPI platform;
 
 /*
  *

@@ -340,7 +340,7 @@ timeseries('2016-06-01 00:00:00 -05:00', 24*3600, 4, 7*24*3600)
 END_DOC_STRING
 */
 
-#include "base/platform.c"
+// #include "base/platform.c"
 
 //------------------------------------------------------------------------------
 // Request
@@ -365,7 +365,7 @@ END_DOC_STRING
 
 // platform util assumes a platform global variable
 // is available
-global_variable PlatformAPI platform;
+// global_variable PlatformAPI platform;
 
 /* time and UTC labels handling */
 #include "base/time.c"
@@ -377,8 +377,6 @@ global_variable PlatformAPI platform;
 #ifdef POLYCOVER
 #include "polycover/polycover.h"
 #endif
-
-#include "app.h"
 
 /* reference to application state (comes from platform dependent compilation unit) */
 global_variable ApplicationState *global_app_state = 0;
@@ -7555,21 +7553,6 @@ Other COMMANDs:
 END_DOC_STRING
 */
 
-internal Print*
-print_new(PlatformAPI *platform, u64 size)
-{
-	u64 adjusted_size = RALIGN(size,Kilobytes(4));
-	u64 print_offset = RALIGN(sizeof(Print),8);
-	void *buffer = platform->allocate_memory(adjusted_size,3,0).memblock.begin;
-
-	Assert(buffer);
-	Print *print = buffer;
-	char *begin = (char*) buffer + print_offset;
-	char *end   = (char*) buffer + adjusted_size;
-	Print_init(print, begin, end);
-	return print;
-}
-
 
 APPLICATION_PROCESS_REQUEST(application_process_request)
 {
@@ -7595,7 +7578,7 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 		.pfh_stdout = pfh_stdout,
 		.pfh_stdin = pfh_stdin,
 		.pfh_stderr = pfh_stderr,
-		.print = print_new(&platform, Kilobytes(64))
+		.print = print_new(Kilobytes(64))
 	};
 	g_request = &request;
 	op_Options *options = &request.options;
