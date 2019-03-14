@@ -13,8 +13,10 @@ POYCOVER_SUPPPORT=false
 # following parameters are the specific defines
 # use PROFILE and nx_PROFILE
 CUSTOM_DEFINES=""
+EXTRA=""
 for i in $( seq 1 $(($#-1)) ); do
 	CUSTOM_DEFINES+="-D${ARGS[$i]} ";
+	EXTRA="$EXTRA ${ARGS[$i]}"
 	if [ ${ARGS[$i]} = "POLYCOVER" ]; then
 		POLYCOVER_SUPPORT=true
 	fi
@@ -28,64 +30,53 @@ done
 #            -Wno-implicit-fallthrough
 #      to avoid compilation errors on gcc version 7.3.0 (Ubuntu 7.3.0-16ubuntu3)
 #
-
 # FLAGS=-std=c++11 -stdlib=libc++ -O3 -Wall -Werror -Weverything
-FLAGS="-Wall \
--Werror \
--Wextra \
--Wno-unused-parameter \
--Wno-sign-compare \
--Wno-strict-aliasing \
--Wno-unused-function \
--Wno-unused-variable \
--Wno-implicit-function-declaration \
--Wno-misleading-indentation \
--Wno-implicit-fallthrough \
--std=gnu11 \
--DOS_LINUX"
-# -pedantic \
-# -Wno-unused-but-set-variable \
-# -Wno-unused-variable \
-# -Wno-maybe-uninitialized \
+
+CFLAGS=$(cat <(cat <<EOF
+-Wall
+-Werror
+-Wextra
+-Wno-unused-parameter
+-Wno-sign-compare
+-Wno-strict-aliasing
+-Wno-unused-function
+-Wno-unused-variable
+-Wno-implicit-function-declaration
+-Wno-misleading-indentation
+-Wno-implicit-fallthrough
+-std=gnu11
+-DOS_LINUX
+EOF
+) | paste -d' ' -s -)
+
+CXXFLAGS=$(cat <(cat <<EOF
+-std=c++11
+-DOS_LINUX
+EOF
+) | paste -d' ' -s -)
 
 DEBUG_FLAGS="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
 RELEASE_FLAGS="-g -ggdb -O3"
 PROFILE_FLAGS="-g -ggdb -O2 -fno-omit-frame-pointer -DPROFILE"
+SECURITY_FLAGS="-g3 -gdwarf-2 -O0 -fno-builtin "
 OPTIONS=""
 
 # echo "${MODE}"
-if [ "${MODE}" = "debug" ]; then
-	OPTIONS="${FLAGS} ${DEBUG_FLAGS} ${CUSTOM_DEFINES}"
-elif [ "${MODE}" = "release" ]; then
-	OPTIONS="${FLAGS} ${RELEASE_FLAGS} ${CUSTOM_DEFINES}"
-elif [ "${MODE}" = "profile" ]; then
-	OPTIONS="${FLAGS} ${PROFILE_FLAGS} ${CUSTOM_DEFINES}"
+if [ "${MODE}" == "debug" ]; then
+	OPTIONS="${DEBUG_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" == "release" ]; then
+	OPTIONS="${RELEASE_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" == "profile" ]; then
+	OPTIONS="${PROFILE_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" == "security" ]; then
+	OPTIONS="${SECURITY_FLAGS} ${CUSTOM_DEFINES}"
 else
 	echo "invalide mode. needs to be 'debug', 'release', or 'profile'";
 	exit;
 fi
 
-# -ftime-report
-# -DCHECK_ASSERTIONS
-# -DPROFILE
-# BUG=
-# --enable-checking
-# -Q -v -da
-
-# DEBUG="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
-# # -DPROFILE
-# RELEASE="-g -ggdb -O3"
-# # -ftime-report
-# # -DCHECK_ASSERTIONS
-# # -DCHECK_ASSERTIONS
-# # -DPROFILE
-#
-# # -DPROFILE
-# PROFILE="-g -ggdb -O2 -fno-omit-frame-pointer"
-# OPTIONS="${FLAGS} ${DEBUG}"
-# # OPTIONS=${FLAGS} ${RELEASE}
-# # OPTIONS=${FLAGS} ${PROFILE}
-#
+CFLAGS="$CFLAGS $OPTIONS"
+CXXFLAGS="$CXXFLAGS $OPTIONS"
 
 BUILD="../../build/nanocube"
 SRC="../../nanocube/src"
@@ -94,9 +85,8 @@ CXX="g++"
 LIBS="-L${BUILD} -lm -lpthread"
 APP_EXTRA_LIBS=""
 
-#
-# avoid the dynamic linking for now
-#
+
+
 
 if [ "$POLYCOVER_SUPPORT" = true ]; then
 
@@ -141,10 +131,9 @@ EOF
 
 	pushd $BUILD	
 
-	f_cmd="tmp_cmd"
-	if [ -f $f_cmd ]; then rm $f_cmd; fi
+	# f_cmd="tmp_cmd"
+	# if [ -f $f_cmd ]; then rm $f_cmd; fi
 
-	C_FLAGS="-std=gnu11 -O2"
 	C_FILENAMES="$(echo $POLYCOVER_SRC | tr ' ' '\n' | grep "[.]c$" | paste -d' ' -s -)"
 	# echo "C_FILENAMES: $C_FILENAMES"
 	POLYCOVER_OBJ_FILES=""
@@ -153,12 +142,11 @@ EOF
 		POLYCOVER_OBJ_FILES="$POLYCOVER_OBJ_FILES $OBJ_FILENAME"
 		C_SRC="$SRC/$C_FILENAME"
 		if [ ! -f $OBJ_FILENAME ] || [ $OBJ_FILENAME -ot $C_SRC ]; then
-			echo "${CC} ${C_FLAGS} -c $C_SRC -o $OBJ_FILENAME" >> $f_cmd
-			${CC} ${C_FLAGS} -c $C_SRC -o $OBJ_FILENAME
+			echo "${CC} ${CFLAGS} -c $C_SRC -o $OBJ_FILENAME"
+			${CC} ${CFLAGS} -c $C_SRC -o $OBJ_FILENAME
 		fi
 	done
 
-	CXX_FLAGS="-std=c++11 -O2"
 	CXX_FILENAMES="$(echo $POLYCOVER_SRC | tr ' ' '\n' | grep "[.]cc$" | paste -d' ' -s -)"
 	# echo "CXX_FILENAMES: $CXX_FILENAMES"
 	for CXX_FILENAME in $CXX_FILENAMES; do
@@ -166,38 +154,14 @@ EOF
 		POLYCOVER_OBJ_FILES="$POLYCOVER_OBJ_FILES $OBJ_FILENAME"
 		CXX_SRC="$SRC/$CXX_FILENAME"
 		if [ ! -f $OBJ_FILENAME ] || [ $OBJ_FILENAME -ot $CXX_SRC ]; then
-			echo "${CXX} ${CXX_FLAGS} -c $CXX_SRC -o $OBJ_FILENAME" >> $f_cmd
-			${CXX} ${CXX_FLAGS} -c $CXX_SRC -o $OBJ_FILENAME
+			echo "${CXX} ${CXXFLAGS} -c $CXX_SRC -o $OBJ_FILENAME"
+			${CXX} ${CXXFLAGS} -c $CXX_SRC -o $OBJ_FILENAME
 		fi
 	done
 
 	ar rcs libpolycover.a $POLYCOVER_OBJ_FILES
 	LIBS="$LIBS -lstdc++ -lpolycover"
 
-
-	# echo "---------------------"
-	# echo $POLYCOVER_SRC
-	# POLYCOVER_C_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]c$" | sed 's/^/..\//g' | paste -d' ' -s)
-	# POLYCOVER_CXX_SRC=$(echo $POLYCOVER_SRC | tr ' ' '\n' | egrep "[.]cc$" | sed 's/^/..\//g' | paste -d' ' -s)
-	# echo "---------------------"
-	# echo $POLYCOVER_C_SRC
-	# echo "---------------------"
-	# echo $POLYCOVER_CXX_SRC
-	# # -stdlib=stdlib++
-	# # C_FLAGS="-std=gnu11 -fPIC -O2"
-	# # CXX_FLAGS="-std=c++11 -fPIC -O2"
-	# C_FLAGS="-std=gnu11 -O2"
-	# CXX_FLAGS="-std=c++11 -O2"
-	# # create the C and C++ objects separately
-	# rm -rf .obj
-	# mkdir .obj
-	# pushd .obj
-	# ${C} ${C_FLAGS} -c ${POLYCOVER_C_SRC}
-	# ${CXX} ${CXX_FLAGS} -c ${POLYCOVER_CXX_SRC}
-
-
-	#${CXX} -shared -olibpolycover.so *.o -lm
-	#cp libpolycover.so ${LOCAL}/lib/.
 	popd
 fi
 
@@ -209,7 +173,7 @@ MODIFIED=""
 if [[ $(git status --porcelain | grep " M") ]]; then
 	  MODIFIED="m"
 fi
-VERSION_NAME="${BASE_VERSION}r${REVISION}${MODIFIED}_${HASH}_${MODE}"
+VERSION_NAME="${BASE_VERSION}r${REVISION}${MODIFIED}_${HASH}_${MODE}_$(echo $EXTRA | paste -d'_' -s)"
 echo ${VERSION_NAME}
 
 # check if version name stored is the same as the one
@@ -237,38 +201,6 @@ function f_file_modified {
 # of the tracked repository, we don't want to updated
 # those files everytime we compile, only when there
 # is a potential change
-# function f_update_doc {
-# 	INPUT="$1"
-# 	VER="$2"
-# 	OUTPUT="${INPUT}.doc"
-#
-# 	# find all BEGIN_DOC_STRING lines
-# 	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 2 -d \ > /tmp/n
-# 	grep -n "^BEGIN_DOC_STRING" "${INPUT}" | cut -f 1 -d : > /tmp/b
-# 	grep -n "^END_DOC_STRING"   "${INPUT}" | cut -f 1 -d : > /tmp/e
-# 	paste /tmp/b /tmp/e /tmp/n > /tmp/r
-#
-# 	echo "" > "${OUTPUT}"
-# 	# read each line as an array
-# 	while read -ra LINE; do
-# 		FIRST="$((${LINE[0]}+1))"
-# 		LAST="$((${LINE[1]}-1))"
-# 		NAME="${LINE[2]}"
-# 		echo "static const char ${NAME}[] = {" >> "${OUTPUT}"
-# 		sed -n ${FIRST},${LAST}p ${INPUT} | sed 's/__VERSION__/'${VER}'/g' > /tmp/i
-# 		head -c -1 /tmp/i > /tmp/ii
-# 		cat /tmp/ii | xxd -i >> ${OUTPUT}
-# 		echo ", 0x00 };" >> "${OUTPUT}"
-# 	done < /tmp/r
-#
-# 	echo "updated ${OUTPUT}"
-# }
-
-# Update documentation if its source file has changed.
-# Since the output of documentation files are also part
-# of the tracked repository, we don't want to updated
-# those files everytime we compile, only when there
-# is a potential change
 function f_update_doc {
         INPUT="$1"
         VER="$2"
@@ -287,15 +219,12 @@ BASE_DIR=$(pwd)
 for f in "${DOC_FILES[@]}"; do
 	f_update_doc "$f" "${VERSION_NAME}"
 done
-# if [ -n f_file_modified "$f"] || [-n ${VERSION_NAME_WAS_UPDATED}]; then
-# fi
 
-# Compile code
 echo ${BUILD}; \
 if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
 # ${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
-${CC} ${OPTIONS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+${CC} ${CFLAGS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
 cp nanocube ${LOCAL}/bin/. ;\
 popd
 
