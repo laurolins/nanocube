@@ -1,11 +1,10 @@
 AUTOMAKE_OPTIONS=subdir-objects
 ACLOCAL_AMFLAGS=-I m4
 
-lib_LTLIBRARIES=
 
 if WITH_POLYCOVER
-lib_LTLIBRARIES+=libpolycover.la
-libpolycover_la_SOURCES=\
+lib_LIBRARIES=libpolycover.a
+libpolycover_a_SOURCES=\
 	src/polycover/area.cc \
 	src/polycover/area.hh \
 	src/polycover/boundary.cc \
@@ -43,35 +42,35 @@ libpolycover_la_SOURCES=\
 	src/polycover/glu/tessellate.c
 endif
 
-lib_LTLIBRARIES+=libnanocube_app.la
+# lib_LTLIBRARIES+=libnanocube_app.la
+# # the tentative platform independent part
+# libnanocube_app_la_SOURCES=src/app.c
+# libnanocube_app_la_CFLAGS=
+# libnanocube_app_la_LDFLAGS=-module -avoid-version -shared
+# libnanocube_app_la_LIBADD=-lm
+# if LINUX
+# libnanocube_app_la_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
+# endif
+# if OSX
+# libnanocube_app_la_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
+# endif
+# if WITH_POLYCOVER
+# endif
+
 bin_PROGRAMS=nanocube
-
-# the tentative platform independent part
-libnanocube_app_la_SOURCES=src/app.c
-libnanocube_app_la_CFLAGS=
-libnanocube_app_la_LDFLAGS=-module -avoid-version -shared
-libnanocube_app_la_LIBADD=-lm
-if LINUX
-libnanocube_app_la_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
-endif
-if OSX
-libnanocube_app_la_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
-endif
-if WITH_POLYCOVER
-libnanocube_app_la_CFLAGS+=-DPOLYCOVER
-endif
-
 nanocube_SOURCES=src/platform_dependent/nix_app.c
 nanocube_CFLAGS=-pthread
-nanocube_LDADD=-lm -ldl
+nanocube_LDADD=-lm
+if WITH_POLYCOVER
+nanocube_CFLAGS+=-DPOLYCOVER
+nanocube_LDADD+=libpolycover.a
+nanocube_LDADD+=-lstdc++
+endif
 if LINUX
 nanocube_CFLAGS+=-std=gnu11 -DOS_LINUX -Wextra -Wno-unused-parameter -Wno-sign-compare -Wno-strict-aliasing -Wno-unused-function -Wno-unused-variable -Wno-implicit-function-declaration
 endif
 if OSX
 nanocube_CFLAGS+=-std=c11 -DOS_MAC -Wno-unused-variable -Wno-null-dereference -Wno-unused-function
-endif
-if WITH_POLYCOVER
-nanocube_CFLAGS+=-DPOLYCOVER
 endif
 
 SUBDIRS=web

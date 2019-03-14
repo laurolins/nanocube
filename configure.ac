@@ -41,27 +41,28 @@ darwin*)
 *)
         AC_MSG_ERROR(["OS $host_os is not supported"]) ;;
 esac
-AM_CONDITIONAL([LINUX], [test "$build_linux" = "yes"])
-AM_CONDITIONAL([OSX], [test "$build_mac" = "yes"])
+AM_CONDITIONAL([LINUX],   [test "$build_linux"   = "yes"])
+AM_CONDITIONAL([OSX],     [test "$build_mac"     = "yes"])
 AM_CONDITIONAL([WINDOWS], [test "$build_windows" = "yes"])
 
 
 # echo "........................OS: $build_linux"
 
 # Checks for programs.
+CFLAGS="$CFLAGS -std=gnu11"
 AC_PROG_CC
 AM_PROG_CC_C_O
 # the macro AC_PROG_CPP seems to find the default compiler (gcc or clang)
 #AC_PROG_CPP
 AM_PROG_AR
 
-AC_ENABLE_SHARED
-AC_DISABLE_STATIC
-AC_PROG_LIBTOOL
+# AC_ENABLE_SHARED
+# AC_DISABLE_STATIC
+# AC_PROG_LIBTOOL
 
-LT_LIB_DLLOAD
+# LT_LIB_DLLOAD
 # LT_INIT([dlopen])
-LT_INIT
+# LT_INIT
 
 # echo "****************************************** --with-polycover=$with_polycover"
 
@@ -69,10 +70,20 @@ LT_INIT
 # AM_COND_IF([WITH_POLYCOVER], [AC_PROG_CXX AC_LANG([C++]) AX_CXX_COMPILE_STDCXX_11(noext)], [])
 # AS_IF([test "x$with_polycover" != "xno"], [ ], [ ])
 
+CXXFLAGS="$CXXFLAGS -std=c++11"
 AC_PROG_CXX
+
+AC_PROG_RANLIB
+
 AC_LANG([C++])
-AX_CXX_COMPILE_STDCXX_11(noext)
+# AX_CHECK_COMPILE_FLAG([-std=c++11], [ CXXFLAGS="$CXXFLAGS -std=c++11"])
+
+# AX_CXX_COMPILE_STDCXX_11(noext)
 AC_LANG([C])
+# AX_CHECK_COMPILE_FLAG([-std=gnu11], [ CXXFLAGS="$CXXFLAGS -std=c++11"])
+# AC_PROG_LIBTOOL
+# AC_DISABLE_SHARED
+# AC_ENABLE_STATIC
 
 # Checks for libraries.
 

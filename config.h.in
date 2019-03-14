@@ -1,32 +1,7 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* define if the compiler supports basic C++11 syntax */
-#undef HAVE_CXX11
-
-/* Define to 1 if you have the declaration of `cygwin_conv_path', and to 0 if
-   you don't. */
-#undef HAVE_DECL_CYGWIN_CONV_PATH
-
-/* Define if you have the GNU dld library. */
-#undef HAVE_DLD
-
-/* Define to 1 if you have the `dlerror' function. */
-#undef HAVE_DLERROR
-
-/* Define to 1 if you have the <dlfcn.h> header file. */
-#undef HAVE_DLFCN_H
-
-/* Define if you have the _dyld_func_lookup function. */
-#undef HAVE_DYLD
-
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
-
-/* Define if you have the libdl library or equivalent. */
-#undef HAVE_LIBDL
-
-/* Define if libdlloader will be built on this platform */
-#undef HAVE_LIBDLLOADER
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
@@ -43,9 +18,6 @@
 
 /* Define to 1 if you have the `memset' function. */
 #undef HAVE_MEMSET
-
-/* Define if you have the shl_load function. */
-#undef HAVE_SHL_LOAD
 
 /* Define to 1 if you have the `sqrt' function. */
 #undef HAVE_SQRT
@@ -74,8 +46,8 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Define to the sub-directory where libtool stores uninstalled libraries. */
-#undef LT_OBJDIR
+/* Define to 1 if your C compiler doesn't accept -c and -o together. */
+#undef NO_MINUS_C_MINUS_O
 
 /* Name of package */
 #undef PACKAGE
