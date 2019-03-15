@@ -484,7 +484,7 @@ Query.prototype = {
 
 	    data = r.index.map(function(d,i){
 		var x = d[0] + offset.x;
-		var y = th-d[1] + offset.y; //still need to flip y
+		var y = d[1] + offset.y; //still need to flip y
 		return {x:x,y:y,z:z,val:r.values[i]};
 	    });
 

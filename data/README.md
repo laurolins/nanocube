@@ -12,11 +12,11 @@ preserve the original header and keep it in a compressed .gz format.
 # (sample of 50k records extracted from
 #      https://data.cityofchicago.org/api/views/ijzp-q8t2/rows.csv?accessType=DOWNLOAD)
 #
-nanocube create <(zcat < crime50k.csv.gz) crime50k.map crime50k.nanocube
+nanocube create <(zcat < crime50k.csv.gz) crime50k.map crime50k.nanocube -header
 #
 # or equivalently
 #
-zcat crime50k.csv.gz | nanocube create -stdin crime50k.map crime50k.nanocube
+zcat < crime50k.csv.gz | nanocube create -stdin crime50k.map crime50k.nanocube -header
 ```
 
 ## Nanocube's Technical Paper Example
@@ -28,7 +28,7 @@ original [Nanocubes technical paper](http://nanocubes.net/assets/pdf/nanocubes_p
 # using the paper original permutation: location, device
 nanocube create paper.csv paper.map paper.nanocube
 # using permutation: device, location
-nanocube create paper.csv paper_device_location.map paper_device_location.nanocube
+nanocube create paper.csv paper_device_location.map paper_device_location.nanocube -header
 ```
 
 
