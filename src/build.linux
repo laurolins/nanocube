@@ -24,8 +24,8 @@ done
 # echo "${CUSTOM_DEFINES}"
 
 #
-# 2018-11-13T13:41 
-#      Included 
+# 2018-11-13T13:41
+#      Included
 #            -Wno-misleading-indentation
 #            -Wno-implicit-fallthrough
 #      to avoid compilation errors on gcc version 7.3.0 (Ubuntu 7.3.0-16ubuntu3)
@@ -129,7 +129,7 @@ polycover/glu/tessellate.c
 EOF
 ) | egrep -v "[.](hh|h)$" | paste -d' ' -s -)
 
-	pushd $BUILD	
+	pushd $BUILD
 
 	# f_cmd="tmp_cmd"
 	# if [ -f $f_cmd ]; then rm $f_cmd; fi
@@ -173,7 +173,7 @@ MODIFIED=""
 if [[ $(git status --porcelain | grep " M") ]]; then
 	  MODIFIED="m"
 fi
-VERSION_NAME="${BASE_VERSION}r${REVISION}${MODIFIED}_${HASH}_${MODE}_$(echo $EXTRA | paste -d'_' -s)"
+VERSION_NAME="${BASE_VERSION}r${REVISION}${MODIFIED}_${HASH}_${MODE}_$(echo $EXTRA | paste -d'_' -s -)"
 echo ${VERSION_NAME}
 
 # check if version name stored is the same as the one

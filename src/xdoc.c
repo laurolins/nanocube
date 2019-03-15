@@ -177,7 +177,7 @@ main(int argc, char *argv[])
 					{
 						int b = blocks[block_index].content.begin;
 						int e = blocks[block_index].content.end;
-						if (b < e && text[e-1] == '\n' || text[e-1] == '\r') --e;
+						if (b < e && (text[e-1] == '\n' || text[e-1] == '\r')) --e;
 						blocks[block_index].content.end = e;
 					}
 					++block_index;
