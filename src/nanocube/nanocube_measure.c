@@ -87,10 +87,11 @@ typedef struct {
  * a flag that will be used to write the column value as text
  * instead of the path sequence of names
  */
-#define nm_BINDING_HINT_NONE 0x0
-#define nm_BINDING_HINT_IMG  0x1
-#define nm_BINDING_HINT_NAME 0x2
-#define nm_BINDING_HINT_TIME 0x3
+#define nm_BINDING_HINT_NONE    0x0
+#define nm_BINDING_HINT_IMG2D   0x1
+#define nm_BINDING_HINT_TILE2D  0x2
+#define nm_BINDING_HINT_NAME    0x3
+#define nm_BINDING_HINT_TIME    0x4
 
 typedef struct {
 	s32  hint_id;

@@ -1874,7 +1874,17 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 				return np_TypeValue_error();
 			}
 			// assume suffix is a number store in void* slot
-			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_IMG, .param = (void*) n };
+			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_IMG2D, .param = (void*) n };
+		} else if (pt_compare_memory_n_cstr(tag->begin, tag->end, "tile", 4) == 0) {
+			u64 n = 0;
+			if (!pt_parse_u64(tag->begin + 4, tag->end, &n)) {
+				char *error = "Invalid img type. Expecting tile<NUMBER> (eg. tile8, tile25), couldn't parse number";
+				np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+				np_Compiler_log_ast_node_context(compiler);
+				return np_TypeValue_error();
+			}
+			// assume suffix is a number store in void* slot
+			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_TILE2D, .param = (void*) n };
 		} else if (pt_compare_memory_cstr(tag->begin, tag->end, "name") == 0) {
 			// NOTE(llins) will only know the source of the mapping from ID to NAMEs when we bind a source
 			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_NAME, .param = 0 };
@@ -3750,7 +3760,8 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					ut_PrintStack_pop(print_stack);
 
 				} break;
-				case nm_BINDING_HINT_IMG: {
+				case nm_BINDING_HINT_TILE2D:
+				case nm_BINDING_HINT_IMG2D: {
 					if (it_coltype->loop_column) {
 						ut_PrintStack_print(print_stack, "\"error\":\"expected a path, received a loop column\"");
 					} else if (it_coltype->bits != 2) {
@@ -3784,6 +3795,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								if (i > 0) {
 									ut_PrintStack_append_cstr(print_stack, ",");
 								}
+								if (it_coltype->hint.hint_id == nm_BINDING_HINT_IMG2D) { y = (1 << param) - 1 - y; }
 								ut_PrintStack_append_formatted(print_stack, "%llu,%llu", x, y);
 							}
 						}
@@ -3971,7 +3983,8 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							it += bytes;
 						}
 					} break;
-					case nm_BINDING_HINT_IMG: {
+					case nm_BINDING_HINT_TILE2D:
+					case nm_BINDING_HINT_IMG2D: {
 						// TODO(llins): generalize to 2d
 						if (it_coltype->loop_column) {
 							Print_cstr(print, "error: expected a path, received a loop column");
@@ -4001,6 +4014,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							if (i > 0) {
 								Print_char(print, ',');
 							}
+							if (it_coltype->hint.hint_id == nm_BINDING_HINT_IMG2D) { y = (1 << param) - 1 - y; }
 							Print_format(print,"%llu,%llu", x, y);
 						}
 					} break;
@@ -4079,7 +4093,15 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 				while (it != table_keys->type->end) {
 					if (continuation) Print_char(print,sep);
 					continuation=1;
-					Print_str(print, it->name.begin, it->name.end);
+					if (it->hint.hint_id != nm_BINDING_HINT_IMG2D && it->hint.hint_id != nm_BINDING_HINT_TILE2D) {
+						Print_str(print, it->name.begin, it->name.end);
+					} else {
+						s32 name_length = (s32) (it->name.end - it->name.begin);
+						Print_format(print, "%.*s_x%c%.*s_y",
+							     name_length, it->name.begin,
+							     sep,
+							     name_length, it->name.begin);
+					}
 					++it;
 				}
 			}
@@ -4133,7 +4155,8 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							it += bytes;
 						}
 					} break;
-					case nm_BINDING_HINT_IMG: {
+					case nm_BINDING_HINT_TILE2D:
+					case nm_BINDING_HINT_IMG2D: {
 						// TODO(llins): generalize to 2d
 						if (it_coltype->loop_column) {
 							Print_cstr(print, "error: expected a path, received a loop column");
@@ -4160,7 +4183,8 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								}
 							}
 							it += bytes;
-							Print_format(print,"%llu:%llu", x, y);
+							if (it_coltype->hint.hint_id == nm_BINDING_HINT_IMG2D) { y = (1 << param) - 1 - y; }
+							Print_format(print,"%llu%c%llu", x, sep, y);
 						}
 					} break;
 					case nm_BINDING_HINT_NAME: {

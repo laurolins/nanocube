@@ -1,23 +1,21 @@
 #!/bin/bash
-ARGS=("$@")
 
-# options are "debug", "release", "profile"
+# options are "debug", "release", "profile", "security"
 MODE="debug"
 if [ $1 ]; then
 	MODE=$1
 fi
 
-# extra
-POYCOVER_SUPPPORT=false
+ARGS=("$@")
+ARGS_LENGTH=${#ARGS[@]}
 
-# following parameters are the specific defines
-# use PROFILE and nx_PROFILE
+POYCOVER_SUPPPORT=false
 CUSTOM_DEFINES=""
 EXTRA=""
-for i in $( seq 1 $(($#-1)) ); do
+for (( i=1; i<$ARGS_LENGTH; i++ )); do
 	CUSTOM_DEFINES+="-D${ARGS[$i]} ";
 	EXTRA="$EXTRA ${ARGS[$i]}"
-	if [ ${ARGS[$i]} = "POLYCOVER" ]; then
+	if [ "${ARGS[$i]}" == "POLYCOVER" ]; then
 		POLYCOVER_SUPPORT=true
 	fi
 done

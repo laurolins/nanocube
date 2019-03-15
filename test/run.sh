@@ -178,6 +178,44 @@ EOF
     echo $result
 }
 
+
+
+
+function test_drilldown_img2d_coords_psv {
+
+#
+# 1 0 0 1
+# 0 0 1 0
+# 0 1 0 0
+# 0 0 0 1
+#
+
+    # input_file_content: next 4 lines #
+    cat <(cat <<EOF
+x,y
+0,3
+1,1
+2,2
+3,3
+3,0
+EOF
+) > tmp_input
+
+    cat <(cat <<EOF
+index_dimension('location',input('x','y'),xy(2));
+measure_dimension('count',input(),u32);
+EOF
+) > tmp_map
+
+    # how to create
+    # change default sepearator from colon to pipe
+    # use the default assumption of no header: note that map file uses 1-based column order
+    nanocube create tmp_input tmp_map tmp.nanocube -header 2> /dev/null
+    nanocube query "{format('psv');q(x.b('location',dive(2),'img2'))}" x=tmp.nanocube 2> /dev/null > log
+    nanocube query "{format('psv');q(x.b('location',dive(2),'tile2'))}" x=tmp.nanocube 2> /dev/null >> log
+    echo 0
+}
+
 result_create_no_header=$(test_create_no_header)
 echo $result_create_no_header | awk '{ if ($0 == "0") { printf "create_no_header: OK\n"; } else { printf "create_no_header: PROBLEM\n";} }'
 
@@ -196,4 +234,5 @@ echo $result_create_header_on_first_line | awk '{ if ($0 == "0") { printf "creat
 result_tile2d_range_query=$(test_tile2d_range_query)
 echo $result_tile2d_range_query | awk '{ if ($0 == "0") { printf "tile2d_range_query: OK\n"; } else { printf "tile2d_range_query: PROBLEM\n";} }'
 
-
+result_drilldown_img2d_coords_psv=$(test_drilldown_img2d_coords_psv)
+echo $result_drilldown_img2d_coords_psv | awk '{ if ($0 == "0") { printf "drilldown_img2d_coords_psv: OK\n"; } else { printf "drilldown_img2d_coords_psv: PROBLEM\n";} }'
