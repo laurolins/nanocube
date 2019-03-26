@@ -3952,7 +3952,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			{ // index columns
 				char *it = table_keys->keys.begin + table_keys->row_length * row;
 				u32 column_offset = 0;
-				u32 record_size   = table_keys->row_length;
+				// u32 record_size   = table_keys->row_length;
 				for (u32 i=0;i<table_keys->columns;++i) {
 
 					nm_TableKeysColumnType *it_coltype = table_keys->type->begin + i;
@@ -4026,6 +4026,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							Assert(table->source->num_nanocubes > 0);
 							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
 
+							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
 							u32 levels = it_coltype->levels;
 
@@ -4037,7 +4038,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
 								path[j] = label;
 							}
-							it += record_size;
+							it += bytes;
 							MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube,
 												    it_coltype->name.begin, it_coltype->name.end,
 												    path, (u8) levels, print);
@@ -4123,7 +4124,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			{ // index columns
 				char *it = table_keys->keys.begin + table_keys->row_length * row;
 				u32 column_offset = 0;
-				u32 record_size   = table_keys->row_length;
+				// u32 record_size   = table_keys->row_length;
 				for (u32 i=0;i<table_keys->columns;++i) {
 
 					if (continuation) Print_char(print,sep);
@@ -4195,6 +4196,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							Assert(table->source->num_nanocubes > 0);
 							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
 
+							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
 							u32 levels = it_coltype->levels;
 
@@ -4206,7 +4208,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
 								path[j] = label;
 							}
-							it += record_size;
+							it += bytes;
 							MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube,
 												    it_coltype->name.begin, it_coltype->name.end,
 												    path, (u8) levels, print);

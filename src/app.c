@@ -425,6 +425,74 @@ log_(Print *print)
 	platform.write_to_file(g_request->pfh_stderr, print->begin, print->end);
 }
 
+internal void
+log_format_(const char *cstr)
+{
+	Print_cstr(g_request->print, cstr);
+	platform.write_to_file(g_request->pfh_stderr, g_request->print->begin, g_request->print->end);
+	Print_clear(g_request->print);
+}
+
+//------------------------------------------------------------------------------
+//
+// log
+//
+// we are using the libc stdio stuff here
+//
+//------------------------------------------------------------------------------
+
+#define app_DEBUG_LEVEL 1
+
+// #define DEBUG_CHANNEL stdout
+
+#ifndef app_OUTPUT_CHANNEL
+#define app_OUTPUT_CHANNEL stdout
+#endif
+
+#ifndef app_MSG_CHANNEL
+#define app_MSG_CHANNEL stderr
+#endif
+
+#define msg_raw(st) fprintf(app_MSG_CHANNEL, "%s", st)
+
+#define outputf(format, ...) fprintf(app_OUTPUT_CHANNEL, format, ##  __VA_ARGS__)
+
+#define outputc(c) fputc(c, app_OUTPUT_CHANNEL)
+
+#define outputs(s) fputs(s, app_OUTPUT_CHANNEL)
+
+#if app_DEBUG_LEVEL >= 0
+#define msg0(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg0(format, ...)
+#endif
+
+#if app_DEBUG_LEVEL > 0
+#define msg(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg(format, ...)
+#endif
+
+#if app_DEBUG_LEVEL > 1
+#define msg2(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg2(format, ...)
+#endif
+
+#if app_DEBUG_LEVEL > 2
+#define msg3(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg3(format, ...)
+#endif
+
+
+
+
+
+
+
+
+
 
 //------------------------------------------------------------------------
 // base64 encode
@@ -6415,6 +6483,7 @@ service_create()
 			u32 csv_fields_count = csv_Stream_num_fields(&csv_stream);
 			Assert(csv_fields_count <= service_create_MAX_FIELDS);
 			if (!csv_Stream_get_fields(&csv_stream, csv_fields, 0, csv_fields_count)) {
+				msg("Could get fields on line %"PRIu64" possible cause wrong sepearator\n", line_no);
 				goto finalize_insertion;
 			}
 
@@ -6472,6 +6541,7 @@ service_create()
 			if (csv_fields_count <= max_idx) {
 				// @TODO(llins): including logging mechanism for
 				// malfomed lines
+				msg("Not enough fields on line %"PRIu64" possible cause wrong field delimiter\n", line_no);
 				goto finalize_insertion;
 			}
 
