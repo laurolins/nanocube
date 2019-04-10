@@ -1,52 +1,54 @@
+// depends on "src/base/sort.c"
+
 // TODO(llins): consolidate profile utility functions and move it to profile.c
 #ifdef PROFILE
 
 // assumes profile.h was already included
 
-#define pf_PROFILE_TABLE_MEMORY_SIZE Megabytes(128)
+// #define pfc_PROFILE_TABLE_MEMORY_SIZE Megabytes(128)
 
 //
 // Infrastructure to collect result
 //
 // "./nanocube/nanocube_index.c" "|" "930" "|" "1" "|" "pt_read_bits"
 
-#define pf_Block_MAX_RECURSION_LEVEL 16
+#define pfc_Block_MAX_RECURSION_LEVEL 16
 
 typedef struct {
-	u64 hits[pf_Block_MAX_RECURSION_LEVEL];
-	u64 sum_cycles[pf_Block_MAX_RECURSION_LEVEL];
-	u64 min_cycles[pf_Block_MAX_RECURSION_LEVEL];
-	u64 max_cycles[pf_Block_MAX_RECURSION_LEVEL];
+	u64 hits[pfc_Block_MAX_RECURSION_LEVEL];
+	u64 sum_cycles[pfc_Block_MAX_RECURSION_LEVEL];
+	u64 min_cycles[pfc_Block_MAX_RECURSION_LEVEL];
+	u64 max_cycles[pfc_Block_MAX_RECURSION_LEVEL];
 	u32 levels_used;
 	u32 recursion_level;
-} pf_Stats;
+} pfc_Stats;
 
 typedef struct {
 	char *id;
-	pf_Stats *stats;
+	pfc_Stats *stats;
 	u32 stats_index;
 	u32 stats_capacity;
-	pf_Stats global_stats;
-} pf_Block;
+	pfc_Stats global_stats;
+} pfc_Block;
 
-typedef struct pf_Node {
-	pf_Block *block;
+typedef struct pfc_Node {
+	pfc_Block *block;
 	u64 cycles;
 	u64 thread_id;
-	struct pf_Node *parent;
-	struct pf_Node *sibling;
-	struct pf_Node *children;
-} pf_Node;
+	struct pfc_Node *parent;
+	struct pfc_Node *sibling;
+	struct pfc_Node *children;
+} pfc_Node;
 
 typedef struct {
 	/* blocks will be sorted by id (their name address) */
-	pf_Block *begin;
-	pf_Block *end;
-	pf_Block *capacity;
-} pf_BlockSet;
+	pfc_Block *begin;
+	pfc_Block *end;
+	pfc_Block *capacity;
+} pfc_BlockSet;
 
 internal void
-pf_BlockSet_init(pf_BlockSet *self, pf_Block *begin, pf_Block *capacity)
+pfc_BlockSet_init(pfc_BlockSet *self, pfc_Block *begin, pfc_Block *capacity)
 {
 	self->begin = begin;
 	self->end = begin;
@@ -54,7 +56,7 @@ pf_BlockSet_init(pf_BlockSet *self, pf_Block *begin, pf_Block *capacity)
 }
 
 internal void
-pf_Block_init(pf_Block *self, char *id)
+pfc_Block_init(pfc_Block *self, char *id)
 {
 	self->id = id;
 	self->stats = 0;
@@ -63,16 +65,16 @@ pf_Block_init(pf_Block *self, char *id)
 }
 
 internal void
-pf_Block_initialize_stats(pf_Block *self, pf_Stats *stats, u32 count)
+pfc_Block_initialize_stats(pfc_Block *self, pfc_Stats *stats, u32 count)
 {
 	Assert(self->stats_capacity == 0);
 	self->stats = stats;
 	self->stats_capacity = count;
 	for (u32 i=0;i<count;++i) {
-		pf_Stats *stats_i = stats + i;
+		pfc_Stats *stats_i = stats + i;
 		stats_i->levels_used = 0;
 		stats_i->recursion_level = 0;
-		for (s32 j=0;j<pf_Block_MAX_RECURSION_LEVEL;++j) {
+		for (s32 j=0;j<pfc_Block_MAX_RECURSION_LEVEL;++j) {
 			stats_i->hits[j] = 0;
 			stats_i->sum_cycles[j] = 0;
 			stats_i->min_cycles[j] = pt_MAX_U64;
@@ -86,7 +88,7 @@ pf_Block_initialize_stats(pf_Block *self, pf_Stats *stats, u32 count)
 // 0 when finished. After a return 0 next
 // will cycle again
 internal b8
-pf_Block_next_stats(pf_Block *self)
+pfc_Block_next_stats(pfc_Block *self)
 {
 	if (self->stats_index == self->stats_capacity) {
 		self->stats_index = 0;
@@ -97,38 +99,38 @@ pf_Block_next_stats(pf_Block *self)
 }
 
 internal void
-pf_Stats_insert(pf_Stats *self, u64 cycles)
+pfc_Stats_insert(pfc_Stats *self, u64 cycles)
 {
 	Assert(self->recursion_level > 0);
-	self->levels_used=MAX(self->levels_used, self->recursion_level);
+	self->levels_used=Max(self->levels_used, self->recursion_level);
 	u32 i = self->recursion_level-1;
 	++self->hits[i];
 	self->sum_cycles[i] += cycles;
-	self->min_cycles[i] = MIN(self->min_cycles[i], cycles);
-	self->max_cycles[i] = MAX(self->max_cycles[i], cycles);
+	self->min_cycles[i] = Min(self->min_cycles[i], cycles);
+	self->max_cycles[i] = Max(self->max_cycles[i], cycles);
 }
 
 internal void
-pf_Block_begin(pf_Block *self)
+pfc_Block_begin(pfc_Block *self)
 {
 	Assert(self->stats_index < self->stats_capacity);
-	pf_Stats *stats = self->stats + self->stats_index;
+	pfc_Stats *stats = self->stats + self->stats_index;
 	++stats->recursion_level;
 	++self->global_stats.recursion_level;
 }
 
 internal void
-pf_Block_end(pf_Block *self, u64 cycles)
+pfc_Block_end(pfc_Block *self, u64 cycles)
 {
-	pf_Stats *stats = self->stats + self->stats_index;
-	pf_Stats_insert(stats, cycles);
-	pf_Stats_insert(&self->global_stats, cycles);
+	pfc_Stats *stats = self->stats + self->stats_index;
+	pfc_Stats_insert(stats, cycles);
+	pfc_Stats_insert(&self->global_stats, cycles);
 	--stats->recursion_level;
 	--self->global_stats.recursion_level;
 }
 
 internal s64
-pf_BlockSet_indexof(pf_BlockSet *self, char *id)
+pfc_BlockSet_indexof(pfc_BlockSet *self, char *id)
 {
 	s64 left  = 0;
 	s64 right = self->end - self->begin;
@@ -176,7 +178,7 @@ pf_BlockSet_indexof(pf_BlockSet *self, char *id)
 // for now only cy is used
 //
 internal sort_Entry*
-pf_BlockSet_sort(pf_BlockSet *self, BilinearAllocator *memory)
+pfc_BlockSet_sort(pfc_BlockSet *self, BilinearAllocator *memory)
 {
 	s32 n = (s32) (self->end - self->begin);
 	sort_Entry *perm_tmp = (sort_Entry*) BilinearAllocator_alloc_right(memory, n * sizeof(sort_Entry));
@@ -191,10 +193,10 @@ pf_BlockSet_sort(pf_BlockSet *self, BilinearAllocator *memory)
 	return perm;
 }
 
-internal pf_Block*
-pf_BlockSet_find(pf_BlockSet *self, char *id)
+internal pfc_Block*
+pfc_BlockSet_find(pfc_BlockSet *self, char *id)
 {
-	s64 index = pf_BlockSet_indexof(self, id);
+	s64 index = pfc_BlockSet_indexof(self, id);
 	if (index < 0) {
 		return 0;
 	} else {
@@ -203,7 +205,7 @@ pf_BlockSet_find(pf_BlockSet *self, char *id)
 }
 
 internal u64
-pf_BlockSet_fit(pf_BlockSet *self)
+pfc_BlockSet_fit(pfc_BlockSet *self)
 {
 	u64 slots_freed = self->capacity - self->end;
 	self->capacity = self->end;
@@ -214,25 +216,25 @@ pf_BlockSet_fit(pf_BlockSet *self)
 /* assuming insertion ids will come in order */
 /* allows multiple insertion of the same id (if it is the largest one) */
 internal void
-pf_BlockSet_insert(pf_BlockSet *self, char *id)
+pfc_BlockSet_insert(pfc_BlockSet *self, char *id)
 {
 	if (self->begin == self->end) {
-		pf_Block_init(self->end, id);
+		pfc_Block_init(self->end, id);
 		++self->end;
 	} else {
 		char *last_id = (self->end-1)->id;
 		Assert(last_id <= id);
 		if (last_id < id) {
-			pf_Block_init(self->end, id);
+			pfc_Block_init(self->end, id);
 			++self->end;
 		}
 	}
 }
 
-#define pf_collect_MAX_THREADS 128
+#define pfc_collect_MAX_THREADS 128
 
-internal pf_BlockSet*
-pf_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
+internal pfc_BlockSet*
+pfc_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 {
 	u32 n = count;
 
@@ -248,20 +250,20 @@ pf_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 	sort_radixsort(perm, perm_tmp, n);
 
 	/* create list of blocks */
-	pf_BlockSet *block_set = (pf_BlockSet*) BilinearAllocator_alloc_left(memory, sizeof(pf_BlockSet));
+	pfc_BlockSet *block_set = (pfc_BlockSet*) BilinearAllocator_alloc_left(memory, sizeof(pfc_BlockSet));
 	{
-		u64 c = BilinearAllocator_free_space(memory)/sizeof(pf_Block);
-		pf_Block *blocks_begin = (pf_Block*) BilinearAllocator_alloc_left(memory, c * sizeof(pf_Block));
-		pf_BlockSet_init(block_set, blocks_begin, blocks_begin + c);
+		u64 c = BilinearAllocator_free_space(memory)/sizeof(pfc_Block);
+		pfc_Block *blocks_begin = (pfc_Block*) BilinearAllocator_alloc_left(memory, c * sizeof(pfc_Block));
+		pfc_BlockSet_init(block_set, blocks_begin, blocks_begin + c);
 		for (u32 i=0;i<n;++i) {
 			pf_Event *event = begin + perm[i].index;
 			if (event->type == pf_BEGIN_EVENT) {
-				pf_BlockSet_insert(block_set, event->id);
+				pfc_BlockSet_insert(block_set, event->id);
 			}
 		}
-		u64 freed_slots = pf_BlockSet_fit(block_set);
+		u64 freed_slots = pfc_BlockSet_fit(block_set);
 		/* pop memory not used for blocks */
-		BilinearAllocator_pop_left(memory, freed_slots * sizeof(pf_Block));
+		BilinearAllocator_pop_left(memory, freed_slots * sizeof(pfc_Block));
 	}
 
 	// get permutation by thread_id (stable sort, so cycles are monotonous within block)
@@ -272,14 +274,14 @@ pf_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 	sort_radixsort(perm, perm_tmp, n);
 
 	BilinearAllocator_pop_right(memory, sizeof(sort_Entry) * n);
-	u32 *cuts = (u32*) BilinearAllocator_alloc_right(memory, sizeof(u32) * (pf_collect_MAX_THREADS + 1));
+	u32 *cuts = (u32*) BilinearAllocator_alloc_right(memory, sizeof(u32) * (pfc_collect_MAX_THREADS + 1));
 	s32 max_thread= 0;
 	cuts[max_thread] = 0;
 	for (s64 i=1;i<n;++i) {
 		pf_Event *prev = begin + perm[i-1].index;
 		pf_Event *curr = begin + perm[i].index;
 		if (prev->thread_id < curr->thread_id) {
-			Assert(max_thread < pf_collect_MAX_THREADS-1);
+			Assert(max_thread < pfc_collect_MAX_THREADS-1);
 			++max_thread;
 			cuts[max_thread] = i;
 		}
@@ -288,10 +290,10 @@ pf_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 	cuts[num_threads] = n;
 
 	/* allocate stats space of block threads */
-	pf_Block *it = block_set->begin;
+	pfc_Block *it = block_set->begin;
 	while (it != block_set->end) {
-		pf_Stats *stats = (pf_Stats*) BilinearAllocator_alloc_left(memory, sizeof(pf_Stats) * num_threads);
-		pf_Block_initialize_stats(it, stats, num_threads);
+		pfc_Stats *stats = (pfc_Stats*) BilinearAllocator_alloc_left(memory, sizeof(pfc_Stats) * num_threads);
+		pfc_Block_initialize_stats(it, stats, num_threads);
 		++it;
 	}
 
@@ -300,9 +302,9 @@ pf_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 		u32 a = cuts[thread];
 		u32 b = cuts[thread+1];
 
-		pf_Block *it = block_set->begin;
+		pfc_Block *it = block_set->begin;
 		while (it != block_set->end) {
-			pf_Block_next_stats(it);
+			pfc_Block_next_stats(it);
 			++it;
 		}
 
@@ -312,17 +314,17 @@ pf_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 			if (event->type == pf_BEGIN_EVENT) {
 				Assert(stack_size < ArrayCount(stack));
 				stack[stack_size] = event;
-				pf_Block *block = pf_BlockSet_find(block_set, event->id);
+				pfc_Block *block = pfc_BlockSet_find(block_set, event->id);
 				Assert(block);
-				pf_Block_begin(block);
+				pfc_Block_begin(block);
 				++stack_size;
 			} else if (event->type == pf_END_EVENT) {
 				Assert(stack_size > 0);
 				--stack_size;
 				pf_Event *begin_event = stack[stack_size];
-				pf_Block *block = pf_BlockSet_find(block_set, begin_event->id);
+				pfc_Block *block = pfc_BlockSet_find(block_set, begin_event->id);
 				Assert(block);
-				pf_Block_end(block, event->clock - begin_event->clock);
+				pfc_Block_end(block, event->clock - begin_event->clock);
 			}
 		}
 		Assert(stack_size == 0);
@@ -332,44 +334,53 @@ pf_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 }
 
 internal inline void
-pf_clear_events()
+pfc_clear_events()
 {
 	pt_atomic_exchange_u64(&global_profile_table->slot_event_index, 0);
 }
 
-#define pf_ReportBuffers_collect_memory Megabytes(64)
-#define pf_ReportBuffers_print_memory   Megabytes(4)
+#define pfc_ReportBuffers_collect_memory Megabytes(256)
+#define pfc_ReportBuffers_print_memory   Megabytes(4)
+
+//
+// This part assumes memory arena is in context
+// arena should be in context everytime we have
+// included platform
+//
 
 typedef struct {
-	pt_Memory    collect_buffer;
-	pt_Memory    print_buffer;
-	Print        print;
-	nt_Tokenizer tok;
-} pf_ReportBuffers;
+	a_Arena           arena;
+	BilinearAllocator collect_memory;
+	Print             print;
+	nt_Tokenizer      tok;
+} pfc_ReportBuffers;
 
-global_variable pf_ReportBuffers pf_report;
+global_variable pfc_ReportBuffers pfc_report;
 
 internal void
-pf_begin()
+pfc_begin()
 {
-	pf_report.collect_buffer = platform.allocate_memory(pf_ReportBuffers_collect_memory,3,0);
-	pf_report.print_buffer   = platform.allocate_memory(pf_ReportBuffers_print_memory,3,0);
-	Print_init(&pf_report.print, pf_report.print_buffer.memblock.begin, pf_report.print_buffer.memblock.end);
+	pt_clear(pfc_report);
+
+	void *collect_buffer = a_push(&pfc_report.arena, pfc_ReportBuffers_collect_memory, 8, 1);
+	void *print_buffer   = a_push(&pfc_report.arena, pfc_ReportBuffers_print_memory, 8, 1);
+
+	BilinearAllocator_init(&pfc_report.collect_memory, collect_buffer, pfc_ReportBuffers_collect_memory);
+	Print_init(&pfc_report.print, print_buffer, pfc_ReportBuffers_print_memory);
+
 	static char sep[] = "|";
-	nt_Tokenizer_init_canonical(&pf_report.tok, sep, cstr_end(sep));
-	pf_clear_events();
+	nt_Tokenizer_init_canonical(&pfc_report.tok, sep, cstr_end(sep));
+	pfc_clear_events();
 }
 
 internal void
-pf_end()
+pfc_end()
 {
-	// TODO(llins): free this memory in the end.
-	platform.free_memory(&pf_report.collect_buffer);
-	platform.free_memory(&pf_report.print_buffer);
+	a_clear(&pfc_report.arena);
 }
 
 internal void
-pf_generate_report_print_level(Print *print, pf_Stats *stats, s32 level, u64 frame_cycles,
+pfc_generate_report_print_level(Print *print, pfc_Stats *stats, s32 level, u64 frame_cycles,
 			       char *name_begin, char *name_end, s32 thread_index)
 {
 	// TODO(llins): Improve infrastructure to print. Use stb ideas.
@@ -420,9 +431,9 @@ pf_generate_report_print_level(Print *print, pf_Stats *stats, s32 level, u64 fra
 }
 
 internal void
-pf_generate_log_events()
+pfc_generate_log_events()
 {
-	Print *print = &pf_report.print;
+	Print *print = &pfc_report.print;
 
 	u32 slot  = global_profile_table->slot_event_index >> 32;
 	u32 count = global_profile_table->slot_event_index & 0xFFFFFFFF;
@@ -449,7 +460,7 @@ pf_generate_log_events()
 
 
 internal void
-pf_generate_report()
+pfc_generate_report()
 {
 	u32 slot  = global_profile_table->slot_event_index >> 32;
 	u32 count = global_profile_table->slot_event_index & 0xFFFFFFFF;
@@ -459,25 +470,23 @@ pf_generate_report()
 	if (count == 0)
 		return;
 
-	BilinearAllocator memory;
-	BilinearAllocator_init(&memory, pf_report.collect_buffer.memblock.begin,
-			       pf_report.collect_buffer.memblock.end);
+	BilinearAllocator_clear(&pfc_report.collect_memory);
 
-	pf_BlockSet *block_set = pf_collect(global_profile_table->events[slot], count, &memory);
+	pfc_BlockSet *block_set = pfc_collect(global_profile_table->events[slot], count, &pfc_report.collect_memory);
 
-	sort_Entry* order = pf_BlockSet_sort(block_set, &memory);
+	sort_Entry* order = pfc_BlockSet_sort(block_set, &pfc_report.collect_memory);
 	u32 num_blocks = block_set->end - block_set->begin;
 
 	/* sort by find max sum_cycles */
-	nt_Tokenizer *tok = &pf_report.tok;
-	Print *print = &pf_report.print;
+	nt_Tokenizer *tok = &pfc_report.tok;
+	Print *print = &pfc_report.print;
 
 	/* print a report */
 	Print_clear(print);
 	Print_cstr(print,"----------------\n");
 	for (u32 i=0;i<num_blocks;++i) {
 		u32 j = order[i].index;
-		pf_Block *it = block_set->begin + j;
+		pfc_Block *it = block_set->begin + j;
 		if (it->global_stats.levels_used == 0) {
 			continue;
 		}
@@ -497,15 +506,15 @@ pf_generate_report()
 		nt_Token name = tok->token;
 
 		// TODO(llins): Improve infrastructure to print. Use stb ideas.
-		pf_Stats *stats = &it->global_stats;
+		pfc_Stats *stats = &it->global_stats;
 		for (u32 level=0;level<stats->levels_used;++level) {
-			pf_generate_report_print_level(print, stats, level, frame_cycles, name.begin, name.end, -1);
+			pfc_generate_report_print_level(print, stats, level, frame_cycles, name.begin, name.end, -1);
 		}
 		if (it->stats_capacity > 1) {
 			for (s32 thread_id=0; thread_id < it->stats_capacity; ++thread_id) {
 				stats = it->stats + thread_id;
 				for (u32 level=0;level<stats->levels_used;++level) {
-					pf_generate_report_print_level(print, stats, level, frame_cycles,
+					pfc_generate_report_print_level(print, stats, level, frame_cycles,
 								       name.begin, name.end, thread_id);
 				}
 			}

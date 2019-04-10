@@ -495,13 +495,13 @@ static char *nm_error_messages[] = {
 // nm_Path
 //------------------------------------------------------------------------------
 
-internal b8
+static b8
 nm_Path_is_equal(nm_Path *self, nm_Path *other)
 {
 	if (self->by_alias != other->by_alias)
 		return 0;
 	if (self->by_alias) {
-		return pt_compare_memory(self->alias.begin, self->alias.end, other->alias.begin, other->alias.end) == 0;;
+		return cstr_compare_memory(self->alias.begin, self->alias.end, other->alias.begin, other->alias.end) == 0;;
 	} else {
 		return nx_Array_is_equal(&self->array, &other->array);
 	}
@@ -512,7 +512,7 @@ nm_Path_is_equal(nm_Path *self, nm_Path *other)
 // nm_Tile2D_Range_Iterator
 //------------------------------------------------------------------------------
 
-internal s32
+static s32
 nm_Tile2D_Range_Iterator_test(nm_Tile2D_Range_Iterator *self, u32 z, u32 x, u32 y)
 {
 	if (z < self->z) {
@@ -542,7 +542,7 @@ nm_Tile2D_Range_Iterator_test(nm_Tile2D_Range_Iterator *self, u32 z, u32 x, u32 
 	}
 }
 
-internal void
+static void
 nm_Tile2D_Range_Iterator_init(nm_Tile2D_Range_Iterator* self, nx_NanocubeIndex* nci, nx_Node* root, u32 index, u32 z, u32 x0, u32 x1, u32 y0, u32 y1)
 {
 	self[0] = (nm_Tile2D_Range_Iterator) { 0 };
@@ -592,7 +592,7 @@ nm_Tile2D_Range_Iterator_init(nm_Tile2D_Range_Iterator* self, nx_NanocubeIndex* 
 	++self->stack_size;
 }
 
-internal nx_Node*
+static nx_Node*
 nm_Tile2D_Range_Iterator_next(nm_Tile2D_Range_Iterator *self)
 {
 	while (self->stack_size > 0) {
@@ -676,7 +676,7 @@ nm_Tile2D_Range_Iterator_next(nm_Tile2D_Range_Iterator *self)
 // find and dive iterator
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nm_NanocubeIndex_FindDive_init(nm_NanocubeIndex_FindDive* self, nx_NanocubeIndex* nci, nx_Node* root, s32 index, nx_Array *find_path, u8 dive_depth)
 {
 	self->nci          = nci;
@@ -747,7 +747,7 @@ nm_NanocubeIndex_FindDive_init(nm_NanocubeIndex_FindDive* self, nx_NanocubeIndex
 
 }
 
-internal nx_Node*
+static nx_Node*
 nm_NanocubeIndex_FindDive_next(nm_NanocubeIndex_FindDive* self)
 {
 	while (self->stack_size > 0) {
@@ -846,7 +846,7 @@ nm_NanocubeIndex_FindDive_next(nm_NanocubeIndex_FindDive* self)
 //      associated.
 //
 
-internal inline b8
+static inline b8
 nm_Mask_mask_next_path_marker(nm_Mask *self)
 {
 	while (self->it_mask != self->mask.end && *self->it_mask != '<') {
@@ -856,7 +856,7 @@ nm_Mask_mask_next_path_marker(nm_Mask *self)
 	return self->it_mask != self->mask.end;
 }
 
-internal inline void
+static inline void
 nm_Mask_cursor_pop_back(nm_Mask *self)
 {
 	Assert(self->cursor_num_nodes > 0);
@@ -874,7 +874,7 @@ nm_Mask_cursor_pop_back(nm_Mask *self)
 	}
 }
 
-internal inline b8
+static inline b8
 nm_Mask_cursor_advance(nm_Mask *self, nx_Label lbl)
 {
 	Assert(self->cursor_num_nodes > 0);
@@ -923,7 +923,7 @@ nm_Mask_cursor_advance(nm_Mask *self, nx_Label lbl)
 // Rewind until the current implicit path
 // has length len
 //
-internal inline b8
+static inline b8
 nm_Mask_mask_rewind(nm_Mask *self, u8 len)
 {
 	Assert(self->it_mask != self->mask.end);
@@ -949,7 +949,7 @@ nm_Mask_mask_rewind(nm_Mask *self, u8 len)
 //
 // once we pop the root, mask should be done.
 //
-internal inline b8
+static inline b8
 nm_Mask_sync_rewind(nm_Mask *self)
 {
 	// cursor and current path are in sync
@@ -965,7 +965,7 @@ nm_Mask_sync_rewind(nm_Mask *self)
 	return 1;
 }
 
-internal b8
+static b8
 nm_Mask_rewind_from_leaf(nm_Mask *self)
 {
 	//
@@ -982,7 +982,7 @@ nm_Mask_rewind_from_leaf(nm_Mask *self)
 	return 1;
 }
 
-internal inline b8
+static inline b8
 nm_Mask_try_to_match_cursor_to_path(nm_Mask *self)
 {
 	//
@@ -1003,7 +1003,7 @@ nm_Mask_try_to_match_cursor_to_path(nm_Mask *self)
 	return ok;
 }
 
-internal void
+static void
 nm_Mask_init(nm_Mask *self, nx_NanocubeIndex *nci, nx_Node *root,
 			   s32 index, MemoryBlock mask)
 {
@@ -1034,7 +1034,7 @@ nm_Mask_init(nm_Mask *self, nx_NanocubeIndex *nci, nx_Node *root,
 
 
 
-internal nx_Node*
+static nx_Node*
 nm_Mask_next(nm_Mask *self)
 {
 	if (self->done) return 0;
@@ -1119,7 +1119,7 @@ typedef struct
 }
 NanocubeIndex_Interval;
 
-internal void
+static void
 NanocubeIndex_Interval_init(NanocubeIndex_Interval *self, nx_NanocubeIndex* nci, nx_Node* root, s32 index, u8  depth, u64 begin, u64 end)
 {
 #if 1
@@ -1227,7 +1227,7 @@ typedef union
 }
 NanocubeIndex_Interval_Hit;
 
-internal NanocubeIndex_Interval_Hit
+static NanocubeIndex_Interval_Hit
 NanocubeIndex_Interval_hit_test(NanocubeIndex_Interval *self, u64 node_begin, u64 node_end)
 {
 	NanocubeIndex_Interval_Hit result;
@@ -1244,7 +1244,7 @@ NanocubeIndex_Interval_hit_test(NanocubeIndex_Interval *self, u64 node_begin, u6
 	return result;
 }
 
-internal nx_Node*
+static nx_Node*
 NanocubeIndex_Interval_next(NanocubeIndex_Interval *self)
 {
 	if (!self->stack_size) return 0;
@@ -1369,7 +1369,7 @@ NanocubeIndex_Interval_next(NanocubeIndex_Interval *self)
 /*
  * nm_TimeBinning
  */
-internal void
+static void
 nm_TimeBinning_init(nm_TimeBinning *self, tm_Time base_time, s64 default_minute_offset, u64 bin_width)
 {
 	self->base_time = base_time;
@@ -1381,7 +1381,7 @@ nm_TimeBinning_init(nm_TimeBinning *self, tm_Time base_time, s64 default_minute_
 // nm_Target
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nm_Target_init(nm_Target *self) {
 	char *m = (char*) self;
 	pt_fill(m, m + sizeof(nm_Target), 0);
@@ -1390,13 +1390,13 @@ nm_Target_init(nm_Target *self) {
 	self->loop = 0;
 }
 
-internal s32
+static s32
 nm_Dive_match(nm_Dive *a, nm_Dive *b)
 {
 	return (a->depth == b->depth) && nm_Path_is_equal(&a->path, &b->path);
 }
 
-internal b8
+static b8
 nm_Target_is_equal(nm_Target *self, nm_Target *other)
 {
 	if (self->type != other->type
@@ -1427,7 +1427,7 @@ nm_Target_is_equal(nm_Target *self, nm_Target *other)
 			return 1;
 		}
 		else if (self->mask.end - self->mask.begin == other->mask.end - other->mask.begin) {
-			if (pt_compare_memory (self->mask.begin, self->mask.end,
+			if (cstr_compare_memory (self->mask.begin, self->mask.end,
 					       other->mask.begin, other->mask.end) == 0) {
 				return 1;
 			}
@@ -1477,7 +1477,7 @@ nm_Target_is_equal(nm_Target *self, nm_Target *other)
 // nm_MeasureSource
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nm_MeasureSource_init(nm_MeasureSource *self, MemoryBlock *names_begin, MemoryBlock *names_end, u8 *levels_begin, u8* levels_end)
 {
 	pt_fill((char*) self, (char*) self + sizeof(nm_MeasureSource), 0);
@@ -1489,7 +1489,7 @@ nm_MeasureSource_init(nm_MeasureSource *self, MemoryBlock *names_begin, MemoryBl
 }
 
 // NOTE(llins): This assumes the nanocubes have the schema
-internal void
+static void
 nm_MeasureSource_insert_nanocube(nm_MeasureSource *self, nx_NanocubeIndex *index, void *nanocube)
 {
 	Assert(self->num_nanocubes < nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE);
@@ -1498,7 +1498,7 @@ nm_MeasureSource_insert_nanocube(nm_MeasureSource *self, nx_NanocubeIndex *index
 	++self->num_nanocubes;
 }
 
-internal s32
+static s32
 nm_MeasureSource_dimension_by_name(nm_MeasureSource *self, char *name_begin, char *name_end)
 {
 	Assert(self->num_nanocubes > 0);
@@ -1518,7 +1518,7 @@ nm_MeasureSource_dimension_by_name(nm_MeasureSource *self, char *name_begin, cha
 // 		printf("\n");
 // 		printf(".... len %d\n",(s32)(it_name->end - it_name->begin));
 
-		if (pt_compare_memory(name_begin, name_end, it_name->begin, it_name->end) == 0) {
+		if (cstr_compare_memory(name_begin, name_end, it_name->begin, it_name->end) == 0) {
 // 			printf(".... found %d\n",i);
 			return i;
 		}
@@ -1532,7 +1532,7 @@ nm_MeasureSource_dimension_by_name(nm_MeasureSource *self, char *name_begin, cha
 // nm_MeasureExpression
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nm_MeasureExpression_init_source(nm_MeasureExpression *self, u32 index)
 {
 	for (s32 i=0;i<sizeof(nm_MeasureExpression);++i) {
@@ -1542,7 +1542,7 @@ nm_MeasureExpression_init_source(nm_MeasureExpression *self, u32 index)
 	self->source_index = index;
 }
 
-internal void
+static void
 nm_MeasureExpression_init_number(nm_MeasureExpression *self, double number)
 {
 	for (s32 i=0;i<sizeof(nm_MeasureExpression);++i) {
@@ -1552,7 +1552,7 @@ nm_MeasureExpression_init_number(nm_MeasureExpression *self, double number)
 	self->number = number;
 }
 
-internal void
+static void
 nm_MeasureExpression_init_binary_op(nm_MeasureExpression *self,
 				    nm_MeasureExpression_Operation_Type type,
 				    nm_MeasureExpression *left,
@@ -1567,7 +1567,7 @@ nm_MeasureExpression_init_binary_op(nm_MeasureExpression *self,
 	self->op.right = right;
 }
 
-internal void
+static void
 nm_MeasureExpression_init_unary_op(nm_MeasureExpression *self,
 				   nm_MeasureExpression_Operation_Type type,
 				   nm_MeasureExpression* left)
@@ -1586,7 +1586,7 @@ nm_MeasureExpression_init_unary_op(nm_MeasureExpression *self,
 // nm_MeasureSourceBinding
 //------------------------------------------------------------------------------
 
-internal nm_MeasureSourceBinding*
+static nm_MeasureSourceBinding*
 nm_MeasureSourceBinding_dimension_binding(nm_MeasureSourceBinding *it, u8 dimension)
 {
 	while (it) {
@@ -1602,19 +1602,19 @@ nm_MeasureSourceBinding_dimension_binding(nm_MeasureSourceBinding *it, u8 dimens
 //------------------------------------------------------------------------------
 
 // return number of sources that were successfully bound
-internal nm_MeasureSourceBinding*
+static nm_MeasureSourceBinding*
 nm_Measure_alloc_binding(nm_Measure *self)
 {
 	return (nm_MeasureSourceBinding*) BilinearAllocator_alloc_left(self->memory, sizeof(nm_MeasureSourceBinding));
 }
 
-internal nm_MeasureExpression*
+static nm_MeasureExpression*
 nm_Measure_alloc_expression(nm_Measure *self)
 {
 	return (nm_MeasureExpression*) BilinearAllocator_alloc_left(self->memory, sizeof(nm_MeasureExpression));
 }
 
-internal void
+static void
 nm_Measure_init(nm_Measure *self, nm_MeasureSource *source, BilinearAllocator* memory)
 {
 	self->memory = memory;
@@ -1630,7 +1630,7 @@ nm_Measure_init(nm_Measure *self, nm_MeasureSource *source, BilinearAllocator* m
 	nm_MeasureExpression_init_source(self->expression, 0);
 }
 
-internal nm_MeasureSourceBinding*
+static nm_MeasureSourceBinding*
 nm_Measure_copy_binding_list(nm_Measure *self, nm_MeasureSourceBinding *it)
 {
 	nm_MeasureSourceBinding *begin = 0;
@@ -1660,7 +1660,7 @@ nm_Measure_copy_binding_list(nm_Measure *self, nm_MeasureSourceBinding *it)
  * named 'name' and bind the target to those.
  * Returns number of actual bindings that happened.
  */
-internal u32
+static u32
 nm_Measure_bind(nm_Measure *self, char *name_begin, char *name_end, nm_Target target, nm_BindingHint hint)
 {
 	u32 result = 0;
@@ -1688,7 +1688,7 @@ nm_Measure_bind(nm_Measure *self, char *name_begin, char *name_end, nm_Target ta
  * are undefined (==0).
  * error codes: 1 a source is already configured
  */
-internal u8
+static u8
 nm_Measure_set_payload_config(nm_Measure *self, void *payload_config)
 {
 	for (s32 i=0;i<self->num_sources;++i) {
@@ -1702,7 +1702,7 @@ nm_Measure_set_payload_config(nm_Measure *self, void *payload_config)
 	return 0;
 }
 
-internal nm_MeasureExpression*
+static nm_MeasureExpression*
 nm_Measure_copy_expression_adjust_source(nm_Measure *self, nm_MeasureExpression *expression, u32 *mapping)
 {
 	Assert(expression);
@@ -1726,7 +1726,7 @@ nm_Measure_copy_expression_adjust_source(nm_Measure *self, nm_MeasureExpression 
 	return copy;
 }
 
-internal void
+static void
 nm_Mesaure_combine_number(nm_Measure *self, double number, nm_MeasureExpression_Operation_Type op, b8 measure_is_left)
 {
 	Assert(self->expression);
@@ -1745,7 +1745,7 @@ nm_Mesaure_combine_number(nm_Measure *self, double number, nm_MeasureExpression_
 }
 
 
-internal b8
+static b8
 nm_sources_are_the_same(nm_Measure *a, u32 a_src, nm_Measure *b, u32 b_src)
 {
 	Assert(a->sources[a_src]->num_nanocubes > 0);
@@ -1775,7 +1775,7 @@ nm_sources_are_the_same(nm_Measure *a, u32 a_src, nm_Measure *b, u32 b_src)
 	return 1;
 }
 
-internal void
+static void
 nm_Measure_combine_measure(nm_Measure *self, nm_Measure *other, nm_MeasureExpression_Operation_Type op)
 {
 	Assert(op != nm_MEASURE_EXPRESSION_OPERATION_UNARY_MINUS);
@@ -1821,7 +1821,7 @@ nm_Measure_combine_measure(nm_Measure *self, nm_Measure *other, nm_MeasureExpres
 	nm_MeasureExpression_init_binary_op(self->expression, op, left, right);
 }
 
-internal void
+static void
 nm_Measure_combine_number(nm_Measure *self, f64 number, nm_MeasureExpression_Operation_Type op, b8 number_on_right)
 {
 	Assert(op != nm_MEASURE_EXPRESSION_OPERATION_UNARY_MINUS);
@@ -1844,7 +1844,7 @@ nm_Measure_combine_number(nm_Measure *self, f64 number, nm_MeasureExpression_Ope
 
 // MeasureSource + MeasureSourceBindings -> TableKeyType
 
-internal nm_TableKeysType*
+static nm_TableKeysType*
 nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_MeasureSource *src, nm_MeasureSourceBinding *binding, nm_Services *nm_services, s32 *error)
 {
 	*error = nm_OK;
@@ -1972,20 +1972,20 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 	return tkt;
 }
 
-internal inline u32
+static inline u32
 nm_TableKeysColumnType_bytes(nm_TableKeysColumnType *self)
 {
 	return self->loop_column ? (u32) sizeof(u32) : (self->levels * self->bits + 7) / 8;
 }
 
-internal nm_TableKeysColumnType_Relation
+static nm_TableKeysColumnType_Relation
 nm_TableKeysColumnType_compare(nm_TableKeysColumnType *c1, nm_TableKeysColumnType *c2)
 {
 	nm_TableKeysColumnType_Relation result;
 	result.flags = 0;
 
 	// names need to match
-	s64 names_diff = pt_compare_memory(c1->name.begin, c1->name.end,
+	s64 names_diff = cstr_compare_memory(c1->name.begin, c1->name.end,
 					   c2->name.begin, c2->name.end);
 	if (names_diff) {
 		result.is_different = 1;
@@ -2011,7 +2011,7 @@ nm_TableKeysColumnType_compare(nm_TableKeysColumnType *c1, nm_TableKeysColumnTyp
 	}
 }
 
-internal nm_TableKeysType_Alignment*
+static nm_TableKeysType_Alignment*
 nm_TableKeysType_align(nm_TableKeysType *t1, nm_TableKeysType *t2, LinearAllocator *memsrc)
 {
 	u8 c1 = pt_safe_s64_u8(t1->end - t1->begin);
@@ -2189,7 +2189,7 @@ nm_TableKeysType_align(nm_TableKeysType *t1, nm_TableKeysType *t2, LinearAllocat
 }
 
 
-internal void
+static void
 nm_TableKeys_init(nm_TableKeys *self, nm_TableKeysType *type, LinearAllocator *memsrc)
 {
 	self->type = type;
@@ -2216,7 +2216,7 @@ nm_TableKeys_init(nm_TableKeys *self, nm_TableKeysType *type, LinearAllocator *m
 	self->keys.end = self->keys.begin;
 }
 
-internal s32
+static s32
 nm_TableKeys_push_anchor_column(nm_TableKeys *self, nx_Label *begin, nx_Label *end)
 {
 	if (self->current_column == self->columns) {
@@ -2246,7 +2246,7 @@ nm_TableKeys_push_anchor_column(nm_TableKeys *self, nx_Label *begin, nx_Label *e
 	return nm_OK;
 }
 
-internal void
+static void
 TableKeys_push_loop_column(nm_TableKeys *self, u32 index)
 {
 	Assert(self->current_column < self->columns);
@@ -2264,7 +2264,7 @@ TableKeys_push_loop_column(nm_TableKeys *self, u32 index)
 	++self->current_column;
 }
 
-internal void
+static void
 nm_TableKeys_pop_column(nm_TableKeys *self)
 {
 	Assert(self->current_column > 0);
@@ -2284,7 +2284,7 @@ nm_TableKeys_pop_column(nm_TableKeys *self)
 	}
 }
 
-internal s32
+static s32
 nm_TableKeys_commit_key(nm_TableKeys *self)
 {
 	Assert(self->current_column == self->columns);
@@ -2306,7 +2306,7 @@ nm_TableKeys_commit_key(nm_TableKeys *self)
 	return nm_OK;
 }
 
-internal void
+static void
 nm_TableKeys_append_row_copying(nm_TableKeys *self, nm_TableKeys *src, u32 src_index)
 {
 	Assert(self->row_length == src->row_length);
@@ -2324,18 +2324,18 @@ nm_TableKeys_append_row_copying(nm_TableKeys *self, nm_TableKeys *src, u32 src_i
 	++self->rows;
 }
 
-internal void
+static void
 nm_TableKeys_print_header(nm_TableKeys *self, Print *print)
 {
 	nm_TableKeysColumnType *it = self->type->begin;
 	while (it != self->type->end) {
-		Print_str(print, it->name.begin, it->name.end);
-		Print_align(print, 50, 1, ' ');
+		print_str(print, it->name.begin, it->name.end);
+		print_align(print, 50, 1, ' ');
 		++it;
 	}
 }
 
-internal void
+static void
 nm_TableKeys_print(nm_TableKeys *self, Print *print, u32 record_index)
 {
 	Assert(record_index < self->rows);
@@ -2346,7 +2346,7 @@ nm_TableKeys_print(nm_TableKeys *self, Print *print, u32 record_index)
 		char *check_point = print->end;
 		if (coltype->loop_column) {
 			u32 val = *((u32*) it);
-			Print_u64(print, (u64) val);
+			print_u64(print, (u64) val);
 			it += sizeof(u32);
 		} else {
 			u32 bits   = coltype->bits;
@@ -2356,21 +2356,21 @@ nm_TableKeys_print(nm_TableKeys *self, Print *print, u32 record_index)
 				nx_Label label = 0;
 				pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
 				if (j > 0) {
-					Print_cstr(print, ",");
+					print_cstr(print, ",");
 				}
-				Print_u64(print, (u64) label);
+				print_u64(print, (u64) label);
 			}
 			it += bytes;
 		}
-		Print_fake_last_print(print, check_point);
-		Print_align(print, 50, 1, ' ');
+		print_fake_last_print(print, check_point);
+		print_align(print, 50, 1, ' ');
 	}
 }
 
-internal void
+static void
 nm_TableKeys_print_json(nm_TableKeys *self, Print *print)
 {
-	Print_cstr(print, "[");
+	print_cstr(print, "[");
 	nm_TableKeysColumnType *it_coltype = self->type->begin;
 	u32 record_size   = self->row_length;
 	u32 column_offset = 0;
@@ -2380,25 +2380,25 @@ nm_TableKeys_print_json(nm_TableKeys *self, Print *print)
 		u8 bits   = it_coltype->bits;
 
 		if (it_coltype != self->type->begin)
-			Print_char(print, ',');
+			print_char(print, ',');
 
-		Print_cstr(print, "{ \"name\":\"");
-		Print_str(print, it_coltype->name.begin, it_coltype->name.end);
-		Print_cstr(print, "\", \"values_per_row\":");
+		print_cstr(print, "{ \"name\":\"");
+		print_str(print, it_coltype->name.begin, it_coltype->name.end);
+		print_cstr(print, "\", \"values_per_row\":");
 		if (it_coltype->loop_column) {
-			Print_u64(print, 1);
+			print_u64(print, 1);
 		} else {
-			Print_u64(print, levels);
+			print_u64(print, levels);
 		}
-		Print_cstr(print, ", \"values\":[");
+		print_cstr(print, ", \"values\":[");
 		if (it_coltype->loop_column) {
 			char *it = self->keys.begin + column_offset;
 			if (self->rows) {
-				Print_u64(print, *((u32*)(it + column_offset)));
+				print_u64(print, *((u32*)(it + column_offset)));
 				for (u32 i=1;i<self->rows;++i) {
 					it += record_size;
-					Print_char(print, ',');
-					Print_u64(print, *((u32*)(it + column_offset)));
+					print_char(print, ',');
+					print_u64(print, *((u32*)(it + column_offset)));
 				}
 			}
 			column_offset += sizeof(u32);
@@ -2409,29 +2409,29 @@ nm_TableKeys_print_json(nm_TableKeys *self, Print *print)
 					nx_Label label = 0;
 					pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
 					if (j > 0) {
-						Print_char(print, ',');
+						print_char(print, ',');
 					}
-					Print_u64(print, (u64) label);
+					print_u64(print, (u64) label);
 				}
 				for (u32 i=1;i<self->rows;++i) {
 					it += record_size;
 					for (u32 j=0;j<it_coltype->levels;++j) {
 						nx_Label label = 0;
 						pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
-						Print_char(print, ',');
-						Print_u64(print, (u64) label);
+						print_char(print, ',');
+						print_u64(print, (u64) label);
 					}
 				}
 			}
 			column_offset += (it_coltype->bits * it_coltype->levels + 7)/8;
 		}
-		Print_cstr(print, "]}");
+		print_cstr(print, "]}");
 		++it_coltype;
 	}
-	Print_cstr(print, "]");
+	print_cstr(print, "]");
 }
 
-internal void
+static void
 nm_Permutation_init(nm_Permutation* self, u32 *begin, u32 *end)
 {
 	Assert(begin < end);
@@ -2446,7 +2446,7 @@ nm_Permutation_init(nm_Permutation* self, u32 *begin, u32 *end)
 	}
 }
 
-internal b8
+static b8
 nm_Permutation_is_identity(nm_Permutation *self)
 {
 	u32 i=0;
@@ -2459,7 +2459,7 @@ nm_Permutation_is_identity(nm_Permutation *self)
 	return 1;
 }
 
-internal b8
+static b8
 nm_TableKeys_less_than(nm_TableKeys *self, u32 rowi, u32 rowj)
 {
 	Assert(rowi < self->rows && rowj < self->rows);
@@ -2496,7 +2496,7 @@ nm_TableKeys_less_than(nm_TableKeys *self, u32 rowi, u32 rowj)
 	return 0; // equal
 }
 
-internal b8
+static b8
 nm_TableKeys_is_totally_ordered(nm_TableKeys *self)
 {
 	for (u32 i=0;i<self->rows-1;++i) {
@@ -2507,7 +2507,7 @@ nm_TableKeys_is_totally_ordered(nm_TableKeys *self)
 	return 1;
 }
 
-internal b8
+static b8
 nm_TableKeys_equal_rows(nm_TableKeys *self, u32 rowi, u32 rowj)
 {
 	Assert(rowi < self->rows && rowj < self->rows);
@@ -2543,7 +2543,7 @@ nm_TableKeys_equal_rows(nm_TableKeys *self, u32 rowi, u32 rowj)
 	return 1; // equal
 }
 
-internal void
+static void
 nm_TableKeys_merge_sort(nm_TableKeys *self,
 			u32 *permutation_begin,
 			u32 *permutation_end,
@@ -2602,7 +2602,7 @@ nm_TableKeys_merge_sort(nm_TableKeys *self,
 	}
 }
 
-internal nm_Permutation*
+static nm_Permutation*
 nm_TableKeys_order(nm_TableKeys *self, LinearAllocator *memsrc)
 {
 	nm_Permutation *permutation = (nm_Permutation*) LinearAllocator_alloc(memsrc, sizeof(nm_Permutation));
@@ -2639,7 +2639,7 @@ nm_TableKeys_order(nm_TableKeys *self, LinearAllocator *memsrc)
 // there indicating at position i+1 if row[i+1] key is
 // equal to row[i]
 //
-internal MemoryBlock
+static MemoryBlock
 nm_TableKeys_row_repeat_flags(nm_TableKeys *self, nm_Permutation *permutation,
 			      LinearAllocator *memsrc)
 {
@@ -2670,7 +2670,7 @@ nm_TableKeys_row_repeat_flags(nm_TableKeys *self, nm_Permutation *permutation,
 }
 
 
-internal void
+static void
 nm_TableKeysType_permute(nm_TableKeysType *self,
 			 nm_Permutation *permutation,
 			 LinearAllocator *memsrc)
@@ -2698,7 +2698,7 @@ nm_TableKeysType_permute(nm_TableKeysType *self,
 	LinearAllocator_rewind(memsrc, chkpt);
 }
 
-internal void
+static void
 nm_TableKeys_permute_columns(nm_TableKeys *self,
 			     nm_Permutation *permutation,
 			     LinearAllocator *memsrc)
@@ -2754,7 +2754,7 @@ nm_TableKeys_permute_columns(nm_TableKeys *self,
 
 }
 
-internal void
+static void
 nm_TableKeys_permute_rows(nm_TableKeys *self,
 			  nm_Permutation *permutation,
 			  LinearAllocator *memsrc)
@@ -2786,7 +2786,7 @@ nm_TableKeys_permute_rows(nm_TableKeys *self,
 	LinearAllocator_rewind(memsrc, cp);
 }
 
-internal void
+static void
 nm_TableKeys_permute_rows_with_repetition(nm_TableKeys *self, nm_Permutation *permutation, MemoryBlock repeat_flags)
 {
 	Assert(self->memsrc);
@@ -2815,7 +2815,7 @@ nm_TableKeys_permute_rows_with_repetition(nm_TableKeys *self, nm_Permutation *pe
 			/* make sure there it is the same keys */
 #if 1
 			u32 j = *(permutation->begin + i);
-			Assert(pt_compare_memory(buffer + (nn-1)*len,
+			Assert(cstr_compare_memory(buffer + (nn-1)*len,
 						 buffer + nn*len,
 						 self->keys.begin + j * len,
 						 self->keys.begin + (j+1) * len) == 0);
@@ -2839,7 +2839,7 @@ nm_TableKeys_permute_rows_with_repetition(nm_TableKeys *self, nm_Permutation *pe
 	self->memsrc->end = self->keys.end + len; // space for one extra record
 }
 
-internal nm_TableKeysType*
+static nm_TableKeysType*
 nm_TableKeysType_copy(nm_TableKeysType *self, LinearAllocator *memsrc)
 {
 	u32 m = pt_safe_s64_u32(self->end - self->begin);
@@ -2862,7 +2862,7 @@ nm_TableKeysType_copy(nm_TableKeysType *self, LinearAllocator *memsrc)
 	return result;
 }
 
-internal void
+static void
 nm_TableKeys_copy_to(nm_TableKeys *self,
 		     nm_TableKeys *dst,
 		     LinearAllocator *memsrc)
@@ -2887,7 +2887,7 @@ nm_TableKeys_copy_to(nm_TableKeys *self,
 // Eval Measure
 //------------------------------------------------------------------------------
 
-internal b8
+static b8
 nm_Measure_check_eval_type(nm_Measure *self)
 {
 	return 1;
@@ -2900,7 +2900,7 @@ nm_Measure_check_eval_type(nm_Measure *self)
 	if (error_) return error_;
 
 // @todo if return different from zero
-internal s32
+static s32
 nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 index, s32 nanocube_index)
 {
 	Assert(root);
@@ -3328,8 +3328,8 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		for (u32 i=0;i<target->time_sequence.count;++i) {
 
 			// only consider positive intervals
-			s64 clamped_begin = MAX(begin, 0);
-			s64 clamped_end   = MAX(end, 0);
+			s64 clamped_begin = Max(begin, 0);
+			s64 clamped_end   = Max(end, 0);
 			if (clamped_begin < clamped_end) {
 
 				NanocubeIndex_Interval_init(&it, context->source->indices[nanocube_index], root, index, depth, (u64) clamped_begin, (u64) clamped_end);
@@ -3380,7 +3380,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 }
 
 
-internal nm_MeasureEvalExpressionResult
+static nm_MeasureEvalExpressionResult
 nm_Measure_eval_table_op_table_coarser(nm_MeasureEvalContext *context,
 				       nm_TableKeysType_Alignment *alignment,
 				       nm_MeasureEvalExpressionResult left,
@@ -3538,7 +3538,7 @@ nm_Measure_eval_table_op_table_coarser(nm_MeasureEvalContext *context,
 }
 
 
-internal nm_MeasureEvalExpressionResult
+static nm_MeasureEvalExpressionResult
 nm_Measure_eval_table_op_table_finer(nm_MeasureEvalContext *context,
 				     nm_TableKeysType_Alignment *alignment,
 				     nm_MeasureEvalExpressionResult left,
@@ -3700,7 +3700,7 @@ nm_Measure_eval_table_op_table_finer(nm_MeasureEvalContext *context,
 }
 
 
-internal nm_MeasureEvalExpressionResult
+static nm_MeasureEvalExpressionResult
 nm_Measure_eval_table_op_table_equal(nm_MeasureEvalContext *context,
 				     nm_TableKeysType_Alignment *alignment,
 				     nm_MeasureEvalExpressionResult left,
@@ -3875,7 +3875,7 @@ nm_Measure_eval_table_op_table_equal(nm_MeasureEvalContext *context,
 	return left;
 }
 
-internal nm_MeasureEvalExpressionResult
+static nm_MeasureEvalExpressionResult
 nm_Measure_eval_expression(nm_MeasureEvalContext *context, nm_MeasureExpression *expression)
 {
 	nm_MeasureEvalExpressionResult result;
@@ -3947,7 +3947,7 @@ nm_Measure_eval_expression(nm_MeasureEvalContext *context, nm_MeasureExpression 
 
 
 // @todo: bring in a log and allow for an error flow here
-internal nm_Table*
+static nm_Table*
 nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_services, void *allocation_context, s32 *error)
 {
 	*error = nm_OK; // no error at first

@@ -59,10 +59,11 @@ typedef struct {
 
 } ntp_Parser;
 
+
 #define ntp_init_charset(name) \
 	nt_CharSet_init(& name, st_ ## name, cstr_end(st_ ## name) , 0)
 
-internal void
+static void
 ntp_initialize_tokenizer(nt_Tokenizer *tokenizer)
 {
 	nt_Tokenizer_init(tokenizer);
@@ -133,7 +134,7 @@ ntp_initialize_tokenizer(nt_Tokenizer *tokenizer)
 	nt_Tokenizer_add_transition(tokenizer, 4, &ms     , 0, MOVE_RIGHT, nt_ACTION_EMIT_TOKEN,     ntp_TOKEN_PM);
 }
 
-internal void
+static void
 ntp_Parser_fill_buffer(ntp_Parser *self)
 {
 	if (self->eof || self->tkerror) return;
@@ -164,7 +165,7 @@ ntp_Parser_fill_buffer(ntp_Parser *self)
 	}
 }
 
-internal void
+static void
 ntp_Parser_log_context(ntp_Parser *self)
 {
 	b8 no_token = self->tkbegin == self->tkend;
@@ -202,24 +203,24 @@ ntp_Parser_log_context(ntp_Parser *self)
 
 	Print *print = &self->log;
 
-	Print_cstr(print,"[Context]");
+	print_cstr(print,"[Context]");
 	if (no_token) {
-		Print_cstr(print, " No valid token available. line: ");
-		Print_u64(print, self->tokenizer.line);
-		Print_cstr(print, " column: ");
-		Print_u64(print, self->tokenizer.column);
-		Print_cstr(print, "\n");
+		print_cstr(print, " No valid token available. line: ");
+		print_u64(print, self->tokenizer.line);
+		print_cstr(print, " column: ");
+		print_u64(print, self->tokenizer.column);
+		print_cstr(print, "\n");
 	} else {
-		Print_cstr(print, "\n");
+		print_cstr(print, "\n");
 	}
-	Print_str(print, context_begin, context_end);
-	Print_cstr(print,"\n");
-	Print_cstr(print,"^");
-	Print_align(print,pos - context_begin + 1, 1, ' ');
-	Print_cstr(print,"\n");
+	print_str(print, context_begin, context_end);
+	print_cstr(print,"\n");
+	print_cstr(print,"^");
+	print_align(print,pos - context_begin + 1, 1, ' ');
+	print_cstr(print,"\n");
 }
 
-internal void
+static void
 ntp_Parser_reset(ntp_Parser *self, char *text_begin, char *text_end)
 {
 	self->num_numbers = 0;
@@ -237,19 +238,19 @@ ntp_Parser_reset(ntp_Parser *self, char *text_begin, char *text_end)
 
 	nt_Tokenizer_reset_text(&self->tokenizer, text_begin, text_end);
 
-	Print_clear(&self->log);
+	print_clear(&self->log);
 }
 
-internal void
+static void
 ntp_Parser_init(ntp_Parser* self)
 {
 	ntp_initialize_tokenizer(&self->tokenizer);
-	Print_init(&self->log, self->log_buffer, self->log_buffer + sizeof(self->log_buffer));
+	print_init(&self->log, self->log_buffer, sizeof(self->log_buffer));
 	ntp_Parser_reset(self,0,0);
 }
 
 
-internal void
+static void
 ntp_Parser_consume_tokens(ntp_Parser *self, u32 n)
 {
 	Assert(self->tkend - self->tkbegin >= n);
@@ -259,19 +260,19 @@ ntp_Parser_consume_tokens(ntp_Parser *self, u32 n)
 	}
 }
 
-internal b8
+static b8
 ntp_Parser_compare(ntp_Parser* self, int index, nt_TokenType type)
 {
 	return (self->tkbegin + index < self->tkend) && (self->tkbegin + index)->type == type;
 }
 
-internal b8
+static b8
 ntp_Parser_compare_next(ntp_Parser* self, nt_TokenType type)
 {
 	return ntp_Parser_compare(self, 0, type);
 }
 
-internal void
+static void
 ntp_Parser_push_number(ntp_Parser *self, s64 value)
 {
 	Assert(self->num_numbers < ntp_NUMBERS_CAPACITY);
@@ -279,13 +280,13 @@ ntp_Parser_push_number(ntp_Parser *self, s64 value)
 	++self->num_numbers;
 }
 
-internal b8
+static b8
 ntp_Parser_consume_number(ntp_Parser *self)
 {
 	s64 value = 0;
 	b8 ok = pt_parse_s64(self->tkbegin->begin, self->tkbegin->end, &value);
 	if (!ok) {
-		Print_cstr(&self->log, "[parser error] Could not parse number\n");
+		print_cstr(&self->log, "[parser error] Could not parse number\n");
 		ntp_Parser_log_context(self);
 		return 0;
 	}
@@ -298,7 +299,7 @@ ntp_Parser_consume_number(ntp_Parser *self)
 	ntp_Parser_compare_next(self, ntp_TOKEN_ ## name)
 
 
-internal b8
+static b8
 ntp_Parser_ZH(ntp_Parser *self)
 {
 	if (ntp_n(NUMBER)) {
@@ -308,7 +309,7 @@ ntp_Parser_ZH(ntp_Parser *self)
 		++self->num_zone_numbers;
 		if (ntp_n(COLON)) {
 			if (self->num_zone_numbers == 2) {
-				Print_cstr(&self->log, "[ntp_Parser_ZH] zone offset with more than 2 numbers.\n");
+				print_cstr(&self->log, "[ntp_Parser_ZH] zone offset with more than 2 numbers.\n");
 				ntp_Parser_log_context(self);
 				return 0;
 			}
@@ -317,18 +318,18 @@ ntp_Parser_ZH(ntp_Parser *self)
 		} else if (ntp_Parser_compare_next(self,nt_TOKEN_EOF)) {
 			return 1;
 		} else {
-			Print_cstr(&self->log, "[ntp_Parser_ZH] error unexpected token.\n");
+			print_cstr(&self->log, "[ntp_Parser_ZH] error unexpected token.\n");
 			ntp_Parser_log_context(self);
 			return 0;
 		}
 	} else {
-		Print_cstr(&self->log, "[ntp_Parser_ZH] unexpected token while ntp_Parse_H.\n");
+		print_cstr(&self->log, "[ntp_Parser_ZH] unexpected token while ntp_Parse_H.\n");
 		ntp_Parser_log_context(self);
 		return 0;
 	}
 }
 
-internal b8
+static b8
 ntp_Parser_Z(ntp_Parser *self)
 {
 	if (ntp_n(Z)) {
@@ -338,7 +339,7 @@ ntp_Parser_Z(ntp_Parser *self)
 		if (ntp_Parser_compare_next(self,nt_TOKEN_EOF)) {
 			return 1;
 		} else {
-			Print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_Z.\n");
+			print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_Z.\n");
 			ntp_Parser_log_context(self);
 			return 0;
 		}
@@ -354,13 +355,13 @@ ntp_Parser_Z(ntp_Parser *self)
 		/* no timezone specified */
 		return 1;
 	} else {
-		Print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_H.\n");
+		print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_H.\n");
 		ntp_Parser_log_context(self);
 		return 0;
 	}
 }
 
-internal b8
+static b8
 ntp_Parser_H(ntp_Parser *self)
 {
 	if (ntp_n(NUMBER)) {
@@ -370,7 +371,7 @@ ntp_Parser_H(ntp_Parser *self)
 		++self->num_time_numbers;
 		if (ntp_n(COLON)) {
 			if (self->num_time_numbers == 3) {
-				Print_cstr(&self->log, "[parser error] hour with more than 3 numbers?.\n");
+				print_cstr(&self->log, "[parser error] hour with more than 3 numbers?.\n");
 				ntp_Parser_log_context(self);
 				return 0;
 			}
@@ -388,7 +389,7 @@ ntp_Parser_H(ntp_Parser *self)
 			return ntp_Parser_Z(self);
 		} else if (ntp_n(PERIOD)) {
 			if (self->num_time_numbers != 3) {
-				Print_cstr(&self->log, "[parser error] fractional seconds need to come after seconds.\n");
+				print_cstr(&self->log, "[parser error] fractional seconds need to come after seconds.\n");
 				ntp_Parser_log_context(self);
 				return 0;
 			}
@@ -398,25 +399,25 @@ ntp_Parser_H(ntp_Parser *self)
 				ntp_Parser_consume_tokens(self,1);
 				return ntp_Parser_Z(self);
 			} else {
-				Print_cstr(&self->log, "[parser error] fractional seconds needs to be a number.\n");
+				print_cstr(&self->log, "[parser error] fractional seconds needs to be a number.\n");
 				ntp_Parser_log_context(self);
 				return 0;
 			}
 		} else if (ntp_Parser_compare_next(self,nt_TOKEN_EOF)) {
 			return 1;
 		} else {
-			Print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_H.\n");
+			print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_H.\n");
 			ntp_Parser_log_context(self);
 			return 0;
 		}
 	} else {
-		Print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_H.\n");
+		print_cstr(&self->log, "[parser error] unexpected token while ntp_Parse_H.\n");
 		ntp_Parser_log_context(self);
 		return 0;
 	}
 }
 
-internal b8
+static b8
 ntp_Parser_D(ntp_Parser *self)
 {
 	/* needs to start with a number */
@@ -427,7 +428,7 @@ ntp_Parser_D(ntp_Parser *self)
 		++self->num_date_numbers;
 		if (ntp_n(SLASH) || ntp_n(MINUS)) {
 			if (self->num_date_numbers == 3) {
-				Print_cstr(&self->log, "[parser error] date with more than 3 numbers?.\n");
+				print_cstr(&self->log, "[parser error] date with more than 3 numbers?.\n");
 				ntp_Parser_log_context(self);
 				return 0;
 			}
@@ -443,12 +444,12 @@ ntp_Parser_D(ntp_Parser *self)
 		} else if (ntp_Parser_compare_next(self,nt_TOKEN_EOF)) {
 			return 1;
 		} else {
-			Print_cstr(&self->log, "[parser error] D: expects a number.\n");
+			print_cstr(&self->log, "[parser error] D: expects a number.\n");
 			ntp_Parser_log_context(self);
 			return 0;
 		}
 	} else {
-		Print_cstr(&self->log, "[parser error] D: expects a number.\n");
+		print_cstr(&self->log, "[parser error] D: expects a number.\n");
 		ntp_Parser_log_context(self);
 		return 0;
 	}
@@ -467,7 +468,7 @@ ntp_Parser_D(ntp_Parser *self)
 
 
 
-internal b8
+static b8
 ntp_Parser_run(ntp_Parser *self, char *text_begin, char *text_end)
 {
 	ntp_Parser_reset(self, text_begin, text_end);

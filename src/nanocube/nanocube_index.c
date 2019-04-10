@@ -59,13 +59,13 @@ typedef struct {
 } nx_PayloadAggregate;
 
 /* declare the 3 services that are expected with respect to payloads */
-internal void
+static void
 nx_PayloadAggregate_init(nx_PayloadAggregate *self, void* payload_context);
 
-internal void
+static void
 nx_PayloadAggregate_share(nx_PayloadAggregate* self, nx_PayloadAggregate* other, void *payload_context);
 
-internal void
+static void
 nx_PayloadAggregate_insert(nx_PayloadAggregate* self, void *payload_unit, void *payload_context);
 
 #define nx_PAYLOAD
@@ -366,13 +366,13 @@ typedef struct {
 
 // @TODO(llins): upgrade to include context
 
-internal void
+static void
 nx_PayloadAggregate_init(nx_PayloadAggregate *self, void *payload_context)
 {
 	self->bitset = 0;
 }
 
-internal void
+static void
 nx_PayloadAggregate_insert(nx_PayloadAggregate *self, void *unit, void *payload_context)
 {
 	u32 index = *((u32*) unit);
@@ -380,7 +380,7 @@ nx_PayloadAggregate_insert(nx_PayloadAggregate *self, void *unit, void *payload_
 	self->bitset |= (1ull << index);
 }
 
-internal void
+static void
 nx_PayloadAggregate_share(nx_PayloadAggregate *self, nx_PayloadAggregate *other, void *payload_context)
 {
 	// here we don't care about sharing since it
@@ -403,14 +403,14 @@ PTR_SPECIALIZED_SERVICES(nx_Ptr_Label, nx_Label)
 // Labels
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_Array_init(nx_Array *self, u8 *begin, u8 length)
 {
 	self->begin = begin;
 	self->length = length;
 }
 
-internal nx_Array
+static nx_Array
 nx_Array_build(u8 *begin, u8 length)
 {
 	nx_Array result;
@@ -418,41 +418,41 @@ nx_Array_build(u8 *begin, u8 length)
 	return result;
 }
 
-internal nx_Array
+static nx_Array
 nx_Array_prefix(nx_Array *self, u8 length)
 {
 	Assert(length <= self->length);
 	return nx_Array_build(self->begin, length);
 }
 
-internal nx_Array
+static nx_Array
 nx_Array_drop_prefix(nx_Array *self, u8 length)
 {
 	Assert(length <= self->length);
 	return nx_Array_build(self->begin + length, (u8)(self->length - length));
 }
 
-internal u8
+static u8
 nx_Array_get(nx_Array *self, u8 index)
 {
 	Assert(index < self->length);
 	return *(self->begin + index);
 }
 
-internal void
+static void
 nx_Array_set(nx_Array *self, u8 index, u8 element)
 {
 	Assert(index < self->length);
 	*(self->begin + index) = element;
 }
 
-internal u8*
+static u8*
 nx_Array_end(nx_Array *self)
 {
 	return self->begin + self->length;
 }
 
-internal b8
+static b8
 nx_Array_is_equal(nx_Array *self, nx_Array *other)
 {
 	if (self->length != other->length)
@@ -468,7 +468,7 @@ nx_Array_is_equal(nx_Array *self, nx_Array *other)
 // LabelArrayList
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_LabelArrayList_init(nx_LabelArrayList *self, nx_Label *begin, u8 length, nx_LabelArrayList *next)
 {
 	nx_Array_init(&self->labels, begin, length);
@@ -481,7 +481,7 @@ nx_LabelArrayList_init(nx_LabelArrayList *self, nx_Label *begin, u8 length, nx_L
 //	return result;
 // }
 
-internal nx_LabelArrayList
+static nx_LabelArrayList
 nx_LabelArrayList_build(nx_Array la, nx_LabelArrayList *next)
 {
 	nx_LabelArrayList result;
@@ -501,7 +501,7 @@ typedef struct {
 	nx_NodeP *capacity;
 } nx_List_NodeP;
 
-internal nx_List_NodeP
+static nx_List_NodeP
 nx_List_NodeP_build(nx_NodeP *begin, nx_NodeP *end, nx_NodeP *capacity)
 {
 	Assert(begin <= end && end <= capacity);
@@ -512,7 +512,7 @@ nx_List_NodeP_build(nx_NodeP *begin, nx_NodeP *end, nx_NodeP *capacity)
 	return result;
 }
 
-internal void
+static void
 nx_List_NodeP_init(nx_List_NodeP *self, nx_NodeP *begin, nx_NodeP *end, nx_NodeP *capacity)
 {
 	Assert(begin <= end && end <= capacity);
@@ -521,68 +521,68 @@ nx_List_NodeP_init(nx_List_NodeP *self, nx_NodeP *begin, nx_NodeP *end, nx_NodeP
 	self->capacity = capacity;
 }
 
-internal nx_NodeP
+static nx_NodeP
 nx_List_NodeP_get(nx_List_NodeP *self, s64 index)
 {
 	Assert(self->begin + index < self->end);
 	return *(self->begin + index);
 }
 
-internal nx_NodeP
+static nx_NodeP
 nx_List_NodeP_back(nx_List_NodeP *self)
 {
 	Assert(self->begin < self->end);
 	return *(self->end - 1);
 }
 
-internal nx_NodeP
+static nx_NodeP
 nx_List_NodeP_get_reverse(nx_List_NodeP *self, s64 index)
 {
 	Assert(self->begin + index < self->end);
 	return *(self->end - 1 - index);
 }
 
-internal nx_NodeP
+static nx_NodeP
 nx_List_NodeP_front(nx_List_NodeP *self)
 {
 	Assert(self->begin < self->end);
 	return *(self->begin);
 }
 
-internal void
+static void
 nx_List_NodeP_set(nx_List_NodeP *self, s64 index, nx_NodeP element)
 {
 	Assert(self->begin + index < self->end);
 	*(self->begin + index) = element;
 }
 
-internal void
+static void
 nx_List_NodeP_set_reverse(nx_List_NodeP *self, s64 index, nx_NodeP element)
 {
 	Assert(self->begin + index < self->end);
 	*(self->end - 1 - index) = element;
 }
 
-internal s64
+static s64
 nx_List_NodeP_size(nx_List_NodeP *self)
 {
 	return (s64) (self->end - self->begin);
 }
 
-internal s64
+static s64
 nx_List_NodeP_capacity(nx_List_NodeP *self)
 {
 	return self->capacity - self->begin;
 }
 
-internal void
+static void
 nx_List_NodeP_pop_back(nx_List_NodeP *self)
 {
 	Assert(self->end > self->begin);
 	--self->end;
 }
 
-internal void
+static void
 nx_List_NodeP_push_back(nx_List_NodeP *self, nx_NodeP element)
 {
 	Assert(self->end < self->capacity);
@@ -590,26 +590,26 @@ nx_List_NodeP_push_back(nx_List_NodeP *self, nx_NodeP element)
 	++self->end;
 }
 
-internal b8
+static b8
 nx_List_NodeP_empty(nx_List_NodeP *self)
 {
 	return self->begin == self->end;
 }
 
-internal void
+static void
 nx_List_NodeP_clear(nx_List_NodeP *self)
 {
 	self->end = self->begin;
 }
 
-internal void
+static void
 nx_List_NodeP_drop_prefix(nx_List_NodeP *self, s64 len)
 {
 	Assert(nx_List_NodeP_size(self) >= len);
 	self->begin += len;
 }
 
-internal void
+static void
 nx_List_NodeP_drop_suffix(nx_List_NodeP *self, s64 len)
 {
 	Assert(nx_List_NodeP_size(self) >= len);
@@ -626,7 +626,7 @@ typedef struct {
 	u8 *capacity;
 } nx_List_u8;
 
-internal nx_List_u8
+static nx_List_u8
 nx_List_u8_build(u8 *begin, u8 *end, u8 *capacity)
 {
 	Assert(begin <= end && end <= capacity);
@@ -637,7 +637,7 @@ nx_List_u8_build(u8 *begin, u8 *end, u8 *capacity)
 	return result;
 }
 
-internal void
+static void
 nx_List_u8_init(nx_List_u8 *self, u8 *begin, u8 *end, u8 *capacity)
 {
 	Assert(begin <= end && end <= capacity);
@@ -646,68 +646,68 @@ nx_List_u8_init(nx_List_u8 *self, u8 *begin, u8 *end, u8 *capacity)
 	self->capacity = capacity;
 }
 
-internal u8
+static u8
 nx_List_u8_get(nx_List_u8 *self, s64 index)
 {
 	Assert(self->begin + index < self->end);
 	return *(self->begin + index);
 }
 
-internal u8
+static u8
 List_u8_back(nx_List_u8 *self)
 {
 	Assert(self->begin < self->end);
 	return *(self->end - 1);
 }
 
-internal u8
+static u8
 nx_List_u8_get_reverse(nx_List_u8 *self, s64 index)
 {
 	Assert(self->begin + index < self->end);
 	return *(self->end - 1 - index);
 }
 
-internal u8
+static u8
 nx_List_u8_front(nx_List_u8 *self)
 {
 	Assert(self->begin < self->end);
 	return *(self->begin);
 }
 
-internal void
+static void
 nx_List_u8_set(nx_List_u8 *self, s64 index, u8 element)
 {
 	Assert(self->begin + index < self->end);
 	*(self->begin + index) = element;
 }
 
-internal void
+static void
 nx_List_u8_set_reverse(nx_List_u8 *self, s64 index, u8 element)
 {
 	Assert(self->begin + index < self->end);
 	*(self->end - 1 - index) = element;
 }
 
-internal s64
+static s64
 nx_List_u8_size(nx_List_u8 *self)
 {
 	return (s64) (self->end - self->begin);
 }
 
-internal s64
+static s64
 nx_List_u8_capacity(nx_List_u8 *self)
 {
 	return self->capacity - self->begin;
 }
 
-internal void
+static void
 nx_List_u8_pop_back(nx_List_u8 *self)
 {
 	Assert(self->end > self->begin);
 	--self->end;
 }
 
-internal void
+static void
 nx_List_u8_push_back(nx_List_u8 *self, u8 element)
 {
 	Assert(self->end < self->capacity);
@@ -715,26 +715,26 @@ nx_List_u8_push_back(nx_List_u8 *self, u8 element)
 	++self->end;
 }
 
-internal b8
+static b8
 nx_List_u8_empty(nx_List_u8 *self)
 {
 	return self->begin == self->end;
 }
 
-internal void
+static void
 nx_List_u8_clear(nx_List_u8 *self)
 {
 	self->end = self->begin;
 }
 
-internal void
+static void
 nx_List_u8_drop_prefix(nx_List_u8 *self, s64 len)
 {
 	Assert(nx_List_u8_size(self) >= len);
 	self->begin += len;
 }
 
-internal void
+static void
 nx_List_u8_drop_suffix(nx_List_u8 *self, s64 len)
 {
 	Assert(nx_List_u8_size(self) >= len);
@@ -769,7 +769,7 @@ typedef struct {
 static nx_DetailInfo nx_precomputed_detail_info[nx_DETAIL_COUNT][9];
 
 /* this needs to be called beforehand */
-internal void
+static void
 nx_initialize_precomputed_detail_info()
 {
 	for (s32 i=0;i<nx_DETAIL_COUNT;++i) {
@@ -827,7 +827,7 @@ nx_initialize_precomputed_detail_info()
 }
 
 
-internal inline void
+static inline void
 nx_DetailInfo_precomputed_init(nx_DetailInfo *self, u32 path_bytes, u32 children_bytes, u8 bits_per_label)
 {
 	/* make sure we initialize all the fields of DetailInfo below */
@@ -853,7 +853,7 @@ nx_DetailInfo_precomputed_init(nx_DetailInfo *self, u32 path_bytes, u32 children
 }
 
 #if 0
-internal nx_DetailInfo*
+static nx_DetailInfo*
 nx_DetailInfo_smart_init(nx_DetailInfo *self, s32 degree, u8 path_length, u8 bits_per_label)
 {
 	// if we find a cached vertion of the nx_DetailInfo we just
@@ -896,7 +896,7 @@ nx_DetailInfo_smart_init(nx_DetailInfo *self, s32 degree, u8 path_length, u8 bit
 }
 #endif
 
-internal void
+static void
 nx_DetailInfo_init(nx_DetailInfo *self, s32 degree, u8 path_length, u8 bits_per_label)
 {
 	// nx_pf_BEGIN_BLOCK("nx_Detail_info");
@@ -976,14 +976,14 @@ nx_DetailInfo_init(nx_DetailInfo *self, s32 degree, u8 path_length, u8 bits_per_
 // Node
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_Node_set_degree(nx_Node *self, s32 degree)
 {
 	Assert(degree != 1 && degree >= 0 && degree <= 256);
 	self->degree_ = (u8) ((degree > 0) ? (degree - 1) : 0);
 }
 
-internal void
+static void
 nx_Node_init(nx_Node *self, u8 path_length, s32 degree, b8 is_root)
 {
 	self->path_length = path_length;
@@ -993,19 +993,19 @@ nx_Node_init(nx_Node *self, u8 path_length, s32 degree, b8 is_root)
 	// Note: leaving the self detail area in a dirty state!
 }
 
-internal nx_Node*
+static nx_Node*
 nx_Node_parent(nx_Node *self)
 {
 	return nx_Ptr_Node_get(&self->parent_p);
 }
 
-internal void
+static void
 nx_Node_set_parent(nx_Node *self, nx_Node *parent)
 {
 	nx_Ptr_Node_set(&self->parent_p,parent);
 }
 
-internal s32
+static s32
 nx_Node_degree(nx_Node *self)
 {
 	return (self->degree_ > 0) ? ((s32) self->degree_ + 1) : 0;
@@ -1015,7 +1015,7 @@ nx_Node_degree(nx_Node *self)
 // Auxiliar free functions
 //------------------------------------------------------------------------------
 
-internal u8
+static u8
 nx_Node_check_common_path_length(nx_Node *self, nx_Array *labels, u8 bits_per_label, u8 suffix_length)
 {
 	// nx_pf_BEGIN_BLOCK("nx_Node_check_common_path_length");
@@ -1058,7 +1058,7 @@ nx_Node_check_common_path_length(nx_Node *self, nx_Array *labels, u8 bits_per_la
 		      ? self->path_length - suffix_length
 		      : 0) * bits_per_label;
 
-	u8 n = MIN(suffix_length, labels->length);
+	u8 n = Min(suffix_length, labels->length);
 	u8 result = 0;
 
 
@@ -1112,7 +1112,7 @@ nx_Node_check_common_path_length(nx_Node *self, nx_Array *labels, u8 bits_per_la
 // Path
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_Path_init(nx_Path *self, nx_Label *begin, u8 length, u8 capacity, nx_Bits bits_per_label)
 {
 	self->begin = begin;
@@ -1123,7 +1123,7 @@ nx_Path_init(nx_Path *self, nx_Label *begin, u8 length, u8 capacity, nx_Bits bit
 	self->padding2 = 0;
 }
 
-internal nx_Label
+static nx_Label
 nx_Path_get(const nx_Path *self, u8 i)
 {
 	// nx_pf_BEGIN_BLOCK("nx_Path_get");
@@ -1134,14 +1134,14 @@ nx_Path_get(const nx_Path *self, u8 i)
 	return result;
 }
 
-internal void
+static void
 nx_Path_set(nx_Path *self, u8 i, nx_Label label)
 {
 	Assert(i < self->length);
 	pt_write_bits2((const char*) &label, i * self->bits_per_label, self->bits_per_label, (char*) self->begin);
 }
 
-internal void
+static void
 nx_Path_copy_range(nx_Path *self, const nx_Path *other, u8 offset, u8 length)
 {
 	Assert(self->capacity >= length);
@@ -1151,19 +1151,19 @@ nx_Path_copy_range(nx_Path *self, const nx_Path *other, u8 offset, u8 length)
 	self->length = length;
 }
 
-internal inline void
+static inline void
 nx_Path_copy(nx_Path *self, const nx_Path *other)
 {
 	nx_Path_copy_range(self, other, 0, other->length);
 }
 
-internal inline nx_Bytes
+static inline nx_Bytes
 nx_Path_bytes(const nx_Path *self)
 {
 	return (self->capacity * self->bits_per_label + 7u) / 8u;
 }
 
-internal void
+static void
 nx_Path_clear(nx_Path *self)
 {
 	u8 *end = (u8*) self->begin + nx_Path_bytes(self);
@@ -1181,7 +1181,7 @@ nx_Path_clear(nx_Path *self)
 // Child
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_Child_init(nx_Child *self)
 {
 	self->shared = 0;
@@ -1190,25 +1190,25 @@ nx_Child_init(nx_Child *self)
 	nx_Ptr_Node_set_null(&self->node_p);
 }
 
-internal inline nx_Node*
+static inline nx_Node*
 nx_Child_get_node(nx_Child *self)
 {
 	return nx_Ptr_Node_get(&self->node_p);
 }
 
-internal inline void
+static inline void
 nx_Child_set_node(nx_Child *self, nx_Node *node)
 {
 	nx_Ptr_Node_set(&self->node_p,node);
 }
 
-internal inline b8
+static inline b8
 nx_Child_proper(nx_Child *self)
 {
 	return !self->shared;
 }
 
-internal void
+static void
 nx_Child_copy(nx_Child *self, nx_Child *other)
 {
 	self->shared = other->shared;
@@ -1227,7 +1227,7 @@ nx_Child_copy(nx_Child *self, nx_Child *other)
 // children (query or update)
 //
 
-internal void
+static void
 nx_Children_init(nx_Children *self, nx_Child *begin, s32 length, s32 capacity)
 {
 	Assert(length >= 0 && capacity >= length);
@@ -1236,21 +1236,21 @@ nx_Children_init(nx_Children *self, nx_Child *begin, s32 length, s32 capacity)
 	self->capacity = capacity;
 }
 
-internal inline nx_Child*
+static inline nx_Child*
 nx_Children_get_child(nx_Children *self, s32 i)
 {
 	Assert(i < self->length);
 	return self->begin + i;
 }
 
-internal inline nx_Node*
+static inline nx_Node*
 nx_Children_get_node(nx_Children *self, s32 i)
 {
 	Assert(i < self->length);
 	return nx_Child_get_node(nx_Children_get_child(self,i));
 }
 
-internal inline void
+static inline void
 nx_Children_set_node(nx_Children *self, s32 i, nx_Node * node)
 {
 	Assert(i < self->length);
@@ -1260,7 +1260,7 @@ nx_Children_set_node(nx_Children *self, s32 i, nx_Node * node)
 //
 // it is not const on "other" because we copy pointers
 //
-internal void
+static void
 nx_Children_copy_range(nx_Children *self, nx_Children *other, s32 offset, s32 length)
 {
 	Assert(self->capacity >= length);
@@ -1271,13 +1271,13 @@ nx_Children_copy_range(nx_Children *self, nx_Children *other, s32 offset, s32 le
 	}
 }
 
-internal inline void
+static inline void
 nx_Children_copy(nx_Children *self, nx_Children *other)
 {
 	nx_Children_copy_range(self, other, 0, other->length);
 }
 
-internal void
+static void
 nx_Children_clear(nx_Children *self)
 {
 	for (s32 i=0;i<self->length;++i) {
@@ -1285,7 +1285,7 @@ nx_Children_clear(nx_Children *self)
 	}
 }
 
-internal s32
+static s32
 nx_Children_find(nx_Children *self, nx_Label start_label)
 {
 #if 0
@@ -1356,7 +1356,7 @@ nx_Children_find(nx_Children *self, nx_Label start_label)
 #endif
 }
 
-internal nx_Child*
+static nx_Child*
 nx_Children_get_child_by_label(nx_Children *self, nx_Label label)
 {
 	s32 index = nx_Children_find(self, label);
@@ -1370,7 +1370,7 @@ nx_Children_get_child_by_label(nx_Children *self, nx_Label label)
 // are all outdated
 //
 
-internal void
+static void
 nx_Children_insert(nx_Children *self, s32 index, nx_Child *new_child_info)
 {
 	Assert(self->capacity > self->length);
@@ -1383,7 +1383,7 @@ nx_Children_insert(nx_Children *self, s32 index, nx_Child *new_child_info)
 	nx_Child_copy(nx_Children_get_child(self,index), new_child_info);
 }
 
-internal inline s32
+static inline s32
 nx_Children_available_capacity(nx_Children *self)
 {
 	return self->capacity - self->length;
@@ -1393,26 +1393,26 @@ nx_Children_available_capacity(nx_Children *self)
 // INode
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_INode_init(nx_INode *self, u8 path_length, s32 degree, b8 is_root)
 {
 	nx_Node_init((nx_Node*) self, path_length, degree, is_root);
 	nx_Ptr_Node_set_null(&self->content_p);
 }
 
-internal nx_Node*
+static nx_Node*
 nx_INode_content(nx_INode *self)
 {
 	return nx_Ptr_Node_get(&self->content_p);
 }
 
-internal void
+static void
 nx_INode_share_content(nx_INode *self, nx_INode *other)
 {
 	nx_Ptr_Node_set(&self->content_p,nx_INode_content(other));
 }
 
-internal void
+static void
 nx_INode_own_content(nx_INode *self, nx_Node *content)
 {
 	nx_Ptr_Node_set(&self->content_p,content);
@@ -1422,7 +1422,7 @@ nx_INode_own_content(nx_INode *self, nx_Node *content)
 // NodeWrap
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_NodeWrap_init(nx_NodeWrap *self, nx_Node *raw_node, const nx_DetailInfo *detail_info)
 {
 	// nx_pf_BEGIN_BLOCK("nx_NodeWrap_init");
@@ -1487,20 +1487,20 @@ nx_NodeWrap_init(nx_NodeWrap *self, nx_Node *raw_node, const nx_DetailInfo *deta
 // PNode
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_PNode_init(nx_PNode *self, u8 path_length, s32 degree, b8 is_root, void *payload_context)
 {
 	nx_Node_init((nx_Node*)self, path_length, degree, is_root);
 	nx_PayloadAggregate_init(&self->payload_aggregate, payload_context);
 }
 
-internal void
+static void
 nx_PNode_payload_insert(nx_PNode *self, void *payload_unit, void *payload_context)
 {
 	nx_PayloadAggregate_insert(&self->payload_aggregate, payload_unit, payload_context);
 }
 
-internal void
+static void
 nx_PNode_payload_share(nx_PNode *self, nx_PNode *other, void *payload_context)
 {
 	nx_PayloadAggregate_share(&self->payload_aggregate, &other->payload_aggregate, payload_context);
@@ -1510,14 +1510,14 @@ nx_PNode_payload_share(nx_PNode *self, nx_PNode *other, void *payload_context)
 // Caches
 //------------------------------------------------------------------------------
 
-internal inline u32
+static inline u32
 nx_size_class_to_index(nx_SizeClass s)
 {
 	u32 msb = pt_msb32(s);
 	return (s > 1) * ( (msb-1) * 2 - ( ( (1 << (msb-2)) & s ) == 0 ) );
 }
 
-internal char*
+static char*
 nx_print_u32(char *begin, char *end, u32 x)
 {
 	Assert(begin <= end);
@@ -1539,7 +1539,7 @@ nx_print_u32(char *begin, char *end, u32 x)
 	return it;
 }
 
-internal char*
+static char*
 nx_print_cstr(char *begin, char *end, const char *cstr)
 {
 	Assert(begin <= end);
@@ -1554,7 +1554,7 @@ nx_print_cstr(char *begin, char *end, const char *cstr)
 	return it;
 }
 
-internal char*
+static char*
 nx_print_cstr_u32(char *begin, char *end, const char *cstr, u32 x)
 {
 	Assert(begin <= end);
@@ -1566,7 +1566,7 @@ nx_print_cstr_u32(char *begin, char *end, const char *cstr, u32 x)
 	return it;
 }
 
-internal void
+static void
 nx_Caches_init(nx_Caches *self, al_Allocator *allocator)
 {
 	Assert(allocator && "Caches_init problem");
@@ -1574,13 +1574,13 @@ nx_Caches_init(nx_Caches *self, al_Allocator *allocator)
 	for (u32 i=0u;i<nx_Caches_NumClasses;++i) {
 		nx_print_cstr_u32(name, name + 32, "detail", (u32) nx_Caches_Classes[i]);
 
-		u32 s = MAX(8u,nx_Caches_Classes[i]);  // smaller classes have 8 bytes
+		u32 s = Max(8u,nx_Caches_Classes[i]);  // smaller classes have 8 bytes
 		al_Ptr_Cache_set(&self->caches[i], al_Allocator_create_cache(allocator, name, s));
 	}
 	self->initialized = 1;
 }
 
-internal void*
+static void*
 nx_Caches_alloc(nx_Caches *self, nx_SizeClass s)
 {
 	// std::cerr << "Caches::alloc(" << s << ")" << std::endl;
@@ -1590,7 +1590,7 @@ nx_Caches_alloc(nx_Caches *self, nx_SizeClass s)
 	return al_Cache_alloc(al_Ptr_Cache_get(&self->caches[index]));
 }
 
-internal void
+static void
 nx_Caches_free(nx_Caches *self, nx_SizeClass s, void *p)
 {
 	// std::cerr << "Caches::free(" << s << "," << p << ")" << std::endl;
@@ -1633,11 +1633,11 @@ typedef struct {
 // Fills the buffer prefix with a certain amount of numbers
 // and returns the next available char* in the buffer.
 // It crashes if not enough buffer memory is available.
-internal char*
+static char*
 nx_DepthList_init(nx_DepthList *self, s32 index, nx_Node* u, s32 initial_prefix, char *buffer_begin, char *buffer_end)
 {
-	s32 *begin    = (s32*) (RALIGN((u64) buffer_begin, sizeof(s32)));
-	s32 *capacity = (s32*) (LALIGN((u64) buffer_end,   sizeof(s32)));
+	s32 *begin    = (s32*) (RAlign((u64) buffer_begin, sizeof(s32)));
+	s32 *capacity = (s32*) (LAlign((u64) buffer_end,   sizeof(s32)));
 	Assert(begin < capacity);
 
 	s32 len = 0;
@@ -1676,7 +1676,7 @@ nx_DepthList_init(nx_DepthList *self, s32 index, nx_Node* u, s32 initial_prefix,
 // following the same spec as std algorithm library
 // [begin,nbegin) and [nbegin,end) are valid ranges
 //
-internal void
+static void
 nx_DepthList_rotate(nx_DepthList *begin, nx_DepthList *nbegin, nx_DepthList *end)
 {
 	nx_DepthList tmp;
@@ -1732,7 +1732,7 @@ nx_DepthList_rotate(nx_DepthList *begin, nx_DepthList *nbegin, nx_DepthList *end
 // }
 //
 
-internal b8
+static b8
 nx_DepthList_entry_wise_coarser_or_equal(nx_DepthList *self, nx_DepthList *other)
 {
 	// assumes lengths are the same, crash if not the same
@@ -1753,7 +1753,7 @@ nx_DepthList_entry_wise_coarser_or_equal(nx_DepthList *self, nx_DepthList *other
 #define nx_DepthList_CMP_FINER 1
 // none of the above
 #define nx_DepthList_CMP_NONE 3
-internal s32
+static s32
 nx_DepthList_compare(nx_DepthList *self, nx_DepthList *other)
 {
 	// assumes lengths are the same, crash if not the same
@@ -1778,7 +1778,7 @@ nx_DepthList_compare(nx_DepthList *self, nx_DepthList *other)
 	return sign;
 }
 
-internal void
+static void
 nx_DepthList_swap(nx_DepthList *a, nx_DepthList *b)
 {
 	nx_DepthList tmp = *a;
@@ -1795,7 +1795,7 @@ nx_DepthList_swap(nx_DepthList *a, nx_DepthList *b)
 //
 // this is the 1st. highest bottleneck in test run using perf top
 //
-internal nx_NodeWrap
+static nx_NodeWrap
 nx_NanocubeIndex_to_node(nx_NanocubeIndex *self, nx_Node *raw_node, s32 index)
 {
 	nx_NodeWrap node_wrap;
@@ -1885,7 +1885,7 @@ typedef struct {
 
 } nx_Thread;
 
-internal void
+static void
 nx_Thread_init(nx_Thread *self, nx_NanocubeIndex *h, nx_Node *start, s32 start_dimension)
 {
 	Assert(start);
@@ -1907,7 +1907,7 @@ nx_Thread_init(nx_Thread *self, nx_NanocubeIndex *h, nx_Node *start, s32 start_d
 }
 
 /* Plan to use this routine for sanity checks only */
-internal void
+static void
 nx_Thread_head_path_labels(nx_Thread *self, nx_List_u8 *output)
 {
 	Assert(output);
@@ -1938,7 +1938,7 @@ nx_Thread_head_path_labels(nx_Thread *self, nx_List_u8 *output)
 }
 
 /* Plan to use this routine for sanity checks only */
-internal void
+static void
 nx_NanocubeIndex_proper_path_to_root(nx_NanocubeIndex *self, u8 dimension, nx_Node *node, u8 node_prefix, nx_List_u8 *output)
 {
 	Assert(output);
@@ -1965,31 +1965,31 @@ nx_NanocubeIndex_proper_path_to_root(nx_NanocubeIndex *self, u8 dimension, nx_No
 	pt_reverse((char*) output->begin, (char*) output->end);
 }
 
-internal inline u8
+static inline u8
 nx_Thread_head_depth(nx_Thread *self)
 {
 	return self->head_depth_by_dim[self->dim_offset];
 }
 
-internal inline u8
+static inline u8
 nx_Thread_head_prefix_size(nx_Thread *self)
 {
 	return self->head_used_labels_by_dim[self->dim_offset];
 }
 
-internal inline u8
+static inline u8
 nx_Thread_head_offset(nx_Thread *self)
 {
 	return self->offset[self->head_index];
 }
 
-internal inline nx_Node*
+static inline nx_Node*
 nx_Thread_head(nx_Thread *self)
 {
 	return self->path[self->head_index];
 }
 
-internal void
+static void
 nx_Thread_path_append(nx_Thread *self, nx_Node *node, u8 node_offset)
 {
 	Assert(self->head_index + 1 < nx_Thread_ARRAY_CAPACITY);
@@ -2002,7 +2002,7 @@ nx_Thread_path_append(nx_Thread *self, nx_Node *node, u8 node_offset)
  * the requested path will always exist since the current
  * record was already inserted in the finer address
  */
-internal void
+static void
 nx_Thread_advance(nx_Thread *self, nx_Array array)
 {
 	if (array.length == 0)
@@ -2089,7 +2089,7 @@ nx_Thread_advance(nx_Thread *self, nx_Array array)
 
 }
 
-internal void
+static void
 nx_Thread_rewind(nx_Thread *self, u8 len)
 {
 	nx_Node *head = self->path[self->head_index];
@@ -2133,7 +2133,7 @@ nx_Thread_rewind(nx_Thread *self, u8 len)
 	}
 }
 
-internal void
+static void
 nx_Thread_goto_next_dimension(nx_Thread *self)
 {
 	Assert(self->head_dimension < self->hierarchy->dimensions-1);
@@ -2152,7 +2152,7 @@ nx_Thread_goto_next_dimension(nx_Thread *self)
 	self->head_used_labels_by_dim[self->dim_offset] = 0;
 }
 
-internal void
+static void
 nx_Thread_goto_prev_dimension(nx_Thread *self)
 {
 	Assert(self->head_used_labels_by_dim[self->dim_offset] == 0
@@ -2176,7 +2176,7 @@ nx_Thread_goto_prev_dimension(nx_Thread *self)
 #define nx_DepthList_CMP_FINER 1
 // none of the above
 #define nx_DepthList_CMP_NONE 3
-internal s32
+static s32
 nx_Thread_compare(nx_Thread *self, nx_Thread *other)
 {
 }
@@ -2193,7 +2193,7 @@ typedef struct {
 	u32    initialized: 1;
 } nx_Threads;
 
-internal void
+static void
 nx_Threads_init(nx_Threads *self, nx_NanocubeIndex *h)
 {
 	Assert(self->initialized == 0);
@@ -2202,7 +2202,7 @@ nx_Threads_init(nx_Threads *self, nx_NanocubeIndex *h)
 	self->initialized = 1;
 }
 
-internal void
+static void
 nx_Threads_goto_next_dimension(nx_Threads *self)
 {
 	for (u32 i=0;i<self->size;++i) {
@@ -2210,7 +2210,7 @@ nx_Threads_goto_next_dimension(nx_Threads *self)
 	}
 }
 
-internal void
+static void
 nx_Threads_goto_prev_dimension(nx_Threads *self)
 {
 	for (u32 i=0;i<self->size;++i) {
@@ -2218,21 +2218,21 @@ nx_Threads_goto_prev_dimension(nx_Threads *self)
 	}
 }
 
-internal void
+static void
 nx_Threads_pop_thread(nx_Threads *self)
 {
 	Assert(self->size > 0);
 	--self->size;
 }
 
-internal nx_Thread*
+static nx_Thread*
 nx_Threads_back(nx_Threads *self)
 {
 	Assert(self->size > 0);
 	return &self->threads[self->size - 1];
 }
 
-internal void
+static void
 nx_Threads_advance(nx_Threads *self, nx_Array labels)
 {
 	for (s32 i=0;i<(s32)self->size;++i) {
@@ -2240,7 +2240,7 @@ nx_Threads_advance(nx_Threads *self, nx_Array labels)
 	}
 }
 
-internal void
+static void
 nx_Threads_rewind(nx_Threads *self, u8 len)
 {
 	for (s32 i=0;i<(s32)self->size;++i) {
@@ -2248,7 +2248,7 @@ nx_Threads_rewind(nx_Threads *self, u8 len)
 	}
 }
 
-internal void
+static void
 nx_Threads_push_thread(nx_Threads *self, nx_Node *root, s32 dimension)
 {
 	Assert(self->size + 1 < nx_MAX_NUM_DIMENSIONS);
@@ -2262,7 +2262,7 @@ nx_Threads_push_thread(nx_Threads *self, nx_Node *root, s32 dimension)
 // The evidence is that the majority of the time is spent initializing
 // the depth lists.
 //
-internal nx_Thread*
+static nx_Thread*
 nx_Threads_singleton_naive_stack(nx_Threads *self, BilinearAllocator *temp_storage)
 {
 	Assert(self->size > 0);
@@ -2324,7 +2324,7 @@ nx_Threads_singleton_naive_stack(nx_Threads *self, BilinearAllocator *temp_stora
 
 }
 
-internal nx_Thread*
+static nx_Thread*
 nx_Threads_singleton_naive_temp_storage(nx_Threads *self, BilinearAllocator *temp_storage)
 {
 	Assert(self->size > 0);
@@ -2340,8 +2340,8 @@ nx_Threads_singleton_naive_temp_storage(nx_Threads *self, BilinearAllocator *tem
 	// depth lists of variable sizes
 	{
 		MemoryBlock free_memblock = BilinearAllocator_free_memblock(temp_storage);
-		char *begin = (char*) RALIGN( (u64) free_memblock.begin, 8 );
-		char *end   = (char*) LALIGN( (u64) free_memblock.end,   8 );
+		char *begin = (char*) RAlign( (u64) free_memblock.begin, 8 );
+		char *end   = (char*) LAlign( (u64) free_memblock.end,   8 );
 		Assert(begin < end);
 		char *it    = begin;
 		for (u32 i=0;i<self->size;++i) {
@@ -2394,7 +2394,7 @@ nx_Threads_singleton_naive_temp_storage(nx_Threads *self, BilinearAllocator *tem
 }
 
 
-internal nx_Thread*
+static nx_Thread*
 nx_Threads_singleton_optimzed_temp_storage(nx_Threads *self, BilinearAllocator *temp_storage)
 {
 #if 0
@@ -2416,8 +2416,8 @@ nx_Threads_singleton_optimzed_temp_storage(nx_Threads *self, BilinearAllocator *
 		// use the bilinear allocate free memory to initialize the
 		// depth lists of variable sizes
 		MemoryBlock free_memblock = BilinearAllocator_free_memblock(temp_storage);
-		char *begin = (char*) RALIGN( (u64) free_memblock.begin, 8 );
-		char *end   = (char*) LALIGN( (u64) free_memblock.end,   8 );
+		char *begin = (char*) RAlign( (u64) free_memblock.begin, 8 );
+		char *end   = (char*) LAlign( (u64) free_memblock.end,   8 );
 		Assert(begin < end);
 		char *it    = begin;
 		for (u32 i=0;i<self->size;++i) {
@@ -2529,7 +2529,7 @@ typedef struct {
 // quick hack for debugging
 static s32 COUNT = -1;
 
-internal void
+static void
 nx_NanocubeIndex_init(nx_NanocubeIndex *self, al_Allocator *allocator, nx_Array bits_per_label)
 {
 	Assert(allocator);
@@ -2565,7 +2565,7 @@ nx_NanocubeIndex_init(nx_NanocubeIndex *self, al_Allocator *allocator, nx_Array 
 
 // @bug clone path needs to create a copy of nodes with 256 nodes as degree
 // make sure it is working, this is hapenning on the dns example.
-internal nx_NodeWrap
+static nx_NodeWrap
 nx_NanocubeIndex_allocate_node(nx_NanocubeIndex *self, s32 index, u8 path_length, s32 degree, b8 is_root, b8 clear, void *payload_context)
 {
 	nx_Node *node;
@@ -2617,7 +2617,7 @@ nx_NanocubeIndex_allocate_node(nx_NanocubeIndex *self, s32 index, u8 path_length
 static s32 COUNT_ALLOCATE_LEAF = 0;
 #endif
 
-internal nx_NodeWrap
+static nx_NodeWrap
 nx_NanocubeIndex_allocate_leaf(nx_NanocubeIndex *self,
 			       s32 index,
 			       b8 is_root,
@@ -2639,7 +2639,7 @@ nx_NanocubeIndex_allocate_leaf(nx_NanocubeIndex *self,
 	return node;
 }
 
-internal void
+static void
 nx_Path_convert_to_suffix(nx_Path *self, u8 suffix_length)
 {
 	Assert(self->length >= suffix_length);
@@ -2652,7 +2652,7 @@ nx_Path_convert_to_suffix(nx_Path *self, u8 suffix_length)
 	self->length = suffix_length;
 }
 
-internal nx_NodeWrap
+static nx_NodeWrap
 nx_NanocubeIndex_shrink_path(nx_NanocubeIndex *self, s32 index, nx_NodeWrap w_node, u8 suffix_length)
 {
 	/* make adjustments so that path is trimmed to a proper non-zero length suffix */
@@ -2773,7 +2773,7 @@ nx_NanocubeIndex_shrink_path(nx_NanocubeIndex *self, s32 index, nx_NodeWrap w_no
 // should be inserted to preserve the degree
 // consistency of the detail_type of a self
 //
-internal nx_NodeWrap
+static nx_NodeWrap
 nx_NanocubeIndex_add_child_slot(nx_NanocubeIndex *self, s32 index, nx_NodeWrap w_node)
 {
 	Assert(w_node.children.length == w_node.children.capacity);
@@ -2904,14 +2904,14 @@ typedef struct {
 	nx_List_u8	     path;
 } nx_PathToRootInfo;
 
-internal void
+static void
 nx_PathToRootInfo_init(nx_PathToRootInfo *self)
 {
 	nx_List_NodeP_init(&self->nodes, &self->nodes_storage[0], &self->nodes_storage[0], &self->nodes_storage[nx_MAX_PATH_LENGTH]);
 	nx_List_u8_init(&self->path, &self->path_storage[0], &self->path_storage[0], &self->path_storage[nx_MAX_PATH_LENGTH]);
 }
 
-internal void
+static void
 nx_PathToRootInfo_reset(nx_PathToRootInfo *self, nx_NanocubeIndex *hierarchy, s32 index, nx_Node *node, s32 start_prefix_length)
 {
 	Assert(node);
@@ -2941,7 +2941,7 @@ nx_PathToRootInfo_reset(nx_PathToRootInfo *self, nx_NanocubeIndex *hierarchy, s3
 	}
 }
 
-internal nx_ContainCompatible
+static nx_ContainCompatible
 nx_PathToRootInfo_contain_compatible(nx_PathToRootInfo *self, nx_PathToRootInfo *other)
 {
 
@@ -2969,7 +2969,7 @@ nx_PathToRootInfo_contain_compatible(nx_PathToRootInfo *self, nx_PathToRootInfo 
 //
 // dimension index
 //
-internal b8
+static b8
 nx_NanocubeIndex_a_contains_b(nx_NanocubeIndex *self,
 			      s32 index, nx_Node *a,
 			      s32 a_prefix_size,
@@ -3047,7 +3047,7 @@ static const char *nx_pos_text[] =
 	"SINGLETON"
 };
 
-internal const char*
+static const char*
 nx_PositionType_str(nx_PositionType pt)
 {
 	return nx_pos_text[(s32) pt];
@@ -3070,7 +3070,7 @@ typedef struct {
 	nx_NanocubeIndex   *nanocube;
 } nx_HierarchyPosition;
 
-internal void
+static void
 nx_HierarchyPosition_init(nx_HierarchyPosition *self, nx_NanocubeIndex *nanocube)
 {
 	nx_List_NodeP_init(&self->path, self->_path_storage,
@@ -3092,7 +3092,7 @@ nx_HierarchyPosition_init(nx_HierarchyPosition *self, nx_NanocubeIndex *nanocube
 //
 // drop last w_node from last search
 //
-internal void
+static void
 nx_HierarchyPosition_pop_back(nx_HierarchyPosition *self)
 {
 	u8 len = 1;
@@ -3101,16 +3101,16 @@ nx_HierarchyPosition_pop_back(nx_HierarchyPosition *self)
 	nx_List_NodeP_drop_suffix(&self->path, len);
 	nx_List_u8_drop_suffix(&self->lengths, len);
 	nx_List_u8_drop_suffix(&self->child_indices,
-			       MIN(len, nx_List_u8_size(&self->child_indices)));
+			       Min(len, nx_List_u8_size(&self->child_indices)));
 }
 
-internal inline nx_Node*
+static inline nx_Node*
 nx_HierarchyPosition_child(nx_HierarchyPosition *self)
 {
 	return nx_List_NodeP_get_reverse(&self->path,0);
 }
 
-internal inline nx_Node*
+static inline nx_Node*
 nx_HierarchyPosition_parent(nx_HierarchyPosition *self)
 {
 	/* this was wrong! */
@@ -3124,7 +3124,7 @@ nx_HierarchyPosition_parent(nx_HierarchyPosition *self)
  * Search for current_labels given the current state
  * of the nx_HierarchyPosition object.
  */
-internal void
+static void
 nx_HierarchyPosition_run(nx_HierarchyPosition *self, s32 index, nx_Array current_labels)
 {
 
@@ -3244,7 +3244,7 @@ nx_HierarchyPosition_run(nx_HierarchyPosition *self, s32 index, nx_Array current
 }
 
 
-internal void
+static void
 nx_HierarchyPosition_find_continue(nx_HierarchyPosition *self,
 				   s32 index, nx_Array labels)
 {
@@ -3319,7 +3319,7 @@ nx_HierarchyPosition_find_continue(nx_HierarchyPosition *self,
  * (use false if in a continuation process with the careful
  * alignment guaranteed by the user)
  */
-internal void
+static void
 nx_HierarchyPosition_find_first(nx_HierarchyPosition *self,
 				nx_NanocubeIndex* h,
 				s32 index,
@@ -3369,7 +3369,7 @@ nx_HierarchyPosition_find_first(nx_HierarchyPosition *self,
 #define nx_LOG_RESET_COUNTERS
 #endif
 
-internal nx_Node*
+static nx_Node*
 nx_NanocubeIndex_allocate_singleton(nx_NanocubeIndex *self, s32 start_index, b8 start_root,
 				    nx_LabelArrayList* path_list, void *payload_unit, void *payload_context)
 {
@@ -3429,7 +3429,7 @@ nx_NanocubeIndex_allocate_singleton(nx_NanocubeIndex *self, s32 start_index, b8 
 // 				  void *payload_unit,
 // 				  void *payload_context);
 
-internal nx_Node*
+static nx_Node*
 nx_insert_recursive(nx_InsertionContext *ctx,
 				  nx_Node* context,
 				  nx_Node* r,
@@ -3453,7 +3453,7 @@ nx_insert_recursive(nx_InsertionContext *ctx,
 // 			    s32               num_shared,
 // 			    nx_List_u8        *lengths,
 // 			    nx_List_NodeP     *path)
-internal void
+static void
 nx_Nanocube_upstream_insert(nx_InsertionContext  *ctx,
 			    nx_LabelArrayList    *insert_path_list,
 			    s32                  index,
@@ -3584,7 +3584,7 @@ typedef enum {
 // 	      nx_HierarchyPosition *pos,
 // 	      nx_CloneMode mode,
 // 	      void *payload_context)
-internal void
+static void
 nx_clone_path(nx_InsertionContext* ctx,
 	      s32 index,
 	      nx_Node* context,
@@ -3678,7 +3678,7 @@ static volatile u64 nx_INSERT_SHARED_NO_SPLIT = 0;
 
 
 #define nx_INSERT_CASE(name) \
-internal nx_Node* \
+static nx_Node* \
 name(nx_InsertionContext *ctx,\
 		nx_Node *context,\
 		nx_Node *root,\
@@ -4612,7 +4612,7 @@ nx_INSERT_CASE(nx_insert_shared_split_or_shared_no_split)
  * the new record. A proper root and possible path
  * will need to be created accordingly.
  */
-internal nx_Node*
+static nx_Node*
 nx_insert_recursive(nx_InsertionContext *ctx,
 				  nx_Node *context,
 				  nx_Node *root,
@@ -4695,7 +4695,7 @@ nx_insert_recursive(nx_InsertionContext *ctx,
 }
 
 // should use the span template from the C++ guidelines
-internal void
+static void
 nx_NanocubeIndex_insert(nx_NanocubeIndex *self, nx_LabelArrayList* labels, void *payload_unit, void *payload_context, MemoryBlock buffer)
 {
 
@@ -4724,7 +4724,7 @@ nx_NanocubeIndex_insert(nx_NanocubeIndex *self, nx_LabelArrayList* labels, void 
 	ctx.nanocube = self;
 	ctx.payload_unit = payload_unit;
 	ctx.payload_context = payload_context;
-	BilinearAllocator_init(&ctx.temp_storage, buffer.begin, buffer.end);
+	BilinearAllocator_init(&ctx.temp_storage, buffer.begin, buffer.end - buffer.begin);
 
 	ctx.mfthreads = (nx_Threads*) BilinearAllocator_alloc_left_aligned(&ctx.temp_storage, sizeof(nx_Threads), 8);
 	ctx.mfthreads->initialized = 0;
@@ -4743,7 +4743,7 @@ nx_NanocubeIndex_insert(nx_NanocubeIndex *self, nx_LabelArrayList* labels, void 
 }
 
 /* NOTE(llins): nx_initialize() should be called before using nx_ services */
-internal void
+static void
 nx_start()
 {
 	nx_initialize_precomputed_detail_info();
@@ -4752,7 +4752,7 @@ nx_start()
 	//----- log -----
 }
 
-internal void
+static void
 nx_finish()
 {
 	//----- log -----

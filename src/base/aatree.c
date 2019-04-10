@@ -20,6 +20,7 @@ Notes:
 
 #ifdef aatree_UNIT_TEST
 #include "platform.c"
+#include "print.c"
 #endif
 
 typedef struct aatree_Node aatree_Node;
@@ -43,7 +44,7 @@ struct aatree_Tree {
 	aatree_Node *root;
 };
 
-internal void
+static void
 aatree_Tree_init(aatree_Tree *self, aatree_Node *begin, aatree_Node *capacity)
 {
 	self->data.begin    = begin;
@@ -58,7 +59,7 @@ aatree_Tree_init(aatree_Tree *self, aatree_Node *begin, aatree_Node *capacity)
 #define aatree_INSERT_KEY_ALREADY_EXISTS -1
 #define aatree_INSERT_FULL               -2
 
-internal inline aatree_Node*
+static inline aatree_Node*
 aatree_Tree_append(aatree_Tree *self, u64 key, void *data)
 {
 	if (self->data.end != self->data.capacity) {
@@ -71,7 +72,7 @@ aatree_Tree_append(aatree_Tree *self, u64 key, void *data)
 	}
 }
 
-internal aatree_Node*
+static aatree_Node*
 aatree_skew(aatree_Node *node)
 {
 	if (node->left && node->left->level == node->level) {
@@ -84,7 +85,7 @@ aatree_skew(aatree_Node *node)
 	return node;
 }
 
-internal aatree_Node*
+static aatree_Node*
 aatree_split(aatree_Node *node)
 {
 	if (node->right && node->right->right && node->right->right->level == node->level) {
@@ -98,7 +99,7 @@ aatree_split(aatree_Node *node)
 	return node;
 }
 
-internal aatree_Node*
+static aatree_Node*
 aatree_insert_node(aatree_Tree *tree, aatree_Node *node, u64 key, void *data, s32 *status, aatree_Node_Ptr *result)
 {
 	if (node) {
@@ -123,14 +124,14 @@ aatree_insert_node(aatree_Tree *tree, aatree_Node *node, u64 key, void *data, s3
 	}
 }
 
-internal void
+static void
 aatree_Tree_clear(aatree_Tree *self)
 {
 	self->data.end = self->data.begin;
 	self->root = 0;
 }
 
-internal aatree_Node*
+static aatree_Node*
 aatree_Tree_insert(aatree_Tree *self, u64 key, void *data, s32 *status)
 {
 	aatree_Node *result = 0;
@@ -139,7 +140,7 @@ aatree_Tree_insert(aatree_Tree *self, u64 key, void *data, s32 *status)
 	return result;
 }
 
-internal aatree_Node*
+static aatree_Node*
 aatree_Tree_find(aatree_Tree *self, u64 key)
 {
 	aatree_Node *node = self->root;
@@ -155,7 +156,7 @@ aatree_Tree_find(aatree_Tree *self, u64 key)
 	return 0;
 }
 
-internal void
+static void
 aatree_print_subtree(aatree_Node *node, Print *print, u64 depth)
 {
 	if (!node)
@@ -163,14 +164,14 @@ aatree_print_subtree(aatree_Node *node, Print *print, u64 depth)
 	if (node->right)
 		aatree_print_subtree(node->right, print, depth + 1);
 
-	Print_nchar(print, '.', depth * 12);
-	Print_format(print, "| %llu\n", node->key);
+	print_nchar(print, '.', depth * 12);
+	print_format(print, "| %llu\n", node->key);
 
 	if (node->left)
 		aatree_print_subtree(node->left, print, depth + 1);
 }
 
-internal void
+static void
 aatree_Tree_print(aatree_Tree *self, Print *print)
 {
 	aatree_print_subtree(self->root, print, 0);

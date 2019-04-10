@@ -16,7 +16,7 @@ typedef enum {
 // @TODO
 // these names are in the cvs to nanocube mapping
 // language
-internal char *cm_number_storage_names[] = {"s32", "s64", "u32", "u64", "f32", "f64" };
+static char *cm_number_storage_names[] = {"s32", "s64", "u32", "u64", "f32", "f64" };
 
 typedef struct {
 	u32 is_index:1;
@@ -25,7 +25,7 @@ typedef struct {
 	MemoryBlock name;
 } cm_ColumnRef;
 
-internal void
+static void
 cm_ColumnRef_init(cm_ColumnRef *self, MemoryBlock *name)
 {
 	self->is_index = 0;
@@ -34,7 +34,7 @@ cm_ColumnRef_init(cm_ColumnRef *self, MemoryBlock *name)
 	self->name = *name;
 }
 
-internal void
+static void
 cm_ColumnRef_init_index(cm_ColumnRef *self, u32 index)
 {
 	self->is_index = 1;
@@ -133,7 +133,7 @@ typedef struct {
 	u8            num_measure_dimensions;
 } cm_Spec;
 
-internal void
+static void
 cm_Spec_init(cm_Spec *self)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Spec), 0);
@@ -141,21 +141,21 @@ cm_Spec_init(cm_Spec *self)
 	self->num_measure_dimensions = 0;
 }
 
-internal b8
+static b8
 cm_Spec_is_valid(cm_Spec *self)
 {
 	return (self->num_index_dimensions > 0
 		&& self->num_measure_dimensions > 0);
 }
 
-internal s32
+static s32
 cm_Spec_dimensions(cm_Spec *self)
 {
 	return (s32) self->num_index_dimensions
 		+ (s32) self->num_measure_dimensions;
 }
 
-internal cm_Dimension*
+static cm_Dimension*
 cm_Spec_get_dimension(cm_Spec *self, s32 index)
 {
 	Assert(index < cm_Spec_dimensions(self));
@@ -170,7 +170,7 @@ cm_Spec_get_dimension(cm_Spec *self, s32 index)
 
 // @TODO(llins): check for repeated dimension names and report
 // an error if same dimension name
-internal void
+static void
 cm_Spec_insert_dimension(cm_Spec *self, cm_Dimension *dim)
 {
 	if (dim->type == cm_INDEX_DIMENSION) {
@@ -185,7 +185,7 @@ cm_Spec_insert_dimension(cm_Spec *self, cm_Dimension *dim)
 	}
 }
 
-internal void
+static void
 cm_Mapping_latlon(cm_Mapping *self, u8 depth)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -194,7 +194,7 @@ cm_Mapping_latlon(cm_Mapping *self, u8 depth)
 	self->index_mapping.latlon.depth = depth;
 }
 
-internal void
+static void
 cm_Mapping_xy(cm_Mapping *self, u8 depth, b8 top_down)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -204,7 +204,7 @@ cm_Mapping_xy(cm_Mapping *self, u8 depth, b8 top_down)
 	self->index_mapping.xy.top_down  = top_down;
 }
 
-internal void
+static void
 cm_Mapping_ip_hilbert(cm_Mapping *self, u8 depth)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -213,7 +213,7 @@ cm_Mapping_ip_hilbert(cm_Mapping *self, u8 depth)
 	self->index_mapping.ip_hilbert.depth = depth;
 }
 
-internal void
+static void
 cm_Mapping_categorical(cm_Mapping *self, u8 bits, u8 levels, MemoryBlock labels_table, b8 is_file)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -227,13 +227,13 @@ cm_Mapping_categorical(cm_Mapping *self, u8 bits, u8 levels, MemoryBlock labels_
 	self->index_mapping.categorical.is_file = is_file;
 }
 
-internal b8
+static b8
 cm_Mapping_categorical_defined_with_labels_table(cm_Mapping *self)
 {
 	return self->index_mapping.categorical.labels_table.begin != 0;
 }
 
-internal void
+static void
 cm_Mapping_hour(cm_Mapping *self)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -243,7 +243,7 @@ cm_Mapping_hour(cm_Mapping *self)
 	self->index_mapping.type = cm_INDEX_MAPPING_HOUR;
 }
 
-internal void
+static void
 cm_Mapping_weekday(cm_Mapping *self)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -253,7 +253,7 @@ cm_Mapping_weekday(cm_Mapping *self)
 	self->index_mapping.type = cm_INDEX_MAPPING_WEEKDAY;
 }
 
-internal void
+static void
 cm_Mapping_time(cm_Mapping *self, u8 depth, tm_Time base_time,
 		s64 default_minute_offset, u64 bin_width, s64 minutes_to_add, b8 unix_time)
 {
@@ -270,7 +270,7 @@ cm_Mapping_time(cm_Mapping *self, u8 depth, tm_Time base_time,
 	nm_TimeBinning_init(time_binning, base_time, default_minute_offset, bin_width);
 }
 
-internal void
+static void
 cm_Mapping_product(cm_Mapping *self, nv_NumberStorage storage_type)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -281,7 +281,7 @@ cm_Mapping_product(cm_Mapping *self, nv_NumberStorage storage_type)
 	self->measure_mapping.storage_type      = storage_type;
 }
 
-internal void
+static void
 cm_Mapping_time_duration(cm_Mapping *self, nv_NumberStorage storage_type, u64 time_unit_in_secs)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -293,7 +293,7 @@ cm_Mapping_time_duration(cm_Mapping *self, nv_NumberStorage storage_type, u64 ti
 	self->measure_mapping.time_unit_in_seconds = time_unit_in_secs;
 }
 
-internal void
+static void
 cm_Mapping_row_bitset(cm_Mapping *self)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -302,7 +302,7 @@ cm_Mapping_row_bitset(cm_Mapping *self)
 	self->measure_mapping.storage_type         = nv_NUMBER_STORAGE_UNSIGNED_64;
 }
 
-internal void
+static void
 cm_Mapping_time_duration_squared(cm_Mapping *self, nv_NumberStorage storage_type, u64 time_unit_in_secs)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
@@ -314,7 +314,7 @@ cm_Mapping_time_duration_squared(cm_Mapping *self, nv_NumberStorage storage_type
 	self->measure_mapping.time_unit_in_seconds = time_unit_in_secs;
 }
 
-internal void
+static void
 cm_Dimension_init(cm_Dimension* self, MemoryBlock *name, cm_ColumnRefArray *cols, cm_Mapping *spec)
 {
 	self->type = spec->mapping_type == cm_MEASURE_DIMENSION_MAPPING ? cm_MEASURE_DIMENSION : cm_INDEX_DIMENSION;
@@ -336,9 +336,9 @@ typedef struct {
 	np_TypeID filename_id;         // points to MemoryBlock with a file name
 } cm_CompilerTypes;
 
-internal cm_CompilerTypes cm_compiler_types;
+static cm_CompilerTypes cm_compiler_types;
 
-internal void
+static void
 cm_compiler_register_number_storage_types(np_Compiler *compiler)
 {
 	// typedef enum
@@ -548,7 +548,7 @@ np_FUNCTION_HANDLER(cm_compiler_func_ip_hilbert)
 	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
 }
 
-internal np_TypeValue
+static np_TypeValue
 cm_compiler_funct_time_base(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, b8 unix_time)
 {
 	/*
@@ -594,7 +594,7 @@ cm_compiler_funct_time_base(np_Compiler* compiler, np_TypeValue *params_begin, n
 	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
 }
 
-internal np_TypeValue
+static np_TypeValue
 cm_compiler_funct_time_base_short(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, b8 unix_time)
 {
 	/*
@@ -957,7 +957,7 @@ np_FUNCTION_HANDLER(cm_compiler_func_measure_dimension)
 	return np_TypeValue_value(cm_compiler_types.dimension_id, result);
 }
 
-internal void
+static void
 cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 {
 	cm_compiler_types.number_type_id  = compiler->number_type_id;
@@ -1180,7 +1180,7 @@ typedef b8 (cm_SnappingLatLonFunction)(f32 *lat, f32 *lon);
 #define cm_MIN_LONGITUDE  -180.0
 #define cm_MIN_LATITUDE   -85.05113
 #define cm_MAX_LATITUDE    85.05113
-internal b8
+static b8
 cm_mapping_latlon(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, cm_SnappingLatLonFunction *snap)
 {
 	// Print *print = &request->print;
@@ -1288,7 +1288,7 @@ cm_mapping_latlon(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin,
 	return 1;
 }
 
-internal b8
+static b8
 cm_mapping_xy(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin)
 {
 	// Print *print = &request->print;
@@ -1372,7 +1372,7 @@ cm_mapping_xy(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin)
 }
 
 //rotate/flip a quadrant appropriately
-internal void
+static void
 cm_hilbert_rot(u32 n, u32 *x, u32 *y, u32 rx, u32 ry) {
 	if (ry == 0) {
 		if (rx == 1) {
@@ -1388,7 +1388,7 @@ cm_hilbert_rot(u32 n, u32 *x, u32 *y, u32 rx, u32 ry) {
 }
 
 //convert (x,y) to d
-internal u32
+static u32
 cm_hilbert_xy2d (u32 n, u32 x, u32 y) {
 	u32 rx, ry, s, d=0;
 	for (s=n/2; s>0; s/=2) {
@@ -1419,7 +1419,7 @@ void cm_hilbert_d2xy(u32 n, u32 d, u32 *x, u32 *y) {
 // Make this procedure support deeper hierarchies maybe reading from an IPv6. or so...
 // Right now it is limited to u32 numbers.
 //
-internal b8
+static b8
 cm_mapping_ip_hilbert(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin)
 {
 	// Print *print = &request->print;
@@ -1482,7 +1482,7 @@ cm_mapping_ip_hilbert(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_be
 	return 1;
 }
 
-internal b8
+static b8
 cm_mapping_time(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, ntp_Parser *parser)
 {
 	Assert(dim->mapping_spec.index_mapping.type == cm_INDEX_MAPPING_TIME);
@@ -1560,7 +1560,7 @@ cm_mapping_time(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, n
 	return 1;
 }
 
-internal b8
+static b8
 cm_mapping_hour(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, ntp_Parser *parser)
 {
 	Assert(dim->mapping_spec.index_mapping.type == cm_INDEX_MAPPING_HOUR);
@@ -1585,7 +1585,7 @@ cm_mapping_hour(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, n
 	return 1;
 }
 
-internal b8
+static b8
 cm_mapping_weekday(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, ntp_Parser *parser)
 {
 	Assert(dim->mapping_spec.index_mapping.type == cm_INDEX_MAPPING_WEEKDAY);
@@ -1612,7 +1612,7 @@ cm_mapping_weekday(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin
 }
 
 
-internal b8
+static b8
 cm_mapping_categorical(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin)
 {
 	Assert(dim->mapping_spec.index_mapping.type == cm_INDEX_MAPPING_CATEGORICAL);
@@ -1620,7 +1620,7 @@ cm_mapping_categorical(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_b
 	return 0;
 }
 
-internal void
+static void
 cm_mapping_measure_write_number(nv_NumberStorage storage, char **it_payload, f64 value) {
 	switch (storage) {
 	case nv_NUMBER_STORAGE_UNSIGNED_32: {
@@ -1659,7 +1659,7 @@ cm_mapping_measure_write_number(nv_NumberStorage storage, char **it_payload, f64
 	}
 }
 
-internal b8
+static b8
 cm_mapping_measure(cm_Dimension *dim, u64 offset, char **it_payload, MemoryBlock *tokens_begin, ntp_Parser *parser)
 {
 	Assert(dim->type == cm_MEASURE_DIMENSION);

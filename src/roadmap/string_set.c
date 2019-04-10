@@ -180,7 +180,7 @@ ROTATE_SPECIALIZED(ss_rotate_hashes, ss_Hash)
 
 #define ss_MURMUR_SEED 0x5dee7792
 
-internal u64
+static u64
 ss_murmur_hash2_64A(const void *key, s32 len, s32 seed)
 {
 	u64  m = 0xc6a4a7935bd1e995;
@@ -228,7 +228,7 @@ ss_murmur_hash2_64A(const void *key, s32 len, s32 seed)
 // ss_Node
 //------------------------------------------------------------------------------
 
-internal void
+static void
 ss_Node_init(ss_Node *self)
 {
 	// make sure everything is zeroed
@@ -237,21 +237,21 @@ ss_Node_init(ss_Node *self)
 	self->is_leaf     = 1;
 }
 
-internal ss_Node*
+static ss_Node*
 ss_Node_child(ss_Node *self, u64 index)
 {
 	ss_Node *child = ss_Ptr_Node_get(&self->children[index]);
 	return child;
 }
 
-internal ss_Entry*
+static ss_Entry*
 ss_Node_get_entry(ss_Node *self, u64 index)
 {
 	Assert(index < self->num_entries);
 	return ss_Ptr_Entry_get(self->data + index);
 }
 
-internal void
+static void
 ss_Node_push_entry(ss_Node *self, u64 index, ss_Entry *new)
 {
 	Assert(index < self->num_entries);
@@ -260,14 +260,14 @@ ss_Node_push_entry(ss_Node *self, u64 index, ss_Entry *new)
 	ss_Ptr_Entry_set(self->data + index, new);
 }
 
-internal ss_Hash
+static ss_Hash
 ss_Node_hash(ss_Node *self, u64 index)
 {
 	Assert(index < self->num_entries);
 	return *(self->hashes + index);
 }
 
-internal b8
+static b8
 ss_Node_full(ss_Node* self)
 {
 	return self->num_entries == ss_MAX_ENTRIES;
@@ -285,7 +285,7 @@ ss_Node_full(ss_Node* self)
 //     ...
 //     -k if new entry should be inserted at position index k-1
 //
-internal s64
+static s64
 ss_Node_hash_insert_index(ss_Node* self, ss_Hash hash)
 {
 	// [l,r)
@@ -328,7 +328,7 @@ ss_Node_hash_insert_index(ss_Node* self, ss_Hash hash)
 	}
 }
 
-internal ss_Entry*
+static ss_Entry*
 ss_Node_find_hash(ss_Node* self, ss_Hash hash)
 {
 	s64 index = ss_Node_hash_insert_index(self, hash);
@@ -346,13 +346,13 @@ ss_Node_find_hash(ss_Node* self, ss_Hash hash)
 // ss_Entry
 //------------------------------------------------------------------------------
 
-internal ss_String*
+static ss_String*
 ss_Entry_string(ss_Entry* self)
 {
 	return &self->string;
 }
 
-internal ss_Entry*
+static ss_Entry*
 ss_Entry_next(ss_Entry* self)
 {
 	return ss_Ptr_Entry_get(&self->next);
@@ -362,7 +362,7 @@ ss_Entry_next(ss_Entry* self)
 // ss_EntryBlock
 //------------------------------------------------------------------------------
 
-internal void
+static void
 ss_EntryBlock_init(ss_EntryBlock *self, char *begin, u64 capacity)
 {
 	al_Ptr_char_set(&self->begin, begin);
@@ -375,7 +375,7 @@ ss_EntryBlock_init(ss_EntryBlock *self, char *begin, u64 capacity)
 // ss_Record
 //------------------------------------------------------------------------------
 
-internal void
+static void
 ss_Record_init(ss_Record *self, char *key_begin, char *key_end)
 {
 	self->hash = ss_murmur_hash2_64A(key_begin, (s32) (key_end-key_begin), ss_MURMUR_SEED);
@@ -394,13 +394,13 @@ ss_Record_init(ss_Record *self, char *key_begin, char *key_end)
 //------------------------------------------------------------------------------
 
 
-internal inline u64
+static inline u64
 ss_EntryBlock_bytes_available(ss_EntryBlock *self)
 {
 	return self->capacity - self->bytes_used;
 }
 
-internal inline MemoryBlock
+static inline MemoryBlock
 ss_EntryBlock_reserve(ss_EntryBlock *self, u64 size)
 {
 	Assert(self->bytes_used + size <= self->capacity);
@@ -417,7 +417,7 @@ ss_EntryBlock_reserve(ss_EntryBlock *self, u64 size)
 
 static u16 ss_g_btree_index = 0;
 
-internal void
+static void
 ss_StringSet_init(ss_StringSet *self, al_Allocator *allocator)
 {
 //     u64              size; // number of key value pairs
@@ -439,23 +439,23 @@ ss_StringSet_init(ss_StringSet *self, al_Allocator *allocator)
 
 	char  name[al_MAX_CACHE_NAME_LENGTH+1];
 	Print print;
-	Print_init(&print, name, name + al_MAX_CACHE_NAME_LENGTH);
+	print_init(&print, name, al_MAX_CACHE_NAME_LENGTH);
 
 	{  // prepare name of cache
-		Print_clear(&print);
-		Print_cstr(&print, "ss_Node_");
-		Print_u64(&print,(u64) ss_id);
-		Print_char(&print, 0);
+		print_clear(&print);
+		print_cstr(&print, "ss_Node_");
+		print_u64(&print,(u64) ss_id);
+		print_char(&print, 0);
 		name[al_MAX_CACHE_NAME_LENGTH] = 0;
 	}
 	al_Cache *cache_nodes = al_Allocator_create_cache(allocator, name, sizeof(ss_Node));
 	al_Ptr_Cache_set(&self->cache_nodes, cache_nodes);
 
 	{  // prepare name of cache
-		Print_clear(&print);
-		Print_cstr(&print, "ss_EntryBlock_");
-		Print_u64(&print,(u64) ss_id);
-		Print_char(&print, 0);
+		print_clear(&print);
+		print_cstr(&print, "ss_EntryBlock_");
+		print_u64(&print,(u64) ss_id);
+		print_char(&print, 0);
 		name[al_MAX_CACHE_NAME_LENGTH] = 0;
 	}
 	al_Cache *cache_entry_blocks = al_Allocator_create_cache(allocator, name, sizeof(ss_EntryBlock));
@@ -466,7 +466,7 @@ ss_StringSet_init(ss_StringSet *self, al_Allocator *allocator)
 	al_Ptr_Allocator_set(&self->allocator, allocator);
 }
 
-internal ss_Entry*
+static ss_Entry*
 ss_prepare_entry_from_record(char *base, ss_Record *record)
 {
 	// struct ss_String {
@@ -491,7 +491,7 @@ ss_prepare_entry_from_record(char *base, ss_Record *record)
 	return entry;
 }
 
-internal ss_EntryBlock*
+static ss_EntryBlock*
 ss_StringSet_new_block(ss_StringSet *self, u64 min_capacity)
 {
 	u32 new_block_pages = (u32)  pt_next_multiple(min_capacity, al_PAGE_SIZE)/al_PAGE_SIZE;
@@ -513,7 +513,7 @@ ss_StringSet_new_block(ss_StringSet *self, u64 min_capacity)
 }
 
 
-internal ss_Entry*
+static ss_Entry*
 ss_StringSet_new_entry(ss_StringSet *self, ss_Record* record)
 {
 	ss_EntryBlock *head = ss_Ptr_EntryBlock_get(&self->head_entry_block);
@@ -541,7 +541,7 @@ ss_StringSet_new_entry(ss_StringSet *self, ss_Record* record)
 	}
 }
 
-internal void
+static void
 ss_StringSet_split_child(ss_StringSet* self, ss_Node *node, u64 index)
 {
 	// assumes node is not full
@@ -613,7 +613,7 @@ ss_StringSet_split_child(ss_StringSet* self, ss_Node *node, u64 index)
 
 }
 
-internal ss_String*
+static ss_String*
 ss_StringSet_insert_nonfull(ss_StringSet *self, ss_Node* node, ss_Record *record)
 {
 	Assert(!ss_Node_full(node));
@@ -652,7 +652,7 @@ ss_StringSet_insert_nonfull(ss_StringSet *self, ss_Node* node, ss_Record *record
 }
 
 /* @TODO(llins): return error code with failure types */
-internal ss_String*
+static ss_String*
 ss_StringSet_insert(ss_StringSet* self, char *key_begin, char *key_end)
 {
 	ss_Node *root = ss_Ptr_Node_get(&self->root);
@@ -677,7 +677,7 @@ ss_StringSet_insert(ss_StringSet* self, char *key_begin, char *key_end)
 	return ss_StringSet_insert_nonfull(self, root, &record);
 }
 
-internal ss_String*
+static ss_String*
 ss_StringSet_get(ss_StringSet *self, char *key_begin, char *key_end)
 {
 	ss_Node *root = ss_Ptr_Node_get(&self->root);
@@ -693,7 +693,7 @@ ss_StringSet_get(ss_StringSet *self, char *key_begin, char *key_end)
 		ss_Entry *it = kv;
 		while (it) {
 			ss_String *it_str = ss_Entry_string(it);
-			if (pt_compare_memory(key_begin, key_end, &it_str->begin, &it_str->begin + it_str->length) == 0) {
+			if (cstr_compare_memory(key_begin, key_end, &it_str->begin, &it_str->begin + it_str->length) == 0) {
 				return it_str;
 			} else {
 				it = ss_Ptr_Entry_get(&it->next);
@@ -709,7 +709,7 @@ ss_StringSet_get(ss_StringSet *self, char *key_begin, char *key_end)
 // ss_Iter
 //------------------------------------------------------------------------------
 
-internal void
+static void
 ss_Iter_init(ss_Iter *self, ss_StringSet *tree)
 {
 	ss_Node* node = ss_Ptr_Node_get(&tree->root);
@@ -725,7 +725,7 @@ ss_Iter_init(ss_Iter *self, ss_StringSet *tree)
 	}
 }
 
-internal b8
+static b8
 ss_Iter_next(ss_Iter *self, ss_Hash *hash, MemoryBlock *key, MemoryBlock *value)
 {
 	if (self->stack_size == 0) return 0;

@@ -10,7 +10,7 @@ global_variable PlatformAPI platform;
 // String Manipulation
 //------------------------------------------------------------------------------
 
-internal b8
+static b8
 nu_cstr_is_prefix_of(const char *cstr,
 		     const char *text_begin,
 		     const char *text_end)
@@ -26,7 +26,7 @@ nu_cstr_is_prefix_of(const char *cstr,
 	return *cstr == 0;
 }
 
-internal s64
+static s64
 nu_first_match_on_cstr_prefix_table(const char **table_cstr,
 				    s32          table_begin,
 				    s32          table_end,
@@ -61,7 +61,7 @@ typedef struct {
 	};
 } nu_BufferTokenizer;
 
-internal void
+static void
 nu_BufferTokenizer_init(nu_BufferTokenizer *btok, char separator, char* begin, char *end)
 {
 	Assert(begin <= end && "BufferTokenizer invalid init begin > end");
@@ -75,7 +75,7 @@ nu_BufferTokenizer_init(nu_BufferTokenizer *btok, char separator, char* begin, c
 	btok->separator   = separator;
 }
 
-internal b8
+static b8
 nu_BufferTokenizer_next(nu_BufferTokenizer *btok)
 {
 	if (btok->text.begin == btok->text.end)
@@ -121,7 +121,7 @@ nu_BufferTokenizer_next(nu_BufferTokenizer *btok)
 // can detect truncation checking token begin and end
 // return number of bytes written to the "buffer"
 //
-internal u64
+static u64
 nu_BufferTokenizer_copy_token(nu_BufferTokenizer* btok,
 			      char *buffer,
 			      u64 capacity)
@@ -164,7 +164,7 @@ typedef struct {
 // Assumes buffer is big enough to fit the largest token that will
 // appear throughout read process
 //
-internal void
+static void
 nu_FileTokenizer_init(nu_FileTokenizer* self, char  sep, char *buffer_begin, char *buffer_end, pt_File *input_file)
 {
 	pt_fill((char*)self, (char*)self + sizeof(nu_FileTokenizer), 0);
@@ -187,7 +187,7 @@ nu_FileTokenizer_init(nu_FileTokenizer* self, char  sep, char *buffer_begin, cha
 
 // returns 0 if no more tokens, otherwise stores
 // info to query token
-internal b8
+static b8
 nu_FileTokenizer_next(nu_FileTokenizer* self)
 {
 	if (self->text.begin == self->text.end && self->file_done)
@@ -265,7 +265,7 @@ typedef struct {
 	MemoryBlock *capacity;
 } nu_TokensArray;
 
-internal void
+static void
 nu_TokensArray_init(nu_TokensArray *self, char *begin, char *end)
 {
 	self->begin    = (MemoryBlock*) begin;
@@ -275,7 +275,7 @@ nu_TokensArray_init(nu_TokensArray *self, char *begin, char *end)
 	self->parse_overflow = 0;
 }
 
-internal void
+static void
 nu_TokensArray_split(nu_TokensArray *self, nu_TokensArray *target)
 {
 	Assert(self->initialized);
@@ -288,13 +288,13 @@ nu_TokensArray_split(nu_TokensArray *self, nu_TokensArray *target)
 	self->begin = self->end;
 }
 
-internal s32
+static s32
 nu_TokensArray_find(nu_TokensArray *self, char *begin, char *end)
 {
 	s32 index = 0;
 	MemoryBlock *it = self->begin;
 	while (it != self->end) {
-		if (pt_compare_memory(begin, end, it->begin, it->end) == 0) {
+		if (cstr_compare_memory(begin, end, it->begin, it->end) == 0) {
 			return index;
 		} else {
 			++index;
@@ -305,7 +305,7 @@ nu_TokensArray_find(nu_TokensArray *self, char *begin, char *end)
 }
 
 
-internal void
+static void
 nu_TokensArray_parse(nu_TokensArray *self, char sep, char *text_begin, char *text_end)
 {
 	Assert(text_begin <= text_end);
@@ -345,7 +345,7 @@ nu_TokensArray_parse(nu_TokensArray *self, char sep, char *text_begin, char *tex
 //------------------------------------------------------------------------------
 // log memory of a nanocube index
 //------------------------------------------------------------------------------
-internal void
+static void
 nu_log_memory(al_Allocator *allocator, nx_NanocubeIndex *nanocube_index, Print* print, b8 details, b8 print_empty_caches)
 {
 	//
@@ -355,7 +355,7 @@ nu_log_memory(al_Allocator *allocator, nx_NanocubeIndex *nanocube_index, Print* 
 		al_Cache* cache = al_Ptr_Cache_get(&allocator->caches.first_p);
 		while (cache) {
 			if (print_empty_caches || cache->used_chunks > 0) {
-				Print_format(print,"%24s | %5d len | %12lld use | %12lld cap | %8.1fMB mem | %5.1f%% muse | %7lld pages\n",
+				print_format(print,"%24s | %5d len | %12lld use | %12lld cap | %8.1fMB mem | %5.1f%% muse | %7lld pages\n",
 					     cache->name,
 					     cache->chunk_size,
 					     cache->used_chunks,
@@ -376,14 +376,13 @@ nu_log_memory(al_Allocator *allocator, nx_NanocubeIndex *nanocube_index, Print* 
 			/* check max bytes needed for this iteration */
 
 			u64 size = al_Cache_max_slots_in_nonfull_slab(inode_cache);
-			Print_cstr(print, "INodes by degree...\n");
+			print_cstr(print, "INodes by degree...\n");
 			if (size > 0) {
 
-				pt_Memory mem = platform.allocate_memory(size, 0, 0);
+				pt_Memory *mem = platform.allocate_memory(size, 0);
 
 				al_IterCache iter;
-				al_IterCache_init(&iter, inode_cache, mem.memblock.begin, mem.memblock.end);
-
+				al_IterCache_init(&iter, inode_cache, OffsetedPointer(mem->base,0), OffsetedPointer(mem->base,mem->size));
 
 				u64 degrees[257];
 				pt_fill((char*) degrees, (char*) degrees + sizeof(degrees), 0);
@@ -396,17 +395,17 @@ nu_log_memory(al_Allocator *allocator, nx_NanocubeIndex *nanocube_index, Print* 
 
 				for (s32 i=0;i<=256;++i) {
 					if (degrees[i]) {
-						Print_cstr(print, "INodes with degree ");
-						Print_u64(print, (u64) i);
-						Print_align(print, 3, 1, ' ');
-						Print_cstr(print, " -> ");
-						Print_u64(print, degrees[i]);
-						Print_align(print, 13, 1, ' ');
-						Print_cstr(print, "\n");
+						print_cstr(print, "INodes with degree ");
+						print_u64(print, (u64) i);
+						print_align(print, 3, 1, ' ');
+						print_cstr(print, " -> ");
+						print_u64(print, degrees[i]);
+						print_align(print, 13, 1, ' ');
+						print_cstr(print, "\n");
 					}
 				}
 
-				platform.free_memory(&mem);
+				platform.free_memory(mem);
 			}
 		}
 		{
@@ -415,14 +414,14 @@ nu_log_memory(al_Allocator *allocator, nx_NanocubeIndex *nanocube_index, Print* 
 			/* check max bytes needed for this iteration */
 
 			u64 size = al_Cache_max_slots_in_nonfull_slab(pnode_cache);
-			Print_cstr(print, "PNodes by degree...\n");
+			print_cstr(print, "PNodes by degree...\n");
 
 			if (size > 0) {
 
-				pt_Memory mem = platform.allocate_memory(size, 0, 0);
+				pt_Memory *mem = platform.allocate_memory(size, 0);
 
 				al_IterCache iter;
-				al_IterCache_init(&iter, pnode_cache, mem.memblock.begin, mem.memblock.end);
+				al_IterCache_init(&iter, pnode_cache, OffsetedPointer(mem->base,0), OffsetedPointer(mem->base,mem->size));
 
 				u64 degrees[257];
 				pt_fill((char*) degrees, (char*) degrees + sizeof(degrees), 0);
@@ -435,28 +434,28 @@ nu_log_memory(al_Allocator *allocator, nx_NanocubeIndex *nanocube_index, Print* 
 
 				for (s32 i=0;i<=256;++i) {
 					if (degrees[i]) {
-						Print_cstr(print, "PNodes with degree ");
-						Print_u64(print, (u64) i);
-						Print_align(print, 3, 1, ' ');
-						Print_cstr(print, " -> ");
-						Print_u64(print, degrees[i]);
-						Print_align(print, 13, 1, ' ');
-						Print_cstr(print, "\n");
+						print_cstr(print, "PNodes with degree ");
+						print_u64(print, (u64) i);
+						print_align(print, 3, 1, ' ');
+						print_cstr(print, " -> ");
+						print_u64(print, degrees[i]);
+						print_align(print, 13, 1, ' ');
+						print_cstr(print, "\n");
 					}
 				}
 
-				platform.free_memory(&mem);
+				platform.free_memory(mem);
 			}
 		}
 	}
 
 	{
-		Print_cstr(print, "Number of records: ");
-		Print_u64(print, nanocube_index->number_of_records);
-		Print_cstr(print, "\nAllocator total memory: ");
+		print_cstr(print, "Number of records: ");
+		print_u64(print, nanocube_index->number_of_records);
+		print_cstr(print, "\nAllocator total memory: ");
 		MemoryBlock mb = al_Allocator_memory_block(allocator);
-		Print_u64(print, RALIGN((mb.end - mb.begin),Megabytes(1))/ Megabytes(1));
-		Print_cstr(print, "MB\n");
+		print_u64(print, RAlign((mb.end - mb.begin),Megabytes(1))/ Megabytes(1));
+		print_cstr(print, "MB\n");
 	}
 
 	//    fprintf(stderr, "Allocator total memory: %lldMB", Allocator_memory_block(allocator).size / Megabytes(1));
@@ -587,7 +586,7 @@ typedef struct {
 	s32                     item_stack_size;
 } nu_Iter;
 
-internal inline void
+static inline void
 nu_Iter_push_node(nu_Iter *self, nx_Node* node, s32 dimension)
 {
 	Assert(self->node_stack_size+1 < nu_Iter_Max_Stack_Size);
@@ -598,7 +597,7 @@ nu_Iter_push_node(nu_Iter *self, nx_Node* node, s32 dimension)
 	++self->node_stack_size;
 }
 
-internal void
+static void
 nu_Iter_init(nu_Iter *self, nx_NanocubeIndex *h)
 {
 	self->hierarchy = h;
@@ -608,7 +607,7 @@ nu_Iter_init(nu_Iter *self, nx_NanocubeIndex *h)
 	nu_Iter_push_node(self, nx_Ptr_Node_get(&h->root_p), 0);
 }
 
-internal nu_Iter_Item*
+static nu_Iter_Item*
 nu_Iter_push_item(nu_Iter *self, nu_Iter_Item_Type type)
 {
 	Assert(self->item_stack_size + 1 < nu_Iter_Max_Stack_Size);
@@ -618,7 +617,7 @@ nu_Iter_push_item(nu_Iter *self, nu_Iter_Item_Type type)
 	return item;
 }
 
-internal nu_Iter_Item*
+static nu_Iter_Item*
 nu_Iter_next(nu_Iter* self)
 {
 	for(;;) {
@@ -694,7 +693,7 @@ typedef struct {
 	s32  depth[nu_NodeDepth_Max_Dimensions];
 } nu_NodeDepth;
 
-internal inline void
+static inline void
 nu_NodeDepth_init_largest(nu_NodeDepth* self)
 {
 	self->largest = 1;
@@ -702,7 +701,7 @@ nu_NodeDepth_init_largest(nu_NodeDepth* self)
 	self->depth[0] = 0;
 }
 
-internal void
+static void
 nu_NodeDepth_init(nu_NodeDepth* self, nx_Node* node)
 {
 	self->largest = 0;
@@ -719,14 +718,14 @@ nu_NodeDepth_init(nu_NodeDepth* self, nx_Node* node)
 	}
 }
 
-internal s32
+static s32
 nu_NodeDepth_depth_at_dimension(nu_NodeDepth *self, s32 dim)
 {
 	Assert(dim < self->length);
 	return self->depth[self->length-1-dim];
 }
 
-internal b8
+static b8
 nu_NodeDepth_is_equal(nu_NodeDepth *self, nu_NodeDepth *other)
 {
 	if (self->largest && other->largest) return 1;
@@ -736,7 +735,7 @@ nu_NodeDepth_is_equal(nu_NodeDepth *self, nu_NodeDepth *other)
 	}
 }
 
-internal b8
+static b8
 nu_NodeDepth_is_smaller(nu_NodeDepth *self, nu_NodeDepth *other)
 {
 	if (self->largest) return 0;
@@ -761,20 +760,20 @@ typedef struct
 }
 nu_NodeDepth_Ordered_Set;
 
-internal inline void
+static inline void
 nu_NodeDepth_Ordered_Set_init(nu_NodeDepth_Ordered_Set* self)
 {
 	self->size = 0;
 }
 
-internal inline nu_NodeDepth*
+static inline nu_NodeDepth*
 nu_NodeDepth_Ordered_Set_at(nu_NodeDepth_Ordered_Set* self, s32 index)
 {
 	Assert(index < self->size);
 	return self->list + self->order[index];
 }
 
-internal s32
+static s32
 nu_NodeDepth_Ordered_Set_find(nu_NodeDepth_Ordered_Set* self,
 			      nu_NodeDepth *item)
 {
@@ -795,7 +794,7 @@ nu_NodeDepth_Ordered_Set_find(nu_NodeDepth_Ordered_Set* self,
 	else { return a; }
 }
 
-internal void
+static void
 nu_NodeDepth_Ordered_Set_insert(nu_NodeDepth_Ordered_Set* self,
 				nu_NodeDepth *item)
 {
@@ -836,28 +835,28 @@ nu_NodeDepth_Ordered_Set_insert(nu_NodeDepth_Ordered_Set* self,
 	void (name)(Print *print, nx_PayloadAggregate *payload)
 typedef nu_PRINT_PAYLOAD(nu_PrintPayloadFunc);
 
-internal u64
+static u64
 nu_save_dot_file_node_id(nx_NanocubeIndex* nanocube_index, void *p)
 {
 	return (u64) ((char*) p - (char*) nanocube_index);
 }
 
-internal void
+static void
 nu_save_dot_file(nx_NanocubeIndex* nanocube_index, char *filename_begin, char *filename_end, nu_PrintPayloadFunc *payload_print, b8 show_ids)
 {
-	pt_File pfh = platform.open_write_file(filename_begin, filename_end);
+	pt_File pfh = platform.open_file(filename_begin, filename_end, pt_FILE_WRITE);
 
 	char buffer[Kilobytes(4)];
 	Print print;
-	Print_init(&print, buffer, buffer + sizeof(buffer));
+	print_init(&print, buffer, sizeof(buffer));
 
 	//     Assert(fp);
-	Print_cstr(&print, "digraph nested_hierarchy {\nrankdir=LR;\n");
+	print_cstr(&print, "digraph nested_hierarchy {\nrankdir=LR;\n");
 	//     fprintf(fp,"digraph nested_hierarchy {\nrankdir=LR;\n");
 
 	// dump
 	platform.write_to_file(&pfh,print.begin,print.end);
-	Print_clear(&print);
+	print_clear(&print);
 
 
 	nu_Iter it;
@@ -867,40 +866,40 @@ nu_save_dot_file(nx_NanocubeIndex* nanocube_index, char *filename_begin, char *f
 	nu_Iter_init(&it, nanocube_index);
 	while ((item = nu_Iter_next(&it))) {
 		if (item->type == nu_Iter_NODE) {
-			Print_cstr(&print, "n");
-			Print_u64(&print, (u64) item->src.raw_node);
-			Print_cstr(&print, " [label=\"");
+			print_cstr(&print, "n");
+			print_u64(&print, (u64) item->src.raw_node);
+			print_cstr(&print, " [label=\"");
 
 			if (show_ids) {
-				Print_format(&print, "id %llu\n", nu_save_dot_file_node_id(nanocube_index, item->src.raw_node));
+				print_format(&print, "id %llu\n", nu_save_dot_file_node_id(nanocube_index, item->src.raw_node));
 			}
 
 			if (item->src.path.length == 0) {
-				Print_char(&print, 'e');
+				print_char(&print, 'e');
 			} else {
 				for (u8 i=0; i<item->src.path.length; ++i) {
 					if (i > 0) {
-						Print_char(&print, ',');
+						print_char(&print, ',');
 					}
 					if (i > 0 && i % 10 == 0) {
-						Print_char(&print, '\n');
+						print_char(&print, '\n');
 					}
-					Print_u64(&print, (u64) nx_Path_get(&item->src.path,i));
+					print_u64(&print, (u64) nx_Path_get(&item->src.path,i));
 				}
 			}
-			Print_cstr(&print, "\"];\n");
+			print_cstr(&print, "\"];\n");
 			//                 fprintf(fp,"\"];\n");
 		} else if (item->type == nu_Iter_PAYLOAD) {
 			// Assuming payload only shows once
-			Print_cstr(&print, "g");
-			Print_u64(&print, (u64) item->payload);
-			Print_cstr(&print, "[label=\"");
+			print_cstr(&print, "g");
+			print_u64(&print, (u64) item->payload);
+			print_cstr(&print, "[label=\"");
 			(*payload_print)(&print, item->payload);
-			Print_cstr(&print, "\"];\n");
+			print_cstr(&print, "\"];\n");
 		}
 
 		platform.write_to_file(&pfh,print.begin,print.end);
-		Print_clear(&print);
+		print_clear(&print);
 
 	}
 	/* end: first pass: nodes */
@@ -909,15 +908,15 @@ nu_save_dot_file(nx_NanocubeIndex* nanocube_index, char *filename_begin, char *f
 	nu_Iter_init(&it, nanocube_index);
 	while ((item = nu_Iter_next(&it))) {
 		if (item->type == nu_Iter_PARENT_CHILD_EDGE) {
-			Print_char(&print, 'n');
-			Print_u64(&print, (u64) item->src.raw_node);
-			Print_cstr(&print, " -> n");
-			Print_u64(&print, (u64) item->dst.raw_node);
-			Print_cstr(&print, " [dir=none penwidth=1.4 style=");
-			Print_cstr(&print, item->shared ? "dotted" : "solid");
-			Print_cstr(&print, "  label=\"");
-			Print_u64(&print, item->suffix_length);
-			Print_cstr(&print, "\"];\n");
+			print_char(&print, 'n');
+			print_u64(&print, (u64) item->src.raw_node);
+			print_cstr(&print, " -> n");
+			print_u64(&print, (u64) item->dst.raw_node);
+			print_cstr(&print, " [dir=none penwidth=1.4 style=");
+			print_cstr(&print, item->shared ? "dotted" : "solid");
+			print_cstr(&print, "  label=\"");
+			print_u64(&print, item->suffix_length);
+			print_cstr(&print, "\"];\n");
 			//                 fprintf(fp, "n%lld -> n%lld [dir=none penwidth=1.4 style=%s label=\"%d\"];",
 			//                         (u64) item->src.raw_node,
 			//                         (u64) item->dst.raw_node,
@@ -926,11 +925,11 @@ nu_save_dot_file(nx_NanocubeIndex* nanocube_index, char *filename_begin, char *f
 
 		}
 		else if (item->type == nu_Iter_PAYLOAD_EDGE) {
-			Print_char(&print, 'n');
-			Print_u64(&print, (u64) item->src.raw_node);
-			Print_cstr(&print, " -> g");
-			Print_u64(&print, (u64) item->payload);
-			Print_cstr(&print, "  [dir=forward style=solid color=\"#80B1D3\"];\n");
+			print_char(&print, 'n');
+			print_u64(&print, (u64) item->src.raw_node);
+			print_cstr(&print, " -> g");
+			print_u64(&print, (u64) item->payload);
+			print_cstr(&print, "  [dir=forward style=solid color=\"#80B1D3\"];\n");
 
 			//                 fprintf(fp, "n%lld -> g%lld [dir=forward style=solid color=\"#80B1D3\"];\n",
 			//                         (u64) item->src.raw_node,
@@ -939,11 +938,11 @@ nu_save_dot_file(nx_NanocubeIndex* nanocube_index, char *filename_begin, char *f
 		}
 		else if (item->type == nu_Iter_CONTENT_EDGE) {
 
-			Print_char(&print, 'n');
-			Print_u64(&print, (u64) item->src.raw_node);
-			Print_cstr(&print, " -> n");
-			Print_u64(&print, (u64) item->dst.raw_node);
-			Print_cstr(&print, "  [dir=forward style=solid color=\"#80B1D3\"];\n");
+			print_char(&print, 'n');
+			print_u64(&print, (u64) item->src.raw_node);
+			print_cstr(&print, " -> n");
+			print_u64(&print, (u64) item->dst.raw_node);
+			print_cstr(&print, "  [dir=forward style=solid color=\"#80B1D3\"];\n");
 
 			//                 fprintf(fp, "n%lld -> n%lld [dir=forward style=solid color=\"#80B1D3\"];\n",
 			//                         (u64) item->src.raw_node,
@@ -952,7 +951,7 @@ nu_save_dot_file(nx_NanocubeIndex* nanocube_index, char *filename_begin, char *f
 		}
 
 		platform.write_to_file(&pfh,print.begin,print.end);
-		Print_clear(&print);
+		print_clear(&print);
 	}
 	/* end: second pass: edges */
 
@@ -1001,66 +1000,66 @@ nu_save_dot_file(nx_NanocubeIndex* nanocube_index, char *filename_begin, char *f
 
 		// create one dummy node for each level
 		for (s32 i=0;i<ndset.size;++i) {
-			Print_cstr(&print, "dummy");
-			Print_u64(&print, (u64) i);
-			Print_cstr(&print, "[style=invis width=0.1 label=\"\"];\n");
+			print_cstr(&print, "dummy");
+			print_u64(&print, (u64) i);
+			print_cstr(&print, "[style=invis width=0.1 label=\"\"];\n");
 			//             fprintf(fp, "dummy%d [style=invis width=0.1 label=\"\"];\n", i);
 
 			platform.write_to_file(&pfh,print.begin,print.end);
-			Print_clear(&print);
+			print_clear(&print);
 		}
 
 
-		Print_cstr(&print, "dummy0");
+		print_cstr(&print, "dummy0");
 		for (s32 i=1;i<ndset.size;++i) {
-			Print_cstr(&print, " -> dummy");
-			Print_u64(&print, (u64) i);
+			print_cstr(&print, " -> dummy");
+			print_u64(&print, (u64) i);
 			platform.write_to_file(&pfh,print.begin,print.end);
-			Print_clear(&print);
+			print_clear(&print);
 		}
-		Print_cstr(&print, " [style=invis];\n");
+		print_cstr(&print, " [style=invis];\n");
 
 		// @inefficient qudratic cost could be avoided here
 		// but use case should be small enough
 		for (s32 i=0;i<ndset.size-1;++i) {
-			Print_cstr(&print, "{ rank=same; dummy");
-			Print_u64(&print, (u64) i);
+			print_cstr(&print, "{ rank=same; dummy");
+			print_u64(&print, (u64) i);
 			for (s32 j=0;j<num_nodes;++j) {
 				if (ranks[j] == i)
 				{
-					Print_cstr(&print, ", n");
-					Print_u64(&print, (u64) ids[j]);
+					print_cstr(&print, ", n");
+					print_u64(&print, (u64) ids[j]);
 					platform.write_to_file(&pfh,print.begin,
 							print.end);
-					Print_clear(&print);
+					print_clear(&print);
 				}
 			}
-			Print_cstr(&print, " };\n");
+			print_cstr(&print, " };\n");
 		}
 
 		// @inefficient qudratic cost could be avoided here
 		// but use case should be small enough
 		{
-			Print_cstr(&print, "{ rank=same; dummy");
-			Print_u64(&print, (u64) ndset.size-1);
+			print_cstr(&print, "{ rank=same; dummy");
+			print_u64(&print, (u64) ndset.size-1);
 			nu_Iter_init(&it, nanocube_index);
 			while ((item = nu_Iter_next(&it))) {
 				if (item->type == nu_Iter_PAYLOAD) {
-					Print_cstr(&print, ", g");
-					Print_u64(&print, (u64) item->payload);
+					print_cstr(&print, ", g");
+					print_u64(&print, (u64) item->payload);
 					platform.write_to_file(&pfh,
 							print.begin,print.end);
-					Print_clear(&print);
+					print_clear(&print);
 				}
 			}
-			Print_cstr(&print, " };\n");
+			print_cstr(&print, " };\n");
 		}
 	}
 
-	Print_cstr(&print, "}");
+	print_cstr(&print, "}");
 
 	platform.write_to_file(&pfh,print.begin,print.end);
-	Print_clear(&print);
+	print_clear(&print);
 
 	platform.close_file(&pfh);
 }
@@ -1076,14 +1075,14 @@ typedef struct {
 	s32 values[128];
 } nu_HOdom;
 
-internal void
+static void
 nu_HOdom_init(nu_HOdom *self, u8 bits)
 {
 	self->bits = bits;
 	self->stack_size = 0;
 }
 
-internal void
+static void
 nu_HOdom_reset(nu_HOdom *self, u8 msb, u8 lsb)
 {
 	for (s32 i=msb;i<lsb;++i)
@@ -1091,7 +1090,7 @@ nu_HOdom_reset(nu_HOdom *self, u8 msb, u8 lsb)
 	self->values[lsb] = -1;
 }
 
-internal void
+static void
 nu_HOdom_prepare_odometer(nu_HOdom *self, u8 index, u8 *msb, u8 *lsb)
 {
 	if (self->stack_size == 0) {
@@ -1160,7 +1159,7 @@ nu_HOdom_prepare_odometer(nu_HOdom *self, u8 index, u8 *msb, u8 *lsb)
 // 	}
 }
 
-internal b8
+static b8
 nu_HOdom_next(nu_HOdom *self, u8 msb, u8 lsb)
 {
 	s32 index = lsb;
@@ -1182,7 +1181,7 @@ nu_HOdom_next(nu_HOdom *self, u8 msb, u8 lsb)
 	}
 }
 
-internal b8
+static b8
 nu_HOdom_advance(nu_HOdom *self, u8 index)
 {
 	u8 msb = 0;
@@ -1200,7 +1199,7 @@ nu_HOdom_advance(nu_HOdom *self, u8 index)
 #include <stdio.h>
 #include <stdlib.h>
 
-internal void
+static void
 advance_and_print(nu_HOdom *hodom, s32 index)
 {
 	nu_HOdom_advance(hodom,index);

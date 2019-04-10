@@ -209,7 +209,7 @@ typedef struct {
  * rg_LocatePtrArray
  */
 
-internal void
+static void
 rg_LocatePtrArray_init(rg_LocatePtrArray *self, rg_Locate* *begin, rg_Locate* *capacity)
 {
 	self->begin    = begin;
@@ -217,7 +217,7 @@ rg_LocatePtrArray_init(rg_LocatePtrArray *self, rg_Locate* *begin, rg_Locate* *c
 	self->capacity = capacity;
 }
 
-internal void
+static void
 rg_LocatePtrArray_append(rg_LocatePtrArray *self, rg_Locate *locate)
 {
 	Assert(self->end < self->capacity);
@@ -225,19 +225,19 @@ rg_LocatePtrArray_append(rg_LocatePtrArray *self, rg_Locate *locate)
 	++self->end;
 }
 
-internal void
+static void
 rg_LocatePtrArray_clear(rg_LocatePtrArray *self)
 {
 	self->end = self->begin;
 }
 
-internal u32
+static u32
 rg_LocatePtrArray_length(rg_LocatePtrArray *self)
 {
 	return (u32) (self->end - self->begin);
 }
 
-internal rg_Locate*
+static rg_Locate*
 rg_LocatePtrArray_get(rg_LocatePtrArray *self, u32 index)
 {
 	Assert(self->begin + index < self->end);
@@ -256,7 +256,7 @@ PTR_SPECIALIZED_SERVICES(rg_Ptr_Tag, rg_Tag);
  * rg_Locate
  */
 
-internal void
+static void
 rg_Locate_init(rg_Locate *self, u64 id)
 {
 	self->id = id;
@@ -273,14 +273,14 @@ rg_Locate_init(rg_Locate *self, u64 id)
 	self->vp.radius = 0.0f;
 }
 
-internal void
+static void
 rg_Locate_increment_incidence(rg_Locate *self)
 {
 	Assert(self->state == rg_Locate_COUNTING_STATE);
 	++self->num_objects;
 }
 
-internal void
+static void
 rg_Locate_start_appending(rg_Locate *self, rg_Ptr_Object *begin, rg_Ptr_Object *end)
 {
 	Assert(self->state == rg_Locate_COUNTING_STATE);
@@ -303,7 +303,7 @@ rg_Locate_start_appending(rg_Locate *self, rg_Ptr_Object *begin, rg_Ptr_Object *
 	}
 }
 
-internal void
+static void
 rg_Locate_append_object(rg_Locate *self, rg_Object *object)
 {
 	Assert(self->state == rg_Locate_APPENDING_STATE);
@@ -327,7 +327,7 @@ rg_Locate_append_object(rg_Locate *self, rg_Object *object)
  * rg_Object
  */
 
-internal void
+static void
 rg_Object_init(rg_Object *self, u64 id)
 {
 	self->id = id;
@@ -337,28 +337,28 @@ rg_Object_init(rg_Object *self, u64 id)
 	al_Ptr_char_set_null(&self->locates);
 }
 
-internal void
+static void
 rg_Object_set_tags(rg_Object *self, rg_Tag *begin, rg_Tag *end)
 {
 	self->tags.count = pt_safe_s64_u16(end - begin);
 	rg_Ptr_Tag_set(&self->tags.begin, begin);
 }
 
-internal void
+static void
 rg_Object_set_incident_nodes(rg_Object *self, rg_Ptr_Locate *begin, rg_Ptr_Locate *end)
 {
 	self->num_locates = (u16) (end - begin);
 	al_Ptr_char_set(&self->locates, (char *) begin);
 }
 
-internal rg_Ptr_Locate*
+static rg_Ptr_Locate*
 rg_Object_get_locates_begin(rg_Object *self)
 {
 	return (rg_Ptr_Locate*) al_Ptr_char_get(&self->locates);
 }
 
 
-internal rg_Object*
+static rg_Object*
 rg_Locate_get_object(rg_Locate *self, s32 index)
 {
 	Assert(index < self->num_objects);
@@ -378,7 +378,7 @@ rg_Locate_get_object(rg_Locate *self, s32 index)
  * rg_Caches
  */
 
-internal void
+static void
 rg_Caches_init(rg_Caches *self, al_Allocator *allocator)
 {
 	al_Ptr_Allocator_set(&self->allocator_p, allocator);
@@ -391,14 +391,14 @@ rg_Caches_init(rg_Caches *self, al_Allocator *allocator)
 }
 
 /* round to the next number with zeros everywhere except on the two most significative bits */
-internal inline u32
+static inline u32
 rg_size_class_to_index(u32 size)
 {
 	u32 msb = pt_msb32(size);
 	return (size > 1) * ( (msb-1) * 2 - ( ( (1 << (msb-2)) & size ) == 0 ) );
 }
 
-internal void*
+static void*
 rg_Caches_alloc(rg_Caches *self, u64 size)
 {
 	Assert(size > 0);
@@ -410,12 +410,12 @@ rg_Caches_alloc(rg_Caches *self, u64 size)
 		// create w_node cache (nodes are uniformly sized!)
 		char name[al_MAX_CACHE_NAME_LENGTH+1];
 		Print print;
-		Print_init(&print, name, name + sizeof(name));
+		print_init(&print, name, sizeof(name));
 
-		Print_clear(&print);
-		Print_cstr(&print, "rg_Cache_");
-		Print_u64(&print, size_class);
-		Print_char(&print, 0);
+		print_clear(&print);
+		print_cstr(&print, "rg_Cache_");
+		print_u64(&print, size_class);
+		print_char(&print, 0);
 
 		al_Allocator *allocator = al_Ptr_Allocator_get(&self->allocator_p);
 		if (size_class < al_MIN_CACHE_CHUNK_SIZE) {
@@ -427,7 +427,7 @@ rg_Caches_alloc(rg_Caches *self, u64 size)
 	return al_Cache_alloc(cache);
 }
 
-internal void
+static void
 rg_Caches_free(rg_Caches *self, u64 size, void *p)
 {
 	u32 size_class = pt_normalize_msb2(size);
@@ -453,7 +453,7 @@ typedef struct {
 	rg_HeapItem *capacity;
 } rg_Heap;
 
-internal void
+static void
 rg_Heap_init(rg_Heap *self, rg_HeapItem *begin, rg_HeapItem *capacity)
 {
 	Assert(capacity >= begin);
@@ -462,7 +462,7 @@ rg_Heap_init(rg_Heap *self, rg_HeapItem *begin, rg_HeapItem *capacity)
 	self->capacity = capacity;
 }
 
-internal void
+static void
 rg_HeapItem_swap(rg_HeapItem *self, rg_HeapItem *other)
 {
 	f64 x = self->value;
@@ -473,20 +473,20 @@ rg_HeapItem_swap(rg_HeapItem *self, rg_HeapItem *other)
 	other->data = d;
 }
 
-internal b8
+static b8
 rg_Heap_full(rg_Heap *self)
 {
 	return self->end == self->capacity;
 }
 
-internal f64
+static f64
 rg_Heap_min(rg_Heap *self)
 {
 	Assert(self->begin < self->end);
 	return self->begin->value;
 }
 
-internal void
+static void
 rg_Heap_insert(rg_Heap *self, void *data, f64 value)
 {
 	Assert(self->end < self->capacity);
@@ -510,7 +510,7 @@ rg_Heap_insert(rg_Heap *self, void *data, f64 value)
 	++self->end;
 }
 
-internal void
+static void
 rg_Heap_bubble_down(rg_Heap *self)
 {
 	/* bubble down */
@@ -559,7 +559,7 @@ rg_Heap_bubble_down(rg_Heap *self)
 	}
 }
 
-internal rg_HeapItem
+static rg_HeapItem
 rg_Heap_pop(rg_Heap *self)
 {
 	Assert(self->begin < self->end);
@@ -572,7 +572,7 @@ rg_Heap_pop(rg_Heap *self)
 	return result;
 }
 
-internal void
+static void
 rg_Heap_final_sort(rg_Heap *self)
 {
 	rg_HeapItem *end_backup = self->end;
@@ -588,22 +588,22 @@ rg_Heap_final_sort(rg_Heap *self)
  * rg_Graph
  */
 
-internal void
+static void
 rg_Graph_init(rg_Graph *self, al_Allocator *allocator)
 {
 	// create w_node cache (nodes are uniformly sized!)
 	char name[al_MAX_CACHE_NAME_LENGTH+1];
 	Print print;
-	Print_init(&print, name, name + sizeof(name));
+	print_init(&print, name, sizeof(name));
 
-	Print_clear(&print);
-	Print_cstr(&print, "rg_Locate");
-	Print_char(&print, 0);
+	print_clear(&print);
+	print_cstr(&print, "rg_Locate");
+	print_char(&print, 0);
 	al_Ptr_Cache_set(&self->node_cache_p, al_Allocator_create_cache(allocator, name, (u32) sizeof(rg_Locate)));
 
-	Print_clear(&print);
-	Print_cstr(&print, "rg_Object");
-	Print_char(&print, 0);
+	print_clear(&print);
+	print_cstr(&print, "rg_Object");
+	print_char(&print, 0);
 	al_Ptr_Cache_set(&self->locate_cache_p, al_Allocator_create_cache(allocator, name, (u32) sizeof(rg_Object)));
 
 	ss_StringSet_init(&self->string_set, allocator);
@@ -613,7 +613,7 @@ rg_Graph_init(rg_Graph *self, al_Allocator *allocator)
 	rg_Caches_init(&self->caches, allocator);
 }
 
-internal rg_Object*
+static rg_Object*
 rg_Graph_insert_locate(rg_Graph *self, u64 id, MemoryBlock *key_values_begin, MemoryBlock *key_values_end)
 {
 	Assert((key_values_end - key_values_begin) % 2 == 0);
@@ -654,7 +654,7 @@ rg_Graph_insert_locate(rg_Graph *self, u64 id, MemoryBlock *key_values_begin, Me
 	return locate;
 }
 
-internal rg_Locate*
+static rg_Locate*
 rg_Graph_insert_node(rg_Graph *self, u64 id)
 {
 	al_Cache* cache = al_Ptr_Cache_get(&self->node_cache_p);
@@ -666,7 +666,7 @@ rg_Graph_insert_node(rg_Graph *self, u64 id)
 }
 
 /* find locate by id */
-internal rg_Locate*
+static rg_Locate*
 rg_Graph_get_node(rg_Graph *self, u64 node_id)
 {
 	char *value = 0;
@@ -678,7 +678,7 @@ rg_Graph_get_node(rg_Graph *self, u64 node_id)
 }
 
 /* find locate by id */
-internal rg_Object*
+static rg_Object*
 rg_Graph_get_object(rg_Graph *self, u64 locate_id)
 {
 	char *value = 0;
@@ -689,7 +689,7 @@ rg_Graph_get_object(rg_Graph *self, u64 locate_id)
 	}
 }
 
-internal void
+static void
 rg_Graph_set_incident_locates_to_object(rg_Graph *self, rg_Object *object, rg_Locate* *begin, rg_Locate* *end)
 {
 	Assert(object->num_locates == 0);
@@ -716,7 +716,7 @@ rg_Graph_set_incident_locates_to_object(rg_Graph *self, rg_Object *object, rg_Lo
 	}
 }
 
-internal void
+static void
 rg_Graph_initialize_locates_incidence(rg_Graph *self)
 {
 	/* Allocate space for locate incidence */
@@ -784,7 +784,7 @@ typedef struct {
 	f32     distance;
 } rg_VPNode;
 
-internal void
+static void
 rg_VPNode_swap(rg_VPNode *self, rg_VPNode *other)
 {
 	rg_Locate *naux = self->locate;
@@ -807,7 +807,7 @@ rg_VPNode_swap(rg_VPNode *self, rg_VPNode *other)
  * (2) x_i[kk] >  x_i[j]  for 0 <= j < kk
  *     x_i[j]  == x_i[k]  for kk <= j <= k
  */
-internal rg_VPNode*
+static rg_VPNode*
 rg_vp_kth_smallest(rg_VPNode *begin, rg_VPNode *end, s64 k)
 {
 	Assert(k < end - begin);
@@ -888,7 +888,7 @@ typedef struct {
 
 #define rg_vp_EARTH_RADIUS 6371000.0
 
-internal f32
+static f32
 rg_vp_haversine_dist(f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
 	f64 rx1 = pt_PI * lon1/180.0;
@@ -909,13 +909,13 @@ rg_vp_haversine_dist(f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 	return (f32) (rg_vp_EARTH_RADIUS * c);
 }
 
-internal f32
+static f32
 rg_vp_dist_nodes(rg_Locate *a, rg_Locate *b)
 {
 	return rg_vp_haversine_dist(a->lat, a->lon, b->lat, b->lon);
 }
 
-internal f32
+static f32
 rg_vp_dist(rg_Locate *a, f32 lat, f32 lon)
 {
 	return rg_vp_haversine_dist(a->lat, a->lon, lat, lon);
@@ -953,7 +953,7 @@ rg_vp_dist(rg_Locate *a, f32 lat, f32 lon)
  * in the current active set of point to see which point should
  * be chosen as the next vantage point.
  */
-internal rg_vp_SelectResult
+static rg_vp_SelectResult
 rg_vp_select(rg_VPNode *begin, rg_VPNode *end)
 {
 	rg_vp_SelectResult result;
@@ -992,7 +992,7 @@ rg_vp_select(rg_VPNode *begin, rg_VPNode *end)
 	return result;
 }
 
-internal rg_VPNode*
+static rg_VPNode*
 rg_vp_make_tree(rg_VPNode *begin, rg_VPNode *end)
 {
 	/* find a nice spot to make a partition and recurse */
@@ -1028,7 +1028,7 @@ rg_vp_make_tree(rg_VPNode *begin, rg_VPNode *end)
 /*
  *
  */
-internal void
+static void
 rg_Graph_initalize_vantage_point_tree(rg_Graph *self, char *buffer_begin, char *buffer_end)
 {
 	LinearAllocator work_memory;
@@ -1057,7 +1057,7 @@ rg_Graph_initalize_vantage_point_tree(rg_Graph *self, char *buffer_begin, char *
 	rg_Ptr_Locate_set(&self->vp_root, vp_root->locate);
 }
 
-internal void
+static void
 rg_Locate_nearest_neighbors(rg_Locate *self, f32 lat, f32 lon, f32 max_dist, rg_Heap *heap, rg_LocateFilterCallback *filter, void *filter_data)
 {
 	f32 dist = rg_vp_dist(self, lat, lon);
@@ -1094,7 +1094,7 @@ rg_Locate_nearest_neighbors(rg_Locate *self, f32 lat, f32 lon, f32 max_dist, rg_
 	}
 }
 
-internal void
+static void
 rg_Graph_nearest_neighbors(rg_Graph *self, f32 lat, f32 lon, f32 max_dist, rg_Heap *heap, rg_LocateFilterCallback *filter, void *filter_data)
 {
 	rg_Locate *vp_root = rg_Ptr_Locate_get(&self->vp_root);

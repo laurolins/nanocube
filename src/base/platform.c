@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include <limits.h>
 #include <inttypes.h>
 
@@ -29,60 +30,85 @@ typedef struct {
 } u128;
 
 
-#if CHECK_ASSERTIONS
-#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
-#else
-#define Assert(Expression)
-#endif
-
 #define Kilobytes(Value) ((Value)*1024LL)
 #define Megabytes(Value) (Kilobytes(Value)*1024LL)
 #define Gigabytes(Value) (Megabytes(Value)*1024LL)
 #define Terabytes(Value) (Gigabytes(Value)*1024LL)
+#define BytesToMegabytes(Value) ((f64)(Value)/Megabytes(1))
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
-// internal, local_persist, global_variable
-#if !defined(internal)
-#define internal static
-#endif
-#define local_persist static
-#define global_variable static
-
-//---------------------------
-// offseted pointers
-//---------------------------
-
+#define PointerDifference(b,a) (((char*)(b))-((char*)(a)))
 #define OffsetedPointer(ptr,offset) ((void*) ((char*) ptr + offset))
 #define RightOffsetedPointer(ptr,size,offset) ((void*) ((char*) ptr + size - offset))
+
+// static, local_persist, global_variable
+// #if !defined(static)
+// #define static static
+// #endif
+#define local_persist static
+#define global_variable static
 
 //---------------------------
 // min and max
 //---------------------------
 
-#define MIN(a,b) (((a)<(b))?(a):(b))
-#define MAX(a,b) (((a)>(b))?(a):(b))
-#define RALIGN(a,b) (b*((a+b-1)/b))
-#define LALIGN(a,b) (b*(a/b))
+#define Clamp(x,a,b) (((x)<(a)) ? (a) : (((x)>(b)) ? (b) : (x)))
+
+#define Min(a,b) (((a)<(b))?(a):(b))
+#define Max(a,b) (((a)>(b))?(a):(b))
+#define RAlign(a,b) (b*((a+b-1)/b))
+#define LAlign(a,b) (b*(a/b))
+// https://stackoverflow.com/questions/3982348/implement-generic-swap-macro-in-c
+#define Swap2(x, y, t) do { t SWAP = x; x = y; y = SWAP; } while (0)
+#define Swap(x,y) do \
+   { unsigned char swap_temp[sizeof(x) == sizeof(y) ? (s32)sizeof(x) : -1]; \
+     memcpy(swap_temp,&y,sizeof(x)); \
+     memcpy(&y,&x,       sizeof(x)); \
+     memcpy(&x,swap_temp,sizeof(x)); \
+    } while(0)
+
+
 
 //---------------------------
 // math stuff
 //---------------------------
 
-#define pt_abs_s32(x)     abs(x)
-#define pt_abs_s64(x)     labs(x)
+#define pt_modf_f32(x,i)  modff(x,i)
+#define pt_modf_f64(x,i)  modf(x,i)
 #define pt_abs_f32(x)     fabsf(x)
 #define pt_abs_f64(x)     fabs(x)
+#define pt_abs_s32(x)     abs(x)
+#define pt_abs_s64(x)     labs(x)
+#define pt_acos_f32(x)    acosf(x)
+#define pt_acos_f64(x)    acos(x)
+#define pt_atan2_f32(x,y) atan2f(x,y)
+#define pt_atan2_f64(x,y) atan2(x,y)
+#define pt_atan_f32(x)    atanf(x)
+#define pt_atan_f64(x)    atan(x)
+#define pt_cos_f32(x)     cosf(x)
+#define pt_cos_f64(x)     cos(x)
 #define pt_floor_f32(x)   floorf(x)
 #define pt_floor_f64(x)   floor(x)
+#define pt_log_f32(x)     logf(x)
 #define pt_log_f64(x)     log(x)
-#define pt_sqrt_f64(x)    sqrt(x)
-#define pt_tan_f64(x)     tan(x)
+#define pt_pow_f32(b,e)   powf(b,e)
+#define pt_sin_f32(x)     sinf(x)
 #define pt_sin_f64(x)     sin(x)
-#define pt_cos_f64(x)     cos(x)
+#define pt_sinh_f32(x)    sinhf(x)
+#define pt_sinh_f64(x)    sinh(x)
+#define pt_sqrt_f32(x)    sqrtf(x)
 #define pt_sqrt_f64(x)    sqrt(x)
-#define pt_atan2_f64(x,y) atan2(x,y)
+#define pt_tan_f32(x)     tanf(x)
+#define pt_tan_f64(x)     tan(x)
 #define pt_PI 3.14159265358979323846
+
+#define pt_PI_F32 3.14159265358979323846f
+// the parenthesis might force the division to happen at compile time
+#define pt_deg_to_rad_f32(x) (x)*(pt_PI_F32/180.0f)
+#define pt_rad_to_deg_f32(x) (x)*(180.0f/pt_PI_F32)
+#define pt_deg_to_rad_f64(x) (x)*(pt_PI/180.0)
+#define pt_rad_to_deg_f64(x) (x)*(180.0/pt_PI)
 
 //---------------------------
 // limits
@@ -90,43 +116,43 @@ typedef struct {
 
 #define pt_MAX_U64 ULLONG_MAX;
 
-/* Allow for functions below to create entries on profile report */
+/* Allow for functions below to create entries on profile log */
 #include "profile.c"
 
 //------------------------------------------------------------------------------
 // intrinsics
 //------------------------------------------------------------------------------
-#if 0
-#if !defined(COMPILER_MSVC)
-#define COMPILER_MSVC 0
-#endif
-#if !defined(COMPILER_LLVM)
-#define COMPILER_LLVM 0
-#endif
-#if !COMPILER_MSVC && !COMPILER_LLVM
-#if _MSC_VER
-#undef COMPILER_MSVC
-#define COMPILER_MSVC 1
-#else
-// TODO(casey): Moar compilerz!!!
-#undef COMPILER_LLVM
-#define COMPILER_LLVM 1
-#endif
-#endif
-
-#if COMPILER_MSVC
-#include <intrin.h>
-#elif COMPILER_LLVM
-#include <x86intrin.h>
-#else
-#error SEE/NEON optimizations are not available for this compiler yet!!!!
-#endif
-#endif
+// #if 0
+// #if !defined(COMPILER_MSVC)
+// #define COMPILER_MSVC 0
+// #endif
+// #if !defined(COMPILER_LLVM)
+// #define COMPILER_LLVM 0
+// #endif
+// #if !COMPILER_MSVC && !COMPILER_LLVM
+// #if _MSC_VER
+// #undef COMPILER_MSVC
+// #define COMPILER_MSVC 1
+// #else
+// // TODO(casey): Moar compilerz!!!
+// #undef COMPILER_LLVM
+// #define COMPILER_LLVM 1
+// #endif
+// #endif
+// #if COMPILER_MSVC
+// #include <intrin.h>
+// #elif COMPILER_LLVM
+// #include <x86intrin.h>
+// #else
+// #error SEE/NEON optimizations are not available for this compiler yet!!!!
+// #endif
+// #endif
 
 //
 // TODO(llins): add support for platforms that are not linux
 //
 #include <x86intrin.h>
+
 
 static inline u64
 pt_get_cpu_clock()
@@ -169,6 +195,21 @@ pt_atomic_add_u32(u32 volatile *data, u32 increment)
 	return result;
 }
 
+static inline u16
+pt_atomic_add_u16(u16 volatile *data, u16 decrement)
+{
+	u32 result = __sync_fetch_and_add(data, decrement);
+	return result;
+}
+
+static inline u16
+pt_atomic_sub_u16(u16 volatile *data, u16 decrement)
+{
+	u32 result = __sync_fetch_and_sub(data, decrement);
+	return result;
+}
+
+
 static inline u32
 pt_atomic_exchange_u32(u32 volatile *data, u32 new)
 {
@@ -208,18 +249,37 @@ pt_get_thread_id()
 	return(thread_id);
 }
 
-//------------------------------------------------------------------------------
-// Print
-//------------------------------------------------------------------------------
 
-typedef struct {
-	char *begin;
-	char *end;
-	char *capacity;
-	u64   written: 63;
-	u64   overflow: 1;
-	u64   initialized: 1;
-} Print;
+
+typedef __m128 f32x4;
+
+#define f32x4_at(a,i) ((f32*)&a)[i]
+
+static f32x4
+f32x4_haddamard(f32x4 a, f32x4 b)
+{
+	return _mm_mul_ps(a, b);
+}
+
+// http://threadlocalmutex.com/?p=8
+static f32x4
+f32x4_cross_3shuffles(f32x4 a, f32x4 b)
+{
+	f32x4 a_yzx = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 0, 2, 1));
+	f32x4 b_yzx = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 0, 2, 1));
+	f32x4 c = _mm_sub_ps(_mm_mul_ps(a, b_yzx), _mm_mul_ps(a_yzx, b));
+	return _mm_shuffle_ps(c, c, _MM_SHUFFLE(3, 0, 2, 1));
+}
+
+static f32x4
+f32x4_cross_4shuffles(f32x4 a, f32x4 b)
+{
+	f32x4 a_yzx = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 0, 2, 1));
+	f32x4 a_zxy = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 1, 0, 2));
+	f32x4 b_zxy = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 1, 0, 1));
+	f32x4 b_yzx = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 0, 2, 1));
+	return _mm_sub_ps(_mm_mul_ps(a_yzx, b_zxy), _mm_mul_ps(a_zxy, b_yzx));
+}
 
 //------------------------------------------------------------------------------
 // MemoryBlock
@@ -264,10 +324,35 @@ typedef struct {
 // PlatformMemory
 //------------------------------------------------------------------------------
 
-typedef struct {
-	MemoryBlock memblock;
-	void*       handle;
-} pt_Memory;
+#define pt_Memory_FLAG_CHECK_UNDERFLOW 0x1
+#define pt_Memory_FLAG_CHECK_OVERFLOW  0x2
+
+typedef struct pt_Memory pt_Memory;
+
+// By design pt_Memory base pointer should always start at
+// a page boundary and have a size that is a multiple of
+// the pagesize. In this way we can check for small
+// overflow and underflow.
+struct pt_Memory{
+	u8 *base;
+	u64 size;
+
+        // #define pt_Memory_FLAG_PROTECT_OVERFLOW  0x1
+        // #define pt_Memory_FLAG_PROTECT_UNDERFLOW 0x2
+	u64 flags;
+
+	// field initialized to zero. might be used by an arena
+	// to keep track of which offset is free for new data
+	// to come in
+	u64 used;
+
+	// This field is initialized to zero every time the platform
+	// allocates memory and its semantics will be defined by
+	// the allocation. For Example: memory arenas might want to
+	// link previous memory blocks together to be able to release all
+	// the memory it allocated.
+	pt_Memory   *prev;
+};
 
 //------------------------------------------------------------------------------
 // PlatformMemory
@@ -307,41 +392,6 @@ typedef struct {
 } pt_MappedFile;
 
 //------------------------------------------------------------------------------
-// Ptr
-//------------------------------------------------------------------------------
-
-//
-// 6 bytes Offset pointer to enable position independent
-// data structures
-//
-typedef struct {
-	u16 data[3];
-} Ptr;
-
-#define PTR_SPECIALIZED_TYPE(name) typedef struct { Ptr ptr; } name ;
-
-//
-// check macro on nanocube_platform.c to simplify the use
-// of specialized pointers:
-//
-//     PTR_SPECIALIZED_TYPE(name)
-//     PTR_SPECIALIZED_SERVICES(name)
-//
-
-
-//------------------------------------------------------------------------------
-// platform independent file path struct
-//------------------------------------------------------------------------------
-
-#define MAX_FILE_PATH_SIZE 1023
-typedef struct {
-	char  full_path[MAX_FILE_PATH_SIZE+1];
-	char* name;
-	char* extension; // extension start last . in name
-	char* end;
-} FilePath;
-
-//------------------------------------------------------------------------------
 // work queue
 //------------------------------------------------------------------------------
 
@@ -353,18 +403,29 @@ typedef struct pt_WorkQueue pt_WorkQueue;
 
 // the status when creating a listen port or a client socket
 // to connect to a server use this numbers.
-#define pt_TCP_SOCKET_ACTIVATING 0
-#define pt_TCP_SOCKET_OK 1
-#define pt_TCP_SOCKET_ERROR -1
+#define pt_TCP_FEEDBACK_ACTIVATING 0
+#define pt_TCP_FEEDBACK_OK 1
+#define pt_TCP_FEEDBACK_ERROR -1
 
 #define pt_TCP_LISTEN_SOCKET 1
 #define pt_TCP_CLIENT_SOCKET 2
 #define pt_TCP_SERVER_SOCKET 3
 
+#define pt_TCP_READ  0x1
+#define pt_TCP_WRITE 0x2
+#define pt_TCP_READ_WRITE (pt_TCP_READ + pt_TCP_WRITE)
+
 typedef struct {
-	s32   type;
-	void* user_data;
-	void* handle;
+	u64   id; // unique ID for the same tcp engine throughout the whole
+	          // execution, unless we could count to u64 and this would
+		  // cycle (many many many many many years)
+// 	s32   type;
+// 	void* user_data;
+	void* handle; // this handle should be always available
+	              // even if it is a different thing all together.
+		      // the way to detect a socket that was already
+		      // closed is that the ID doens't match the
+		      // lower level ID anymore
 } pt_TCP_Socket;
 
 typedef struct {
@@ -376,8 +437,22 @@ typedef struct {
 	pt_TCP_Socket socket;
 } pt_TCP_Feedback;
 
-#define PLATFORM_TCP_CALLBACK(name) void name(pt_TCP_Socket *socket, char *buffer, u64 length)
-typedef PLATFORM_TCP_CALLBACK(PlatformTCPCallback);
+//
+// incoming data through a tcp socket is available
+//
+#define PLATFORM_TCP_DATA_CALLBACK(name) void name(pt_TCP_Socket socket, char *buffer, u64 length)
+typedef PLATFORM_TCP_DATA_CALLBACK(PlatformTCPDataCallback);
+
+#define pt_TCP_EVENT_SERVER_SOCKET_INITIALIZATION 0xf1
+#define pt_TCP_EVENT_SERVER_SOCKET_TERMINATION    0xf2
+
+//
+// the event callback is used to to signal creation and destruction
+// of server sockets to a client app, note that on creationg we can
+// use the s32 return code to indicate a problem with resources.
+//
+#define PLATFORM_TCP_EVENT_CALLBACK(name) void name(pt_TCP_Socket socket, s32 event, void *context)
+typedef PLATFORM_TCP_EVENT_CALLBACK(PlatformTCPEventCallback);
 
 //------------------------------------------------------------------------------
 // Platform API
@@ -385,31 +460,41 @@ typedef PLATFORM_TCP_CALLBACK(PlatformTCPCallback);
 
 // memory
 
-#define PLATFORM_ALLOCATE_MEMORY(name) pt_Memory name(u64 size, u8 alignment, u64 preferred)
+#define PLATFORM_TOTAL_ALLOCATED_MEMORY(name) u64 name()
+typedef PLATFORM_TOTAL_ALLOCATED_MEMORY(PlatformTotalAllocatedMemory);
+
+#define PLATFORM_ALLOCATE_MEMORY(name) pt_Memory* name(u64 size, u64 flags)
 typedef PLATFORM_ALLOCATE_MEMORY(PlatformAllocateMemory);
 
-#define PLATFORM_RESIZE_MEMORY(name) b8 name(pt_Memory *mem, u64 new_size, u8 alignment)
-typedef PLATFORM_RESIZE_MEMORY(PlatformResizeMemory);
-
-#define PLATFORM_FREE_MEMORY(name) void name(pt_Memory *pm)
+#define PLATFORM_FREE_MEMORY(name) void name(pt_Memory *memory)
 typedef PLATFORM_FREE_MEMORY(PlatformFreeMemory);
+
+#define PLATFORM_ALLOCATE_MEMORY_RAW(name) void* name(u64 size, u64 flags)
+typedef PLATFORM_ALLOCATE_MEMORY_RAW(PlatformAllocateMemoryRaw);
+
+#define PLATFORM_FREE_MEMORY_RAW(name) void name(void *raw)
+typedef PLATFORM_FREE_MEMORY_RAW(PlatformFreeMemoryRaw);
+
+//
+// @todo deprecate this resize memory thing
+//
+#define PLATFORM_RESIZE_MEMORY(name) b8 name(pt_Memory *memory, u64 new_size)
+typedef PLATFORM_RESIZE_MEMORY(PlatformResizeMemory);
 
 #define PLATFORM_COPY_MEMORY(name) void name(void *dest, void *src, u64 count)
 typedef PLATFORM_COPY_MEMORY(PlatformCopyMemory);
 
 // file handling
 
-#define PLATFORM_OPEN_READ_FILE(name) pt_File name(const char* file_begin, const char* file_end)
-typedef PLATFORM_OPEN_READ_FILE(PlatformOpenReadFile);
+#define pt_FILE_READ    0x1
+#define pt_FILE_WRITE   0x2
+#define pt_FILE_APPEND  0x4
 
-#define PLATFORM_OPEN_WRITE_FILE(name) pt_File name(const char* file_begin, const char* file_end)
-typedef PLATFORM_OPEN_WRITE_FILE(PlatformOpenWriteFile);
+#define PLATFORM_OPEN_FILE(name) pt_File name(const char* file_begin, const char* file_end, s32 mode)
+typedef PLATFORM_OPEN_FILE(PlatformOpenFile);
 
 #define PLATFORM_READ_NEXT_FILE_CHUNK(name) void name(pt_File *pfh, char *buffer_begin, char* buffer_end)
 typedef PLATFORM_READ_NEXT_FILE_CHUNK(PlatformReadNextFileChunk);
-
-#define PLATFORM_WRITE_TO_FILE(name) b8 name(pt_File *pfh, char *begin, char* end)
-typedef PLATFORM_WRITE_TO_FILE(PlatformWriteToFile);
 
 #define PLATFORM_SEEK_FILE(name) void name(pt_File *pfh, u64 offset)
 typedef PLATFORM_SEEK_FILE(PlatformSeekFile);
@@ -417,22 +502,17 @@ typedef PLATFORM_SEEK_FILE(PlatformSeekFile);
 #define PLATFORM_CLOSE_FILE(name) void name(pt_File *pfh)
 typedef PLATFORM_CLOSE_FILE(PlatformCloseFile);
 
-#define PLATFORM_EXECUTABLE_PATH(name) void name(FilePath *fp)
+#define PLATFORM_WRITE_TO_FILE(name) b8 name(pt_File *pfh, char *begin, char* end)
+typedef PLATFORM_WRITE_TO_FILE(PlatformWriteToFile);
+
+// returns 1 if success else return 0
+// length should contain the size of the buffer at input
+// at output it contains the length of the path regardless of success
+#define PLATFORM_EXECUTABLE_PATH(name) s32 name(char *buffer, u32 *length)
 typedef PLATFORM_EXECUTABLE_PATH(PlatformExecutablePath);
 
 #define PLATFORM_RESIZE_FILE(name) b8 name(char* file_begin, char* file_end, u64 new_size)
 typedef PLATFORM_RESIZE_FILE(PlatformResizeFile);
-
-// // tcp server
-//
-// #define PLATFORM_SERVER_CREATE(name) pt_Server name(u32 port, void *user_data, PlatformServerRequestHandler *handler)
-// typedef PLATFORM_SERVER_CREATE(PlatformServerCreate);
-//
-// #define PLATFORM_SERVER_START(name) void name(pt_Server *server, pt_WorkQueue *work_queue)
-// typedef PLATFORM_SERVER_START(PlatformServerStart);
-//
-// #define PLATFORM_SERVER_RESPOND(name) void name(pt_ServerConnection *connection, char *begin, char *end)
-// typedef PLATFORM_SERVER_RESPOND(PlatformServerRespond);
 
 // tcp
 
@@ -442,30 +522,42 @@ typedef PLATFORM_TCP_CREATE(PlatformTCPCreate);
 #define PLATFORM_TCP_DESTROY(name) void name(pt_TCP tcp)
 typedef PLATFORM_TCP_DESTROY(PlatformTCPDestroy);
 
-#define PLATFORM_TCP_SERVE(name) void name(pt_TCP tcp, s32 port, void *user_data, PlatformTCPCallback *callback, pt_TCP_Feedback *feedback)
-typedef PLATFORM_TCP_SERVE(PlatformTCPServe);
+#define PLATFORM_TCP_LISTEN(name) void name(pt_TCP tcp, s32 port, u16 max_connections, void *user_data, PlatformTCPDataCallback *data_callback, \
+					    PlatformTCPEventCallback *event_callback, void *context_event_callback, pt_TCP_Feedback *feedback)
+typedef PLATFORM_TCP_LISTEN(PlatformTCPListen);
 
-#define PLATFORM_TCP_CLIENT(name) void name(pt_TCP tcp, s32 port, char *hostname, void *user_data, PlatformTCPCallback *callback, pt_TCP_Feedback *feedback)
-typedef PLATFORM_TCP_CLIENT(PlatformTCPClient);
+#define PLATFORM_TCP_CONNECT(name) void name(pt_TCP tcp, s32 port, char *hostname, void *user_data, PlatformTCPDataCallback *data_callback, pt_TCP_Feedback *feedback)
+typedef PLATFORM_TCP_CONNECT(PlatformTCPConnect);
 
-#define PLATFORM_TCP_WRITE(name) void name(pt_TCP_Socket *socket, char *buffer, s64 length)
+//
+// return 0 if write didn't go smoothly
+//
+#define PLATFORM_TCP_WRITE(name) s32 name(pt_TCP_Socket socket, void *buffer, s64 length)
 typedef PLATFORM_TCP_WRITE(PlatformTCPWrite);
+
+#define PLATFORM_TCP_CLOSE_SOCKET(name) void name(pt_TCP_Socket socket)
+typedef PLATFORM_TCP_CLOSE_SOCKET(PlatformTCPCloseSocket);
+
+//
+// Figure out if a socket is still valid. Lower level events
+// might have handled the socket invalid (communication was
+// closed by the other side)
+//
+// returns either 0,1,2,3 which directions are still open
+//
+#define PLATFORM_TCP_SOCKET_STATUS(name) s32 name(pt_TCP_Socket socket)
+typedef PLATFORM_TCP_SOCKET_STATUS(PlatformTCPSocketOK);
+
+#define PLATFORM_TCP_SOCKET_SET_CUSTOM_DATA(name) void name(pt_TCP_Socket socket, void *custom_data)
+typedef PLATFORM_TCP_SOCKET_SET_CUSTOM_DATA(PlatformTCPSocketSetCustomData);
+
+#define PLATFORM_TCP_SOCKET_GET_CUSTOM_DATA(name) void *name(pt_TCP_Socket socket)
+typedef PLATFORM_TCP_SOCKET_GET_CUSTOM_DATA(PlatformTCPSocketGetCustomData);
 
 // process current events (if incoming data on client and server sockets,
 // use the work queue to dispatch the data)
 #define PLATFORM_TCP_PROCESS_EVENTS(name) void name(pt_TCP tcp, pt_WorkQueue *work_queue)
 typedef PLATFORM_TCP_PROCESS_EVENTS(PlatformTCPProcessEvents);
-
-//
-/* run the event loop indefinitely */
-// #define PLATFORM_TCP_CYCLE(name) void name(pt_TCP *server, pt_WorkQueue *work_queue)
-//
-// #define PLATFORM_TCP_CONNECT(name) pt_Connection name(char *hostname, s32 port, pt_ReceiveHandler *receive_handler)
-//
-// #define PLATFORM_TCP_SEND(name) void name(pt_Connection *connection, char *buffer_begin, char *buffer_end)
-//
-// #define PLATFORM_TCP_SERVE(name) void name(pt_TCP *tcp, s32 port, void *user_data, pt_ReceiveHandler *receive_handler)
-//
 
 
 // memory mapped files
@@ -528,32 +620,84 @@ typedef PLATFORM_UNLOCK_MUTEX(PlatformUnlockMutex);
 #define PLATFORM_RELEASE_MUTEX(name) void name(pt_Mutex mutex)
 typedef PLATFORM_RELEASE_MUTEX(PlatformReleaseMutex);
 
+#define PLATFORM_MEMORY_COPY(name) void name(void *dst, void *src, u64 length)
+typedef PLATFORM_MEMORY_COPY(PlatformMemoryCopy);
+
+#define PLATFORM_MEMORY_MOVE(name) void name(void *dst, void *src, u64 length)
+typedef PLATFORM_MEMORY_MOVE(PlatformMemoryMove);
+
+#define PLATFORM_MEMORY_COMPARE(name) s32 name(void *a, void *b, u64 length)
+typedef PLATFORM_MEMORY_COMPARE(PlatformMemoryCompare);
+
+#define PLATFORM_MEMORY_SET(name) void name(void *dst, s32 byte_value, u64 length)
+typedef PLATFORM_MEMORY_SET(PlatformMemorySet);
+
+// platform access to get a list of filenames from a directory
+
+// #define pt_FILE_TYPE_UNDEFINED    0
+// #define pt_FILE_TYPE_REGULAR_FILE 1
+// #define pt_FILE_TYPE_DIRECTORY    2
+// #define pt_FILE_TYPE_LINK         4
+// #define pt_FILE_TYPE_OTHER        8
+// #define pt_FILE_TYPE_ALL          (1+2+4+8)
+
+#define PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(name) void name(char *filename, void *user_data)
+typedef PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(PlatformGetFilenamesInDirectoryCallback);
+
+//
+// @note maybe we someday need recursive traversal, for now a single folder will do it
+//
+// if return is 0, then directory could not be accessed
+// otherwise it performed successfully
+// set the input types to be file and directory or just directory of just files
+//
+#define PLATFORM_GET_FILENAMES_IN_DIRECTORY(name) s32 name(char *directory, s32 recursive, PlatformGetFilenamesInDirectoryCallback *callback, void *user_data)
+typedef PLATFORM_GET_FILENAMES_IN_DIRECTORY(PlatformGetFilenamesInDirectory);
+
+#define PLATFORM_SORT_COMPARE(name) s32 name(const void *a, const void *b, void *context)
+typedef PLATFORM_SORT_COMPARE(PlatformSortCompare);
+
+#define PLATFORM_SORT(name) void name(void *data, u64 count, u64 size, PlatformSortCompare *cmp, void *context)
+typedef PLATFORM_SORT(PlatformSort);
+
+#define PLATFORM_FILENAME_MATCH(name) s32 name(const char *pattern, const char *text)
+typedef PLATFORM_FILENAME_MATCH(PlatformFilenameMatch);
+
+
+#define PLATFORM_GETENV(name) char* name(void *variable_name)
+typedef PLATFORM_GETENV(PlatformGetEnv);
+
+#define PLATFORM_FAILED_ASSERTION(name) char* name(const char *expression, const char *filename, s32 line)
+typedef PLATFORM_FAILED_ASSERTION(PlatformFailedAssertion);
+
 typedef struct PlatformAPI {
+	PlatformTotalAllocatedMemory     *total_allocated_memory;
 
 	PlatformAllocateMemory           *allocate_memory;
-	PlatformResizeMemory             *resize_memory;
 	PlatformFreeMemory               *free_memory;
+
+	PlatformAllocateMemoryRaw        *allocate_memory_raw;
+	PlatformFreeMemoryRaw            *free_memory_raw;
+
+	PlatformResizeMemory             *resize_memory;
 	PlatformCopyMemory               *copy_memory;
-	PlatformOpenReadFile             *open_read_file;
-	PlatformOpenWriteFile            *open_write_file;
+	PlatformOpenFile                 *open_file;
+	PlatformWriteToFile              *write_to_file;
 	PlatformReadNextFileChunk        *read_next_file_chunk;
 	PlatformSeekFile                 *seek_file;
 	PlatformCloseFile                *close_file;
-	PlatformWriteToFile              *write_to_file;
 	PlatformExecutablePath           *executable_path;
 
-#if 0
-	PlatformServerCreate             *server_create;
-	PlatformServerStart              *server_start;
-	PlatformServerRespond            *server_respond;
-#else
 	PlatformTCPCreate                *tcp_create;
 	PlatformTCPDestroy               *tcp_destroy;
-	PlatformTCPServe                 *tcp_serve;
+	PlatformTCPListen                *tcp_listen;
 	PlatformTCPWrite                 *tcp_write;
 	PlatformTCPProcessEvents         *tcp_process_events;
-	PlatformTCPClient                *tcp_client;
-#endif
+	PlatformTCPConnect               *tcp_connect;
+	PlatformTCPCloseSocket           *tcp_close_socket;
+	PlatformTCPSocketOK              *tcp_socket_status;
+	PlatformTCPSocketSetCustomData   *tcp_socket_set_custom_data;
+	PlatformTCPSocketGetCustomData   *tcp_socket_get_custom_data;
 
 	PlatformGetTime                  *get_time;
 	PlatformOpenMMapFile             *open_mmap_file;
@@ -576,87 +720,116 @@ typedef struct PlatformAPI {
 	PlatformUnlockMutex              *unlock_mutex;
 	PlatformLockMutex                *lock_mutex;
 
+	PlatformMemoryCopy               *memory_copy;
+	PlatformMemoryMove               *memory_move;
+	PlatformMemorySet                *memory_set;
+	PlatformMemoryCompare            *memory_compare;
+
+	PlatformGetFilenamesInDirectory  *get_filenames_in_directory;
+
+	PlatformSort                     *sort;
+
+	PlatformFilenameMatch            *filename_match;
+
+	PlatformGetEnv                   *getenv;
+
+	PlatformFailedAssertion          *failed_assertion;
+
 } PlatformAPI;
 
-// anyone who includes platform.c (should only be included once)
-// will have this global platform variable
+/*
+ * a static platform should be available
+ */
 global_variable PlatformAPI platform;
 
-/*
- *
- * functions
- *
- */
+#if CHECK_ASSERTIONS
+#define Assert(EX) (void) ((EX) || (platform.failed_assertion(#EX, __FILE__, __LINE__),0))
+#else
+#define Assert(Expression)
+#endif
+#define InvalidCodePath Assert(!"InvalidCodePath")
+#define InvalidDefaultCase default: {InvalidCodePath;} break
 
-internal f64
+
+#define StaticAssertAlignment_st_(a) #a
+#define StaticAssertAlignment_cat_(a,b,c) StaticAssertAlignment_st_(a ## b ## c)
+#define StaticAssertAlignment(type,alignment) \
+	_Static_assert(sizeof(type) % alignment == 0, StaticAssertAlignment_cat_(type,_size_is_not_multiple_of_,alignment))
+
+/*
+ * functions
+ */
+static f64
 pt_nan_f64()
 {
 	return NAN;
 }
 
-internal b8
+static b8
 pt_is_nan_f64(f64 value)
 {
 	return (b8) (value != value);
 }
 
-internal inline u8
+static inline u8
 pt_safe_s32_u8(s32 i)
 {
 	Assert(i >= 0 && i < 256);
 	return (u8) i;
 }
 
-internal inline u8
+static inline u8
 pt_safe_s64_u8(s64 i)
 {
 	Assert(i >= 0 && i < 256);
 	return (u8) i;
 }
 
-internal inline u32
+static inline u32
 pt_safe_s64_u32(s64 i)
 {
 	Assert(i >= 0 && i < 0x100000000ll);
 	return (u32) i;
 }
 
-internal inline u16
+static inline u16
 pt_safe_s64_u16(s64 i)
 {
 	Assert(i >= 0 && i < 0x10000ll);
 	return (u16) i;
 }
 
-internal inline u32
+static inline u32
 pt_safe_s32_u32(s32 i)
 {
 	Assert(i >= 0);
 	return (u32) i;
 }
 
-internal inline u64
+static inline u64
 pt_safe_s64_u64(s64 i)
 {
 	Assert(i >= 0);
 	return (u64) i;
 }
 
-internal inline u64
+static inline u64
 pt_next_multiple(u64 value, u64 base)
 {
 	return base * ((value + base - 1)/base);
 }
 
-internal void pt_copy_bytesn(const char* src, char* dst, u64 n)
+// @todo convention here is different than the stdlib
+static void
+pt_copy_bytesn(const char* src, char* dst, u64 n)
 {
 	for (u64 i=0;i<n;++i) {
 		*dst++ = *src++;
 	}
 }
 
-internal s32 pt_copy_bytes(const char* src_begin, const char* src_end,
-			   char* dst_begin, char* dst_end)
+static s32
+pt_copy_bytes(const char* src_begin, const char* src_end, char* dst_begin, char* dst_end)
 {
 	//
 	// @TODO(llins): make it more efficient by copying longer
@@ -673,7 +846,7 @@ internal s32 pt_copy_bytes(const char* src_begin, const char* src_end,
 	return n;
 }
 
-inline internal void
+inline static void
 pt_fill(char *begin, char *end, char ch)
 {
 	while (begin != end) {
@@ -682,7 +855,7 @@ pt_fill(char *begin, char *end, char ch)
 	}
 }
 
-inline internal void
+inline static void
 pt_filln(char *begin, u64 count, char ch)
 {
 	for (u64 i=0;i<count;++i) {
@@ -691,7 +864,20 @@ pt_filln(char *begin, u64 count, char ch)
 	}
 }
 
-internal void
+inline static void
+pt_zero(void *base, u64 size)
+{
+	// @cleanup use the memset platform method
+	u8 *it = (u8*) base;
+	for (u64 i=0;i<size;++i) {
+		*it = 0;
+		++it;
+	}
+}
+
+#define pt_clear(x) pt_zero(&x, sizeof(x))
+
+static void
 pt_reverse(char *begin, char *end)
 {
 	Assert(begin <= end);
@@ -708,11 +894,44 @@ pt_reverse(char *begin, char *end)
 	}
 }
 
+
+
+
 //
 // following the same spec as std algorithm library
 // [begin,nbegin) and [nbegin,end) are valid ranges
 //
-internal void
+// #define SWAP(x,y) do
+//    { unsigned char swap_temp[sizeof(x) == sizeof(y) ? (s32)sizeof(x) : -1];
+//      memcpy(swap_temp,&y,sizeof(x));
+//      memcpy(&y,&x,       sizeof(x));
+//      memcpy(&x,swap_temp,sizeof(x));
+//     } while(0)
+
+#define pt_ROTATE(type,begin,nbegin,end) \
+{ \
+	if (nbegin != end)  { \
+		type *next = nbegin; \
+		while (begin != next) {  \
+			type tmp = *begin; \
+			*begin   = *next; \
+			*next    = tmp; \
+			++begin; \
+			++next; \
+			if (next == end) { \
+				next = nbegin; \
+			} else if (begin == nbegin) { \
+				nbegin = next; \
+			} \
+		} \
+	} \
+}
+
+//
+// following the same spec as std algorithm library
+// [begin,nbegin) and [nbegin,end) are valid ranges
+//
+static void
 pt_rotate(char *begin, char *nbegin, char *end)
 {
 	if (nbegin == end)
@@ -735,7 +954,7 @@ pt_rotate(char *begin, char *nbegin, char *end)
 }
 
 #define ROTATE_SPECIALIZED(name, base)     \
-	internal void                              \
+	static void                              \
 name(base *begin, base *nbegin, base *end) \
 {                                          \
 	base* next = nbegin;                   \
@@ -753,7 +972,7 @@ name(base *begin, base *nbegin, base *end) \
 	}                                      \
 }
 
-internal u32
+static u32
 pt_msb32(u32 x)
 {
 	static const unsigned int bval[] =
@@ -765,11 +984,8 @@ pt_msb32(u32 x)
 	return r + bval[x];
 }
 
-
-
-
 // Normalize on the two most significant bits
-internal u32
+static u32
 pt_normalize_msb2(u32 num_bytes) {
 	// pf_BEGIN_BLOCK("pt_normalize_msb2");
 	static const u32 class_bits = 2;
@@ -823,7 +1039,7 @@ pt_normalize_msb2(u32 num_bytes) {
 
 // offset on the input
 #if 0
-internal void
+static void
 pt_read_bits(const char* input, u32 offset, u32 bits, char* output)
 {
 	// pf_BEGIN_BLOCK("pt_read_bits");
@@ -869,7 +1085,7 @@ pt_read_bits(const char* input, u32 offset, u32 bits, char* output)
  *  when we see things don't align well. Using a u64* on a single
  *  byte.
  */
-internal void
+static void
 pt_write_bits(const char *input,
 	      u32 offset, // offset on the output
 	      u32 bits,
@@ -935,7 +1151,7 @@ typedef struct {
 	u64 bit_offset;
 } pt_BitStream;
 
-internal void
+static void
 pt_BitStream_init(pt_BitStream *self, void *data, u64 data_length, u64 bit_offset)
 {
 	self->data = data;
@@ -943,7 +1159,7 @@ pt_BitStream_init(pt_BitStream *self, void *data, u64 data_length, u64 bit_offse
 	self->bit_offset = bit_offset;
 }
 
-internal u8
+static u8
 pt_BitStream_read(pt_BitStream *self, u8 bits)
 {
 	Assert(bits <= 8);
@@ -1000,7 +1216,7 @@ pt_BitStream_read(pt_BitStream *self, u8 bits)
 // 0x7f       0xfe
 //
 
-internal void
+static void
 pt_BitStream_write(pt_BitStream *self, u8 value, u8 bits)
 {
 	Assert(bits <= 8);
@@ -1035,7 +1251,7 @@ pt_BitStream_write(pt_BitStream *self, u8 value, u8 bits)
 	}
 }
 
-internal void
+static void
 pt_read_bits2(const char* input, u32 offset, u32 bits, char* output)
 {
 	pt_BitStream src;
@@ -1059,7 +1275,7 @@ pt_read_bits2(const char* input, u32 offset, u32 bits, char* output)
 // copy bits [0,bits-1]              from input
 // into bits [offset, offset+bits-1] of   output
 //
-internal void
+static void
 pt_write_bits2(const char *input, u32 offset, u32 bits, char * output)
 {
 	pt_BitStream src;
@@ -1079,24 +1295,58 @@ pt_write_bits2(const char *input, u32 offset, u32 bits, char * output)
 	}
 }
 
+//------------------------------------------------------------------------------
+//
+// sort
+//
+// sort using c's stdlib standard mechanism
+//
+//------------------------------------------------------------------------------
 
+#define PLATFORM_SORT_COMPARE_CALLBACK(name) s32 name(const void *a, const void* b)
+typedef PLATFORM_SORT_COMPARE_CALLBACK(pt_SortCompareCallback);
+
+static void
+pt_sort(void *base, u64 num_records, u64 record_size, pt_SortCompareCallback *compare)
+{
+	qsort(base, num_records, record_size, compare);
+}
+
+PLATFORM_SORT_COMPARE_CALLBACK(pt_sort_compare_f64)
+{
+	f64 aa = *((f64*)a);
+	f64 bb = *((f64*)b);
+	if (aa < bb) {
+		return -1;
+	} else if (aa > bb) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+static void
+pt_sort_f64(f64 *base, u64 num_records)
+{
+	qsort(base, num_records, sizeof(f64), pt_sort_compare_f64);
+}
 
 //------------------------------------------------------------------------------
 // MemoryBlock
 //------------------------------------------------------------------------------
 
-internal s64
+static s64
 MemoryBlock_length(MemoryBlock *self)
 {
 	Assert(self->begin < self->end);
 	return self->end - self->begin;
 }
 
-internal MemoryBlock
+static MemoryBlock
 MemoryBlock_aligned(MemoryBlock block, u64 block_size)
 {
-	char *begin = (char*) RALIGN((u64) block.begin,block_size);
-	char *end   = (char*) LALIGN((u64) block.end,  block_size);
+	char *begin = (char*) RAlign((u64) block.begin,block_size);
+	char *end   = (char*) LAlign((u64) block.end,  block_size);
 	if (begin <= end) {
 		return (MemoryBlock) { .begin = begin, .end = end };
 	} else {
@@ -1104,7 +1354,7 @@ MemoryBlock_aligned(MemoryBlock block, u64 block_size)
 	}
 }
 
-internal MemoryBlock
+static MemoryBlock
 MemoryBlock_partition_part(MemoryBlock block, s32 index, s32 parts)
 {
 	s64 n = block.end - block.begin;
@@ -1114,78 +1364,10 @@ MemoryBlock_partition_part(MemoryBlock block, s32 index, s32 parts)
 }
 
 //------------------------------------------------------------------------------
-//  string utility
-//------------------------------------------------------------------------------
-
-internal char*
-cstr_end(char *begin)
-{
-	while(*begin != 0)
-		++begin;
-	return begin;
-}
-
-internal s64
-cstr_len(char *begin)
-{
-	char *it = begin;
-	while(*it != 0)
-		++it;
-	return it - begin;
-}
-
-internal s64
-pt_compare_memory(char* b1, char* e1,
-		  char* b2, char* e2)
-{
-	char *i1 = b1;
-	char *i2 = b2;
-	// abs value will be 1 + index of where differs
-	// signal is negative if first differing byte is smaller
-	// on
-	while (i1 != e1 && i2 != e2)
-	{
-		s64 diff = (s64) *i1 - (s64) *i2;
-		if (diff < 0) { return -(1 + (i1-b1)); }
-		else if (diff > 0) { return (1 + (i1-b1)); }
-		++i1; ++i2;
-	}
-	if (i1 != e1) { return (1 + (i1-b1)); }
-	else if (i2 != e2) { return -(1 + (i1-b1)); }
-	return 0;
-}
-
-internal s64
-pt_compare_memory_n(char* b1, char* e1, char* b2, char* e2, s64 n)
-{
-	if (e1 - b1 > n)
-		e1 = b1 + n;
-	if (e2 - b2 > n)
-		e2 = b2 + n;
-	return pt_compare_memory(b1, e1, b2, e2);
-}
-
-internal inline s64
-pt_compare_memory_cstr(
-		       char* b1,
-		       char* e1,
-		       char* cstr)
-{
-	return pt_compare_memory(b1, e1, cstr, cstr_end(cstr));
-}
-
-internal inline s64
-pt_compare_memory_n_cstr(char* b1, char* e1, char* cstr, s64 n)
-{
-	// compare at most n characters
-	return pt_compare_memory_n(b1, e1, cstr, cstr_end(cstr), n);
-}
-
-//------------------------------------------------------------------------------
 // Parse integers
 //------------------------------------------------------------------------------
 
-internal b8
+static b8
 pt_parse_s32(char *begin, char *end, s32 *output)
 {
 	int result = 0;
@@ -1218,7 +1400,7 @@ pt_parse_s32(char *begin, char *end, s32 *output)
 
 }
 
-internal b8
+static b8
 pt_parse_s64(char *begin, char *end, s64 *output)
 {
 	s64 result = 0;
@@ -1250,7 +1432,7 @@ pt_parse_s64(char *begin, char *end, s64 *output)
 	return 1;
 }
 
-internal b8
+static b8
 pt_parse_u64(char *begin, char *end, u64 *output)
 {
 	u64 result = 0;
@@ -1274,7 +1456,7 @@ pt_parse_u64(char *begin, char *end, u64 *output)
 	return 1;
 }
 
-internal b8
+static b8
 pt_parse_u32(char *begin, char *end, u32 *output)
 {
 	u32 result = 0;
@@ -1298,7 +1480,117 @@ pt_parse_u32(char *begin, char *end, u32 *output)
 	return 1;
 }
 
-internal b8
+static s32
+pt_cstr_to_f32(char *cstr, f32 *output)
+{
+	char *end_ptr = 0;
+	*output = strtof(cstr, &end_ptr);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_cstr_to_s32(char *cstr, s32 *output)
+{
+	char *end_ptr = 0;
+	*output = strtol(cstr, &end_ptr, 10);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_cstr_to_f64(char *cstr, f64 *output)
+{
+	char *end_ptr = 0;
+	*output = strtod(cstr, &end_ptr);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_cstr_to_u64(char *cstr, u64 *output)
+{
+	char *end_ptr = 0;
+	*output = strtoull(cstr, &end_ptr, 10);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_str_to_s32(char *text, u32 len, s32 *output)
+{
+	if (len > 31) return 0;
+	char buffer[32];
+	pt_copy_bytesn(text, buffer, len);
+	buffer[len] = 0;
+	char *end_ptr = 0;
+	*output = strtod(buffer, &end_ptr);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_str_to_u64(char *text, u32 len, u64 *output)
+{
+	if (len > 31) return 0;
+	char buffer[32];
+	pt_copy_bytesn(text, buffer, len);
+	buffer[len] = 0;
+	char *end_ptr = 0;
+	*output = strtoull(buffer, &end_ptr, 10);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_str_to_f32(char *text, u32 len, f32 *output)
+{
+	if (len > 31) return 0;
+	char buffer[32];
+	pt_copy_bytesn(text, buffer, len);
+	buffer[len] = 0;
+	char *end_ptr = 0;
+	*output = strtof(buffer, &end_ptr);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_str_to_f64(char *text, u32 len, f32 *output)
+{
+	if (len > 31) return 0;
+	char buffer[32];
+	pt_copy_bytesn(text, buffer, len);
+	buffer[len] = 0;
+	char *end_ptr = 0;
+	*output = strtod(buffer, &end_ptr);
+	return (*end_ptr == 0);
+}
+
+static s32
+pt_u64_from_hex_str(char *text, u32 len, u64 *output)
+{
+	if (len > 31) return 0;
+	char buffer[32];
+	pt_copy_bytesn(text, buffer, len);
+	buffer[len] = 0;
+	char *end_ptr = 0;
+	*output = strtoull(buffer, &end_ptr, 16);
+	return (*end_ptr == 0);
+}
+
+//
+// static s32
+// parse_s32(char *cstr, s32 *output)
+// {
+// 	char *end_ptr;
+// 	*output = strtol(cstr, &end_ptr, 10);
+// 	return (*end_ptr == 0);
+// }
+//
+// static s32
+// parse_u64(char *cstr, u64 *output)
+// {
+// 	char *end_ptr;
+// 	*output = strtoull(cstr, &end_ptr, 10);
+// 	return (*end_ptr == 0);
+// }
+//
+
+static b8
 pt_parse_f64(char *begin, char *end, f64 *output)
 {
 	// @TODO(llins): make this more efficient
@@ -1310,7 +1602,7 @@ pt_parse_f64(char *begin, char *end, f64 *output)
 	return 1; //(errno == 0 ? 1 : 0);
 }
 
-internal b8
+static b8
 pt_parse_f32(char *begin, char *end, f32 *output)
 {
 	// @TODO(llins): make this more efficient
@@ -1319,11 +1611,11 @@ pt_parse_f32(char *begin, char *end, f32 *output)
 	s32 len = pt_copy_bytes(begin, end, buffer, buffer+31);
 	buffer[len] = 0;
 	*output = (f32) atof(buffer);
-	return 1; //(errno == 0 ? 1 : 0);
+	return 1; // (errno == 0 ? 1 : 0);
 }
 
 
-internal char*
+static char*
 pt_find_char(char *begin, char *end, char ch)
 {
 	char *it = begin;
@@ -1335,7 +1627,7 @@ pt_find_char(char *begin, char *end, char ch)
 	return end;
 }
 
-internal void
+static void
 pt_swap_s32(s32 *a, s32 *b)
 {
 	s32 aux = *a;
@@ -1344,467 +1636,10 @@ pt_swap_s32(s32 *a, s32 *b)
 }
 
 //------------------------------------------------------------------------------
-// MemoryBlock
-//------------------------------------------------------------------------------
-
-internal s64
-pt_MemoryBlock_find_first_match(MemoryBlock *begin, MemoryBlock *end, char *content_begin, char *content_end)
-{
-	Assert(begin < end);
-	MemoryBlock *it = begin;
-	while (it != end) {
-		if (pt_compare_memory(it->begin, it->end, content_begin, content_end) != 0) {
-			++it;
-		} else {
-			return (it - begin);
-		}
-	}
-	return -1;
-}
-
-//------------------------------------------------------------------------------
-// Print
-//------------------------------------------------------------------------------
-
-internal void
-Print_init(Print *ps, char *begin, char *capacity)
-{
-	Assert(begin <= capacity);
-	ps->begin = ps->end = begin;
-	ps->capacity = capacity;
-	ps->written = 0;
-	ps->overflow = 0;
-	ps->initialized = 1;
-}
-
-internal u64
-Print_length(Print *self)
-{
-	Assert(self->begin <= self->end);
-	return self->end - self->begin;
-}
-
-internal void
-Print_clear(Print *ps)
-{
-	ps->end = ps->begin;
-	ps->written = 0;
-	ps->overflow = 0;
-	ps->initialized = 1;
-}
-
-internal char*
-Print_checkpoint(Print *self)
-{
-	return self->end;
-}
-
-internal void
-Print_rewind(Print *self, char *checkpoint)
-{
-	Assert(self->begin <= checkpoint && checkpoint <= self->capacity);
-	self->end = checkpoint;
-}
-
-
-internal void
-Print_u64(Print *ps, u64 x)
-{
-	Assert(ps->initialized);
-	if (x == 0) {
-		if (ps->end < ps->capacity) {
-			*ps->end = '0';
-			++ps->end;
-			ps->written = 1;
-			ps->overflow = 0;
-		}
-		else {
-			ps->overflow = 1;
-			ps->written = 0;
-		}
-	}
-	else {
-		char *it = ps->end;
-		while (x > 0) {
-			if (it == ps->capacity) {
-				// overflow
-				ps->overflow = 1;
-				ps->written = 0;
-				return;
-			}
-			u64 d = x % 10;
-			x = x/10;
-			*it = (char)('0' + d);
-			++it;
-		}
-		// reverse
-		int i = (int) (it - ps->end)/2 - 1;
-		while (i >= 0) {
-			char c = *(ps->end + i);
-			*(ps->end + i) = *(it - 1 - i);
-			*(it - 1 - i) = c;
-			--i;
-		}
-		ps->written = it - ps->end;
-		ps->overflow = 0;
-		ps->end += ps->written;
-	}
-}
-
-
-internal void
-Print_s64(Print *ps, s64 x)
-{
-	Assert(ps->initialized);
-
-
-	if (x == 0) {
-		if (ps->end < ps->capacity) {
-			*ps->end = '0';
-			++ps->end;
-			ps->written = 1;
-			ps->overflow = 0;
-		} else {
-			ps->overflow = 1;
-			ps->written = 0;
-		}
-		return;
-	} else {
-
-		char *begin = ps->end;
-
-		if (x < 0) {
-			if (begin < ps->capacity) {
-				*begin = '-';
-				++begin;
-				ps->written = 1;
-				ps->overflow = 0;
-				x = -x;
-			} else {
-				ps->overflow = 1;
-				ps->written = 0;
-				return;
-			}
-		}
-
-		char *it = begin;
-		while (x > 0) {
-			if (it == ps->capacity) {
-				// overflow
-				ps->overflow = 1;
-				ps->written = 0;
-				return;
-			}
-			u64 d = x % 10;
-			x = x/10;
-			*it = (char)('0' + d);
-			++it;
-		}
-		// reverse
-		int i = (int) (it - begin)/2 - 1;
-		while (i >= 0) {
-			char c = *(begin + i);
-			*(begin + i) = *(it - 1 - i);
-			*(it - 1 - i) = c;
-			--i;
-		}
-		ps->written = it - ps->end;
-		ps->overflow = 0;
-		ps->end += ps->written;
-	}
-}
-
-
-internal void
-Print_cstr_safe(Print *self, char *begin, char *end)
-{
-	Assert(self->initialized);
-	char* it = self->end;
-	char* src_it = begin;
-	while (*src_it != 0 && src_it != end) {
-		if (it == self->capacity) {
-			// overflow
-			self->overflow = 1;
-			self->written = 0;
-			return;
-		}
-		*it = *src_it;
-		++it;
-		++src_it;
-	}
-	self->written = it - self->end;
-	self->overflow = 0;
-	self->end += self->written;
-}
-
-internal void
-Print_cstr(Print *ps, const char* s)
-{
-	Assert(ps->initialized);
-
-	char* it = ps->end;
-	while (*s != 0) {
-		if (it == ps->capacity) {
-			// overflow
-			ps->overflow = 1;
-			ps->written = 0;
-			return;
-		}
-		*it = *s;
-		++it;
-		++s;
-	}
-	ps->written = it - ps->end;
-	ps->overflow = 0;
-	ps->end += ps->written;
-}
-
-internal void
-Print_char(Print *ps, char c)
-{
-	Assert(ps->initialized);
-	if (ps->end != ps->capacity) {
-		*ps->end = c;
-		++ps->end;
-		ps->written = 1;
-		ps->overflow = 0;
-	}
-	else {
-		ps->overflow = 1;
-		ps->written = 0;
-	}
-}
-
-internal void
-Print_nchar(Print *ps, char c, u64 n)
-{
-	Assert(ps->initialized);
-	if (n <= (u64) (ps->capacity - ps->end)) {
-		for (u64 i=0;i<n;++i) {
-			*ps->end = c;
-			++ps->end;
-		}
-		ps->written = n;
-		ps->overflow = 0;
-	} else {
-		ps->overflow = 1;
-		ps->written = 0;
-	}
-}
-
-internal void
-Print_str(Print *ps, const char* begin, const char *end)
-{
-	Assert(ps->initialized);
-	u64 n = end - begin;
-	if (n <= (u64)(ps->capacity - ps->end)) {
-		for (u64 i=0;i<n;++i) {
-			*ps->end = *(begin + i);
-			++ps->end;
-		}
-		ps->written = n;
-		ps->overflow = 0;
-	}
-	else {
-		ps->overflow = 1;
-		ps->written = 0;
-	}
-}
-
-typedef union f64_bits
-{
-	u64 data;
-	f64 value;
-	struct {
-		u64 mantissa: 52;
-		u64 exponent: 11;
-		u64 sign: 1;
-	};
-}
-f64_bits;
-
-internal void
-Print_f64(Print *ps, f64 value)
-{
-	char buffer[32];
-	sprintf(buffer, "%e", value);
-	Print_cstr(ps, buffer);
-}
-
-/*
- * Assume last print started at position "pos".
- * can be used to align a series of smaller
- * prints.
- */
-internal void
-Print_fake_last_print(Print *self, char *pos)
-{
-	Assert(self->begin <= pos && pos <= self->end
-	       && !self->overflow && self->initialized);
-	self->written = pt_safe_s64_u64(self->end - pos);
-}
-
-
-internal void
-Print_align(Print *ps, u64 len, s8 align, char space_filler)
-{
-	Assert(ps->initialized);
-	if (len <= ps->written)
-		return;
-
-	u64 extra = len - ps->written;
-	if (extra <= (u64)(ps->capacity - ps->end)) {
-
-		char* begin = ps->end - ps->written;
-
-		u64 left = align < 0
-			? 0
-			: (align > 0
-			   ? (len-extra)
-			   : (len - (extra+1)/2));
-
-		for (u64 i=0;i<extra;++i) {
-			*ps->end = space_filler;
-			++ps->end;
-		}
-
-		pt_rotate(begin, begin + left, ps->end);
-
-		ps->written  = len;
-		ps->overflow = 0;
-	}
-	else {
-		ps->overflow = 1;
-		ps->written = 0;
-	}
-}
-
-internal void
-Print_bin_u64(Print *self, u64 x)
-{
-	char *mark = self->end;
-
-	// NOTE(llins): super inefficient
-	b8 game_on = 0;
-	for (s32 i=63;i>=0;--i) {
-		b8 on = ((x & (1ULL << i)) != 0);
-		if (on) {
-			Print_char(self, '1');
-			game_on = 1;
-		} else if (game_on) {
-			Print_char(self, '0');
-		}
-	}
-	if (!game_on) {
-		Print_char(self, '0');
-	}
-
-	Print_fake_last_print(self, mark);
-}
-
-
-// use the elegant stb library from Jeff Roberts and Sean Barret
-// https://raw.githubusercontent.com/nothings/stb/master/stb_sprintf.h
-#define STB_SPRINTF_IMPLEMENTATION
-#include "stb_sprintf.h"
-
-internal void
-Print_format(Print *self, char const * format, ...)
-{
-	va_list argp;
-	va_start(argp, format);
-	s32 result = stbsp_vsnprintf(self->end, self->capacity - self->end, format, argp);
-	va_end(argp);
-	self->end += result;
-	self->written = result;
-	self->overflow = 0;
-// 	char *it = self->end;
-// 	/* expensive loop, if we could access the number of characters written */
-// 	while (it != self->capacity && *it != 0)
-// 		++it;
-// 	self->end = it;
-}
-
-//------------------------------------------------------------------------------
-// platform independent file path services
-//------------------------------------------------------------------------------
-
-internal void
-FilePath_init(FilePath *self, char *begin, char *end)
-{
-	s64 n = end - begin;
-	Assert(n <= MAX_FILE_PATH_SIZE);
-	self->end = self->full_path + n;
-	*self->end = 0;
-	self->full_path[n+1] = 0; // make sure it is a cstr
-	pt_copy_bytes(begin, end, self->full_path, self->end);
-	self->end  = self->full_path + n;
-	self->name = self->full_path;
-
-	// find last /
-	char *it = self->full_path;
-	while (it != self->end) {
-		if (*it == '/' || *it == '\\') {
-			self->name = it + 1;
-			self->extension = self->end;
-		} else if (*it == '.') {
-			self->extension = it;
-		}
-		++it;
-	}
-}
-
-internal void
-FilePath_copy(FilePath* self, FilePath *other)
-{
-	char *dst = self->full_path;
-	for (char *it=other->full_path;it<other->end;++it) {
-		*dst++ = *it;
-	}
-	self->end  = dst;
-	*dst = 0; // make it cstr
-	self->name = self->full_path + (other->name - other->full_path);
-	self->extension = self->full_path
-		+ (other->extension - other->full_path);
-}
-
-internal void
-FilePath_set_name(FilePath* self, char *begin, char *end)
-{
-	s64 n = end - begin;
-
-	Assert((self->name - self->full_path) + n <= MAX_FILE_PATH_SIZE);
-
-	self->end = self->name + n;
-	*self->end = 0;
-	pt_copy_bytes(begin, end, self->name, self->end);
-	self->extension = self->end;
-
-	// find last /
-	self->extension = self->end;
-	char *it = self->full_path;
-	while (it != self->end)
-	{
-		if (*it == '.')
-		{
-			self->extension = it;
-		}
-		++it;
-	}
-}
-
-internal inline void
-FilePath_set_name_cstr(FilePath* fp, char *cstr)
-{
-	FilePath_set_name(fp, cstr, cstr_end(cstr));
-}
-
-
-//------------------------------------------------------------------------------
 // LinearAllocator
 //------------------------------------------------------------------------------
 
-internal void
+static void
 LinearAllocator_init(LinearAllocator* self, char *begin, char *end, char *capacity)
 {
 	self->begin = begin;
@@ -1812,7 +1647,7 @@ LinearAllocator_init(LinearAllocator* self, char *begin, char *end, char *capaci
 	self->capacity = capacity;
 }
 
-internal char*
+static char*
 LinearAllocator_alloc(LinearAllocator* self, u64 num_bytes)
 {
 	Assert(self->end + num_bytes <= self->capacity);
@@ -1821,7 +1656,7 @@ LinearAllocator_alloc(LinearAllocator* self, u64 num_bytes)
 	return result;
 }
 
-internal char*
+static char*
 LinearAllocator_alloc_if_available(LinearAllocator* self, u64 num_bytes)
 {
 	if (self->end + num_bytes > self->capacity) {
@@ -1834,13 +1669,13 @@ LinearAllocator_alloc_if_available(LinearAllocator* self, u64 num_bytes)
 
 
 
-internal u64
+static u64
 LinearAllocator_free_space(LinearAllocator* self)
 {
 	return (self->capacity - self->end);
 }
 
-internal char*
+static char*
 LinearAllocator_alloc_aligned(LinearAllocator* self, u64 num_bytes, u64 base_bytes)
 {
 	s64 offset = 0;
@@ -1855,20 +1690,20 @@ LinearAllocator_alloc_aligned(LinearAllocator* self, u64 num_bytes, u64 base_byt
 	return result;
 }
 
-internal void
+static void
 LinearAllocator_clear(LinearAllocator* self)
 {
 	self->end = self->begin;
 }
 
-internal void
+static void
 LinearAllocator_pop(LinearAllocator* self, u64 num_bytes)
 {
 	Assert(self->begin + num_bytes <= self->end);
 	self->end -= num_bytes;
 }
 
-internal LinearAllocatorCheckpoint
+static LinearAllocatorCheckpoint
 LinearAllocator_checkpoint(LinearAllocator *self)
 {
 	LinearAllocatorCheckpoint result;
@@ -1876,7 +1711,7 @@ LinearAllocator_checkpoint(LinearAllocator *self)
 	return result;
 }
 
-internal void
+static void
 LinearAllocator_rewind(LinearAllocator *self, LinearAllocatorCheckpoint cp)
 {
 	Assert(cp.checkpoint <= self->end);
@@ -1888,18 +1723,18 @@ LinearAllocator_rewind(LinearAllocator *self, LinearAllocatorCheckpoint cp)
 // BilinearAllocator
 //------------------------------------------------------------------------------
 
-internal void
-BilinearAllocator_init(BilinearAllocator* self, char *begin, char *capacity)
+static void
+BilinearAllocator_init(BilinearAllocator* self, void *buffer, u64 buffer_size)
 {
 	// [begin,end_left)
 	// [end_right,capcity)
-	self->begin = begin;
-	self->end_left = begin;
-	self->end_right = capacity;
-	self->capacity = capacity;
+	self->begin = buffer;
+	self->end_left = buffer;
+	self->end_right = (char*) buffer + buffer_size;
+	self->capacity = self->end_right;
 }
 
-internal char*
+static char*
 BilinearAllocator_alloc_left(BilinearAllocator* self, u64 num_bytes)
 {
 	Assert(self->end_left + num_bytes <= self->end_right);
@@ -1908,7 +1743,7 @@ BilinearAllocator_alloc_left(BilinearAllocator* self, u64 num_bytes)
 	return result;
 }
 
-internal char*
+static char*
 BilinearAllocator_alloc_right(BilinearAllocator* self, u64 num_bytes)
 {
 	// state is and num bytes is 4
@@ -1920,19 +1755,19 @@ BilinearAllocator_alloc_right(BilinearAllocator* self, u64 num_bytes)
 	return self->end_right;
 }
 
-internal MemoryBlock
+static MemoryBlock
 BilinearAllocator_free_memblock(BilinearAllocator* self)
 {
 	return (MemoryBlock) { .begin = self->end_left, .end = self->end_right };
 }
 
-internal u64
+static u64
 BilinearAllocator_free_space(BilinearAllocator* self)
 {
 	return (self->end_right - self->end_left);
 }
 
-internal char*
+static char*
 BilinearAllocator_alloc_left_aligned(BilinearAllocator* self, u64 num_bytes, u64 base_bytes)
 {
 	s64 offset = 0;
@@ -1949,33 +1784,33 @@ BilinearAllocator_alloc_left_aligned(BilinearAllocator* self, u64 num_bytes, u64
 // TODO(llins)
 // BilinearAllocator_alloc_right_aligned(BilinearAllocator* self, u64 num_bytes, u64 base_bytes)
 
-internal void
+static void
 BilinearAllocator_clear(BilinearAllocator* self)
 {
 	self->end_left  = self->begin;
 	self->end_right = self->capacity;
 }
 
-internal void
+static void
 BilinearAllocator_clear_left(BilinearAllocator* self)
 {
 	self->end_left  = self->begin;
 }
 
-internal void
+static void
 BilinearAllocator_clear_right(BilinearAllocator* self)
 {
 	self->end_right  = self->capacity;
 }
 
-internal void
+static void
 BilinearAllocator_pop_left(BilinearAllocator* self, u64 num_bytes)
 {
 	Assert(self->begin + num_bytes <= self->end_left);
 	self->end_left -= num_bytes;
 }
 
-internal void
+static void
 BilinearAllocator_pop_right(BilinearAllocator* self, u64 num_bytes)
 {
 	Assert(self->end_right + num_bytes <= self->capacity);
@@ -1983,7 +1818,7 @@ BilinearAllocator_pop_right(BilinearAllocator* self, u64 num_bytes)
 }
 
 
-internal BilinearAllocatorCheckpoint
+static BilinearAllocatorCheckpoint
 BilinearAllocator_left_checkpoint(BilinearAllocator *self)
 {
 	BilinearAllocatorCheckpoint result;
@@ -1992,7 +1827,7 @@ BilinearAllocator_left_checkpoint(BilinearAllocator *self)
 	return result;
 }
 
-internal BilinearAllocatorCheckpoint
+static BilinearAllocatorCheckpoint
 BilinearAllocator_right_checkpoint(BilinearAllocator *self)
 {
 	BilinearAllocatorCheckpoint result;
@@ -2001,7 +1836,7 @@ BilinearAllocator_right_checkpoint(BilinearAllocator *self)
 	return result;
 }
 
-internal void
+static void
 BilinearAllocator_rewind(BilinearAllocator *self, BilinearAllocatorCheckpoint cp)
 {
 	if (cp.left) {
@@ -2015,216 +1850,12 @@ BilinearAllocator_rewind(BilinearAllocator *self, BilinearAllocatorCheckpoint cp
 	}
 }
 
-//------------------------------------------------------------------------------
-// Ptr
-//------------------------------------------------------------------------------
-
-internal void
-Ptr_reset(Ptr *self, s64 offset)
-{
-	if (offset > 0) {
-		// *((u32*) &self->data)     = *  ( (u32*) &offset     );
-	        u16 *ptr = (u16*) &offset;
-		self->data[0] = *( ptr + 0 );
-		self->data[1] = *( ptr + 1 );
-		self->data[2] = *( ptr + 2 );
-	}
-	else {
-		offset = -offset;
-	        u16 *ptr = (u16*) &offset;
-		self->data[0] = *( ptr + 0 );
-		self->data[1] = *( ptr + 1 );
-		self->data[2] = *( ptr + 2 ) + (u16) 0x8000;
-// 		*((u32*) &self->data)     = *  ( (u32*) &offset     );
-// 		self->data[2] = *( (u16*) &offset + 2 ) + (u16) 0x8000;
-	}
-}
-
-internal void
-Ptr_set_null(Ptr *self)
-{
-	self->data[0] = 1;
-	self->data[1] = 0;
-	self->data[2] = 0;
-}
-
-internal void
-Ptr_set(Ptr *self, void* p)
-{
-	if (p) {
-		s64 offset = (s64) ((char*) p - (char*) self);
-		Ptr_reset(self, offset);
-	} else {
-		Ptr_set_null(self);
-	}
-}
-
-
-// NOTE(llins): 2017-06-20T16:20
-// How can we make a 6-bytes pointer more efficient
-// in some experiments this func was taking on average
-// 71 sycles per hit
-internal s64
-Ptr_offset(Ptr *self)
-{
-
-	// pf_BEGIN_BLOCK("Ptr_offset");
-
-	/* this is always a positiver number */
-	s64 offset = ((s64)self->data[0]) +
-		     ((s64)self->data[1] << 16) +
-		     ((s64)self->data[2] << 32);
-
-	/* but if bit 48 */
-	if (offset & 0x800000000000ll) {
-		offset = -(offset & 0x7fffffffffffll);
-	}
-
-	// pf_END_BLOCK();
-
-	return offset;
-}
-
-internal void*
-Ptr_get_not_null(Ptr *self)
-{
-	return ((char*) self + Ptr_offset(self));
-}
-
-
-internal b8
-Ptr_is_null(Ptr *self)
-{
-	return self->data[0] == 1 && self->data[1] == 0 && self->data[2] == 0;
-}
-
-internal b8
-Ptr_is_not_null(Ptr *self)
-{
-	return !Ptr_is_null(self);
-}
-
-internal void*
-Ptr_get(Ptr *self)
-{
-	return Ptr_is_not_null(self) ? Ptr_get_not_null(self) : 0;
-}
-
-internal void
-Ptr_copy(Ptr *self, Ptr *other)
-{
-	Ptr_set(self, Ptr_get(other));
-}
-
-internal void
-Ptr_swap(Ptr *self, Ptr *other)
-{
-	void *a = Ptr_get(self);
-	void *b = Ptr_get(other);
-	Ptr_set(self, b);
-	Ptr_set(other, a);
-}
-
-// trick gcc -E -CC x.c to preserve comments and see the macro in multiple lines
-#define PTR_SPECIALIZED_SERVICES(name, base) /*
-*/ void name##_reset(name *self, s64 offset) { Ptr_reset(&self->ptr, offset); } /*
-*/ void name##_set_null(name *self) { Ptr_set_null(&self->ptr); } /*
-*/ void name##_set(name *self, base *p) { Ptr_set(&self->ptr, p); } /*
-*/ b8 name##_is_not_null(name *self) { return Ptr_is_not_null(&self->ptr); } /*
-*/ b8 name##_is_null(name *self) { return Ptr_is_null(&self->ptr); } /*
-*/ base * name##_get(name *self) { return ((base *) Ptr_get(&self->ptr)); } /*
-*/ base * name##_get_not_null(name *self) { return (base *) Ptr_get_not_null(&self->ptr); } /*
-*/ void name##_copy(name *self, name *other) { Ptr_copy(&self->ptr, &other->ptr); } /*
-*/ void name##_swap(name *self, name *other) { Ptr_swap(&self->ptr, &other->ptr); }
-
-internal void
-pt_rotate_Ptr(Ptr *begin, Ptr *middle, Ptr *end)
-{
-	Ptr* next = middle;
-	while (begin != next) {
-		Ptr_swap(begin,next);
-		++begin;
-		++next;
-		if (next == end) {
-			next = middle;
-		} else if (begin == middle) {
-			middle = next;
-		}
-	}
-}
-
-
-#define pt_DEFINE_ARRAY(name, base) \
-typedef struct { \
-	base *begin; \
-	base *end; \
-	base *capacity; \
-} name;
-
-#define pt_DEFINE_ARRAY_SERVICES(name, base) \
-internal void \
-name ## _init(name *self, base *begin, base *capacity) { \
-	self->begin = begin; \
-	self->end   = begin; \
-	self->capacity = capacity; \
-} \
-internal void \
-name ## _append(name *self, base value) { \
-	Assert(self->end != self->capacity); \
-	*self->end = value; \
-	++self->end; \
-} \
-internal base \
-name ## _get(name *self, u64 index) { \
-	Assert(self->begin + index < self->end); \
-	return self->begin[index]; \
-} \
-internal void \
-name ## _set(name *self, u64 index, base value) { \
-	Assert(self->begin + index < self->end); \
-	self->begin[index] = value; \
-} \
-internal void \
-name ## _clear(name *self) { \
-	self->end = self->begin; \
-} \
-internal u64 \
-name ## _size(name *self) { \
-	return (u64) (self->end - self->begin); \
-}
-
-/* define ArrayMemoryBlock */
-pt_DEFINE_ARRAY(ArrayMemoryBlock, MemoryBlock)
-pt_DEFINE_ARRAY_SERVICES(ArrayMemoryBlock, MemoryBlock)
-
-/* define ArrayMemoryBlock */
-pt_DEFINE_ARRAY(Array_u64, u64)
-pt_DEFINE_ARRAY_SERVICES(Array_u64, u64)
-
-/* define ArrayMemoryBlock */
-pt_DEFINE_ARRAY(Array_u128, u128)
-pt_DEFINE_ARRAY_SERVICES(Array_u128, u128)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //----------------------------------------------------------
 // TESTS
 //----------------------------------------------------------
 
 #ifdef platform_UNIT_TEST
-
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -2285,5 +1916,5 @@ int main(int argc, char *argv[])
 #endif
 
 
-
+// global_variable PlatformAPI platform;
 

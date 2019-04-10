@@ -237,11 +237,11 @@ typedef np_TypeValue (*FunctionSymbolPtr)(np_Compiler*, np_TypeValue*,
 					  np_TypeValue*);
 
 #define np_FUNCTION_HANDLER(name) \
-	internal np_TypeValue name(np_Compiler* compiler, \
+	static np_TypeValue name(np_Compiler* compiler, \
 	np_TypeValue *params_begin, np_TypeValue *params_end)
 
 #define np_FUNCTION_HANDLER_FLAG(name) \
-	internal np_TypeValue name(np_Compiler* compiler, \
+	static np_TypeValue name(np_Compiler* compiler, \
 	np_TypeValue *params_begin, np_TypeValue *params_end, s32 flag)
 
 typedef struct {
@@ -329,7 +329,7 @@ struct np_Compiler {
 // Tokenization procedures
 //------------------------------------------------------------------------------
 
-internal char*
+static char*
 nt_TokenType_cstr(nt_TokenType ntt)
 {
 	static char *arr[] =
@@ -358,7 +358,7 @@ nt_TokenType_cstr(nt_TokenType ntt)
 	return arr[(int)ntt];
 }
 
-internal char*
+static char*
 np_AST_Node_Type_cstr(np_AST_Node_Type nt)
 {
 	static char *arr[] =
@@ -376,7 +376,7 @@ np_AST_Node_Type_cstr(np_AST_Node_Type nt)
 
 
 /* specific tokenizer for this parser */
-internal void
+static void
 np_initialize_tokenizer(nt_Tokenizer *tokenizer, char* text_begin, char *text_end)
 {
 	nt_Tokenizer_init(tokenizer);
@@ -529,7 +529,7 @@ np_initialize_tokenizer(nt_Tokenizer *tokenizer, char* text_begin, char *text_en
 // Parser procedures
 //------------------------------------------------------------------------------
 
-internal void
+static void
 np_Parser_init(np_Parser* self, nt_Tokenizer *tokenizer, BilinearAllocator *ast_memory)
 {
 	self->tokenizer = tokenizer;
@@ -555,12 +555,12 @@ np_Parser_init(np_Parser* self, nt_Tokenizer *tokenizer, BilinearAllocator *ast_
 	//	self->stack[i] = 0;
 
 	/* Initialize log */
-	Print_init(&self->log, self->log_buffer, self->log_buffer + sizeof(self->log_buffer));
+	print_init(&self->log, self->log_buffer, sizeof(self->log_buffer));
 }
 
 // after a run, we should reset the tokenizer (new text) and the call
 // this function to reset the parser
-internal void
+static void
 np_Parser_reset(np_Parser* self)
 {
 	self->tkbegin     = self->buffer;
@@ -571,11 +571,11 @@ np_Parser_reset(np_Parser* self)
 	self->stack.end   = 0;
 	self->ast_first   = 0; // initially AST is empty
 	self->ast_last    = 0;
-	Print_clear(&self->log);
+	print_clear(&self->log);
 }
 
 /* return 0 if out of memory */
-internal b8
+static b8
 np_Parser_push_ast_node(np_Parser *self, np_AST_Node *node)
 {
 	//
@@ -594,7 +594,7 @@ np_Parser_push_ast_node(np_Parser *self, np_AST_Node *node)
 	return 1;
 }
 
-internal void
+static void
 np_Parser_pop_ast_nodes(np_Parser *self, u32 n)
 {
 	self->stack.begin += n;
@@ -610,21 +610,21 @@ np_Parser_pop_ast_nodes(np_Parser *self, u32 n)
 //
 }
 
-internal inline np_AST_Node*
+static inline np_AST_Node*
 np_Parser_ast_stack_top(np_Parser *self)
 {
 	Assert(self->stack.begin < self->stack.end);
 	return self->stack.begin[0];
 }
 
-internal inline u32
+static inline u32
 np_Parser_ast_stack_top_index(np_Parser *self)
 {
 	Assert(self->stack.begin < self->stack.end);
 	return (u32) (self->stack.end - self->stack.begin - 1);
 }
 
-internal inline np_AST_Node*
+static inline np_AST_Node*
 np_Parser_ast_stack_get(np_Parser *self, u32 index)
 {
 	np_AST_Node_Ptr *ptr = self->stack.end - index - 1;
@@ -632,7 +632,7 @@ np_Parser_ast_stack_get(np_Parser *self, u32 index)
 	return *ptr;
 }
 
-internal void
+static void
 np_Parser_append_statement_and_clear_stack(np_Parser *self)
 {
 	Assert(self->stack.begin < self->stack.end);
@@ -649,7 +649,7 @@ np_Parser_append_statement_and_clear_stack(np_Parser *self)
 	}
 }
 
-internal np_AST_Node*
+static np_AST_Node*
 np_Parser_ast_node(np_Parser *self, np_AST_Node_Type type, char *begin, char *end, void *detail)
 {
 	np_AST_Node *node = (np_AST_Node*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Node));
@@ -661,7 +661,7 @@ np_Parser_ast_node(np_Parser *self, np_AST_Node_Type type, char *begin, char *en
 	return node;
 }
 
-internal np_AST_Number*
+static np_AST_Number*
 np_Parser_ast_number_float(np_Parser *self, f64 value)
 {
 	np_AST_Number *number = (np_AST_Number*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Number));
@@ -671,7 +671,7 @@ np_Parser_ast_number_float(np_Parser *self, f64 value)
 	return number;
 }
 
-internal np_AST_Number*
+static np_AST_Number*
 np_Parser_ast_number_int(np_Parser *self, s64 value)
 {
 	np_AST_Number *number = (np_AST_Number*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Number));
@@ -681,7 +681,7 @@ np_Parser_ast_number_int(np_Parser *self, s64 value)
 	return number;
 }
 
-internal np_AST_Variable*
+static np_AST_Variable*
 np_Parser_ast_variable(np_Parser *self, char *begin, char *end)
 {
 	np_AST_Variable *variable = (np_AST_Variable*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Variable));
@@ -691,7 +691,7 @@ np_Parser_ast_variable(np_Parser *self, char *begin, char *end)
 	return variable;
 }
 
-internal np_AST_String*
+static np_AST_String*
 np_Parser_ast_string(np_Parser *self, char *begin, char *end)
 {
 	np_AST_String *string = (np_AST_String*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_String));
@@ -701,7 +701,7 @@ np_Parser_ast_string(np_Parser *self, char *begin, char *end)
 	return string;
 }
 
-internal np_AST_Group*
+static np_AST_Group*
 np_Parser_ast_group(np_Parser *self, np_AST_Node *node)
 {
 	np_AST_Group *group = (np_AST_Group*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Group));
@@ -710,7 +710,7 @@ np_Parser_ast_group(np_Parser *self, np_AST_Node *node)
 	return group;
 }
 
-internal np_AST_Function*
+static np_AST_Function*
 np_Parser_ast_function(np_Parser *self, char *begin, char *end)
 {
 	np_AST_Function *function = (np_AST_Function*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Function));
@@ -722,7 +722,7 @@ np_Parser_ast_function(np_Parser *self, char *begin, char *end)
 	return function;
 }
 
-internal np_AST_Function_Parameter*
+static np_AST_Function_Parameter*
 np_Parser_ast_function_parameter(np_Parser *self, np_AST_Node *node, np_AST_Function_Parameter *next)
 {
 	np_AST_Function_Parameter *param = (np_AST_Function_Parameter*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Function_Parameter));
@@ -732,7 +732,7 @@ np_Parser_ast_function_parameter(np_Parser *self, np_AST_Node *node, np_AST_Func
 	return param;
 }
 
-internal np_AST_Binary_Operation*
+static np_AST_Binary_Operation*
 np_Parser_ast_binary_operation(np_Parser *self, char *begin, char *end, np_AST_Node *left, np_AST_Node *right)
 {
 	np_AST_Binary_Operation *binop = (np_AST_Binary_Operation*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Binary_Operation));
@@ -744,7 +744,7 @@ np_Parser_ast_binary_operation(np_Parser *self, char *begin, char *end, np_AST_N
 	return binop;
 }
 
-internal np_AST_Assignment*
+static np_AST_Assignment*
 np_Parser_ast_assignment(np_Parser *self, char *begin, char *end, np_AST_Node *node)
 {
 	np_AST_Assignment *assignment = (np_AST_Assignment*) BilinearAllocator_alloc_left(self->ast_memory, sizeof(np_AST_Assignment));
@@ -755,20 +755,20 @@ np_Parser_ast_assignment(np_Parser *self, char *begin, char *end, np_AST_Node *n
 	return assignment;
 }
 
-internal u8
+static u8
 np_ast_precedence_from_name(np_AST_Binary_Operation *binop)
 {
 	char *begin = binop->name.begin;
 	char *end   = binop->name.end;
-	if (pt_compare_memory_cstr(begin, end, "+")==0) return 2;
-	else if (pt_compare_memory_cstr(begin, end, "-")==0) return 2;
-	else if (pt_compare_memory_cstr(begin, end, "/")==0) return 3;
-	else if (pt_compare_memory_cstr(begin, end, "*")==0) return 3;
-	else if (pt_compare_memory_cstr(begin, end, ".")==0) return 4;
+	if (cstr_compare_memory_cstr(begin, end, "+")==0) return 2;
+	else if (cstr_compare_memory_cstr(begin, end, "-")==0) return 2;
+	else if (cstr_compare_memory_cstr(begin, end, "/")==0) return 3;
+	else if (cstr_compare_memory_cstr(begin, end, "*")==0) return 3;
+	else if (cstr_compare_memory_cstr(begin, end, ".")==0) return 4;
 	else return 10;
 }
 
-internal np_AST_Node*
+static np_AST_Node*
 np_ast_adjust_root(np_AST_Node* root)
 {
 	Assert(root->type == np_AST_Node_Type_Binary_Operation);
@@ -833,7 +833,7 @@ np_ast_adjust_root(np_AST_Node* root)
 // rearrange AST to guarantee precedence and left assiaciativity
 // of the binary operators
 //
-internal np_AST_Node*
+static np_AST_Node*
 np_ast_normalize(np_AST_Node* node)
 {
 	switch(node->type)
@@ -874,7 +874,7 @@ np_ast_normalize(np_AST_Node* node)
 	}
 }
 
-internal void
+static void
 np_Parser_fill_buffer(np_Parser *self)
 {
 	if (self->eof || self->tkerror) return;
@@ -905,7 +905,7 @@ np_Parser_fill_buffer(np_Parser *self)
 	}
 }
 
-internal void
+static void
 np_Parser_consume_tokens(np_Parser *self, u32 n)
 {
 	Assert(self->tkend - self->tkbegin >= n);
@@ -915,13 +915,13 @@ np_Parser_consume_tokens(np_Parser *self, u32 n)
 	}
 }
 
-internal inline b8
+static inline b8
 np_Parser_compare_next(np_Parser *self, nt_TokenType t)
 {
 	return self->tkbegin < self->tkend && self->tkbegin->type == t;
 }
 
-internal inline b8
+static inline b8
 np_Parser_compare_next2(np_Parser *self, nt_TokenType t1, nt_TokenType t2)
 {
 	return (self->tkbegin+1) < self->tkend &&
@@ -929,19 +929,19 @@ np_Parser_compare_next2(np_Parser *self, nt_TokenType t1, nt_TokenType t2)
 		(self->tkbegin+1)->type == t2;
 }
 
-internal b8
+static b8
 np_Parser_E(np_Parser *self);
 
-internal b8
+static b8
 np_Parser_EC(np_Parser *self);
 
-internal b8
+static b8
 np_Parser_P(np_Parser *self);
 
-internal b8
+static b8
 np_Parser_PS(np_Parser *self);
 
-internal void
+static void
 np_Parser_log_context(np_Parser *self)
 {
 	b8 no_token = self->tkbegin == self->tkend;
@@ -980,21 +980,21 @@ np_Parser_log_context(np_Parser *self)
 
 	Print *print = &self->log;
 
-	Print_cstr(print,"[Context]");
+	print_cstr(print,"[Context]");
 	if (no_token) {
-		Print_cstr(print, " No valid token available. line: ");
-		Print_u64(print, self->tokenizer->line);
-		Print_cstr(print, " column: ");
-		Print_u64(print, self->tokenizer->column);
-		Print_cstr(print, "\n");
+		print_cstr(print, " No valid token available. line: ");
+		print_u64(print, self->tokenizer->line);
+		print_cstr(print, " column: ");
+		print_u64(print, self->tokenizer->column);
+		print_cstr(print, "\n");
 	} else {
-		Print_cstr(print, "\n");
+		print_cstr(print, "\n");
 	}
-	Print_str(print, context_begin, context_end);
-	Print_cstr(print,"\n");
-	Print_cstr(print,"^");
-	Print_align(print,pos - context_begin + 1, 1, ' ');
-	Print_cstr(print,"\n");
+	print_str(print, context_begin, context_end);
+	print_cstr(print,"\n");
+	print_cstr(print,"^");
+	print_align(print,pos - context_begin + 1, 1, ' ');
+	print_cstr(print,"\n");
 }
 
 
@@ -1003,7 +1003,7 @@ np_Parser_log_context(np_Parser *self)
 //  P   -> )
 //       | E PS
 //
-internal b8
+static b8
 np_Parser_P(np_Parser *self)
 {
 	if (np_Parser_compare_next(self, np_TOKEN_RPAREN)) {
@@ -1021,7 +1021,7 @@ np_Parser_P(np_Parser *self)
 //  PS  -> )
 //       | , E PS
 //
-internal b8
+static b8
 np_Parser_PS(np_Parser *self)
 {
 	if (np_Parser_compare_next(self, np_TOKEN_RPAREN)) {
@@ -1044,7 +1044,7 @@ np_Parser_PS(np_Parser *self)
 
 		/* error message */
 		{
-			Print_cstr(&self->log, "[parser error] Expecting either ')' or ',' on \n");
+			print_cstr(&self->log, "[parser error] Expecting either ')' or ',' on \n");
 			np_Parser_log_context(self);
 		}
 
@@ -1060,7 +1060,7 @@ np_Parser_PS(np_Parser *self)
 //       | . E
 //       | \epsilon
 //
-internal b8
+static b8
 np_Parser_EC(np_Parser *self)
 {
 	if (np_Parser_compare_next(self, np_TOKEN_BINOP)) {
@@ -1087,7 +1087,7 @@ np_Parser_EC(np_Parser *self)
 								   )
 					       );
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 
@@ -1133,7 +1133,7 @@ np_Parser_EC(np_Parser *self)
 //       | ( E ) EC
 //       | - E
 //
-internal b8
+static b8
 np_Parser_E(np_Parser *self)
 {
 	if (np_Parser_compare_next2(self, np_TOKEN_IDENTIFIER, np_TOKEN_LPAREN)) {
@@ -1147,7 +1147,7 @@ np_Parser_E(np_Parser *self)
 								   np_Parser_ast_function(self, self->tkbegin->begin,
 											  self->tkbegin->end)));
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 		} // AST
@@ -1197,7 +1197,7 @@ np_Parser_E(np_Parser *self)
 								  )
 					       );
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 		} // AST
@@ -1216,7 +1216,7 @@ np_Parser_E(np_Parser *self)
 			if (!ok) {
 				/* error message */
 				{
-					Print_cstr(&self->log, "[parser error] Could not parse number\n");
+					print_cstr(&self->log, "[parser error] Could not parse number\n");
 					np_Parser_log_context(self);
 				}
 				return 0;
@@ -1243,7 +1243,7 @@ np_Parser_E(np_Parser *self)
 			if (!ok) {
 				/* error message */
 				{
-					Print_cstr(&self->log, "[parser error] Could not parse number\n");
+					print_cstr(&self->log, "[parser error] Could not parse number\n");
 					np_Parser_log_context(self);
 				}
 				return 0;
@@ -1255,7 +1255,7 @@ np_Parser_E(np_Parser *self)
 							       self->tkbegin->end, num);
 			b8 push_ok = np_Parser_push_ast_node(self, node);
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 		} // AST_Node
@@ -1274,7 +1274,7 @@ np_Parser_E(np_Parser *self)
 							       self->tkbegin->begin, self->tkbegin->end, st);
 			b8 push_ok = np_Parser_push_ast_node(self, node);
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 		} // AST
@@ -1294,7 +1294,7 @@ np_Parser_E(np_Parser *self)
 							       self->tkbegin->begin, self->tkbegin->end, st);
 			b8 push_ok = np_Parser_push_ast_node(self, node);
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 		} // AST
@@ -1317,7 +1317,7 @@ np_Parser_E(np_Parser *self)
 		if (!np_Parser_compare_next(self, np_TOKEN_RPAREN)) {
 			/* error message */
 			{
-				Print_cstr(&self->log, "[parser error] Expected ')' not found.\n");
+				print_cstr(&self->log, "[parser error] Expected ')' not found.\n");
 				np_Parser_log_context(self);
 			}
 			return 0;
@@ -1333,7 +1333,7 @@ np_Parser_E(np_Parser *self)
 			b8 push_ok = np_Parser_push_ast_node(self, np_Parser_ast_node(self, np_AST_Node_Type_Group,
 									 begin, end, np_Parser_ast_group(self, node)));
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 		} // AST
@@ -1347,14 +1347,14 @@ np_Parser_E(np_Parser *self)
 	} else {
 		/* error message */
 		{
-			Print_cstr(&self->log, "[parser error] Unexpected token.\n");
+			print_cstr(&self->log, "[parser error] Unexpected token.\n");
 			np_Parser_log_context(self);
 		}
 		return 0;
 	}
 }
 
-internal b8
+static b8
 np_Parser_S(np_Parser *self)
 {
 	if (np_Parser_compare_next2(self, np_TOKEN_IDENTIFIER, np_TOKEN_EQUAL)) {
@@ -1366,7 +1366,7 @@ np_Parser_S(np_Parser *self)
 									   np_Parser_ast_assignment(self, self->tkbegin->begin,
 												    self->tkbegin->end, 0)));
 			if (!push_ok) {
-				Print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
+				print_cstr(&self->log, "[parser error] Not enough memory to stack AST nodes.\n");
 				return 0;
 			}
 		} // AST
@@ -1409,7 +1409,7 @@ np_Parser_S(np_Parser *self)
 			/* error message */
 			{
 				// this message doesn't bring the line number and cursor position
-				Print_cstr(&self->log, "[parser error] Semi-colon or end-of-file expected.\n");
+				print_cstr(&self->log, "[parser error] Semi-colon or end-of-file expected.\n");
 				np_Parser_log_context(self);
 			}
 			return 0;
@@ -1443,7 +1443,7 @@ np_Parser_S(np_Parser *self)
 		} else {
 			{
 				// this message doesn't bring the line number and cursor position
-				Print_cstr(&self->log, "[parser error] Semi-colon or end-of-file expected.\n");
+				print_cstr(&self->log, "[parser error] Semi-colon or end-of-file expected.\n");
 				np_Parser_log_context(self);
 			}
 			return 0;
@@ -1458,7 +1458,7 @@ np_Parser_S(np_Parser *self)
 	}
 }
 
-internal void
+static void
 np_Parser_normalize_statements(np_Parser *self)
 {
 	np_AST_Node* prev = 0;
@@ -1479,7 +1479,7 @@ np_Parser_normalize_statements(np_Parser *self)
 	self->ast_last = prev;
 }
 
-internal b8
+static b8
 np_Parser_run(np_Parser *self)
 {
 	np_Parser_fill_buffer(self);
@@ -1492,7 +1492,7 @@ np_Parser_run(np_Parser *self)
 // Type and TypeTable
 //------------------------------------------------------------------------------
 
-internal np_Type*
+static np_Type*
 np_TypeTable_insert(np_TypeTable *self, char* name_begin, char* name_end, BilinearAllocator *memory)
 {
 	Assert(self->end != self->capacity);
@@ -1514,7 +1514,7 @@ np_TypeTable_insert(np_TypeTable *self, char* name_begin, char* name_end, Biline
 	return newtype;
 }
 
-internal np_Type*
+static np_Type*
 np_TypeTable_find(np_TypeTable *self, np_TypeID type_id)
 {
 	np_Type *it = self->begin;
@@ -1529,7 +1529,7 @@ np_TypeTable_find(np_TypeTable *self, np_TypeID type_id)
 	return 0;
 }
 
-internal void
+static void
 np_TypeTable_init(np_TypeTable *self, np_Type *begin, np_Type *capacity)
 {
 	self->begin    = begin;
@@ -1543,7 +1543,7 @@ np_TypeTable_init(np_TypeTable *self, np_Type *begin, np_Type *capacity)
 // Symbol and Symbol Table
 //------------------------------------------------------------------------------
 
-internal void
+static void
 np_SymbolTable_init(np_SymbolTable *self, np_Symbol *begin, np_Symbol *capacity)
 {
 	// reserve symbol capacity slots for the symbols array
@@ -1552,7 +1552,7 @@ np_SymbolTable_init(np_SymbolTable *self, np_Symbol *begin, np_Symbol *capacity)
 	self->capacity = capacity;
 }
 
-internal np_Symbol*
+static np_Symbol*
 np_SymbolTable_insert_variable(np_SymbolTable *self, char *name_begin,
 			       char *name_end, np_TypeID type_id, void *value,
 			       BilinearAllocator *memory)
@@ -1585,7 +1585,7 @@ np_SymbolTable_insert_variable(np_SymbolTable *self, char *name_begin,
 	return symbol;
 }
 
-internal np_Symbol*
+static np_Symbol*
 np_SymbolTable_insert_function(np_SymbolTable *self,
 			       char         *name_begin,
 			       char         *name_end,
@@ -1638,7 +1638,7 @@ np_SymbolTable_insert_function(np_SymbolTable *self,
 
 }
 
-internal np_Symbol*
+static np_Symbol*
 np_SymbolTable_find_function(np_SymbolTable *self,
 			     char *name_begin,
 			     char *name_end,
@@ -1652,7 +1652,7 @@ np_SymbolTable_find_function(np_SymbolTable *self,
 	{
 		if (symbol->is_function)
 		{
-			b8  same_name         = pt_compare_memory(name_begin, name_end, symbol->name.begin, symbol->name.end) == 0;
+			b8  same_name         = cstr_compare_memory(name_begin, name_end, symbol->name.begin, symbol->name.end) == 0;
 			s64 num_symbol_params = symbol->function.param_type_end - symbol->function.param_type_begin;
 
 			if (same_name && num_symbol_params <= num_input_params) {
@@ -1701,7 +1701,7 @@ np_SymbolTable_find_function(np_SymbolTable *self,
 	return 0;
 }
 
-internal np_Symbol*
+static np_Symbol*
 np_SymbolTable_find_variable(np_SymbolTable *self,
 			     char *name_begin,
 			     char *name_end)
@@ -1709,7 +1709,7 @@ np_SymbolTable_find_variable(np_SymbolTable *self,
 	np_Symbol *symbol = self->begin;
 	while (symbol != self->end) {
 		if (symbol->is_variable &&
-		    pt_compare_memory(name_begin,
+		    cstr_compare_memory(name_begin,
 				      name_end,
 				      symbol->name.begin,
 				      symbol->name.end) == 0) {
@@ -1724,7 +1724,7 @@ np_SymbolTable_find_variable(np_SymbolTable *self,
 // Compiler
 //------------------------------------------------------------------------------
 
-internal np_TypeValue
+static np_TypeValue
 np_TypeValue_undefined()
 {
 	np_TypeValue error;
@@ -1735,7 +1735,7 @@ np_TypeValue_undefined()
 	return error;
 }
 
-internal np_TypeValue
+static np_TypeValue
 np_TypeValue_error()
 {
 	np_TypeValue error;
@@ -1746,7 +1746,7 @@ np_TypeValue_error()
 	return error;
 }
 
-internal np_TypeValue
+static np_TypeValue
 np_TypeValue_value(np_TypeID type_id, void *value)
 {
 	np_TypeValue result;
@@ -1757,7 +1757,7 @@ np_TypeValue_value(np_TypeID type_id, void *value)
 	return result;
 }
 
-internal np_TypeValue
+static np_TypeValue
 np_TypeValue_readonly_value(np_TypeID type_id, void *value)
 {
 	np_TypeValue result;
@@ -1772,25 +1772,25 @@ np_TypeValue_readonly_value(np_TypeID type_id, void *value)
 // Compiler
 //------------------------------------------------------------------------------
 
-internal void
+static void
 np_Compiler_clear_error_log(np_Compiler *self)
 {
-	Print_clear(&self->reduce.log);
+	print_clear(&self->reduce.log);
 }
 
-internal np_Type*
+static np_Type*
 np_Compiler_insert_type(np_Compiler *self, char *name_begin, char *name_end)
 {
 	return np_TypeTable_insert(&self->type_table, name_begin, name_end, self->memory);
 }
 
-internal np_Type*
+static np_Type*
 np_Compiler_insert_type_cstr(np_Compiler *self, char *name_cstr)
 {
 	return np_TypeTable_insert(&self->type_table, name_cstr, cstr_end(name_cstr), self->memory);
 }
 
-internal np_Symbol*
+static np_Symbol*
 np_Compiler_insert_function(np_Compiler *self,
 			    char         *name_begin,
 			    char         *name_end,
@@ -1808,7 +1808,7 @@ np_Compiler_insert_function(np_Compiler *self,
 		 self->memory);
 }
 
-internal np_Symbol*
+static np_Symbol*
 np_Compiler_insert_function_cstr(np_Compiler *self,
 			    char         *name_cstr,
 			    np_TypeID    return_type,
@@ -1826,7 +1826,7 @@ np_Compiler_insert_function_cstr(np_Compiler *self,
 }
 
 
-internal np_Symbol*
+static np_Symbol*
 np_Compiler_insert_variable(np_Compiler *self, char *name_begin,
 			    char *name_end, np_TypeID type_id, void *value)
 {
@@ -1835,7 +1835,7 @@ np_Compiler_insert_variable(np_Compiler *self, char *name_begin,
 					      self->memory);
 }
 
-internal np_Symbol*
+static np_Symbol*
 np_Compiler_insert_variable_cstr(np_Compiler *self, char *name_cstr,
 				 np_TypeID type_id, void *value)
 {
@@ -1844,19 +1844,19 @@ np_Compiler_insert_variable_cstr(np_Compiler *self, char *name_cstr,
 					      value, self->memory);
 }
 
-internal char*
+static char*
 np_Compiler_alloc(np_Compiler *self, u64 num_bytes)
 {
 	return BilinearAllocator_alloc_left(self->memory, num_bytes);
 }
 
-internal MemoryBlock
+static MemoryBlock
 np_Compiler_free_memblock(np_Compiler *self)
 {
 	return BilinearAllocator_free_memblock(self->memory);
 }
 
-internal np_TypeValue
+static np_TypeValue
 np_function_add_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 			np_TypeValue *params_end)
 {
@@ -1871,7 +1871,7 @@ np_function_add_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 	return np_TypeValue_value( compiler->number_type_id, val );
 }
 
-internal np_TypeValue
+static np_TypeValue
 np_function_mul_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 			np_TypeValue *params_end)
 {
@@ -1886,7 +1886,7 @@ np_function_mul_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 	return np_TypeValue_value( compiler->number_type_id, val );
 }
 
-internal np_TypeValue
+static np_TypeValue
 np_function_div_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 			np_TypeValue *params_end)
 {
@@ -1901,7 +1901,7 @@ np_function_div_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 	return np_TypeValue_value( compiler->number_type_id, val );
 }
 
-internal np_TypeValue
+static np_TypeValue
 np_function_sub_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 			np_TypeValue *params_end)
 {
@@ -1917,7 +1917,7 @@ np_function_sub_numbers(np_Compiler *compiler, np_TypeValue* params_begin,
 }
 
 
-internal void
+static void
 np_Compiler_init(np_Compiler *self, BilinearAllocator *memory)
 {
 
@@ -1925,9 +1925,9 @@ np_Compiler_init(np_Compiler *self, BilinearAllocator *memory)
 
 	// initialize reduce status and log area
 	self->reduce.success = 0;
-	Print_init(&self->reduce.log,
+	print_init(&self->reduce.log,
 		   self->reduce.log_buffer,
-		   self->reduce.log_buffer + sizeof(self->reduce.log_buffer));
+		   sizeof(self->reduce.log_buffer));
 
 	/* hard coded capacity for 16 types */
 	const u32 type_capacity = 16;
@@ -1972,7 +1972,7 @@ np_Compiler_init(np_Compiler *self, BilinearAllocator *memory)
 		 np_function_div_numbers);
 }
 
-internal np_CompilerCheckpoint
+static np_CompilerCheckpoint
 np_Compiler_checkpoint(np_Compiler *self)
 {
 	np_CompilerCheckpoint chkpt;
@@ -1983,7 +1983,7 @@ np_Compiler_checkpoint(np_Compiler *self)
 	return chkpt;
 }
 
-internal void
+static void
 np_Compiler_goto_checkpoint(np_Compiler *self, np_CompilerCheckpoint chkpt)
 {
 // 	Assert(self->memory->begin <= chkpt.memory_checkpoint
@@ -1999,7 +1999,7 @@ np_Compiler_goto_checkpoint(np_Compiler *self, np_CompilerCheckpoint chkpt)
 	self->symbol_table.end = self->symbol_table.begin + chkpt.num_symbols;
 }
 
-internal void
+static void
 np_Compiler_log_function_not_found_error(
 					 np_Compiler    *self,
 					 char           *name_begin,
@@ -2009,66 +2009,66 @@ np_Compiler_log_function_not_found_error(
 {
 	Print *print = &self->reduce.log;
 
-	Print_cstr(print,"[Compiler Reduce Error]\n");
-	Print_cstr(print,"Couldn't find function named '");
-	Print_str(print, name_begin, name_end);
-	Print_cstr(print,"'\n");
+	print_cstr(print,"[Compiler Reduce Error]\n");
+	print_cstr(print,"Couldn't find function named '");
+	print_str(print, name_begin, name_end);
+	print_cstr(print,"'\n");
 
 	s64 nparams = param_end - param_begin;
 	if (nparams > 0)
 	{
-		Print_cstr(print,"with parameter type");
+		print_cstr(print,"with parameter type");
 
 		if (nparams > 1)
 		{
-			Print_cstr(print,"s");
+			print_cstr(print,"s");
 		}
 
-		Print_cstr(print,":\n");
+		print_cstr(print,":\n");
 
 		for (u32 i=0;i<nparams;++i) {
-			Print_u64(print, (i+1));
-			Print_cstr(print,". type_id: ");
-			Print_u64(print,*(param_begin + i));
-			Print_align(print,2,1,' ');
-			Print_cstr(print,"   name: ");
+			print_u64(print, (i+1));
+			print_cstr(print,". type_id: ");
+			print_u64(print,*(param_begin + i));
+			print_align(print,2,1,' ');
+			print_cstr(print,"   name: ");
 
 			np_Type *type = np_TypeTable_find(&self->type_table, *(param_begin + i));
 
 			Assert(type);
 
-			Print_str(print, type->name.begin, type->name.end);
-			Print_cstr(print,"\n");
+			print_str(print, type->name.begin, type->name.end);
+			print_cstr(print,"\n");
 		}
 	}
 }
 
-internal void
+static void
 np_Compiler_log_variable_not_found_error(
 					 np_Compiler    *self,
 					 char           *name_begin,
 					 char           *name_end)
 {
 	Print *print = &self->reduce.log;
-	Print_cstr(print,"[Compiler Reduce Error]\n");
-	Print_cstr(print,"Couldn't find variable named '");
-	Print_str(print, name_begin, name_end);
-	Print_cstr(print,"'\n");
+	print_cstr(print,"[Compiler Reduce Error]\n");
+	print_cstr(print,"Couldn't find variable named '");
+	print_str(print, name_begin, name_end);
+	print_cstr(print,"'\n");
 }
 
-internal void
+static void
 np_Compiler_log_custom_error(
 			     np_Compiler    *self,
 			     char           *error_begin,
 			     char           *error_end)
 {
 	Print *print = &self->reduce.log;
-	Print_cstr(print,"[Compiler Reduce Error]\n");
-	Print_str(print, error_begin, error_end);
+	print_cstr(print,"[Compiler Reduce Error]\n");
+	print_str(print, error_begin, error_end);
 }
 
 
-internal void
+static void
 np_Compiler_log_ast_node_context(np_Compiler *self)
 {
 	np_AST_Node *node = self->reduce.current_context;
@@ -2103,18 +2103,18 @@ np_Compiler_log_ast_node_context(np_Compiler *self)
 
 	Print *print = &self->reduce.log;
 
-	Print_cstr(print,"[Context]\n");
+	print_cstr(print,"[Context]\n");
 
-	Print_str(print, context_begin, context_end);
-	Print_cstr(print,"\n");
-	Print_cstr(print,"^");
-	Print_align(print,node->begin - context_begin + 1,1,' ');
-	Print_cstr(print,"\n");
+	print_str(print, context_begin, context_end);
+	print_cstr(print,"\n");
+	print_cstr(print,"^");
+	print_align(print,node->begin - context_begin + 1,1,' ');
+	print_cstr(print,"\n");
 }
 
 #define np_Compiler_max_function_parameters 128
 
-internal np_TypeValue
+static np_TypeValue
 np_Compiler_reduce_node(np_Compiler *self, np_AST_Node* node)
 {
 	if (node->type == np_AST_Node_Type_Number) {
@@ -2305,10 +2305,10 @@ np_Compiler_reduce_node(np_Compiler *self, np_AST_Node* node)
 }
 
 
-internal np_TypeValue
+static np_TypeValue
 np_Compiler_reduce(np_Compiler *self, np_AST_Node* node, char *text_begin, char *text_end)
 {
-	Print_clear(&self->reduce.log);
+	print_clear(&self->reduce.log);
 
 	// input context (assumes node was extracted from this text)
 	self->reduce.text_begin = text_begin;

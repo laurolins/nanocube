@@ -397,40 +397,40 @@ typedef struct Request {
 // global variable should be initialized on entry point
 static Request *g_request = 0;
 
-internal void
+static void
 output_cstr_(const char *cstr)
 {
-	Print_cstr(g_request->print, cstr);
+	print_cstr(g_request->print, cstr);
 	platform.write_to_file(g_request->pfh_stdout, g_request->print->begin, g_request->print->end);
-	Print_clear(g_request->print);
+	print_clear(g_request->print);
 }
 
-internal void
+static void
 output_(Print *print)
 {
 	platform.write_to_file(g_request->pfh_stdout, print->begin, print->end);
 }
 
-internal void
+static void
 log_cstr_(const char *cstr)
 {
-	Print_cstr(g_request->print, cstr);
+	print_cstr(g_request->print, cstr);
 	platform.write_to_file(g_request->pfh_stderr, g_request->print->begin, g_request->print->end);
-	Print_clear(g_request->print);
+	print_clear(g_request->print);
 }
 
-internal void
+static  void
 log_(Print *print)
 {
 	platform.write_to_file(g_request->pfh_stderr, print->begin, print->end);
 }
 
-internal void
+static void
 log_format_(const char *cstr)
 {
-	Print_cstr(g_request->print, cstr);
+	print_cstr(g_request->print, cstr);
 	platform.write_to_file(g_request->pfh_stderr, g_request->print->begin, g_request->print->end);
-	Print_clear(g_request->print);
+	print_clear(g_request->print);
 }
 
 //------------------------------------------------------------------------------
@@ -524,11 +524,12 @@ b64_encode_block(void *raw, u64 len)
 //-----------------------------------------------------------------------
 
 /* parse date from text */
+#include "base/offset_ptr.c"
 #include "base/alloc.c"
 #include "base/random.c"
 #include "base/time_parser.c"
 #include "base/sort.c"
-#include "base/http.c"
+#include "base/http2.c"
 #include "base/set.c"
 #include "base/csv.c"
 #include "base/aatree.c"
@@ -595,7 +596,7 @@ static rg_Graph     *g_snap_graph   = 0;
 static f32          g_snap_maxdist = 0;
 
 /* @TODO(llins): not multi-threaded! */
-internal b8
+static b8
 g_snap(f32 *lat, f32 *lon)
 {
 	Assert(g_snap_graph);
@@ -618,7 +619,7 @@ g_snap(f32 *lat, f32 *lon)
 // @TODO(llins): think if we should make this a basic service on platform
 //------------------------------------------------------------------------------
 
-internal void
+static void
 swap_u64(u64 *a, u64 *b)
 {
 	u64 aux = *a;
@@ -626,7 +627,7 @@ swap_u64(u64 *a, u64 *b)
 	*b = aux;
 }
 
-internal void
+static void
 qsort_u64(u64 *begin, u64 *end)
 {
 	/* are there 2+ elements? */
@@ -663,25 +664,25 @@ qsort_u64(u64 *begin, u64 *end)
 	qsort_u64(left+1, end);
 }
 
-internal b8
+static b8
 u128_lt(u128 *a, u128 *b)
 {
 	return (a->high < b->high) || ((a->high == b->high && a->low < b->low));
 }
 
-internal b8
+static b8
 u128_lte(u128 *a, u128 *b)
 {
 	return (a->high < b->high) || ((a->high == b->high && a->low <= b->low));
 }
 
-internal b8
+static b8
 u128_eq(u128 *a, u128 *b)
 {
 	return (a->high == b->high) && (a->low == b->low);
 }
 
-internal void
+static void
 u128_swap(u128 *a, u128 *b)
 {
 	u128 aux;
@@ -690,7 +691,7 @@ u128_swap(u128 *a, u128 *b)
 	*b = aux;
 }
 
-internal void
+static void
 qsort_u128(u128 *begin, u128 *end)
 {
 	/* are there 2+ elements? */
@@ -727,7 +728,7 @@ qsort_u128(u128 *begin, u128 *end)
 	qsort_u128(left+1, end);
 }
 
-internal b8
+static b8
 check_sorted_u128(u128 *begin, u128 *end)
 {
 	u128 *it = begin + 1;
@@ -739,7 +740,7 @@ check_sorted_u128(u128 *begin, u128 *end)
 	return 1;
 }
 
-internal u64*
+static u64*
 u64_remove_duplicates(u64 *begin, u64 *end)
 {
 	u64 *left  = begin;
@@ -756,7 +757,7 @@ u64_remove_duplicates(u64 *begin, u64 *end)
 	return left+1;
 }
 
-internal b8
+static b8
 check_sorted_u64(u64 *begin, u64 *end)
 {
 	u64 *it = begin + 1;
@@ -768,7 +769,7 @@ check_sorted_u64(u64 *begin, u64 *end)
 	return 1;
 }
 
-internal b8
+static b8
 check_sorted_uniqueness_u64(u64 *begin, u64 *end)
 {
 	u64 *it = begin + 1;
@@ -794,15 +795,15 @@ Show the executable version that created the input NANOCUBE index.
 END_DOC_STRING
 */
 
-internal void
+static void
 service_version(Request *request)
 {
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_service_version_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_service_version_doc);
 		output_(print);
 		return;
 	}
@@ -827,9 +828,9 @@ service_version(Request *request)
 	al_Allocator*  allocator = (al_Allocator*) mapped_file.begin;
 	MemoryBlock watermark_block = al_Allocator_watermark_area(allocator);
 
-	Print_clear(print);
-	Print_cstr_safe(print, watermark_block.begin, watermark_block.end);
-	Print_char(print, '\n');
+	print_clear(print);
+	print_cstr_safe(print, watermark_block.begin, watermark_block.end);
+	print_char(print, '\n');
 	output_(print);
 
 	platform.close_mmap_file(&mapped_file);
@@ -853,15 +854,15 @@ Options:
 END_DOC_STRING
 */
 
-internal void
+static void
 service_memory(Request *request)
 {
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_memory_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_memory_doc);
 		output_(print);
 		return;
 	}
@@ -908,8 +909,8 @@ nu_PRINT_PAYLOAD(nv_print_payload)
 		f64 value = nv_Nanocube_get_value(nv_nanocube_instance, i,
 				payload);
 		if (i > 0)
-			Print_char(print,',');
-		Print_f64(print, value);
+			print_char(print,',');
+		print_f64(print, value);
 	}
 }
 
@@ -918,7 +919,7 @@ BEGIN_DOC_STRING nanocube_draw_doc
 Ver:   __VERSION__
 Usage: nanocube draw NANOCUBE DOTFILE
 For a small NANOCUBE index, generate a visual representation of its
-internal structure and save it on the output DOTFILE. To generate
+static structure and save it on the output DOTFILE. To generate
 a pdf from this .dot file one needs to have GraphViz installed
 and run 'dot -Tpdf DOTFILE > PDFFILE'.
 
@@ -928,15 +929,15 @@ OPTIONS:
 END_DOC_STRING
 */
 
-internal void
+static void
 service_draw(Request *request)
 {
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_draw_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_draw_doc);
 		output_(print);
 		return;
 	}
@@ -956,14 +957,14 @@ service_draw(Request *request)
 	// could do it in the memory map way
 	// add to the platform a way to map a file
 	//
-	pt_File pfh = platform.open_read_file(input_filename.begin, input_filename.end);
+	pt_File pfh = platform.open_file(input_filename.begin, input_filename.end, pt_FILE_READ);
 	if (!pfh.open) {
 		output_cstr_("[draw:fail] couldn't open of the .nc file.\n");
 		return;
 	}
 
-	pt_Memory memory = platform.allocate_memory(pfh.size, 12, 0);
-	char *begin = memory.memblock.begin;
+	pt_Memory *memory = platform.allocate_memory(pfh.size, 0);
+	char *begin = (void*) memory->base;
 	platform.read_next_file_chunk(&pfh, begin, begin + pfh.size);
 	Assert(pfh.last_read == pfh.size);
 	platform.close_file(&pfh);
@@ -977,13 +978,13 @@ service_draw(Request *request)
 			 output_filename.end, nv_print_payload,
 			 show_ids);
 
-	Print_clear(print);
-	Print_cstr(print, "[draw:msg] To generate .pdf of graph run:\n");
-	Print_cstr(print, "dot -Tpdf -o");
-	Print_str(print, output_filename.begin, output_filename.end);
-	Print_cstr(print, ".pdf ");
-	Print_str(print, output_filename.begin, output_filename.end);
-	Print_cstr(print, "\n");
+	print_clear(print);
+	print_cstr(print, "[draw:msg] To generate .pdf of graph run:\n");
+	print_cstr(print, "dot -Tpdf -o");
+	print_str(print, output_filename.begin, output_filename.end);
+	print_cstr(print, ".pdf ");
+	print_str(print, output_filename.begin, output_filename.end);
+	print_cstr(print, "\n");
 	output_(print);
 }
 
@@ -991,42 +992,42 @@ service_draw(Request *request)
 // ast service
 //------------------------------------------------------------------------------
 
-internal void
+static void
 print_ast(Request *request, np_AST_Node* node, s32 level)
 {
 	Print *print = request->print;
-	Print_clear(print);
-	Print_char(print,' ');
-	Print_align(print, level * 4, 0,' ');
-	Print_cstr(print, np_AST_Node_Type_cstr(node->type));
-	Print_char(print,' ');
+	print_clear(print);
+	print_char(print,' ');
+	print_align(print, level * 4, 0,' ');
+	print_cstr(print, np_AST_Node_Type_cstr(node->type));
+	print_char(print,' ');
 	switch (node->type) {
 	case np_AST_Node_Type_Number: {
 			np_AST_Number* x = (np_AST_Number*) node->detail;
 			if (x->is_integer) {
-				Print_f64(print, (f64) x->ip);
+				print_f64(print, (f64) x->ip);
 			} else {
-				Print_f64(print, x->fp);
+				print_f64(print, x->fp);
 			}
-			Print_char(print,'\n');
+			print_char(print,'\n');
 			output_(print);
 		} break;
 	case np_AST_Node_Type_String: {
 			np_AST_String* x = (np_AST_String*) node->detail;
-			Print_str(print, x->str.begin, x->str.end);
-			Print_char(print,'\n');
+			print_str(print, x->str.begin, x->str.end);
+			print_char(print,'\n');
 			output_(print);
 		} break;
 	case np_AST_Node_Type_Variable: {
 			np_AST_Variable* x = (np_AST_Variable*) node->detail;
-			Print_str(print, x->name.begin, x->name.end);
-			Print_char(print,'\n');
+			print_str(print, x->name.begin, x->name.end);
+			print_char(print,'\n');
 			output_(print);
 		} break;
 	case np_AST_Node_Type_Group:
 		{
 			np_AST_Group* x = (np_AST_Group*) node->detail;
-			Print_char(print,'\n');
+			print_char(print,'\n');
 			output_(print);
 			print_ast(request, x->node, level+1);
 		}
@@ -1034,8 +1035,8 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 	case np_AST_Node_Type_Function:
 		{
 			np_AST_Function* x = (np_AST_Function*) node->detail;
-			Print_str(print, x->name.begin, x->name.end);
-			Print_char(print,'\n');
+			print_str(print, x->name.begin, x->name.end);
+			print_char(print,'\n');
 			output_(print);
 			np_AST_Function_Parameter *it = x->first_parameter;
 			while(it) {
@@ -1048,8 +1049,8 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 		{
 			np_AST_Binary_Operation* x
 				= (np_AST_Binary_Operation*) node->detail;
-			Print_str(print, x->name.begin, x->name.end);
-			Print_char(print,'\n');
+			print_str(print, x->name.begin, x->name.end);
+			print_char(print,'\n');
 			output_(print);
 			print_ast(request, x->left, level+1);
 			print_ast(request, x->right, level+1);
@@ -1059,8 +1060,8 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 		{
 			np_AST_Assignment* x
 				= (np_AST_Assignment*) node->detail;
-			Print_str(print, x->name.begin, x->name.end);
-			Print_char(print,'\n');
+			print_str(print, x->name.begin, x->name.end);
+			print_char(print,'\n');
 			output_(print);
 			print_ast(request, x->node, level+1);
 		}
@@ -1084,15 +1085,15 @@ a nanocube, querying a snap index, setting .csv to nanocube mapping.
 END_DOC_STRING
 */
 
-internal void
+static void
 service_ast(Request *request)
 {
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_ast_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_ast_doc);
 		output_(print);
 		return;
 	}
@@ -1112,12 +1113,12 @@ service_ast(Request *request)
 
 
 	// reserve heap memory for ast, types, and symbols
-	pt_Memory parse_and_compile_buffer = platform.allocate_memory(Megabytes(128), 0, 0);
+	pt_Memory *parse_and_compile_buffer = platform.allocate_memory(Megabytes(128), 0);
 
 	BilinearAllocator memsrc;
 	BilinearAllocator_init(&memsrc,
-			       parse_and_compile_buffer.memblock.begin,
-			       parse_and_compile_buffer.memblock.end);
+			       OffsetedPointer(parse_and_compile_buffer->base,0),
+			       parse_and_compile_buffer->size);
 
 	// setup a measure on top of the nanocube count just loaded
 
@@ -1147,8 +1148,8 @@ service_ast(Request *request)
 			//	       it = ast_normalize(it);
 			//	       it->next = next;
 			//
-			//	       Print_clear(print);
-			//	       Print_cstr(print,"--------------------- after normalizing ast ---------------------\n");
+			//	       print_clear(print);
+			//	       print_cstr(print,"--------------------- after normalizing ast ---------------------\n");
 			//	       platform.write_to_file(request->pfh_stdout, print->begin, print->end);
 			//
 			//	       // print AST
@@ -1157,8 +1158,8 @@ service_ast(Request *request)
 			it = next;
 		}
 	} else {
-		Print_clear(print);
-		Print_cstr(print,"[Error running ast]\n");
+		print_clear(print);
+		print_cstr(print,"[Error running ast]\n");
 		output_(print);
 		output_(&parser.log);
 	}
@@ -1173,15 +1174,15 @@ service_ast(Request *request)
 //
 // run unit test of a stand-alone btree
 //
-internal void
+static void
 service_btree(Request *request)
 {
 	// run a btree test
 	Print *print = request->print;
 
-	pt_Memory btree_memory = platform.allocate_memory(Megabytes(32), 12, 0);  // page aligned
+	pt_Memory *btree_memory = platform.allocate_memory(Megabytes(32), 0);  // page aligned
 
-	al_Allocator *allocator	= al_Allocator_new(btree_memory.memblock.begin, btree_memory.memblock.end);
+	al_Allocator *allocator	= al_Allocator_new(OffsetedPointer(btree_memory->base,0), OffsetedPointer(btree_memory->base,btree_memory->size));
 	al_Cache *btree_cache	= al_Allocator_create_cache(allocator, "BTree", sizeof(bt_BTree));
 	bt_BTree *btree		= (bt_BTree*) al_Cache_alloc(btree_cache);
 
@@ -1201,31 +1202,31 @@ service_btree(Request *request)
 			       );
 	}
 
-	Print_cstr(print, "[btree] size: ");
-	Print_u64(print, btree->size);
-	Print_cstr(print, "\n");
-	Print_cstr(print, "[btree] hashes: ");
-	Print_u64(print, btree->num_hashes);
-	Print_cstr(print, "\n");
+	print_cstr(print, "[btree] size: ");
+	print_u64(print, btree->size);
+	print_cstr(print, "\n");
+	print_cstr(print, "[btree] hashes: ");
+	print_u64(print, btree->num_hashes);
+	print_cstr(print, "\n");
 	output_(print);
 
 	MemoryBlock mem;
 	if (bt_BTree_get_value(btree, data[2], cstr_end(data[2]), &mem))
 	{
-		Print_clear(print);
-		Print_cstr(print, "[btree] found value ");
-		Print_str(print, mem.begin, mem.end);
-		Print_cstr(print, " for key ");
-		Print_cstr(print, data[2]);
-		Print_cstr(print, ".\n");
+		print_clear(print);
+		print_cstr(print, "[btree] found value ");
+		print_str(print, mem.begin, mem.end);
+		print_cstr(print, " for key ");
+		print_cstr(print, data[2]);
+		print_cstr(print, ".\n");
 		output_(print);
 	}
 	else
 	{
-		Print_clear(print);
-		Print_cstr(print, "[btree] value for key ");
-		Print_cstr(print, data[2]);
-		Print_cstr(print, " NOT found.\n");
+		print_clear(print);
+		print_cstr(print, "[btree] value for key ");
+		print_cstr(print, data[2]);
+		print_cstr(print, " NOT found.\n");
 		output_(print);
 	}
 
@@ -1237,18 +1238,18 @@ service_btree(Request *request)
 	MemoryBlock value;
 	while ( bt_Iter_next(&it, &hash, &key, &value) )
 	{
-		Print_clear(print);
-		Print_u64(print, (u64) hash);
-		Print_align(print, 24, 1, ' ');
-		Print_str(print, key.begin, key.end);
-		Print_align(print, 32, 1, ' ');
-		Print_str(print, value.begin, value.end);
-		Print_align(print, 32, 1, ' ');
-		Print_cstr(print, "\n");
+		print_clear(print);
+		print_u64(print, (u64) hash);
+		print_align(print, 24, 1, ' ');
+		print_str(print, key.begin, key.end);
+		print_align(print, 32, 1, ' ');
+		print_str(print, value.begin, value.end);
+		print_align(print, 32, 1, ' ');
+		print_cstr(print, "\n");
 		output_(print);
 	}
 
-	platform.free_memory(&btree_memory);
+	platform.free_memory(btree_memory);
 }
 
 
@@ -1256,7 +1257,7 @@ service_btree(Request *request)
 // service test
 //------------------------------------------------------------------------------
 
-internal void
+static void
 test_fill_in_event(char *input, nx_Label *labels)
 {
 	u8 row  = (u8) input[2];
@@ -1272,17 +1273,17 @@ test_fill_in_event(char *input, nx_Label *labels)
 }
 
 // run unit test of API calls
-internal void
+static void
 service_test(Request *request)
 {
 	Print *print = request->print;
 	op_Options *options = &request->options;
 
 	// Nanocube Cube will be hand build
-	pt_Memory data_memory = platform.allocate_memory(Megabytes(32), 12, 0);  // page aligned
-	pt_Memory insert_buffer_memory = platform.allocate_memory(sizeof(nx_Threads) + Megabytes(1), 12, 0);
+	pt_Memory *data_memory = platform.allocate_memory(Megabytes(32), 0);  // page aligned
+	pt_Memory *insert_buffer_memory = platform.allocate_memory(sizeof(nx_Threads) + Megabytes(1), 0);
 
-	al_Allocator *allocator      = al_Allocator_new(data_memory.memblock.begin, data_memory.memblock.end);
+	al_Allocator *allocator      = al_Allocator_new(OffsetedPointer(data_memory->base,0), OffsetedPointer(data_memory->base, data_memory->size));
 	al_Cache     *nanocube_cache = al_Allocator_create_cache(allocator, "nv_Nanocube", sizeof(nv_Nanocube));
 	nv_Nanocube  *nanocube       = (nv_Nanocube*) al_Cache_alloc(nanocube_cache);
 
@@ -1364,7 +1365,7 @@ service_test(Request *request)
 
 		for (u64 i=0;i<num_points;++i) {
 			test_fill_in_event(input+(4*i), labels);
-			nx_NanocubeIndex_insert(&nanocube->index, address, &payload, nanocube, insert_buffer_memory.memblock);
+			nx_NanocubeIndex_insert(&nanocube->index, address, &payload, nanocube, (MemoryBlock) { .begin=OffsetedPointer(insert_buffer_memory->base,0), .end=OffsetedPointer(insert_buffer_memory->base, insert_buffer_memory->size) } );
 		}
 
 	} // insert test data into cube
@@ -1375,7 +1376,7 @@ service_test(Request *request)
 			output_cstr_("usage: -save=<fname>\n");
 			return;
 		}
-		pt_File f = platform.open_write_file(output_filename.begin, output_filename.end);
+		pt_File f = platform.open_file(output_filename.begin, output_filename.end, pt_FILE_WRITE);
 		if (!f.open) {
 			output_cstr_("could not open file for saving\n");
 			return;
@@ -1400,26 +1401,24 @@ service_test(Request *request)
 	{ // run test queried and check their results
 
 		// reserve heap memory for ast, types, and symbols
-		pt_Memory parse_and_compile_buffer     = platform.allocate_memory(Megabytes(128), 0, 0);
-		pt_Memory table_index_columns_buffer   = platform.allocate_memory(Megabytes(128), 0, 0);
-		pt_Memory table_measure_columns_buffer = platform.allocate_memory(Megabytes(128), 0, 0);
+		pt_Memory *parse_and_compile_buffer     = platform.allocate_memory(Megabytes(128), 0);
+		pt_Memory *table_index_columns_buffer   = platform.allocate_memory(Megabytes(128), 0);
+		pt_Memory *table_measure_columns_buffer = platform.allocate_memory(Megabytes(128), 0);
 
 		LinearAllocator table_index_columns_allocator;
 		LinearAllocator_init(&table_index_columns_allocator,
-				table_index_columns_buffer.memblock.begin,
-				table_index_columns_buffer.memblock.begin,
-				table_index_columns_buffer.memblock.end);
+				OffsetedPointer(table_index_columns_buffer->base,0),
+				OffsetedPointer(table_index_columns_buffer->base,0),
+				OffsetedPointer(table_index_columns_buffer->base,table_index_columns_buffer->size));
 
 		LinearAllocator table_measure_columns_allocator;
 		LinearAllocator_init(&table_measure_columns_allocator,
-				table_measure_columns_buffer.memblock.begin,
-				table_measure_columns_buffer.memblock.begin,
-				table_measure_columns_buffer.memblock.end);
+				OffsetedPointer(table_measure_columns_buffer->base,0),
+				OffsetedPointer(table_measure_columns_buffer->base,0),
+				OffsetedPointer(table_measure_columns_buffer->base,table_measure_columns_buffer->size));
 
 		BilinearAllocator memsrc;
-		BilinearAllocator_init(&memsrc,
-				parse_and_compile_buffer.memblock.begin,
-				parse_and_compile_buffer.memblock.end);
+		BilinearAllocator_init(&memsrc, OffsetedPointer(parse_and_compile_buffer->base,0), parse_and_compile_buffer->size);
 
 		// prepare compiler
 		np_Compiler compiler;
@@ -1479,10 +1478,10 @@ service_test(Request *request)
 
 
 			{
-				Print_clear(print);
-				Print_cstr(print,"--- query ");
-				Print_u64(print,(u64) query_index);
-				Print_cstr(print," ---\n");
+				print_clear(print);
+				print_cstr(print,"--- query ");
+				print_u64(print,(u64) query_index);
+				print_cstr(print," ---\n");
 				output_(print);
 			}
 
@@ -1521,8 +1520,8 @@ service_test(Request *request)
 			if (table_begin) {
 				/* print tables */
 				nm_Table *table = table_begin;
-				// TODO(llins): too much text being pushed into Print object
-				Print_clear(print);
+				// TODO(llins): too much text being pushed into print object
+				print_clear(print);
 				while (table != table_end) {
 
 					// print result stream
@@ -1536,19 +1535,19 @@ service_test(Request *request)
 				output_cstr_(nm_error_messages[error]);
 			}
 		}
-		platform.free_memory(&table_index_columns_buffer);
-		platform.free_memory(&table_measure_columns_buffer);
-		platform.free_memory(&parse_and_compile_buffer);
+		platform.free_memory(table_index_columns_buffer);
+		platform.free_memory(table_measure_columns_buffer);
+		platform.free_memory(parse_and_compile_buffer);
 	}
 #endif
 
-	Print_clear(print);
-	Print_cstr(print, "Done testing...\n");
+	print_clear(print);
+	print_cstr(print, "Done testing...\n");
 	platform.write_to_file(request->pfh_stdout, print->begin, print->end);
 
 	// free memory
-	platform.free_memory(&insert_buffer_memory);
-	platform.free_memory(&data_memory);
+	platform.free_memory(insert_buffer_memory);
+	platform.free_memory(data_memory);
 
 }
 
@@ -1558,6 +1557,11 @@ service_test(Request *request)
 
 typedef struct ServeData ServeData;
 
+//
+// information indexed by server thread
+// all independent. note that we moved the
+// http state machine to a general list on ServeData
+//
 typedef struct {
 	np_Compiler            compiler;
 	np_CompilerCheckpoint  compiler_chkpt;
@@ -1568,7 +1572,6 @@ typedef struct {
 	np_Parser              parser;
 	Print                  print_result;
 	Print                  print_header;
-	http_Channel           http_channel;
 	pt_TCP_Socket          *socket;
 	nm_Services            *payload_services;
 	ServeData              *context; // it is kind of the buffer parent structure
@@ -1594,24 +1597,27 @@ struct ServeData {
 	// get to zero. In this way it is guaranteed that
 	// all workers stopped accessing the index and it
 	// can be safely replaced.
+
+	// keep a list of http2 state machines
+	http2_List             *http_channels_list;
 };
 
-internal void
+static void
 app_nanocube_print_http_header_default_flags(Print *print)
 {
-	Print_cstr(print, "Access-Control-Allow-Origin: *\r\n");
-	Print_cstr(print, "Access-Control-Allow-Methods: GET\r\n");
+	print_cstr(print, "Access-Control-Allow-Origin: *\r\n");
+	print_cstr(print, "Access-Control-Allow-Methods: GET\r\n");
 }
 
-internal void
+static void
 app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 {
 	// pf_BEGIN_BLOCK("app_nanocube_solve_query");
 
 	Print     *print_result = &buffers->print_result;
 	Print     *print_header = &buffers->print_header;
-	Print_clear(print_result);
-	Print_clear(print_header);
+	print_clear(print_result);
+	print_clear(print_header);
 
 	// clear previous compiler memory usage
 	np_Compiler_goto_checkpoint(&buffers->compiler, buffers->compiler_chkpt);
@@ -1630,14 +1636,14 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 	// pf_END_BLOCK();
 
 	if (!ok) {
-		Print_cstr(print_result, "Syntax Error on Query\n");
-		Print_str(print_result, buffers->parser.log.begin, buffers->parser.log.end);
+		print_cstr(print_result, "Syntax Error on Query\n");
+		print_str(print_result, buffers->parser.log.begin, buffers->parser.log.end);
 
-		Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 		app_nanocube_print_http_header_default_flags(print_header);
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 		goto done;
 	}
 
@@ -1646,14 +1652,14 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 	// pf_END_BLOCK();
 
 	if (!buffers->compiler.reduce.success) {
-		Print_cstr(print_result, "Compiler Error on Query\n");
-		Print_str(print_result, buffers->compiler.reduce.log.begin, buffers->compiler.reduce.log.end);
+		print_cstr(print_result, "Compiler Error on Query\n");
+		print_str(print_result, buffers->compiler.reduce.log.begin, buffers->compiler.reduce.log.end);
 
-		Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 		app_nanocube_print_http_header_default_flags(print_header);
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 		goto done;
 	}
 
@@ -1691,7 +1697,7 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 
 	if (!it) {
 		// if nothing came up in the query solve using the API documentation text.
-		Print_cstr(print_result, nanocube_api_doc);
+		print_cstr(print_result, nanocube_api_doc);
 	}
 
 	while (it) {
@@ -1732,12 +1738,12 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 			// pf_END_BLOCK();
 
 			if (table == 0) {
-				Print_cstr(print_result, nm_error_messages[error]);
-				Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+				print_cstr(print_result, nm_error_messages[error]);
+				print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 				app_nanocube_print_http_header_default_flags(print_header);
-				Print_cstr(print_header, "Content-Type: text/plain\r\n");
-				Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-				Print_cstr(print_header, "\r\n");
+				print_cstr(print_header, "Content-Type: text/plain\r\n");
+				print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+				print_cstr(print_header, "\r\n");
 				goto done;
 			}
 
@@ -1760,28 +1766,28 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 	nv_ResultStream_end(&result_stream);
 
 // 	if (evaluated_statements == 0) {
-// 		Print_cstr(print_result, nanocube_api_doc);
-// 		Print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
-// 		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-// 		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-// 		Print_cstr(print_header, "\r\n");
+// 		print_cstr(print_result, nanocube_api_doc);
+// 		print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
+// 		print_cstr(print_header, "Content-Type: text/plain\r\n");
+// 		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+// 		print_cstr(print_header, "\r\n");
 // 	} else {
-		Print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
+		print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
 		app_nanocube_print_http_header_default_flags(print_header);
 		switch(format.format) {
 		case nv_FORMAT_JSON: {
-			Print_cstr(print_header, "Content-Type: application/json\r\n");
+			print_cstr(print_header, "Content-Type: application/json\r\n");
 		} break;
 		case nv_FORMAT_TEXT: {
-			Print_cstr(print_header, "Content-Type: text/plain\r\n");
+			print_cstr(print_header, "Content-Type: text/plain\r\n");
 		} break;
 		case nv_FORMAT_BINARY: {
-			Print_cstr(print_header, "Content-Type: application/octet-stream\r\n");
+			print_cstr(print_header, "Content-Type: application/octet-stream\r\n");
 		} break;
 		}
-		Print_cstr(print_header, "Content-Length: ");
-		Print_u64(print_header, Print_length(print_result));
-		Print_cstr(print_header, "\r\n\r\n");
+		print_cstr(print_header, "Content-Length: ");
+		print_u64(print_header, print_length(print_result));
+		print_cstr(print_header, "\r\n\r\n");
 // 	}
 
 done:
@@ -1791,46 +1797,82 @@ done:
 
 }
 
+
+#define http_CALLBACK(name) void name(http_Channel *channel, http_Piece piece)
+static
+http2_CALLBACK(http2_handler)
+{
+//      pt_TCP_Socket socket = ((pt_TCP_Socket*) channel->source)[0];
+// 
+//      u64 thread_index = platform.get_thread_index();
+//      Assert(thread_index < g_query_buffers_size);
+//      QueryBuffers *buffer = g_query_buffers[thread_index];
+// 
+//      print      *print_result = buffer->print_result;
+//      print      *print_header = buffer->print_header;
+//      print      *print        = buffer->print; // work print
+//      tok_Tokens *tokens       = buffer->tokens; // work print
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//
 // #define http_REQUEST_LINE_CALLBACK(name)
 // 	void name(http_Channel *channel,
 //  	          http_Response *response,
 // 		  char *method_begin, char *method_end,
 // 		  char *request_target_begin, char *request_target_end,
 // 		  char *http_version_begin, char *http_version_end)
-internal
+//
+
+#if 0
+
+static
 http_REQUEST_LINE_CALLBACK(service_serve_http_request_line_callback)
 {
 	serve_QueryBuffers *buffers = (serve_QueryBuffers*) channel->user_data;
 
-	Print *print_result = &buffers->print_result;
-	Print *print_header = &buffers->print_header;
-	Print_clear(print_result);
-	Print_clear(print_header);
+	print *print_result = &buffers->print_result;
+	print *print_header = &buffers->print_header;
+	print_clear(print_result);
+	print_clear(print_header);
 
 	pt_TCP_Socket *socket = buffers->socket;
 
 	/* check if method is GET */
 	if (pt_compare_memory_cstr(method_begin, method_end, "GET")) {
-		Print_cstr(print_result, "Invalid Method\n");
+		print_cstr(print_result, "Invalid Method\n");
 
-		Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 		app_nanocube_print_http_header_default_flags(print_header);
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 		goto done;
 	}
 
 	// http request-target starts with '/'
 	// consider the remaining of the request-target the query
 	if (request_target_begin == request_target_end || *request_target_begin != '/') {
-		Print_cstr(print_result, "Expecting request_target to start with '/'\n");
+		print_cstr(print_result, "Expecting request_target to start with '/'\n");
 
-		Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 		app_nanocube_print_http_header_default_flags(print_header);
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 		goto done;
 	}
 
@@ -1867,8 +1909,8 @@ http_REQUEST_LINE_CALLBACK(service_serve_http_request_line_callback)
 
 done:
 	/* write down result on tcp port */
-	platform.tcp_write(socket, print_header->begin, Print_length(print_header));
-	platform.tcp_write(socket, print_result->begin, Print_length(print_result));
+	platform.tcp_write(socket, print_header->begin, print_length(print_header));
+	platform.tcp_write(socket, print_result->begin, print_length(print_result));
 
 }
 
@@ -1877,39 +1919,132 @@ done:
 // 	          http_Response *response,
 // 		  char *field_name_begin, char *field_name_end,
 // 		  char *field_value_begin, char *field_value_end)
-internal
+static
 http_HEADER_FIELD_CALLBACK(service_serve_http_header_field_callback)
 {
 	/* print request_target */
-// 	Print *print = &g_request->print;
-// 	Print_clear(print);
-// 	Print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
-// 	Print_str(print, field_name_begin, field_name_end);
-// 	Print_cstr(print, "', value:'");
-// 	Print_str(print, field_value_begin, field_value_end);
-// 	Print_cstr(print, "'\n");
+// 	print *print = &g_request->print;
+// 	print_clear(print);
+// 	print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
+// 	print_str(print, field_name_begin, field_name_end);
+// 	print_cstr(print, "', value:'");
+// 	print_str(print, field_value_begin, field_value_end);
+// 	print_cstr(print, "'\n");
 // 	output_(print);
 }
 
+#endif
+
+
+//
+// associate the right data to the tcp stuff
+//
+// PLATFORM_TCP_DATA_CALLBACK(tcp_data_callback)
+// {
+// 	// we don't need to know the query buffer here,
+// 	// but we need to set the socket as the user data
+// 	// of the http channel so it can respond
+// 	http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
+// 	channel->source = &socket;
+// 
+// 	// slow recording method, but ok for now
+// 	if (g_dump_raw) {
+// 		u64 thread_index = platform.get_thread_index();
+// 		Assert(thread_index < g_query_buffers_size);
+// 		print      *print        = g_query_buffers[thread_index]->print; // work print
+// 		print_clear(print);
+// 		print_cstr(print, g_dump_raw);
+// 		print_format(print , "-thr%02d-conn%04d-chan%02d", (s32) thread_index, (s32) socket.id, (s32) channel->id);
+// 		pt_File file = platform.open_file(print->begin, print->end, pt_FILE_APPEND);
+// 		if (file.open) {
+// 			platform.write_to_file(&file, (char*)buffer, (char*)buffer + length);
+// 		}
+// 		platform.close_file(&file);
+// 	}
+// 
+// 	http2_push_request_data(channel, buffer, length);
+// }
+// 
+
+
+
+
+
+
+
+
+
+
+
+
 // (pt_TCP_Socket *socket, char *begin, char *end)
 // typedef void PlatformTCPCallback(pt_TCP_Socket *socket, char *buffer, u64 length);
-internal
-PLATFORM_TCP_CALLBACK(serve_request_handler)
+// static
+// PLATFORM_TCP_CALLBACK(serve_request_handler)
+// {
+//
+// 	/* assuming single threaded model for the moment */
+// 	ServeData *serve_data = (ServeData*) socket->user_data;
+//
+// 	// TODO(llins): get thread index
+// 	u64 index = platform.get_thread_index();
+//
+// 	serve_QueryBuffers *buffers = serve_data->buffers + index;
+// 	buffers->socket = socket;
+//
+// 	// push data into http channel
+// 	http_Channel_receive_data(&buffers->http_channel, buffer, length);
+// }
+
+
+PLATFORM_TCP_DATA_CALLBACK(serve_tcp_data_callback)
 {
+	// we don't need to know the query buffer here,
+	// but we need to set the socket as the user data
+	// of the http channel so it can respond
+	http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
+	channel->source = &socket;
 
-	/* assuming single threaded model for the moment */
-	ServeData *serve_data = (ServeData*) socket->user_data;
+	// slow recording method, but ok for now
+	// if (g_dump_raw) {
+	// 	u64 thread_index = platform.get_thread_index();
+	// 	Assert(thread_index < g_query_buffers_size);
+	// 	print      *print        = g_query_buffers[thread_index]->print; // work print
+	// 	print_clear(print);
+	// 	print_cstr(print, g_dump_raw);
+	// 	print_format(print , "-thr%02d-conn%04d-chan%02d", (s32) thread_index, (s32) socket.id, (s32) channel->id);
+	// 	pt_File file = platform.open_file(print->begin, print->end, pt_FILE_APPEND);
+	// 	if (file.open) {
+	// 		platform.write_to_file(&file, (char*)buffer, (char*)buffer + length);
+	// 	}
+	// 	platform.close_file(&file);
+	// }
 
-	// TODO(llins): get thread index
-	u64 index = platform.get_thread_index();
+	http2_push_request_data(channel, buffer, length);
+}
 
-	serve_QueryBuffers *buffers = serve_data->buffers + index;
-	buffers->socket = socket;
-
-
-	// push data into http channel
-	http_Channel_receive_data(&buffers->http_channel, buffer, length);
-
+static
+PLATFORM_TCP_EVENT_CALLBACK(serve_tcp_event_callback)
+{
+	ServeData *serve_data = context;
+	// log("EVENT thread %03d event: %d\n", (s32) index, (s32) event);
+	if (event == pt_TCP_EVENT_SERVER_SOCKET_INITIALIZATION) {
+		http2_Channel *channel = http2_list_reserve(serve_data->http_channels_list);
+		if (!channel) {
+			msg("could not reserve http channel\n");
+			exit(-1);
+		}
+		http2_reset(channel);
+		// couple the channel with the socket
+		platform.tcp_socket_set_custom_data(socket, channel);
+	} else if (event == pt_TCP_EVENT_SERVER_SOCKET_TERMINATION) {
+		http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
+		http2_list_free(serve_data->http_channels_list, channel);
+		channel->source = 0;
+	} else {
+		// log("Unknown tcp event\n");
+		InvalidCodePath;
+	}
 }
 
 // #if 1
@@ -1933,7 +2068,7 @@ PLATFORM_TCP_CALLBACK(serve_request_handler)
 // #endif
 
 
-#define app_NanocubesAndAliases_OK 1
+#define app_NanocubesAndAliases_OK 0
 #define app_NanocubesAndAliases_EMPTY_ALIAS 2
 #define app_NanocubesAndAliases_COULDNT_OPEN_NANOCUBE_FILE 3
 #define app_NanocubesAndAliases_NOT_ENOUGH_MEMORY 4
@@ -1941,7 +2076,7 @@ PLATFORM_TCP_CALLBACK(serve_request_handler)
 #define app_NanocubesAndAliases_NO_NANOCUBE_FOR_ALIAS 6
 
 typedef struct {
-	BasicAllocator blocks;
+	a_Arena        arena;
 	pt_MappedFile  mapped_files[1024];
 	nv_Nanocube    *nanocubes[1024];
 	MemoryBlock    aliases[1024];
@@ -1950,10 +2085,11 @@ typedef struct {
 	u8             parse_result;
 } app_NanocubesAndAliases;
 
-internal void
+// zero is initialization
+static void
 app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
 {
-	BasicAllocator_init(&self->blocks);
+	self->arena = (a_Arena) { 0 }; // zero is initialization
 	self->num_mapped_files = 0;
 	self->num_nanocubes = 0;
 	self->parse_result = app_NanocubesAndAliases_OK;
@@ -1970,14 +2106,14 @@ app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
 // 	self->num_nanocubes = 0;
 // }
 
-internal void
+static void
 app_NanocubesAndAliases_free_and_pop_nanocube(app_NanocubesAndAliases *self, s32 index)
 {
 	Assert(index < self->num_nanocubes);
 
 	// I got to free the allocator
 	al_Allocator *allocator = nv_Nanocube_get_allocator(self->nanocubes[index]);
-	BasicAllocator_free(&self->blocks, allocator); // self->nanocubes[index]);
+	platform.free_memory_raw(allocator); // if nanocube was cached
 	for (s32 i=index+1;i<self->num_nanocubes;++i) {
 		self->nanocubes[i-1] = self->nanocubes[i];
 		self->aliases[i-1] = self->aliases[i];
@@ -1985,22 +2121,24 @@ app_NanocubesAndAliases_free_and_pop_nanocube(app_NanocubesAndAliases *self, s32
 	--self->num_nanocubes;
 }
 
-internal void
+static void
 app_NanocubesAndAliases_free_resources(app_NanocubesAndAliases *self)
 {
-	BasicAllocator_free_all(&self->blocks);
+	a_clear(&self->arena);
+	// BasicAllocator_free_all(&self->blocks);
 	for (s32 i=0;i<self->num_mapped_files;++i) {
 		platform.close_mmap_file(self->mapped_files + i);
 	}
 }
 
 // copies the whole allocator associated with the nanocube
-internal b8
+static b8
 app_NanocubesAndAliases_copy_and_register_nanocube(app_NanocubesAndAliases *self, nv_Nanocube *nanocube, char *alias_begin, char *alias_end)
 {
 	al_Allocator *allocator = nv_Nanocube_get_allocator(nanocube);
 	u64 length = (u64) allocator->used_pages * al_PAGE_SIZE;
-	void *buffer = BasicAllocator_alloc(&self->blocks, length, al_BITS_PER_PAGE);
+	// void *buffer = BasicAllocator_alloc(&self->blocks, length, al_BITS_PER_PAGE);
+	void *buffer = platform.allocate_memory(length,0);
 	if (buffer == 0) {
 		// not enough memory
 		return 0;
@@ -2015,7 +2153,7 @@ app_NanocubesAndAliases_copy_and_register_nanocube(app_NanocubesAndAliases *self
 	return 1;
 }
 
-internal u8
+static u8
 app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char *text_begin, char *text_end, Print *log)
 {
 	Assert(log);
@@ -2027,7 +2165,7 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 	char *alias_end   = eq;
 	s32 nanocubes_associated_with_this_alias = 0;
 	if (!alias || alias_begin == alias_end) {
-		Print_cstr(log, "[serve] Error: empty alias. Use an alias name for .nanocube index files");
+		print_cstr(log, "[serve] Error: empty alias. Use an alias name for .nanocube index files");
 		self->parse_result = app_NanocubesAndAliases_EMPTY_ALIAS;
 		return self->parse_result;
 	}
@@ -2040,7 +2178,7 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 	while (nt_Tokenizer_next(&tok)) {
 		++tok_number;
 		if (tok_number > 0) {
-			Print_char(log,'\n');
+			print_char(log,'\n');
 		}
 
 		char *filename_begin = tok.token.begin;
@@ -2058,21 +2196,21 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 		}
 		char *block_begin = 0;
 		if (cache) {
-			pt_File nanocube_file = platform.open_read_file(filename_begin, filename_end);
+			pt_File nanocube_file = platform.open_file(filename_begin, filename_end, pt_FILE_READ);
 			if (!nanocube_file.open) {
-				Print_cstr(log, "couldn't open file: ");
-				Print_str(log, filename_begin, filename_end);
-				Print_char(log,'\n');
+				print_cstr(log, "couldn't open file: ");
+				print_str(log, filename_begin, filename_end);
+				print_char(log,'\n');
 				self->parse_result = app_NanocubesAndAliases_COULDNT_OPEN_NANOCUBE_FILE;
 				return self->parse_result;
 			}
 			/* bring all file content to memory */
 
-			block_begin = BasicAllocator_alloc(&self->blocks, nanocube_file.size, 12);
+			block_begin = platform.allocate_memory_raw(nanocube_file.size, 0);
 			if (!block_begin) {
-				Print_cstr(log, "couldn't read file: ");
-				Print_str(log, filename_begin, filename_end);
-				Print_char(log,'\n');
+				print_cstr(log, "couldn't read file: ");
+				print_str(log, filename_begin, filename_end);
+				print_char(log,'\n');
 				self->parse_result = app_NanocubesAndAliases_NOT_ENOUGH_MEMORY;
 				return self->parse_result;
 			}
@@ -2085,9 +2223,9 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 			self->mapped_files[self->num_mapped_files] = platform.open_mmap_file(filename_begin, filename_end, 1, 0);
 			pt_MappedFile *mapped_file = self->mapped_files + self->num_mapped_files;
 			if (!mapped_file->mapped) {
-				Print_cstr(log, "[serve] couldn't memory map file: ");
-				Print_str(log, filename_begin, filename_end);
-				Print_char(log,'\n');
+				print_cstr(log, "[serve] couldn't memory map file: ");
+				print_str(log, filename_begin, filename_end);
+				print_char(log,'\n');
 				self->parse_result = app_NanocubesAndAliases_COULD_NOT_MMAP_FILE;
 				return self->parse_result;
 			}
@@ -2095,15 +2233,15 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 			block_begin = mapped_file->begin;
 		}
 		/* messge */
-		Print_cstr(log, "[serve] Alias \"");
-		Print_str(log, alias_begin, alias_end);
+		print_cstr(log, "[serve] Alias \"");
+		print_str(log, alias_begin, alias_end);
 		if (cache) {
-			Print_cstr(log, "\" file copied in memory: ");
+			print_cstr(log, "\" file copied in memory: ");
 		} else {
-			Print_cstr(log, "\" memory mapped file: ");
+			print_cstr(log, "\" memory mapped file: ");
 		}
-		Print_str(log, filename_begin, filename_end);
-		// Print_cstr(log, "\n");
+		print_str(log, filename_begin, filename_end);
+		// print_cstr(log, "\n");
 		al_Allocator* allocator = (al_Allocator*)  block_begin;
 		/* TODO(llins): run some sanity check to see if content of mapped file seems valid */
 		nv_Nanocube* cube = (nv_Nanocube*)   al_Allocator_get_root(allocator);
@@ -2118,7 +2256,7 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 
 	Assert(nanocubes_associated_with_this_alias > 0);
 // 	if (nanocubes_associated_with_this_alias == 0) {
-// 				Print_cstr(print, "no nanocube for alias");
+// 				print_cstr(print, "no nanocube for alias");
 // 				self->parse_result.status = app_NanocubesAndAliases_NO_NANOCUBE_FOR_ALIAS;
 // 				return self->parse_result.status;
 // 	}
@@ -2177,7 +2315,7 @@ END_DOC_STRING
 */
 
 // run unit test of api calls
-internal void
+static void
 service_serve(Request *request)
 {
 	// usage:
@@ -2198,8 +2336,8 @@ service_serve(Request *request)
 	// get next two tokens
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_serve_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_serve_doc);
 		output_(print);
 		return;
 	}
@@ -2245,13 +2383,19 @@ service_serve(Request *request)
 
 	}
 
-	Print_clear(print);
-	Print_format(print,"Ver: %s\n",nanocube_executable_version_doc);
+	print_clear(print);
+	print_format(print,"Ver: %s\n",nanocube_executable_version_doc);
 	output_(print);
-	Print_clear(print);
+	print_clear(print);
 
 	app_NanocubesAndAliases info;
 	app_NanocubesAndAliases_init(&info);
+
+	//
+	// @todo should estimate the amount of memory needed in the arena
+	// to aligne well with the various buffers needed... for now just
+	// let it fly and be a bit wasteful
+	//
 
 	b8 ok = 1;
 
@@ -2263,7 +2407,7 @@ service_serve(Request *request)
 	MemoryBlock source_text = {.begin=0, .end=0};
 	for (u32 param=2;param<num_parameters;++param) {
 		op_Options_str(options, param, &source_text);
-		Print_clear(print);
+		print_clear(print);
 		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
 		output_(print);
 		output_cstr_("\n");
@@ -2282,56 +2426,63 @@ service_serve(Request *request)
 	}
 
 	ServeData serve_data = {
-		.buffers = (serve_QueryBuffers*) BasicAllocator_alloc(&info.blocks, num_threads * sizeof(serve_QueryBuffers),3),
+		.buffers = 0,
 		.request = request,
 		.num_buffers = num_threads,
-		.pause_and_active_count = 0
+		.pause_and_active_count = 0,
+		.http_channels_list = 0
 	};
-	Assert(serve_data.buffers);
-	nv_payload_services_init(&serve_data.payload_services);
 
+	serve_data.buffers = a_push(&info.arena, num_threads * sizeof(serve_QueryBuffers), 8, 0);
+	if (!serve_data.buffers) {
+		msg("Couldn't reserve space for query buffers. Exiting.\n");
+		return;
+	}
+
+	// initialize http channels list
+	// @todo check the notion of max connections vs. num_threads being use this server
+	s32 max_connections = Max(num_threads,1);
+	serve_data.http_channels_list = http2_list_new(&info.arena, max_connections, app_service_serve_MEM_HTTP_CHANNEL, http2_handler, 0);
+
+	nv_payload_services_init(&serve_data.payload_services);
 	for (u32 i=0;i<num_threads;++i) {
 
 		serve_QueryBuffers *buffer = serve_data.buffers + i;
 		buffer->context = &serve_data;
 
 		// reserve heap memory for ast, types, and symbols
-		MemoryBlock parse_and_compile_buffer   = BasicAllocator_alloc_memblock(&info.blocks, app_service_serve_MEM_COMPILER,            3);
-		MemoryBlock table_index_columns_buffer = BasicAllocator_alloc_memblock(&info.blocks, app_service_serve_MEM_TABLE_INDEX_COLUMNS, 3);
-		MemoryBlock table_value_columns_buffer = BasicAllocator_alloc_memblock(&info.blocks, app_service_serve_MEM_TABLE_VALUE_COLUMNS, 3);
-		MemoryBlock print_result_buffer        = BasicAllocator_alloc_memblock(&info.blocks, app_service_serve_MEM_PRINT_RESULT,        3);
-		MemoryBlock print_header_buffer        = BasicAllocator_alloc_memblock(&info.blocks, app_service_serve_MEM_PRINT_HEADER,        3);
-		MemoryBlock http_channel_buffer        = BasicAllocator_alloc_memblock(&info.blocks, app_service_serve_MEM_HTTP_CHANNEL,        3);
+		a_Block parse_and_compile_buffer   = a_push_block(&info.arena, app_service_serve_MEM_COMPILER,            8, 0);
+		a_Block table_index_columns_buffer = a_push_block(&info.arena, app_service_serve_MEM_TABLE_INDEX_COLUMNS, 8, 0);
+		a_Block table_value_columns_buffer = a_push_block(&info.arena, app_service_serve_MEM_TABLE_VALUE_COLUMNS, 8, 0);
+		a_Block print_result_buffer        = a_push_block(&info.arena, app_service_serve_MEM_PRINT_RESULT,        8, 0);
+		a_Block print_header_buffer        = a_push_block(&info.arena, app_service_serve_MEM_PRINT_HEADER,        8, 0);
+		a_Block http_channel_buffer        = a_push_block(&info.arena, app_service_serve_MEM_HTTP_CHANNEL,        8, 0);
 
 		/* initialize compiler allocator */
 		BilinearAllocator_init(&buffer->compiler_allocator,
-				       parse_and_compile_buffer.begin,
-				       parse_and_compile_buffer.end);
+				       parse_and_compile_buffer.base,
+				       parse_and_compile_buffer.length);
 		/* init compiler */
 		np_Compiler_init(&buffer->compiler, &buffer->compiler_allocator);
 		nv_Compiler_init(&buffer->compiler);
 
 		/* init table_index_columns_allocator */
 		LinearAllocator_init(&buffer->table_index_columns_allocator,
-				     table_index_columns_buffer.begin,
-				     table_index_columns_buffer.begin,
-				     table_index_columns_buffer.end);
+				     table_index_columns_buffer.base,
+				     table_index_columns_buffer.base,
+				     OffsetedPointer(table_index_columns_buffer.base,table_index_columns_buffer.length));
 
 		/* init table_value_columns_allocator*/
 		LinearAllocator_init(&buffer->table_value_columns_allocator,
-				     table_value_columns_buffer.begin,
-				     table_value_columns_buffer.begin,
-				     table_value_columns_buffer.end);
+				     table_value_columns_buffer.base,
+				     table_value_columns_buffer.base,
+				     OffsetedPointer(table_value_columns_buffer.base,table_value_columns_buffer.length));
 
 		/* init print_result */
-		Print_init(&buffer->print_result,
-			   print_result_buffer.begin,
-			   print_result_buffer.end);
+		print_init(&buffer->print_result, print_result_buffer.base, print_result_buffer.length);
 
 		/* init print_result */
-		Print_init(&buffer->print_header,
-			   print_header_buffer.begin,
-			   print_header_buffer.end);
+		print_init(&buffer->print_header, print_header_buffer.base, print_header_buffer.length);
 
 		/* insert nanocube reference aliases into compiler global environment */
 		for (s32 j=0;j<info.num_nanocubes;++j) {
@@ -2347,12 +2498,12 @@ service_serve(Request *request)
 		buffer->compiler_chkpt = np_Compiler_checkpoint(&buffer->compiler);
 
 		/* initialize http channel memory */
-		http_Channel_init(&buffer->http_channel,
-				  http_channel_buffer.begin,
-				  http_channel_buffer.end,
-				  service_serve_http_request_line_callback,
-				  service_serve_http_header_field_callback,
-				  buffer); /* user data will be the buffer*/
+		// http_Channel_init(&buffer->http_channel,
+		// 		  http_channel_buffer.begin,
+		// 		  http_channel_buffer.end,
+		// 		  service_serve_http_request_line_callback,
+		// 		  service_serve_http_header_field_callback,
+		// 		  buffer); /* user data will be the buffer*/
 
 		/* initialize socket */
 		buffer->socket = 0;
@@ -2363,30 +2514,46 @@ service_serve(Request *request)
 	Assert(tcp.handle);
 
 	// #define PLATFORM_TCP_SERVE(name) void name(pt_TCP *tcp, s32 port, void *user_data, PlatformTCPCallback *callback, u32 *status)
+	//
+	// PLATFORM_TCP_LISTEN(name) void name(pt_TCP tcp,
+	//                                     s32 port,
+	//                                     u16 max_connections,
+	//                                     void *user_data,
+	//                                     PlatformTCPDataCallback *data_callback,
+	// 				       PlatformTCPEventCallback *event_callback,
+	// 				       void *context_event_callback,
+	// 				       pt_TCP_Feedback *feedback)
+	//
+
 	pt_TCP_Feedback feedback;
-	platform.tcp_serve(tcp, port, (void*) &serve_data, serve_request_handler, &feedback);
+	platform.tcp_listen(tcp, port, max_connections,
+			    (void*) &serve_data,
+			    serve_tcp_data_callback,
+			    serve_tcp_event_callback,
+			    (void*) &serve_data,
+			    &feedback);
 
 	// should now be available
 	platform.tcp_process_events(tcp, 0);
 
-	if (feedback.status != pt_TCP_SOCKET_OK) {
+	if (feedback.status != pt_TCP_FEEDBACK_OK) {
+		msg("Could not start tcp port %d for listening\n", port);
 		return;
 	}
 
-
 	// log message to differentiate from sequential server
-	Print_clear(print);
-	Print_format(print, "[serve] port: %d\n", port);
+	print_clear(print);
+	print_format(print, "[serve] port: %d\n", port);
 	output_(print);
 
 	pt_WorkQueue *work_queue = 0;
 	if (num_threads > 1) {
 		work_queue = platform.work_queue_create(num_threads);
 		// log message to differentiate from sequential server
-		Print_clear(print);
-		Print_cstr(print, "[serve] using ");
-		Print_u64(print, num_threads);
-		Print_cstr(print, " threads\n");
+		print_clear(print);
+		print_cstr(print, "[serve] using ");
+		print_u64(print, num_threads);
+		print_cstr(print, " threads\n");
 		output_(print);
 	}
 
@@ -2416,15 +2583,15 @@ service_serve(Request *request)
 		u64 count = pf_Table_current_events_count(global_profile_table);
 		u64 capacity = global_profile_table->event_capacity;
 
-		Print_clear(print);
-		Print_cstr(print, "Profile Events (Count/Capacity/Usage): ");
-		Print_u64(print, count);
-		Print_char(print, ' ');
-		Print_u64(print, capacity);
-		Print_char(print, ' ');
-		Print_u64(print, (100 * count)/capacity);
-		Print_char(print, '%');
-		Print_char(print, '\n');
+		print_clear(print);
+		print_cstr(print, "Profile Events (Count/Capacity/Usage): ");
+		print_u64(print, count);
+		print_char(print, ' ');
+		print_u64(print, capacity);
+		print_char(print, ' ');
+		print_u64(print, (100 * count)/capacity);
+		print_char(print, '%');
+		print_char(print, '\n');
 		output_(print);
 	}
 #endif
@@ -2458,9 +2625,10 @@ END_DOC_STRING
 */
 
 // run unit test of api calls
-internal void
+static void
 service_query(Request *request)
 {
+#if 0
 	// usage:
 	//	   serve <port> <alias1>=<db1> <alias2>=<db2> ... <aliasn>=<dbn>
 	//	   serve 8000 crimes.ncc mts.ncc weather.ncc
@@ -2478,8 +2646,8 @@ service_query(Request *request)
 
 	// get next two tokens
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_query_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_query_doc);
 		log_(print);
 		return;
 	}
@@ -2533,7 +2701,7 @@ service_query(Request *request)
 	MemoryBlock source_text = {.begin=0, .end=0};
 	for (u32 param=2;param<num_parameters;++param) {
 		op_Options_str(options, param, &source_text);
-		Print_clear(print);
+		print_clear(print);
 		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
 		log_(print);
 		log_cstr_("\n");
@@ -2582,12 +2750,12 @@ service_query(Request *request)
 			     table_value_columns_buffer.end);
 
 	/* init print_result */
-	Print_init(&buffer->print_result,
+	print_init(&buffer->print_result,
 		   print_result_buffer.begin,
 		   print_result_buffer.end);
 
 	/* init print_result */
-	Print_init(&buffer->print_header,
+	print_init(&buffer->print_header,
 		   print_header_buffer.begin,
 		   print_header_buffer.end);
 
@@ -2626,15 +2794,15 @@ service_query(Request *request)
 		u64 count = pf_Table_current_events_count(global_profile_table);
 		u64 capacity = global_profile_table->event_capacity;
 
-		Print_clear(print);
-		Print_cstr(print, "Profile Events (Count/Capacity/Usage): ");
-		Print_u64(print, count);
-		Print_char(print, ' ');
-		Print_u64(print, capacity);
-		Print_char(print, ' ');
-		Print_u64(print, (100 * count)/capacity);
-		Print_char(print, '%');
-		Print_char(print, '\n');
+		print_clear(print);
+		print_cstr(print, "Profile Events (Count/Capacity/Usage): ");
+		print_u64(print, count);
+		print_char(print, ' ');
+		print_u64(print, capacity);
+		print_char(print, ' ');
+		print_u64(print, (100 * count)/capacity);
+		print_char(print, '%');
+		print_char(print, '\n');
 		output_(print);
 	}
 #endif
@@ -2644,16 +2812,17 @@ free_resources:
 	/* free blocks */
 	app_NanocubesAndAliases_free_resources(&info);
 
+#endif
 }
 
 //------------------------------------------------------------------------------
 // create service
 //------------------------------------------------------------------------------
 
-internal void
+static void
 service_demo_create()
 {
-
+#if 0
 	Print      *print   = g_request->print;
 	op_Options *options = &g_request->options;
 
@@ -2836,44 +3005,44 @@ service_demo_create()
 		nx_NanocubeIndex_insert(&nanocube->index, address, &payload_unit, nanocube, insert_buffer_memory.memblock);
 
 		if ((count % 100000) == 0) {
-// 			Print_cstr(print,"Allocator usage after ");
-// 			Print_u64(print, count);
-// 			Print_align(print, 8, 1);
-// 			Print_cstr(print, " records in #pages is ");
-// 			Print_u64(print, allocator->used_pages);
-// 			Print_char(print, '\n');
+// 			print_cstr(print,"Allocator usage after ");
+// 			print_u64(print, count);
+// 			print_align(print, 8, 1);
+// 			print_cstr(print, " records in #pages is ");
+// 			print_u64(print, allocator->used_pages);
+// 			print_char(print, '\n');
 // 			output_(print);
-// 			Print_clear(print);
-			Print_clear(print);
-			Print_cstr(print, "[dmp] progress ");
-			Print_u64(print,(u64) count);
-			Print_align(print, 10, 1, ' ');
-			Print_cstr(print,"  time ");
-			Print_u64(print,(u64)
+// 			print_clear(print);
+			print_clear(print);
+			print_cstr(print, "[dmp] progress ");
+			print_u64(print,(u64) count);
+			print_align(print, 10, 1, ' ');
+			print_cstr(print,"  time ");
+			print_u64(print,(u64)
 				  (platform.get_time() - t0));
-			Print_align(print, 10, 1, ' ');
-			Print_cstr(print,"  memory(MB) ");
-			Print_u64(print, (u64)(allocator->used_pages *
+			print_align(print, 10, 1, ' ');
+			print_cstr(print,"  memory(MB) ");
+			print_u64(print, (u64)(allocator->used_pages *
 					       al_PAGE_SIZE)/Megabytes(1));
-			Print_align(print, 10, 1, ' ');
-			Print_cstr(print,"\n");
+			print_align(print, 10, 1, ' ');
+			print_cstr(print,"\n");
 			output_(print);
-			Print_clear(print);
+			print_clear(print);
 		}
 	}
 
-	Print_cstr(print,"Allocator usage after ");
-	Print_u64(print, count);
-	Print_align(print, 8, 1, ' ');
-	Print_cstr(print, " records in #pages is ");
-	Print_u64(print, allocator->used_pages);
-	Print_char(print, '\n');
+	print_cstr(print,"Allocator usage after ");
+	print_u64(print, count);
+	print_align(print, 8, 1, ' ');
+	print_cstr(print, " records in #pages is ");
+	print_u64(print, allocator->used_pages);
+	print_char(print, '\n');
 	platform.write_to_file(g_request->pfh_stdout, print->begin, print->end);
-	Print_clear(print);
+	print_clear(print);
 
 	nu_log_memory(allocator, &nanocube->index, print, 0, 0);
 	output_(print);
-	Print_clear(print);
+	print_clear(print);
 
 
 	// write to file
@@ -2885,16 +3054,17 @@ service_demo_create()
 	platform.close_file(&pfh_db);
 	output_cstr_("[create-success] file saved!\n");
 
-	//     Print_cstr(&print,"sizeof(Threads): ");
-	//     Print_u64(&print, sizeof(Threads));
-	//     Print_char(&print,'\n');
+	//     print_cstr(&print,"sizeof(Threads): ");
+	//     print_u64(&print, sizeof(Threads));
+	//     print_char(&print,'\n');
 	//     platform.write_to_file(stdout, print.begin, print.end);
-	//     Print_clear(&print);
+	//     print_clear(&print);
 
+#endif
 }
 
 
-internal u128
+static u128
 app_quadtree2_path_number(f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
 	// mercator from degrees
@@ -2944,7 +3114,7 @@ app_quadtree2_path_number(f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 	return result;
 }
 
-internal u64
+static u64
 app_tile_path_number(u64 level, u64 cell_x, u64 cell_y)
 {
 	/* fixed max resolution */
@@ -2963,7 +3133,7 @@ app_tile_path_number(u64 level, u64 cell_x, u64 cell_y)
 	return result;
 }
 
-internal u64
+static u64
 app_quadtree_path_number(f32 lat, f32 lon)
 {
 	// mercator from degrees
@@ -3030,7 +3200,7 @@ typedef struct {
 	b8               active;
 } app_TPart2;
 
-internal void
+static void
 app_TPart2_init(app_TPart2 *self)
 {
 	pt_fill((char*) self, (char*) self + sizeof(*self), 0);
@@ -3038,7 +3208,7 @@ app_TPart2_init(app_TPart2 *self)
 	self->cut_end   = self->buffer;
 }
 
-internal b8
+static b8
 app_TPart2_read_latlon(app_TPart2 *self, MemoryBlock *begin, MemoryBlock *end, f32 *lat1, f32 *lon1, f32 *lat2, f32 *lon2)
 {
 	Assert(begin + self->lat1_index < end);
@@ -3064,7 +3234,7 @@ app_TPart2_read_latlon(app_TPart2 *self, MemoryBlock *begin, MemoryBlock *end, f
 	}
 }
 
-internal b8
+static b8
 app_TPart2_read(app_TPart2 *self)
 {
 	Assert(self->active);
@@ -3093,7 +3263,7 @@ app_TPart2_read(app_TPart2 *self)
 				++self->cut_end;
 			};
 			num_index = (num_index + 1) % 6;
-		} else if (pt_compare_memory_cstr(tokenizer.token.begin, tokenizer.token.end, "new") == 0) {
+		} else if (cstr_compare_memory_cstr(tokenizer.token.begin, tokenizer.token.end, "new") == 0) {
 			if (num_index != 0) {
 				return 0;
 			} else {
@@ -3110,7 +3280,7 @@ app_TPart2_read(app_TPart2 *self)
 	return 1;
 }
 
-internal u32
+static u32
 app_TPart2_part_number(app_TPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
 	/* compute u64 quadtree number */
@@ -3145,7 +3315,7 @@ app_TPart2_part_number(app_TPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 }
 
 
-internal b8
+static b8
 app_TPart2_consider_point(app_TPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
 	u32 part = app_TPart2_part_number(self, lat1, lon1, lat2, lon2);
@@ -3181,7 +3351,7 @@ typedef struct {
 
 } app_QPart2;
 
-internal void
+static void
 app_QPart2_init(app_QPart2 *self)
 {
 	pt_fill((char*) self, (char*) self + sizeof(*self), 0);
@@ -3189,7 +3359,7 @@ app_QPart2_init(app_QPart2 *self)
 	self->cut_end   = self->buffer;
 }
 
-internal b8
+static b8
 app_QPart2_read(app_QPart2 *self)
 {
 	Assert(self->active);
@@ -3225,7 +3395,7 @@ app_QPart2_read(app_QPart2 *self)
 }
 
 
-internal b8
+static b8
 app_QPart2_read_latlon(app_QPart2 *self, MemoryBlock *begin, MemoryBlock *end, f32 *lat1, f32 *lon1, f32 *lat2, f32 *lon2)
 {
 	Assert(begin + self->lat1_index < end);
@@ -3251,7 +3421,7 @@ app_QPart2_read_latlon(app_QPart2 *self, MemoryBlock *begin, MemoryBlock *end, f
 	}
 }
 
-internal u32
+static u32
 app_QPart2_part_number(app_QPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
 	/* compute u64 quadtree number */
@@ -3267,7 +3437,7 @@ app_QPart2_part_number(app_QPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 }
 
 
-internal b8
+static b8
 app_QPart2_consider_point(app_QPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
 	/* compute u64 quadtree number */
@@ -3306,7 +3476,7 @@ typedef struct {
 	b8          active;
 } app_QPart;
 
-internal void
+static void
 app_QPart_init(app_QPart *self)
 {
 	pt_fill((char*) self, (char*) self + sizeof(*self), 0);
@@ -3314,7 +3484,7 @@ app_QPart_init(app_QPart *self)
 	self->cut_end   = self->buffer;
 }
 
-internal b8
+static b8
 app_QPart_append(app_QPart *self, u64 cut_point)
 {
 	if (self->cut_end == self->cut_begin + app_QPart_MAX_NUM_PARTS)
@@ -3324,7 +3494,7 @@ app_QPart_append(app_QPart *self, u64 cut_point)
 	return 1;
 }
 
-internal b8
+static b8
 app_QPart_read(app_QPart *self)
 {
 	Assert(self->active);
@@ -3353,7 +3523,7 @@ app_QPart_read(app_QPart *self)
 }
 
 
-internal b8
+static b8
 app_QPart_read_latlon(app_QPart *self, MemoryBlock *begin, MemoryBlock *end, f32 *lat, f32 *lon)
 {
 	Assert(begin + self->lat_index < end);
@@ -3371,7 +3541,7 @@ app_QPart_read_latlon(app_QPart *self, MemoryBlock *begin, MemoryBlock *end, f32
 	}
 }
 
-internal u32
+static u32
 app_QPart_part_number(app_QPart *self, f32 lat, f32 lon)
 {
 	/* compute u64 quadtree number */
@@ -3385,7 +3555,7 @@ app_QPart_part_number(app_QPart *self, f32 lat, f32 lon)
 	return n+1;
 }
 
-internal b8
+static b8
 app_QPart_consider_point(app_QPart *self, f32 lat, f32 lon)
 {
 	/* compute u64 quadtree number */
@@ -3408,12 +3578,12 @@ app_QPart_consider_point(app_QPart *self, f32 lat, f32 lon)
 
 
 #define print_size_of(name) \
-	Print_cstr(print, #name ); \
-	Print_align(print,32,-1,' '); \
-	Print_u64(print,sizeof(name)); \
-	Print_char(print,'\n'); \
+	print_cstr(print, #name ); \
+	print_align(print,32,-1,' '); \
+	print_u64(print,sizeof(name)); \
+	print_char(print,'\n'); \
 
-internal void
+static void
 service_sizes(Request *request)
 {
 	Print *print = request->print;
@@ -3427,7 +3597,7 @@ service_sizes(Request *request)
 // time service: test time routines
 //------------------------------------------------------------------------------
 
-internal void
+static void
 service_time(Request *request)
 {
 	Print      *print   = request->print;
@@ -3442,87 +3612,87 @@ service_time(Request *request)
 		return;
 	}
 
-	Print_cstr(print, "Year interval [");
-	Print_u64(print, (u64) a);
-	Print_cstr(print, ",");
-	Print_u64(print, (u64) b);
-	Print_cstr(print, ")\n");
-	Print_cstr(print, "Leap years: ");
-	Print_u64(print, (u64) tm_leap_years_between(a,b));
-	Print_cstr(print, "\n");
-	Print_cstr(print, "Days: ");
-	Print_u64(print, (u64) tm_days_between_years(a,b));
-	Print_cstr(print, "\n");
+	print_cstr(print, "Year interval [");
+	print_u64(print, (u64) a);
+	print_cstr(print, ",");
+	print_u64(print, (u64) b);
+	print_cstr(print, ")\n");
+	print_cstr(print, "Leap years: ");
+	print_u64(print, (u64) tm_leap_years_between(a,b));
+	print_cstr(print, "\n");
+	print_cstr(print, "Days: ");
+	print_u64(print, (u64) tm_days_between_years(a,b));
+	print_cstr(print, "\n");
 	output_(print);
 
 	tm_Label label = {.year=2016, .month=3, .day=1,
 		.hour=23, .minute=18, .second=15,
 		.offset_minutes=-60*5, .timezone = 0};
 
-	Print_clear(print);
+	print_clear(print);
 	tm_Label_print(&label, print);
-	Print_cstr(print,"\n");
+	print_cstr(print,"\n");
 	output_(print);
 
 	tm_Label_adjust_offset(&label, 5 *60);
 
-	Print_clear(print);
+	print_clear(print);
 	tm_Label_print(&label, print);
-	Print_cstr(print,"\n");
+	print_cstr(print,"\n");
 	output_(print);
 
 	tm_Time time;
 	tm_Time_init_from_label(&time, &label);
 
-	Print_clear(print);
-	Print_s64(print, time.time);
-	Print_cstr(print, "\n");
+	print_clear(print);
+	print_s64(print, time.time);
+	print_cstr(print, "\n");
 	output_(print);
 
 	// time.time = 2698012800;
 	tm_Label_init(&label, time);
 
-	Print_clear(print);
+	print_clear(print);
 	tm_Label_print(&label, print);
-	Print_cstr(print,"\n");
+	print_cstr(print,"\n");
 	output_(print);
 
 
 	/* try to parse previous label */
-	Print_clear(print);
+	print_clear(print);
 	tm_Label_print(&label, print);
 
-	Print_clear(print);
-	/* Print_cstr(print, "2016-01-01T00:00:00-05:00"); */
-// 	Print_cstr(print, "09-06-2016 09:06:36 PM");
-	Print_cstr(print, "2016 00:00 -05:00");
+	print_clear(print);
+	/* print_cstr(print, "2016-01-01T00:00:00-05:00"); */
+// 	print_cstr(print, "09-06-2016 09:06:36 PM");
+	print_cstr(print, "2016 00:00 -05:00");
 
 	ntp_Parser   parser;
 	ntp_Parser_init(&parser);
 	if (!ntp_Parser_run(&parser, print->begin, print->end)) {
 		output_(&parser.log);
 	} else {
-		Print_clear(print);
+		print_clear(print);
 		tm_Label_print(&parser.label, print);
-		Print_cstr(print,"\n");
+		print_cstr(print,"\n");
 		output_(print);
 	}
 
-	Print_clear(print);
-	Print_cstr(print, "Weekday of 2016-06-09: ");
-	Print_u64(print, tm_weekday(2016,6,9));
-	Print_cstr(print,"\n");
+	print_clear(print);
+	print_cstr(print, "Weekday of 2016-06-09: ");
+	print_u64(print, tm_weekday(2016,6,9));
+	print_cstr(print,"\n");
 	output_(print);
 
 	/* test parsing chicago crime formatted date */
-	Print_clear(print);
-	Print_cstr(print, "04/29/2010 10:15:00 PM");
+	print_clear(print);
+	print_cstr(print, "04/29/2010 10:15:00 PM");
 	if (!ntp_Parser_run(&parser, print->begin, print->end)) {
 		output_(&parser.log);
 	} else {
-		Print_clear(print);
+		print_clear(print);
 		tm_Label_print(&parser.label, print);
-		Print_cstr(print,"\n");
+		print_cstr(print,"\n");
 		output_(print);
 	}
 }
@@ -3555,16 +3725,17 @@ END_DOC_STRING
 */
 
 
-internal void
+static void
 service_qpart(Request *request)
 {
+#if 0
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_qpart_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_qpart_doc);
 		output_(print);
 		return;
 	}
@@ -3758,23 +3929,23 @@ service_qpart(Request *request)
 			}
 		}
 
-// 		Print_clear(print);
-// 		Print_cstr(print, "[");
-// 		Print_f64(print, (f64) lat);
-// 		Print_align(print, 12, 1, ' ');
-// 		Print_cstr(print, ",");
-// 		Print_f64(print, (f64) lon);
-// 		Print_align(print, 12, 1, ' ');
-// 		Print_cstr(print, "]");
-// 		Print_cstr(print, "\n");
+// 		print_clear(print);
+// 		print_cstr(print, "[");
+// 		print_f64(print, (f64) lat);
+// 		print_align(print, 12, 1, ' ');
+// 		print_cstr(print, ",");
+// 		print_f64(print, (f64) lon);
+// 		print_align(print, 12, 1, ' ');
+// 		print_cstr(print, "]");
+// 		print_cstr(print, "\n");
 // 		output_(print);
 
 		/* convert to path using mercator projection */
 		u64 path_number  = app_quadtree_path_number(lat, lon);
 
-// 		Print_clear(print);
-// 		Print_u64(print, path_number);
-// 		Print_cstr(print, "\n");
+// 		print_clear(print);
+// 		print_u64(print, path_number);
+// 		print_cstr(print, "\n");
 // 		output_(print);
 
 		if (point_index >= sample_size) {
@@ -3796,16 +3967,16 @@ service_qpart(Request *request)
 		/* sort sample and return the k-th moments */
 		qsort_u64(sample.begin, sample.end);
 		if (!check_sorted_u64(sample.begin, sample.end)) {
-			Print_clear(print);
-			Print_cstr(print, "PROBLEM IN SORTING!\n");
+			print_clear(print);
+			print_cstr(print, "PROBLEM IN SORTING!\n");
 			output_(print);
 		}
 
 		if (uniq) {
 			sample.end = u64_remove_duplicates(sample.begin, sample.end);
 			if (!check_sorted_uniqueness_u64(sample.begin, sample.end)) {
-				Print_clear(print);
-				Print_cstr(print, "PROBLEM IN UNIQUENESS!\n");
+				print_clear(print);
+				print_cstr(print, "PROBLEM IN UNIQUENESS!\n");
 				output_(print);
 			}
 		}
@@ -3815,9 +3986,9 @@ service_qpart(Request *request)
 		for (u64 i=0;i<k;++i) {
 			u64 index = (u64) ((i+1) * coef);
 			u64 value = Array_u64_get(&sample, index);
-			Print_clear(print);
-			Print_u64(print, value);
-			Print_char(print,'\n');
+			print_clear(print);
+			print_u64(print, value);
+			print_char(print,'\n');
 			output_(print);
 		}
 	}
@@ -3828,13 +3999,14 @@ service_qpart(Request *request)
 	if (snap_function) {
 		platform.close_mmap_file(&snap_mapped_file);
 	}
-
+#endif
 }
 
-internal void
+static void
 service_qpart2(Request *request)
 {
-	Print      *print   = request->print;
+#if 0
+	print      *print   = request->print;
 	op_Options *options = &request->options;
 
 
@@ -4058,23 +4230,23 @@ service_qpart2(Request *request)
 			}
 		}
 
-// 		Print_clear(print);
-// 		Print_cstr(print, "[");
-// 		Print_f64(print, (f64) lat);
-// 		Print_align(print, 12, 1, ' ');
-// 		Print_cstr(print, ",");
-// 		Print_f64(print, (f64) lon);
-// 		Print_align(print, 12, 1, ' ');
-// 		Print_cstr(print, "]");
-// 		Print_cstr(print, "\n");
+// 		print_clear(print);
+// 		print_cstr(print, "[");
+// 		print_f64(print, (f64) lat);
+// 		print_align(print, 12, 1, ' ');
+// 		print_cstr(print, ",");
+// 		print_f64(print, (f64) lon);
+// 		print_align(print, 12, 1, ' ');
+// 		print_cstr(print, "]");
+// 		print_cstr(print, "\n");
 // 		output_(print);
 
 		/* convert to path using mercator projection */
 		u128 path_number  = app_quadtree2_path_number(lat1, lon1, lat2, lon2);
 
-// 		Print_clear(print);
-// 		Print_u64(print, path_number);
-// 		Print_cstr(print, "\n");
+// 		print_clear(print);
+// 		print_u64(print, path_number);
+// 		print_cstr(print, "\n");
 // 		output_(print);
 
 		if (point_index >= sample_size) {
@@ -4096,16 +4268,16 @@ service_qpart2(Request *request)
 		/* sort sample and return the k-th moments */
 		qsort_u128(sample.begin, sample.end);
 		if (!check_sorted_u128(sample.begin, sample.end)) {
-			Print_clear(print);
-			Print_cstr(print, "PROBLEM IN SORTING!\n");
+			print_clear(print);
+			print_cstr(print, "PROBLEM IN SORTING!\n");
 			output_(print);
 		}
 
 // 		if (uniq) {
 // 			sample.end = u64_remove_duplicates(sample.begin, sample.end);
 // 			if (!check_sorted_uniqueness_u64(sample.begin, sample.end)) {
-// 				Print_clear(print);
-// 				Print_cstr(print, "PROBLEM IN UNIQUENESS!\n");
+// 				print_clear(print);
+// 				print_cstr(print, "PROBLEM IN UNIQUENESS!\n");
 // 				output_(print);
 // 			}
 // 		}
@@ -4115,11 +4287,11 @@ service_qpart2(Request *request)
 		for (u64 i=0;i<k;++i) {
 			u64 index = (u64) ((i+1) * coef);
 			u128 value = Array_u128_get(&sample, index);
-			Print_clear(print);
-			Print_u64(print, value.high);
-			Print_char(print,' ');
-			Print_u64(print, value.low);
-			Print_char(print,'\n');
+			print_clear(print);
+			print_u64(print, value.high);
+			print_char(print,' ');
+			print_u64(print, value.low);
+			print_char(print,'\n');
 			output_(print);
 		}
 	}
@@ -4130,13 +4302,14 @@ service_qpart2(Request *request)
 	if (snap_function) {
 		platform.close_mmap_file(&snap_mapped_file);
 	}
-
+#endif
 }
 
-internal void
+static void
 service_qpcount(Request *request)
 {
-	Print      *print   = request->print;
+#if 0
+	print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	b8  filter = 0;
@@ -4302,24 +4475,24 @@ service_qpcount(Request *request)
 
 		// write to file
 
-		Print_clear(print);
+		print_clear(print);
 		for (s64 i=1;i<=(qpart.cut_end - qpart.cut_begin + 1);++i) {
-			Print_cstr(print, "[qpcount] records in part ");
-			Print_u64(print, (u64) i);
-			Print_align(print, 4, 1, ' ');
-			Print_cstr(print, " -> ");
-			Print_u64(print, counts[i]);
-			Print_align(print, 12, 1, ' ');
-			Print_u64(print, (counts[i]*100)/records_inserted);
-			Print_align(print, 12, 1, ' ');
-			Print_cstr(print, "%\n");
+			print_cstr(print, "[qpcount] records in part ");
+			print_u64(print, (u64) i);
+			print_align(print, 4, 1, ' ');
+			print_cstr(print, " -> ");
+			print_u64(print, counts[i]);
+			print_align(print, 12, 1, ' ');
+			print_u64(print, (counts[i]*100)/records_inserted);
+			print_align(print, 12, 1, ' ');
+			print_cstr(print, "%\n");
 
 		}
-		Print_cstr(print, "[qpcount] records inserted ");
-		Print_u64(print, records_inserted);
-		Print_cstr(print, "\n");
+		print_cstr(print, "[qpcount] records inserted ");
+		print_u64(print, records_inserted);
+		print_cstr(print, "\n");
 		output_(print);
-		Print_clear(print);
+		print_clear(print);
 		break;
 	}
 
@@ -4329,15 +4502,15 @@ service_qpcount(Request *request)
 	// right conversion procedure (text to paths)
 	// as well as specify the nanocube vector schema.
 	//
-
+#endif
 }
 
 /* @TODO(llins): maybe move this to the platform */
-internal b8
+static b8
 app_create_tmp_file(MemoryBlock filename, u64 size)
 {
 	Assert(size > 0);
-	pt_File file = platform.open_write_file(filename.begin, filename.end);
+	pt_File file = platform.open_file(filename.begin, filename.end, pt_FILE_WRITE);
 	if (!file.open) {
 		return 0;
 	}
@@ -4348,7 +4521,7 @@ app_create_tmp_file(MemoryBlock filename, u64 size)
 	return 1;
 }
 
-internal void
+static void
 service_test_file_backed_mmap(Request *request)
 {
 
@@ -4375,12 +4548,12 @@ service_test_file_backed_mmap(Request *request)
 
 	time = platform.get_time() - time;
 
-	Print_clear(print);
-	Print_cstr(print, "saved file ");
-	Print_str(print, filename.begin, filename.end);
-	Print_cstr(print, " in ");
-	Print_f64(print, time);
-	Print_cstr(print, "s.\n");
+	print_clear(print);
+	print_cstr(print, "saved file ");
+	print_str(print, filename.begin, filename.end);
+	print_cstr(print, " in ");
+	print_f64(print, time);
+	print_cstr(print, "s.\n");
 	output_(print);
 
 	time = platform.get_time();
@@ -4395,37 +4568,37 @@ service_test_file_backed_mmap(Request *request)
 		++it;
 	}
 	time = platform.get_time() - time;
-	Print_clear(print);
-	Print_cstr(print, "wrote to file ");
-	Print_str(print, filename.begin, filename.end);
-	Print_cstr(print, " in ");
-	Print_f64(print, time);
-	Print_cstr(print, "s.\n");
+	print_clear(print);
+	print_cstr(print, "wrote to file ");
+	print_str(print, filename.begin, filename.end);
+	print_cstr(print, " in ");
+	print_f64(print, time);
+	print_cstr(print, "s.\n");
 	output_(print);
 
 	time = platform.get_time();
 	platform.close_mmap_file(&file2);
 	time = platform.get_time() - time;
-	Print_clear(print);
-	Print_cstr(print, "unmapped file ");
-	Print_str(print, filename.begin, filename.end);
-	Print_cstr(print, " in ");
-	Print_f64(print, time);
-	Print_cstr(print, "s.\n");
+	print_clear(print);
+	print_cstr(print, "unmapped file ");
+	print_str(print, filename.begin, filename.end);
+	print_cstr(print, " in ");
+	print_f64(print, time);
+	print_cstr(print, "s.\n");
 	output_(print);
 
 }
 
 /* csv */
-internal void
+static void
 service_create_usage(char *preamble_cstr)
 {
 	Print *print   = g_request->print;
 	if (preamble_cstr) {
-		Print_clear(print);
-		Print_cstr(print, "[create] ");
-		Print_cstr(print, preamble_cstr);
-		Print_char(print,'\n');
+		print_clear(print);
+		print_cstr(print, "[create] ");
+		print_cstr(print, preamble_cstr);
+		print_char(print,'\n');
 		log_(print);
 	}
 // 	output_cstr_("[csv] usage:  csv <csv-fname> <mapping-fname> <output-fname>\n");
@@ -4439,7 +4612,9 @@ service_create_usage(char *preamble_cstr)
 // 	output_cstr_("[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 }
 
-internal b8
+#include "base/filepath.c"
+
+static b8
 service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *filename_end, u64 part_number, s32 base64)
 {
 	Print *print = g_request->print;
@@ -4467,23 +4642,23 @@ service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *f
 		FilePath_init(&filepath, filename_begin, filename_end);
 
 		if (part_number > 0) {
-			Print_clear(print);
-			Print_str(print, filepath.full_path, filepath.extension);
-			Print_cstr(print,"-");
-			Print_u64(print,part_number);
-			Print_align(print, 3, 1, '0');
-			Print_str(print,filepath.extension, filepath.end);
+			print_clear(print);
+			print_str(print, filepath.full_path, filepath.extension);
+			print_cstr(print,"-");
+			print_u64(print,part_number);
+			print_align(print, 3, 1, '0');
+			print_str(print,filepath.extension, filepath.end);
 			FilePath_init(&filepath, print->begin, print->end);
 		}
 		filename = print->begin;
 
 		// check if we can open the file
-		output_file = platform.open_write_file(filepath.full_path, filepath.end);
+		output_file = platform.open_file(filepath.full_path, filepath.end, pt_FILE_WRITE);
 		if (!output_file.open) {
-			Print_clear(print);
-			Print_cstr(print,"[service_create_save_arena] couldn't open file to write: ");
-			Print_str(print,filepath.full_path, filepath.end);
-			Print_cstr(print,"\n");
+			print_clear(print);
+			print_cstr(print,"[service_create_save_arena] couldn't open file to write: ");
+			print_str(print,filepath.full_path, filepath.end);
+			print_cstr(print,"\n");
 			log_(print);
 			return 0;
 		}
@@ -4493,8 +4668,8 @@ service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *f
 
 	if (!base64) {
 		if (!platform.write_to_file(out, begin, begin + used_memory)) {
-			Print_clear(print);
-			Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+			print_clear(print);
+			print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
 			log_(print);
 			return 0;
 		}
@@ -4507,8 +4682,8 @@ service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *f
 			buffer[buffer_count++] = b64_encode_block(begin+i, used_memory-i);
 			if (buffer_count == buffer_cap) {
 				if (!platform.write_to_file(out, (char*) buffer, (char*) (buffer + buffer_count))) {
-					Print_clear(print);
-					Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+					print_clear(print);
+					print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
 					log_(print);
 					return 0;
 				}
@@ -4517,8 +4692,8 @@ service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *f
 		}
 		if (buffer_count > 0) {
 			if (!platform.write_to_file(out, (char*) buffer, (char*) (buffer + buffer_count))) {
-				Print_clear(print);
-				Print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
+				print_clear(print);
+				print_format(print,"[service_create_save_arena] couldn't write %llu bytes to file %s\n", used_memory, filename);
 				log_(print);
 				return 0;
 			}
@@ -4528,15 +4703,15 @@ service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *f
 	return 1;
 }
 
-internal void
+static void
 service_create_print_temporal_hint(Print *print, nm_TimeBinning *time_binning)
 {
 	tm_Label time_label;
 	tm_Label_init(&time_label, time_binning->base_time);
-	Print_clear(print);
-	Print_cstr(print,"temporal|");
+	print_clear(print);
+	print_cstr(print,"temporal|");
 	tm_Label_print(&time_label, print);
-	Print_format(print, "_%ds", time_binning->bin_width);
+	print_format(print, "_%ds", time_binning->bin_width);
 }
 
 //
@@ -4544,7 +4719,7 @@ service_create_print_temporal_hint(Print *print, nm_TimeBinning *time_binning)
 // the key value store from it. Otherwise assume creating from
 // scratch.
 //
-internal al_Allocator*
+static al_Allocator*
 service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_begin, char *data_memory_end, nv_Nanocube *previous_part)
 {
 	Print *print = g_request->print;
@@ -4554,9 +4729,9 @@ service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_b
 	// watermark new allocator
 	MemoryBlock watermark = al_Allocator_watermark_area(allocator);
 	Print print_watermark;
-	Print_init(&print_watermark, watermark.begin, watermark.end);
-	Print_cstr(&print_watermark, nanocube_executable_version_doc);
-	Print_char(&print_watermark, 0);
+	print_init(&print_watermark, watermark.begin, watermark.end - watermark.begin);
+	print_cstr(&print_watermark, nanocube_executable_version_doc);
+	print_char(&print_watermark, 0);
 
 	al_Cache     *nanocube_cache = al_Allocator_create_cache(allocator, "nv_Nanocube", sizeof(nv_Nanocube));
 	nv_Nanocube  *nanocube       = (nv_Nanocube*) al_Cache_alloc(nanocube_cache);
@@ -4592,19 +4767,19 @@ service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_b
 					nv_Nanocube_insert_index_dimension(nanocube, 1, levels, dim->name.begin, dim->name.end);
 #if 1
 					/* TODO(llins): cleanup this insertion of key value */
-					Print_clear(print);
-					Print_str(print,dim->name.begin, dim->name.end);
-					Print_char(print,':');
-					Print_cstr(print,"time_binning");
+					print_clear(print);
+					print_str(print,dim->name.begin, dim->name.end);
+					print_char(print,':');
+					print_cstr(print,"time_binning");
 					/* copy bytes of the representation of base_time */
 					char *key_end = print->end;
 					nm_TimeBinning *time_binning = &dim->mapping_spec.index_mapping.time.time_binning;
 					for (s32 j=0;j<sizeof(nm_TimeBinning);++j) {
-						Print_char(print,*((char*)time_binning + j));
+						print_char(print,*((char*)time_binning + j));
 					}
 					nv_Nanocube_insert_key_value(nanocube, print->begin, key_end, key_end, print->end);
 
-					Print_clear(print);
+					print_clear(print);
 					service_create_print_temporal_hint(print, time_binning);
 					nv_Nanocube_set_dimension_hint(nanocube, dim->name.begin, dim->name.end, print->begin, print->end, print);
 #endif
@@ -4698,10 +4873,10 @@ service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_b
 	nv_Nanocube_init_index(nanocube, allocator);
 
 #if 0
-	Print_clear(print);
-	Print_cstr(print, "Fresh nanocube address: ");
-	Print_u64(print, (u64) nanocube);
-	Print_cstr(print, "\n");
+	print_clear(print);
+	print_cstr(print, "Fresh nanocube address: ");
+	print_u64(print, (u64) nanocube);
+	print_cstr(print, "\n");
 	output_(print);
 #endif
 
@@ -4719,11 +4894,11 @@ csv_PULL_CALLBACK(service_create_pull_callback)
 	platform.read_next_file_chunk(file, buffer, buffer + length);
 	Assert(file->last_read <= length);
 
-// 	Print *print = &g_request->print;
-// 	Print_clear(print);
-// 	Print_cstr(print, "[service_create_test_pull_callback] buffer length: ");
-// 	Print_u64(print, length);
-// 	Print_cstr(print, "\n");
+// 	print *print = &g_request->print;
+// 	print_clear(print);
+// 	print_cstr(print, "[service_create_test_pull_callback] buffer length: ");
+// 	print_u64(print, length);
+// 	print_cstr(print, "\n");
 // 	output_(print);
 
 	if (file->last_read > 0) {
@@ -4741,7 +4916,7 @@ csv_PULL_CALLBACK(service_create_pull_callback)
 // #define service_create_SCAN_CSV_BUFFER Megabytes(4)
 #define service_create_MAX_FIELDS 1024
 
-internal void
+static void
 app_util_fill_nx_Array_with_path_from_u64(nx_Array *target, u8 bits, u8 levels, u64 value)
 {
 	Assert(bits <= 8);
@@ -4784,6 +4959,9 @@ typedef struct {
 
 PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 {
+	// @todo @uncomment
+#if 0
+
 	service_create_ServeConfig *serve_config = (service_create_ServeConfig*) data;
 	Request *request = serve_config->request;
 	Print   *print   = request->print;
@@ -4828,10 +5006,10 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 		LinearAllocator_init(&buffer->table_value_columns_allocator, table_value_columns_buffer.begin, table_value_columns_buffer.begin, table_value_columns_buffer.end);
 
 		/* init print_result */
-		Print_init(&buffer->print_result, print_result_buffer.begin, print_result_buffer.end);
+		print_init(&buffer->print_result, print_result_buffer.begin, print_result_buffer.end);
 
 		/* init print_result */
-		Print_init(&buffer->print_header, print_header_buffer.begin, print_header_buffer.end);
+		print_init(&buffer->print_header, print_header_buffer.begin, print_header_buffer.end);
 
 		/* insert symbol into compiler pointing to a measure linked to the current nanocube */
 		Assert(serve_info->num_nanocubes == 1);
@@ -5031,6 +5209,7 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 
 	pt_memory_barrier();
 	pt_atomic_exchange_u32(&serve_config->status, service_create_serve_DONE);
+#endif
 
 }
 
@@ -5301,9 +5480,11 @@ Example 3
 END_DOC_STRING
 */
 
-internal void
+static void
 service_create()
 {
+	// @todo @uncomment
+#if 0
 	Print      *print   = g_request->print;
 	op_Options *options = &g_request->options;
 
@@ -5311,8 +5492,8 @@ service_create()
 	cm_SnappingLatLonFunction *snap_function = 0;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_create_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_create_doc);
 		log_(print);
 		return;
 	}
@@ -5722,16 +5903,16 @@ service_create()
 					return;
 				}
 
-				Print header_print;
-				Print_init(&header_print, csv_header_content_buffer, csv_header_content_buffer + sizeof(csv_header_content_buffer));
+				print header_print;
+				print_init(&header_print, csv_header_content_buffer, csv_header_content_buffer + sizeof(csv_header_content_buffer));
 				for (u32 i=0;i<csv_fields_count;++i) {
 					char *field_begin = header_print.end;
 					// TODO(llins): maybe it is the right time to un-2dqute or un-escape
-					Print_str(&header_print, csv_fields[i].begin, csv_fields[i].end);
+					print_str(&header_print, csv_fields[i].begin, csv_fields[i].end);
 					csv_fields[i].begin = field_begin;
 					csv_fields[i].end   = header_print.end;
 					ArrayMemoryBlock_append(&csv_header_fields, csv_fields[i]);
-					Print_char(&header_print,0);
+					print_char(&header_print,0);
 				}
 
 				if (header_print.overflow) {
@@ -5841,7 +6022,7 @@ service_create()
 		s64 max_idx = -1;
 
 		b8 ok = 1;
-		Print_clear(print);
+		print_clear(print);
 		for (s32 i=0;i<cm_Spec_dimensions(&spec);++i) {
 			cm_Dimension *dim = cm_Spec_get_dimension(&spec,i);
 			cm_ColumnRef *it_cols  = dim->input_columns.begin;
@@ -5853,8 +6034,8 @@ service_create()
 				} else if (it_cols->is_name) {
 					s32 idx = service_create_which_field(it_cols->name);
 					if (idx < 0) {
-						Print_str(print,it_cols->name.begin,it_cols->name.end);
-						Print_char(print,'\n');
+						print_str(print,it_cols->name.begin,it_cols->name.end);
+						print_char(print,'\n');
 						ok = 0;
 					} else {
 						it_cols->index = (b8) idx;
@@ -5867,7 +6048,7 @@ service_create()
 		}
 		if (!ok) {
 			char *chkpt = print->end;
-			Print_cstr(print,"[csv] Columns not found:\n");
+			print_cstr(print,"[csv] Columns not found:\n");
 			pt_rotate(print->begin, chkpt, print->end);
 			log_(print);
 			break;
@@ -5886,12 +6067,12 @@ service_create()
 #define xxxxCSV_USING_MMAPED_SHARED_FILE
 #ifdef CSV_USING_MMAPED_SHARED_FILE
 		if (!app_create_tmp_file(log_filename, size)) {
-			Print_cstr(print,"[csv] couldn't create output file\n");
+			print_cstr(print,"[csv] couldn't create output file\n");
 			break;
 		}
 		pt_MappedFile mmap_output = platform.open_mmap_file(log_filename.begin, log_filename.end, 1, 1);
 		if (!mmap_output.mapped) {
-			Print_cstr(print,"[csv] couldn't mmap output file\n");
+			print_cstr(print,"[csv] couldn't mmap output file\n");
 			break;
 		}
 		char *data_memory_begin = mmap_output.begin;
@@ -6095,17 +6276,17 @@ service_create()
 			}
 
 			if (status == service_create_serve_FAILED) {
-				Print_clear(print);
-				Print_cstr(print,"[create] failed to initialize 'serve' engine.\n");
+				print_clear(print);
+				print_cstr(print,"[create] failed to initialize 'serve' engine.\n");
 				log_(print);
 				return;
 			} else if (status == service_create_serve_RUNNING) {
-				Print_clear(print);
-				Print_format(print,"[create] 'serve' engine running on port %d with %d threads.\n", serve_config.port, serve_config.num_threads);
+				print_clear(print);
+				print_format(print,"[create] 'serve' engine running on port %d with %d threads.\n", serve_config.port, serve_config.num_threads);
 				log_(print);
 			} else if (status == service_create_serve_DONE) {
-				Print_clear(print);
-				Print_format(print,"[create] 'serve' engine is done. didn't expect it to happen.\n");
+				print_clear(print);
+				print_format(print,"[create] 'serve' engine is done. didn't expect it to happen.\n");
 				log_(print);
 				return;
 			}
@@ -6173,12 +6354,12 @@ service_create()
 					if (from_file) {
 						mapped_file = platform.open_mmap_file(labels_table.begin, labels_table.end, 1, 0);
 						if (!mapped_file.mapped) {
-							Print_clear(print);
-							Print_cstr(print, "Couldn't open labels table file '");
-							Print_str(print, labels_table.begin, labels_table.end);
-							Print_cstr(print, "' for dimension '");
-							Print_str(print, dim->name.begin, dim->name.end);
-							Print_cstr(print, "'\n");
+							print_clear(print);
+							print_cstr(print, "Couldn't open labels table file '");
+							print_str(print, labels_table.begin, labels_table.end);
+							print_cstr(print, "' for dimension '");
+							print_str(print, dim->name.begin, dim->name.end);
+							print_cstr(print, "'\n");
 							log_(print);
 							return;
 						}
@@ -6421,8 +6602,8 @@ service_create()
 			// simulate slow insertion
 			platform.thread_sleep(10000);
 			// check every line beign inserted
-// 			Print_clear(print);
-// 			Print_str(print, csv_stream.buffer.record, csv_stream.buffer.cursor);
+// 			print_clear(print);
+// 			print_str(print, csv_stream.buffer.record, csv_stream.buffer.cursor);
 // 			log_(print);
 #endif
 
@@ -6446,8 +6627,8 @@ service_create()
 
 			if (serve_port > 0) {
 
-// 				Print_clear(print);
-// 				Print_format(print, "[create] Updating index being served\n");
+// 				print_clear(print);
+// 				print_format(print, "[create] Updating index being served\n");
 // 				log_(print);
 
 				u64 current_time = platform.get_time();
@@ -6472,8 +6653,8 @@ service_create()
 					serve_last_update = platform.get_time();
 				}
 
-// 				Print_clear(print);
-// 				Print_format(print, "[create] Time elapsed to update index being served in seconds: %llu\n", serve_last_update - current_time);
+// 				print_clear(print);
+// 				print_format(print, "[create] Time elapsed to update index being served in seconds: %llu\n", serve_last_update - current_time);
 // 				log_(print);
 
 			}
@@ -6602,7 +6783,7 @@ service_create()
 									// register into key-value store
 									// TODO(llins): move this :kv: encoding to a higher level function nanocube vector
 									// procedure. Something like nv_Nanocube_set_path_name. This will
-									Print_clear(print);
+									print_clear(print);
 
 									u64 value = entry->counter;
 									app_util_fill_nx_Array_with_path_from_u64(&it_addr->labels, bits, levels, value);
@@ -6616,18 +6797,18 @@ service_create()
 
 								} else if (insert_status == set_INSERT_FULL) {
 									entry = 0;
-									Print_clear(print);
-									Print_cstr(print, "[Warning] Categorical names buffer is full. Disconsidering record\n");
+									print_clear(print);
+									print_cstr(print, "[Warning] Categorical names buffer is full. Disconsidering record\n");
 									log_(print);
 								} else {
 									Assert(0 && "should not reach this point");
 								}
 							} else {
-								Print_clear(print);
-								Print_cstr(print, "[Warning] Discarding record with category '");
-								Print_str(print, cat_text->begin, cat_text->end);
-								Print_format(print, "' (max. of %d categories already reached).", max_entries);
-								Print_format(print, " [line: %lld]\n", (s64) line_no);
+								print_clear(print);
+								print_cstr(print, "[Warning] Discarding record with category '");
+								print_str(print, cat_text->begin, cat_text->end);
+								print_format(print, "' (max. of %d categories already reached).", max_entries);
+								print_format(print, " [line: %lld]\n", (s64) line_no);
 								log_(print);
 							}
 						}
@@ -6655,10 +6836,10 @@ service_create()
 					} break;
 					}
 					if (!lok) {
-						Print_clear(print);
-						Print_format(print, "[Warning] Could not prepare record on line %lld because of index dimension '", line_no);
-						Print_str(print, dim->name.begin, dim->name.end);
-						Print_cstr(print, "'\n");
+						print_clear(print);
+						print_format(print, "[Warning] Could not prepare record on line %lld because of index dimension '", line_no);
+						print_str(print, dim->name.begin, dim->name.end);
+						print_cstr(print, "'\n");
 						log_(print);
 						could_prepare_record = 0;
 						break;
@@ -6676,12 +6857,12 @@ service_create()
 			// pf_END_BLOCK();
 
 			if (!could_prepare_record) {
-// 				Print_clear(print);
-// 				Print_cstr(print, "[service_create] Error parsing record on line ");
-// 				Print_u64(print,(u64) offset + 1);
-// 				Print_cstr(print,"\n");
+// 				print_clear(print);
+// 				print_cstr(print, "[service_create] Error parsing record on line ");
+// 				print_u64(print,(u64) offset + 1);
+// 				print_cstr(print,"\n");
 // 				log_(print);
-// 				Print_clear(print);
+// 				print_clear(print);
 				// continue;
 				goto finalize_insertion;
 			}
@@ -6719,53 +6900,53 @@ service_create()
 				/* TODO(llins): shrink this file. */
 				platform.close_mmap_file(&mmap_output);
 
-				Print_clear(print);
-				Print_format(print, "[csv] resizing file from %lluM to %lluM\n", size/Megabytes(1), (2*size)/Megabytes(1));
+				print_clear(print);
+				print_format(print, "[csv] resizing file from %lluM to %lluM\n", size/Megabytes(1), (2*size)/Megabytes(1));
 				log_(print);
 				size = 2 * size;
 				/* @TODO(llins): check for a clean exit in these return cases */
 				if (!platform.resize_file(log_filename.begin, log_filename.end, size)) {
-					Print_clear(print);
-					Print_cstr(print, "[csv] Couldn't resize file exiting! Partial file should be consistent");
+					print_clear(print);
+					print_cstr(print, "[csv] Couldn't resize file exiting! Partial file should be consistent");
 					log_(print);
 					return;
 				}
 
 				mmap_output = platform.open_mmap_file(log_filename.begin, log_filename.end, 1, 1);
 				if (!mmap_output.mapped) {
-					Print_clear(print);
-					Print_cstr(print,"[csv] couldn't mmap output file\n");
+					print_clear(print);
+					print_cstr(print,"[csv] couldn't mmap output file\n");
 					log_(print);
 					return;
 				}
 
 				allocator = (al_Allocator*) mmap_output.begin;
 				if (!al_Allocator_resize(allocator, mmap_output.size)) {
-					Print_clear(print);
-					Print_cstr(print,"[csv] couldn't resize allocator size (strange)\n");
+					print_clear(print);
+					print_cstr(print,"[csv] couldn't resize allocator size (strange)\n");
 					log_(print);
 					return;
 				}
 				nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
 
 				time_to_resize = platform.get_time() - time_to_resize;
-				Print_clear(print);
-				Print_format(print, "Time to resize in seconds: %llu\n", time_to_resize);
+				print_clear(print);
+				print_format(print, "Time to resize in seconds: %llu\n", time_to_resize);
 				log_(print);
 #else
 				/* try doubling the arena size */
 				if (2*size <= max_file_size && platform.resize_memory(&data_memory, 2*size, 12)) {
 					size = 2*size;
 
-					Print_clear(print);
-					Print_format(print,"[create] resizing arena of part %llu to %llu bytes\n", part_number, size);
+					print_clear(print);
+					print_format(print,"[create] resizing arena of part %llu to %llu bytes\n", part_number, size);
 					log_(print);
 
 					data_memory_begin = data_memory.memblock.begin;
 					data_memory_end   = data_memory.memblock.end;
 					allocator = (al_Allocator*) data_memory_begin;
 					if (!al_Allocator_resize(allocator, size)) {
-						Print_clear(print);
+						print_clear(print);
 						log_cstr_("[create] couldn't resize allocator size (strange)\n");
 						return;
 					}
@@ -6778,14 +6959,14 @@ service_create()
 					al_Allocator_fit(allocator);
 
 					if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number, base64)) {
-						Print_clear(print);
+						print_clear(print);
 						log_cstr_("[create] aborting loop\n");
 						return;
 					}
 
 					u64 used_memory = al_Allocator_used_memory(allocator);
-					Print_clear(print);
-					Print_format(print,"[create] saved part %llu size %llu bytes\n", part_number, used_memory);
+					print_clear(print);
+					print_format(print,"[create] saved part %llu size %llu bytes\n", part_number, used_memory);
 					log_(print);
 
 					platform.free_memory(&data_memory);
@@ -6799,8 +6980,8 @@ service_create()
 					data_memory_end   = data_memory.memblock.end;
 					// pt_fill(data_memory_begin, data_memory_end, 0);
 
-					Print_clear(print);
-					Print_format(print,"[create] starting a fresh arena for part %llu\n", part_number);
+					print_clear(print);
+					print_format(print,"[create] starting a fresh arena for part %llu\n", part_number);
 					log_(print);
 
 					// we need to initialize the key value store of the next part
@@ -6830,8 +7011,8 @@ service_create()
 
 finalize_insertion:
 			if (((offset+1) % report_frequency) == 0) {
-				Print_clear(print);
-				Print_format(print, "%10I64u # | %10I64u s | %10.1f MB | %5.1f mem%% | %12I64u ins | %5.1f ins%%\n",
+				print_clear(print);
+				print_format(print, "%10I64u # | %10I64u s | %10.1f MB | %5.1f mem%% | %12I64u ins | %5.1f ins%%\n",
 					     (u64) offset + 1,
 					     (u64) (platform.get_time() - t0),
 					     (f32) ((f32)al_Allocator_used_memory(allocator) / Megabytes(1)),
@@ -6839,7 +7020,7 @@ finalize_insertion:
 					     (u64) records_inserted,
 					     (f32) (100.0f*(f32)records_inserted/(f32)(offset + 1)));
 				log_(print);
-				Print_clear(print);
+				print_clear(print);
 				last_printed = offset;
 
 				/* @TODO(llins): add an option mechanism */
@@ -6855,8 +7036,8 @@ finalize_insertion:
 
 		/* print final numbers if needed */
 		if (offset != last_printed) {
-			Print_clear(print);
-			Print_format(print, "%10I64u # | %10I64u s | %10.1f MB | %5.1f mem%% | %12I64u ins | %5.1f ins%%\n",
+			print_clear(print);
+			print_format(print, "%10I64u # | %10I64u s | %10.1f MB | %5.1f mem%% | %12I64u ins | %5.1f ins%%\n",
 				     (u64) offset + 1,
 				     (u64) (platform.get_time() - t0),
 				     (f32) ((f32)al_Allocator_used_memory(allocator) / Megabytes(1)),
@@ -6864,7 +7045,7 @@ finalize_insertion:
 				     (u64) records_inserted,
 				     (f32) (100.0f*(f32)records_inserted/(f32)(offset+1)));
 			log_(print);
-			Print_clear(print);
+			print_clear(print);
 		}
 
 
@@ -6893,18 +7074,18 @@ finalize_insertion:
 		u64 used_size = al_Allocator_used_memory(allocator);
 		/* TODO(llins): shrink this file. */
 		platform.close_mmap_file(&mmap_output);
-		Print_clear(print);
-		Print_cstr(print, "[csv] resizing file...");
+		print_clear(print);
+		print_cstr(print, "[csv] resizing file...");
 		if (platform.resize_file(log_filename.begin, log_filename.end, used_size)) {
-			Print_cstr(print, "OK\n");
+			print_cstr(print, "OK\n");
 		} else {
-			Print_cstr(print, "FAILED\n");
+			print_cstr(print, "FAILED\n");
 		}
 		log_(print);
 #else
 		if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number > 1 ? part_number : 0, base64)) {
-			Print_clear(print);
-			Print_cstr(print,"[csv] couldn't save arena\n");
+			print_clear(print);
+			print_cstr(print,"[csv] couldn't save arena\n");
 			log_(print);
 			return;
 		}
@@ -6951,10 +7132,10 @@ finalize_insertion:
 
 	platform.free_memory(&mapping_text);
 	platform.free_memory(&csv_mapping_parse_and_compile_buffer);
-
+#endif
 }
 
-internal void
+static void
 service_bits(Request *request)
 {
 	Print      *print   = request->print;
@@ -6997,36 +7178,36 @@ service_bits(Request *request)
 		++value;
 		sum += cy;
 
-		MinCyclesInAHit = MIN(cy, MinCyclesInAHit);
-		MaxCyclesInAHit = MAX(cy, MaxCyclesInAHit);
+		MinCyclesInAHit = Min(cy, MinCyclesInAHit);
+		MaxCyclesInAHit = Max(cy, MaxCyclesInAHit);
 
 		if ((count % freq) == 0) {
-			Print_clear(print);
+			print_clear(print);
 
-			Print_cstr(print,"hits ");
-			Print_u64(print, count);
-			Print_align(print,  14, 1, ' ');
+			print_cstr(print,"hits ");
+			print_u64(print, count);
+			print_align(print,  14, 1, ' ');
 
-			Print_cstr(print,"    cycles ");
-			Print_u64(print, sum);
-			Print_align(print,  14, 1, ' ');
+			print_cstr(print,"    cycles ");
+			print_u64(print, sum);
+			print_align(print,  14, 1, ' ');
 
-			Print_cstr(print,"    min,avg,max cycles/hit ");
-			Print_u64(print, MinCyclesInAHit);
-			Print_align(print,  14, 1, ' ');
-			Print_u64(print, sum/count);
-			Print_align(print,  14, 1, ' ');
-			Print_u64(print, MaxCyclesInAHit);
-			Print_align(print,  14, 1, ' ');
+			print_cstr(print,"    min,avg,max cycles/hit ");
+			print_u64(print, MinCyclesInAHit);
+			print_align(print,  14, 1, ' ');
+			print_u64(print, sum/count);
+			print_align(print,  14, 1, ' ');
+			print_u64(print, MaxCyclesInAHit);
+			print_align(print,  14, 1, ' ');
 
-			Print_char(print,'\n');
+			print_char(print,'\n');
 			output_(print);
 		}
 	}
-	Print_clear(print);
-	Print_cstr(print,"sum outputs: ");
-	Print_u64(print, sum_output);
-	Print_cstr(print,"\n");
+	print_clear(print);
+	print_cstr(print,"sum outputs: ");
+	print_u64(print, sum_output);
+	print_cstr(print,"\n");
 	output_(print);
 
 }
@@ -7036,18 +7217,21 @@ service_bits(Request *request)
 //------------------------------------------------------------------------------
 
 // #define PLATFORM_TCP_CALLBACK(name) void name(pt_TCP_Socket *socket, char *buffer, u64 length)
-internal
+
+#if 0
+
+static
 PLATFORM_TCP_CALLBACK(service_client_callback)
 {
 	Request *request = (Request*) socket->user_data;
-	Print   *print   = request->print;
-	Print_clear(print);
-	Print_cstr(print, "[client receive data]:\n");
-	Print_str(print, buffer, buffer+length);
+	print   *print   = request->print;
+	print_clear(print);
+	print_cstr(print, "[client receive data]:\n");
+	print_str(print, buffer, buffer+length);
 	output_(print);
 }
 
-internal void
+static void
 service_client(Request *request)
 {
 	// same program might be the client and the server
@@ -7123,20 +7307,23 @@ service_client(Request *request)
 
 }
 
+#endif
+
 //------------------------------------------------------------------------------
 // service_http: test http parsing functionality
 //------------------------------------------------------------------------------
 
 // #define PLATFORM_TCP_CALLBACK(name) void name(pt_TCP_Socket *socket, char *buffer, u64 length)
-internal
+#if 0
+static
 PLATFORM_TCP_CALLBACK(service_http_tcp_server_callback)
 {
 	http_Channel *http_channel = (http_Channel*) socket->user_data;
 
-	Print *print = g_request->print;
-	Print_clear(print);
-	Print_cstr(print, "[service_tcp_server_callback]: dispatching raw tcp bytes to http message parser\n");
-	Print_str(print, buffer, buffer+length);
+	print *print = g_request->print;
+	print_clear(print);
+	print_cstr(print, "[service_tcp_server_callback]: dispatching raw tcp bytes to http message parser\n");
+	print_str(print, buffer, buffer+length);
 	output_(print);
 
 	http_Channel_receive_data(http_channel, buffer, length);
@@ -7148,21 +7335,21 @@ PLATFORM_TCP_CALLBACK(service_http_tcp_server_callback)
 // 		  char *method_begin, char *method_end,
 // 		  char *request_target_begin, char *request_target_end,
 // 		  char *http_version_begin, char *http_version_end)
-internal
+static
 http_REQUEST_LINE_CALLBACK(service_http_request_line_callback)
 {
 	/* print request_target */
-	Print *print = g_request->print;
-	Print_clear(print);
-	Print_cstr(print, "[service_http_request_line_callback]: request-target is ");
+	print *print = g_request->print;
+	print_clear(print);
+	print_cstr(print, "[service_http_request_line_callback]: request-target is ");
 	/* rewrite on buffer of request_target */
 	request_target_end = http_URI_decode_percent_encoded_symbols(request_target_begin, request_target_end, 0);
 	if (request_target_end == 0) {
-		Print_cstr(print, "couldn't translate target!");
+		print_cstr(print, "couldn't translate target!");
 	} else {
-		Print_str(print, request_target_begin, request_target_end);
+		print_str(print, request_target_begin, request_target_end);
 	}
-	Print_cstr(print, "\n");
+	print_cstr(print, "\n");
 	output_(print);
 }
 
@@ -7170,21 +7357,21 @@ http_REQUEST_LINE_CALLBACK(service_http_request_line_callback)
 // 	void name(http_Response *response,
 // 		  char *field_name_begin, char *field_name_end,
 // 		  char *field_value_begin, char *field_value_end)
-internal
+static
 http_HEADER_FIELD_CALLBACK(service_http_header_field_callback)
 {
 	/* print request_target */
-	Print *print = g_request->print;
-	Print_clear(print);
-	Print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
-	Print_str(print, field_name_begin, field_name_end);
-	Print_cstr(print, "', value:'");
-	Print_str(print, field_value_begin, field_value_end);
-	Print_cstr(print, "'\n");
+	print *print = g_request->print;
+	print_clear(print);
+	print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
+	print_str(print, field_name_begin, field_name_end);
+	print_cstr(print, "', value:'");
+	print_str(print, field_value_begin, field_value_end);
+	print_cstr(print, "'\n");
 	output_(print);
 }
 
-internal void
+static void
 service_http(Request *request)
 {
 	/* read port */
@@ -7227,14 +7414,14 @@ service_http(Request *request)
 	}
 }
 
-
+#endif
 
 
 
 //
 // service_create_test
 //
-
+#if 0
 csv_PULL_CALLBACK(service_create_test_pull_callback)
 {
 	pt_File *file = (pt_File*) user_data;
@@ -7242,10 +7429,10 @@ csv_PULL_CALLBACK(service_create_test_pull_callback)
 	Assert(file->last_read <= length);
 
 	Print *print = g_request->print;
-	Print_clear(print);
-	Print_cstr(print, "[service_create_test_pull_callback] buffer length: ");
-	Print_u64(print, length);
-	Print_cstr(print, "\n");
+	print_clear(print);
+	print_cstr(print, "[service_create_test_pull_callback] buffer length: ");
+	print_u64(print, length);
+	print_cstr(print, "\n");
 	output_(print);
 
 	if (file->last_read > 0) {
@@ -7259,7 +7446,7 @@ csv_PULL_CALLBACK(service_create_test_pull_callback)
 	}
 }
 
-internal void
+static void
 service_create_test(Request *request)
 {
 	Print      *print   = request->print;
@@ -7281,10 +7468,10 @@ service_create_test(Request *request)
 
 	pt_File file = platform.open_read_file(input_filename.begin, input_filename.end);
 	if (!file.open) {
-		Print_clear(print);
-		Print_cstr(print, "[csv-test] couldn't open file: ");
-		Print_str(print, input_filename.begin, input_filename.end);
-		Print_cstr(print, "\n");
+		print_clear(print);
+		print_cstr(print, "[csv-test] couldn't open file: ");
+		print_str(print, input_filename.begin, input_filename.end);
+		print_cstr(print, "\n");
 		output_(print);
 		return;
 	}
@@ -7301,12 +7488,12 @@ service_create_test(Request *request)
 		++line;
 		u32 csv_fields_count = csv_Stream_num_fields(&csv_stream);
 
-		Print_clear(print);
-		Print_cstr(print,"line ");
-		Print_u64(print, line);
-		Print_cstr(print," has ");
-		Print_u64(print, (u64) csv_fields_count);
-		Print_cstr(print," columns\n");
+		print_clear(print);
+		print_cstr(print,"line ");
+		print_u64(print, line);
+		print_cstr(print," has ");
+		print_u64(print, (u64) csv_fields_count);
+		print_cstr(print," columns\n");
 		output_(print);
 
 		Assert(csv_fields_count < ArrayCount(fields));
@@ -7314,13 +7501,13 @@ service_create_test(Request *request)
 		b8 ok = csv_Stream_get_fields(&csv_stream, fields, 0, csv_fields_count);
 		if (ok) {
 			for (u32 i=0;i<csv_fields_count;++i) {
-				Print_clear(print);
-				Print_cstr(print,"   [");
-				Print_u64(print, i);
-				Print_align(print, 2, 1, ' ');
-				Print_cstr(print,"] -> ");
-				Print_str(print,fields[i].begin,fields[i].end);
-				Print_cstr(print,"\n");
+				print_clear(print);
+				print_cstr(print,"   [");
+				print_u64(print, i);
+				print_align(print, 2, 1, ' ');
+				print_cstr(print,"] -> ");
+				print_str(print,fields[i].begin,fields[i].end);
+				print_cstr(print,"\n");
 				output_(print);
 			}
 		} else {
@@ -7334,10 +7521,14 @@ service_create_test(Request *request)
 	}
 
 }
+#endif
 
 //
 // service_create_test
 //
+
+
+#if 0
 
 csv_PULL_CALLBACK(service_create_col_pull_callback)
 {
@@ -7347,11 +7538,11 @@ csv_PULL_CALLBACK(service_create_col_pull_callback)
 	platform.read_next_file_chunk(file, buffer, buffer + length);
 	Assert(file->last_read <= length);
 
-// 	Print *print = &g_request->print;
-// 	Print_clear(print);
-// 	Print_cstr(print, "[service_create_col_pull_callback] buffer length: ");
-// 	Print_u64(print, length);
-// 	Print_cstr(print, "\n");
+// 	print *print = &g_request->print;
+// 	print_clear(print);
+// 	print_cstr(print, "[service_create_col_pull_callback] buffer length: ");
+// 	print_u64(print, length);
+// 	print_cstr(print, "\n");
 // 	output_(print);
 
 	if (file->last_read > 0) {
@@ -7380,15 +7571,15 @@ Options are:
 END_DOC_STRING
 */
 
-internal void
+static void
 service_create_col(Request *request)
 {
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, nanocube_csv_col_doc);
+		print_clear(print);
+		print_cstr(print, nanocube_csv_col_doc);
 		output_(print);
 		return;
 	}
@@ -7439,12 +7630,12 @@ service_create_col(Request *request)
 		}
 	}
 
-	pt_File file = platform.open_read_file(input_filename.begin, input_filename.end);
+	pt_File file = platform.open_file(input_filename.begin, input_filename.end, pt_FILE_READ);
 	if (!file.open) {
-		Print_clear(print);
-		Print_cstr(print, "[csv-col] couldn't open file: ");
-		Print_str(print, input_filename.begin, input_filename.end);
-		Print_cstr(print, "\n");
+		print_clear(print);
+		print_cstr(print, "[csv-col] couldn't open file: ");
+		print_str(print, input_filename.begin, input_filename.end);
+		print_cstr(print, "\n");
 		output_(print);
 		return;
 	}
@@ -7469,27 +7660,27 @@ service_create_col(Request *request)
 		++offset;
 
 		if (offset % 100000 == 0) {
-			Print_clear(print);
-			Print_format(print, "records: %9d    unique values: %6d\n", offset, set.num_entries);
+			print_clear(print);
+			print_format(print, "records: %9d    unique values: %6d\n", offset, set.num_entries);
 			output_(print);
 // 			for (s32 i=0;i<set.num_entries;++i) {
 // 				MemoryBlock st = set_Set_get(&set, i);
-// 				Print_clear(print);
-// 				Print_format(print, "%3d ", i+1);
-// 				Print_str(print, st.begin, st.end);
-// 				Print_char(print, '\n');
+// 				print_clear(print);
+// 				print_format(print, "%3d ", i+1);
+// 				print_str(print, st.begin, st.end);
+// 				print_char(print, '\n');
 // 				output_(print);
 // 			}
 		}
 
 		u32 csv_fields_count = csv_Stream_num_fields(&csv_stream);
 		if (csv_fields_count <= column) {
-			Print_clear(print);
-			Print_cstr(print,"offset ");
-			Print_u64(print, offset);
-			Print_cstr(print," has not enough columns (");
-			Print_u64(print, (u64) csv_fields_count);
-			Print_cstr(print,")\n");
+			print_clear(print);
+			print_cstr(print,"offset ");
+			print_u64(print, offset);
+			print_cstr(print," has not enough columns (");
+			print_u64(print, (u64) csv_fields_count);
+			print_cstr(print,")\n");
 			output_(print);
 			continue;
 		}
@@ -7503,14 +7694,14 @@ service_create_col(Request *request)
 		}
 	}
 
-	Print_clear(print);
-	// Print_format(print, "[%9d] ---------------------- [final]\n", offset);
+	print_clear(print);
+	// print_format(print, "[%9d] ---------------------- [final]\n", offset);
 	for (s32 i=0;i<set.num_entries;++i) {
 		MemoryBlock st = set_Set_get_key(&set, i);
-		Print_clear(print);
-		Print_format(print, "%3d ", i+1);
-		Print_str(print, st.begin, st.end);
-		Print_char(print, '\n');
+		print_clear(print);
+		print_format(print, "%3d ", i+1);
+		print_str(print, st.begin, st.end);
+		print_char(print, '\n');
 		output_(print);
 	}
 
@@ -7520,12 +7711,12 @@ service_create_col(Request *request)
 
 }
 
-
+#endif
 
 
 #ifdef POLYCOVER
 
-internal void
+static void
 service_polycover(Request *request)
 {
 	PolycoverAPI *polycover = &global_app_state->polycover;
@@ -7545,10 +7736,10 @@ service_polycover(Request *request)
 	s32 size = 0;
 	s32 ok = polycover->get_code(shape,memory.memblock.begin,memory.memblock.end,&size);
 	if (!ok) {
-		Print_cstr(print, "not enough memory to get the code of the shape\n");
+		print_cstr(print, "not enough memory to get the code of the shape\n");
 	} else {
-		Print_cstr(print, memory.memblock.begin);
-		Print_cstr(print, "\n");
+		print_cstr(print, memory.memblock.begin);
+		print_cstr(print, "\n");
 	}
 	output_(print);
 	platform.free_memory(&memory);
@@ -7556,23 +7747,23 @@ service_polycover(Request *request)
 
 #else
 
-internal void
+static void
 service_polycover(Request *request)
 {
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
-	Print_cstr(print, "polycover is not available\n");
+	print_cstr(print, "polycover is not available\n");
 	output_(print);
 }
 
 #endif
 
-internal void
+static void
 service_api(Request *request)
 {
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
-	Print_cstr(print, nanocube_api_doc);
+	print_cstr(print, nanocube_api_doc);
 	output_(print);
 }
 
@@ -7583,7 +7774,7 @@ service_api(Request *request)
 #include "app_roadmap.c"
 
 #define cmd_is(name) \
-	pt_compare_memory_cstr(command.begin, command.end, name) == 0
+	cstr_compare_memory_cstr(command.begin, command.end, name) == 0
 
 
 #ifdef PROFILE
@@ -7648,13 +7839,15 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 		.pfh_stdout = pfh_stdout,
 		.pfh_stdin = pfh_stdin,
 		.pfh_stderr = pfh_stderr,
-		.print = print_new(Kilobytes(64))
+		.print = print_new_raw(Kilobytes(64))
 	};
 	g_request = &request;
 	op_Options *options = &request.options;
 
-	pt_Memory options_memory = platform.allocate_memory(Kilobytes(16),3,0);
-	op_Options_init(options, options_memory.memblock.begin, options_memory.memblock.end);
+	pt_Memory *options_memory = platform.allocate_memory(Kilobytes(16),0);
+	op_Options_init(options,
+			OffsetedPointer(options_memory->base,0),
+			options_memory->size);
 	op_Parser options_parser;
 	op_Parser_init(&options_parser, options);
 	if (!op_Parser_run(&options_parser, request_begin, request_end)) {
@@ -7668,11 +7861,11 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 		return;
 	}
 
-// 	Print *print = &request.print;
-// 	Print_clear(print);
-// 	Print_cstr(print, "command: ");
-// 	Print_str(print, command.begin, command.end);
-// 	Print_cstr(print, "\n");
+// 	print *print = &request.print;
+// 	print_clear(print);
+// 	print_cstr(print, "command: ");
+// 	print_str(print, command.begin, command.end);
+// 	print_cstr(print, "\n");
 // 	output_(&request, print);
 
 
@@ -7705,14 +7898,14 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 		service_time(&request);
 	} else if (cmd_is("bits")) {
 		service_bits(&request);
-	} else if (cmd_is("client")) {
-		service_client(&request);
-	} else if (cmd_is("http")) {
-		service_http(&request);
-	} else if (cmd_is("csv-test")) {
-		service_create_test(&request);
-	} else if (cmd_is("csv-col")) {
-		service_create_col(&request);
+//	} else if (cmd_is("client")) {
+//		service_client(&request);
+//	} else if (cmd_is("http")) {
+//		service_http(&request);
+//	} else if (cmd_is("csv-test")) {
+//		service_create_test(&request);
+//	} else if (cmd_is("csv-col")) {
+//		service_create_col(&request);
 	} else if (cmd_is("qpart")) {
 		service_qpart(&request);
 	} else if (cmd_is("qpart2")) {

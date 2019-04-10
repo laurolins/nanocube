@@ -25,37 +25,37 @@
 #define	rp_TOKEN_TAGFINISHOPEN    8
 
 
-internal void
+static void
 rp_print_token(Print *print,  nt_Token *token)
 {
 	switch(token->type) {
 	case rp_TOKEN_SKIP: {
-		Print_cstr(print,"SKIP");
+		print_cstr(print,"SKIP");
 	} break;
 	case rp_TOKEN_TAGOPEN: {
-		Print_cstr(print,"TAGOPEN");
+		print_cstr(print,"TAGOPEN");
 	} break;
 	case rp_TOKEN_TAGCLOSE: {
-		Print_cstr(print,"TAGCLOSE");
+		print_cstr(print,"TAGCLOSE");
 	} break;
 	case rp_TOKEN_TAGFINISH: {
-		Print_cstr(print,"TAGFINISH");
+		print_cstr(print,"TAGFINISH");
 	} break;
 	case rp_TOKEN_TAGFINISHOPEN: {
-		Print_cstr(print,"TAGFINISHOPEN");
+		print_cstr(print,"TAGFINISHOPEN");
 	} break;
 	case rp_TOKEN_EQUAL: {
-		Print_cstr(print,"EQUAL");
+		print_cstr(print,"EQUAL");
 	} break;
 	case rp_TOKEN_IDENTIFIER: {
-		Print_cstr(print,"INDENTIFIER(");
-		Print_str(print, token->begin, token->end);
-		Print_cstr(print,")");
+		print_cstr(print,"INDENTIFIER(");
+		print_str(print, token->begin, token->end);
+		print_cstr(print,")");
 	} break;
 	case rp_TOKEN_STRING: {
-		Print_cstr(print,"STRING(");
-		Print_str(print, token->begin, token->end);
-		Print_cstr(print,")");
+		print_cstr(print,"STRING(");
+		print_str(print, token->begin, token->end);
+		print_cstr(print,")");
 	} break;
 	default: break;
 	}
@@ -109,7 +109,7 @@ rp_print_token(Print *print,  nt_Token *token)
 
 
 /* specific tokenizer for this parser */
-internal void
+static void
 rp_initialize_tokenizer(nt_Tokenizer *tokenizer, char* text_begin, char *text_end)
 {
 	nt_Tokenizer_init(tokenizer);
@@ -285,7 +285,7 @@ typedef struct {
  * rp_Element
  */
 
-internal void
+static void
 rp_Element_init(rp_Element *self, char *tag_begin, char *tag_end)
 {
 	self->tag.begin = tag_begin;
@@ -297,7 +297,7 @@ rp_Element_init(rp_Element *self, char *tag_begin, char *tag_end)
 	self->memory_checkpoint.checkpoint = 0;
 }
 
-internal void
+static void
 rp_Element_insert_key_value(rp_Element *self, rp_KeyValue *kv)
 {
 	Assert(kv->next == 0);
@@ -313,7 +313,7 @@ rp_Element_insert_key_value(rp_Element *self, rp_KeyValue *kv)
  * rp_Parser
  */
 
-internal void
+static void
 rp_Parser_fill_buffer(rp_Parser *self)
 {
 	if (self->eof || self->error) return;
@@ -342,7 +342,7 @@ rp_Parser_fill_buffer(rp_Parser *self)
 	}
 }
 
-internal void
+static void
 rp_Parser_reset(rp_Parser *self, char *text_begin, char *text_end)
 {
 	self->tkbegin = self->buffer;
@@ -360,23 +360,23 @@ rp_Parser_reset(rp_Parser *self, char *text_begin, char *text_end)
 
 	nt_Tokenizer_reset_text(&self->tokenizer, text_begin, text_end);
 
-	Print_clear(&self->log);
+	print_clear(&self->log);
 
 	rp_Parser_fill_buffer(self);
 
 }
 
 
-internal void
+static void
 rp_Parser_init(rp_Parser *self, LinearAllocator *memory)
 {
 	pt_fill((char*) self, (char*) self + sizeof(*self), 0);
 
 	rp_initialize_tokenizer(&self->tokenizer, 0, 0);
 
-	Print_init(&self->log,
+	print_init(&self->log,
 		   self->log_buffer,
-		   self->log_buffer + sizeof(self->log_buffer));
+		   sizeof(self->log_buffer));
 
 	self->memory = memory;
 	self->memory_checkpoint = LinearAllocator_checkpoint(memory);
@@ -385,7 +385,7 @@ rp_Parser_init(rp_Parser *self, LinearAllocator *memory)
 }
 
 
-internal void
+static void
 rp_Parser_consume_tokens(rp_Parser *self, u32 n)
 {
 	Assert(self->tkend - self->tkbegin >= n);
@@ -395,19 +395,19 @@ rp_Parser_consume_tokens(rp_Parser *self, u32 n)
 	}
 }
 
-internal b8
+static b8
 rp_Parser_compare(rp_Parser* self, int index, nt_TokenType type)
 {
 	return (self->tkbegin + index < self->tkend) && (self->tkbegin + index)->type == type;
 }
 
-internal b8
+static b8
 rp_Parser_compare_next(rp_Parser* self, nt_TokenType type)
 {
 	return rp_Parser_compare(self, 0, type);
 }
 
-internal void
+static void
 rp_Parser_log_context(rp_Parser *self)
 {
 	b8 no_token = self->tkbegin == self->tkend;
@@ -445,24 +445,24 @@ rp_Parser_log_context(rp_Parser *self)
 
 	Print *print = &self->log;
 
-	Print_cstr(print,"[Context]");
+	print_cstr(print,"[Context]");
 	if (no_token) {
-		Print_cstr(print, " No valid token available. line: ");
-		Print_u64(print, self->tokenizer.line);
-		Print_cstr(print, " column: ");
-		Print_u64(print, self->tokenizer.column);
-		Print_cstr(print, "\n");
+		print_cstr(print, " No valid token available. line: ");
+		print_u64(print, self->tokenizer.line);
+		print_cstr(print, " column: ");
+		print_u64(print, self->tokenizer.column);
+		print_cstr(print, "\n");
 	} else {
-		Print_cstr(print, "\n");
+		print_cstr(print, "\n");
 	}
-	Print_str(print, context_begin, context_end);
-	Print_cstr(print,"\n");
-	Print_cstr(print,"^");
-	Print_align(print,pos - context_begin + 1, 1, ' ');
-	Print_cstr(print,"\n");
+	print_str(print, context_begin, context_end);
+	print_cstr(print,"\n");
+	print_cstr(print,"^");
+	print_align(print,pos - context_begin + 1, 1, ' ');
+	print_cstr(print,"\n");
 }
 
-internal MemoryBlock
+static MemoryBlock
 rp_Parser_make_copy(rp_Parser *self, char *begin, char *end)
 {
 	MemoryBlock result;
@@ -473,7 +473,7 @@ rp_Parser_make_copy(rp_Parser *self, char *begin, char *end)
 	return result;
 }
 
-internal rp_Element*
+static rp_Element*
 rp_Parser_push_element(rp_Parser *self, char *tag_begin, char *tag_end)
 {
 	Assert(tag_begin <= tag_end);
@@ -492,14 +492,14 @@ rp_Parser_push_element(rp_Parser *self, char *tag_begin, char *tag_end)
 	return element;
 }
 
-internal rp_Element*
+static rp_Element*
 rp_Parser_top_element(rp_Parser *self)
 {
 	Assert(self->stack_size > 0);
 	return self->stack + self->stack_size - 1;
 }
 
-internal void
+static void
 rp_Parser_pop_element(rp_Parser *self)
 {
 	Assert(self->pop);
@@ -516,7 +516,7 @@ rp_Parser_pop_element(rp_Parser *self)
 
 }
 
-internal rp_KeyValue*
+static rp_KeyValue*
 rp_Parser_insert_key_value(rp_Parser *self,
 			   char *key_begin,   char *key_end,
 			   char *value_begin, char *value_end)
@@ -541,7 +541,7 @@ rp_Parser_insert_key_value(rp_Parser *self,
 
 }
 
-internal nt_Token*
+static nt_Token*
 rp_Parser_token(rp_Parser *self, s64 index)
 {
 	Assert(index < self->tkend - self->tkbegin);
@@ -564,7 +564,7 @@ rp_Parser_token(rp_Parser *self, s64 index)
 
 
 /* key values list */
-internal b8
+static b8
 rp_Parser_E(rp_Parser *self)
 {
 	for (;;) {
@@ -606,7 +606,7 @@ rp_Parser_E(rp_Parser *self)
 	}
 }
 
-internal b8
+static b8
 rp_Parser_next(rp_Parser *self)
 {
 	if (self->eof || self->error) {
@@ -647,7 +647,7 @@ rp_Parser_next(rp_Parser *self)
 			rp_Element *element = rp_Parser_top_element(self);
 			nt_Token   *ident   = rp_Parser_token(self, 1);
 
-			if (pt_compare_memory(element->tag.begin, element->tag.end,
+			if (cstr_compare_memory(element->tag.begin, element->tag.end,
 						ident->begin, ident->end) != 0) {
 				self->error = 1;
 				return 0;

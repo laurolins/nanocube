@@ -195,7 +195,7 @@ ROTATE_SPECIALIZED(bt_rotate_hashes, bt_Hash)
 
 #define bt_MURMUR_SEED 0x5dee7792
 
-internal u64
+static u64
 bt_murmur_hash2_64A(const void *key, s32 len, s32 seed)
 {
 	u64  m = 0xc6a4a7935bd1e995;
@@ -243,7 +243,7 @@ bt_murmur_hash2_64A(const void *key, s32 len, s32 seed)
 // bt_Node
 //------------------------------------------------------------------------------
 
-internal void
+static void
 bt_Node_init(bt_Node *self)
 {
 	// make sure everything is zeroed
@@ -252,28 +252,28 @@ bt_Node_init(bt_Node *self)
 	self->is_leaf     = 1;
 }
 
-internal bt_Node*
+static bt_Node*
 bt_Node_child(bt_Node *self, u64 index)
 {
 	bt_Node *child = bt_Ptr_Node_get(&self->children[index]);
 	return child;
 }
 
-internal bt_KeyValue*
+static bt_KeyValue*
 bt_Node_key_value(bt_Node *self, u64 index)
 {
 	Assert(index < self->num_entries);
 	return bt_Ptr_KeyValue_get(self->data + index);
 }
 
-internal bt_Hash
+static bt_Hash
 bt_Node_hash(bt_Node *self, u64 index)
 {
 	Assert(index < self->num_entries);
 	return *(self->hashes + index);
 }
 
-internal b8
+static b8
 bt_Node_full(bt_Node* self)
 {
 	return self->num_entries == bt_MAX_ENTRIES;
@@ -291,7 +291,7 @@ bt_Node_full(bt_Node* self)
 //     ...
 //     -k if new entry should be inserted at position index k-1
 //
-internal s64
+static s64
 bt_Node_hash_insert_index(bt_Node* self, bt_Hash hash)
 {
 	Assert(self->num_entries <= bt_MAX_ENTRIES);
@@ -336,7 +336,7 @@ bt_Node_hash_insert_index(bt_Node* self, bt_Hash hash)
 	}
 }
 
-internal bt_KeyValue*
+static bt_KeyValue*
 bt_Node_find_hash(bt_Node* self, bt_Hash hash)
 {
 	s64 index = bt_Node_hash_insert_index(self, hash);
@@ -354,7 +354,7 @@ bt_Node_find_hash(bt_Node* self, bt_Hash hash)
 // bt_KeyValue
 //------------------------------------------------------------------------------
 
-internal MemoryBlock
+static MemoryBlock
 bt_KeyValue_key(bt_KeyValue* self)
 {
 	MemoryBlock result;
@@ -363,7 +363,7 @@ bt_KeyValue_key(bt_KeyValue* self)
 	return result;
 }
 
-internal MemoryBlock
+static MemoryBlock
 bt_KeyValue_value(bt_KeyValue* self)
 {
 	MemoryBlock result;
@@ -372,7 +372,7 @@ bt_KeyValue_value(bt_KeyValue* self)
 	return result;
 }
 
-internal bt_KeyValue*
+static bt_KeyValue*
 bt_KeyValue_next(bt_KeyValue* self)
 {
 	return bt_Ptr_KeyValue_get(&self->next);
@@ -382,7 +382,7 @@ bt_KeyValue_next(bt_KeyValue* self)
 // bt_BlockKV
 //------------------------------------------------------------------------------
 
-internal void
+static void
 bt_BlockKV_init(bt_BlockKV *self, char *begin, u64 capacity)
 {
 	al_Ptr_char_set(&self->begin, begin);
@@ -395,7 +395,7 @@ bt_BlockKV_init(bt_BlockKV *self, char *begin, u64 capacity)
 // bt_Record
 //------------------------------------------------------------------------------
 
-internal void
+static void
 bt_Record_init(bt_Record *self, char *key_begin, char *key_end, char *value_begin, char *value_end)
 {
 	self->hash = bt_murmur_hash2_64A(key_begin, (s32) (key_end-key_begin), bt_MURMUR_SEED);
@@ -418,13 +418,13 @@ bt_Record_init(bt_Record *self, char *key_begin, char *key_end, char *value_begi
 //------------------------------------------------------------------------------
 
 
-internal inline u64
+static inline u64
 bt_BlockKV_bytes_available(bt_BlockKV *self)
 {
 	return self->capacity - self->bytes_used;
 }
 
-internal inline MemoryBlock
+static inline MemoryBlock
 bt_BlockKV_reserve(bt_BlockKV *self, u64 size)
 {
 	Assert(self->bytes_used + size <= self->capacity);
@@ -440,7 +440,7 @@ bt_BlockKV_reserve(bt_BlockKV *self, u64 size)
 // bt_Iter
 //------------------------------------------------------------------------------
 
-internal void
+static void
 bt_Iter_init(bt_Iter *self, bt_BTree *tree)
 {
 	bt_Node* node = bt_Ptr_Node_get(&tree->root);
@@ -458,7 +458,7 @@ bt_Iter_init(bt_Iter *self, bt_BTree *tree)
 	}
 }
 
-internal bt_Node*
+static bt_Node*
 bt_Iter_next_node(bt_Iter *self, u32 *out_index, u32 *out_depth)
 {
 	if (self->stack_size == 0) return 0;
@@ -509,7 +509,7 @@ bt_Iter_next_node(bt_Iter *self, u32 *out_index, u32 *out_depth)
 	return 0;
 }
 
-internal b8
+static b8
 bt_Iter_next(bt_Iter *self, bt_Hash *hash, MemoryBlock *key, MemoryBlock *value)
 {
 	if (self->stack_size == 0) return 0;
@@ -590,7 +590,7 @@ bt_Iter_next(bt_Iter *self, bt_Hash *hash, MemoryBlock *key, MemoryBlock *value)
 
 static u16 bt_g_btree_index = 0;
 
-internal void
+static void
 bt_BTree_init(bt_BTree *self, al_Allocator *allocator)
 {
 //     u64              size; // number of key value pairs
@@ -612,23 +612,23 @@ bt_BTree_init(bt_BTree *self, al_Allocator *allocator)
 
 	char  name[al_MAX_CACHE_NAME_LENGTH+1];
 	Print print;
-	Print_init(&print, name, name + al_MAX_CACHE_NAME_LENGTH);
+	print_init(&print, name, al_MAX_CACHE_NAME_LENGTH);
 
 	{  // prepare name of cache
-		Print_clear(&print);
-		Print_cstr(&print, "bt_Node_");
-		Print_u64(&print,(u64) bt_id);
-		Print_char(&print, 0);
+		print_clear(&print);
+		print_cstr(&print, "bt_Node_");
+		print_u64(&print,(u64) bt_id);
+		print_char(&print, 0);
 		name[al_MAX_CACHE_NAME_LENGTH] = 0;
 	}
 	al_Cache *cache_nodes = al_Allocator_create_cache(allocator, name, sizeof(bt_Node));
 	al_Ptr_Cache_set(&self->cache_nodes, cache_nodes);
 
 	{  // prepare name of cache
-		Print_clear(&print);
-		Print_cstr(&print, "bt_BlockKV_");
-		Print_u64(&print,(u64) bt_id);
-		Print_char(&print, 0);
+		print_clear(&print);
+		print_cstr(&print, "bt_BlockKV_");
+		print_u64(&print,(u64) bt_id);
+		print_char(&print, 0);
 		name[al_MAX_CACHE_NAME_LENGTH] = 0;
 	}
 	al_Cache *cache_blocks_kv = al_Allocator_create_cache(allocator, name, sizeof(bt_BlockKV));
@@ -639,7 +639,7 @@ bt_BTree_init(bt_BTree *self, al_Allocator *allocator)
 	al_Ptr_Allocator_set(&self->allocator, allocator);
 }
 
-internal bt_KeyValue*
+static bt_KeyValue*
 bt_prepare_keyvalue_from_record(char *base, bt_Record *record)
 {
 	// @PRE
@@ -665,7 +665,7 @@ bt_prepare_keyvalue_from_record(char *base, bt_Record *record)
 	return key_value;
 }
 
-internal bt_BlockKV*
+static bt_BlockKV*
 bt_BTree_new_block(bt_BTree *self, u64 min_capacity)
 {
 	u32 new_block_pages = (u32)  pt_next_multiple(min_capacity, al_PAGE_SIZE)/al_PAGE_SIZE;
@@ -693,7 +693,7 @@ bt_BTree_new_block(bt_BTree *self, u64 min_capacity)
 }
 
 
-internal bt_KeyValue*
+static bt_KeyValue*
 bt_BTree_new_key_value(bt_BTree *self, bt_Record* record)
 {
 	bt_BlockKV *head = bt_Ptr_BlockKV_get(&self->head_block_kv);
@@ -725,7 +725,7 @@ bt_BTree_new_key_value(bt_BTree *self, bt_Record* record)
 	}
 }
 
-internal void
+static void
 bt_BTree_split_child(bt_BTree* self, bt_Node *node, u64 index)
 {
 	// assumes node is not full
@@ -797,7 +797,7 @@ bt_BTree_split_child(bt_BTree* self, bt_Node *node, u64 index)
 
 }
 
-internal void
+static void
 bt_BTree_insert_nonfull(bt_BTree *self, bt_Node* node, bt_Record *record)
 {
 	Assert(!bt_Node_full(node));
@@ -847,7 +847,7 @@ bt_BTree_insert_nonfull(bt_BTree *self, bt_Node* node, bt_Record *record)
 	}
 }
 
-internal void
+static void
 bt_BTree_check(bt_BTree *self)
 {
 	bt_Iter it;
@@ -867,7 +867,7 @@ bt_BTree_check(bt_BTree *self)
 }
 
 #if 0
-internal void
+static void
 bt_BTree_print(bt_BTree *self)
 {
 	bt_Iter it;
@@ -897,7 +897,7 @@ bt_BTree_print(bt_BTree *self)
 }
 #endif
 
-internal void
+static void
 bt_BTree_insert(bt_BTree* self, char *key_begin, char *key_end, char *value_begin, char *value_end)
 {
 #if 0
@@ -955,7 +955,7 @@ bt_BTree_insert(bt_BTree* self, char *key_begin, char *key_end, char *value_begi
 
 }
 
-internal b8
+static b8
 bt_BTree_get_value(bt_BTree *self, char *key_begin, char *key_end, MemoryBlock *output)
 {
 	output->begin = 0;
@@ -977,7 +977,7 @@ bt_BTree_get_value(bt_BTree *self, char *key_begin, char *key_end, MemoryBlock *
 		bt_KeyValue *it = kv;
 		while (it) {
 			MemoryBlock kv_key = bt_KeyValue_key(it);
-			if (pt_compare_memory(key_begin, key_end, kv_key.begin, kv_key.end) == 0) {
+			if (cstr_compare_memory(key_begin, key_end, kv_key.begin, kv_key.end) == 0) {
 				*output = bt_KeyValue_value(it);
 				return 1;
 			} else {

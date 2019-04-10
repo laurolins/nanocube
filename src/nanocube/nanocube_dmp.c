@@ -42,7 +42,7 @@ typedef enum {
 } ndmp_LoadInfo_Error;
 
 // read input load_info from file
-internal ndmp_LoadInfo_Error
+static ndmp_LoadInfo_Error
 ndmp_LoadInfo_init(ndmp_LoadInfo* load_info, nv_Nanocube* nanocube, MemoryBlock *filename)
 {
 
@@ -59,7 +59,7 @@ ndmp_LoadInfo_init(ndmp_LoadInfo* load_info, nv_Nanocube* nanocube, MemoryBlock 
 
 	char buffer[Kilobytes(4)];
 
-	pt_File input_file = platform.open_read_file(filename->begin, filename->end);
+	pt_File input_file = platform.open_file(filename->begin, filename->end, pt_FILE_READ);
 
 	nu_FileTokenizer ftok;
 	nu_FileTokenizer_init(&ftok, '\n', buffer, buffer + sizeof(buffer), &input_file);

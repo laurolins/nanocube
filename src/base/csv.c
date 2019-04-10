@@ -67,7 +67,7 @@ typedef struct {
 	b8               eof;
 } csv_Stream;
 
-internal void
+static void
 csv_Stream_init(csv_Stream *self, char sep, char *buffer, u64 length, u32 max_separators, csv_PullCallback *pull_callback, void *user_data)
 {
 	u64 separators_buffer_length = sizeof(u32) * max_separators;
@@ -88,7 +88,7 @@ csv_Stream_init(csv_Stream *self, char sep, char *buffer, u64 length, u32 max_se
 	self->user_data = user_data;
 }
 
-internal b8
+static b8
 csv_Stream_pull_more_data(csv_Stream *self)
 {
 	if (self->eof || self->error != csv_OK)
@@ -124,7 +124,7 @@ csv_Stream_pull_more_data(csv_Stream *self)
 	}
 }
 
-internal b8
+static b8
 csv_Stream_push_separator(csv_Stream *self, u32 offset)
 {
 	if (self->separators.end < self->separators.capacity) {
@@ -136,7 +136,7 @@ csv_Stream_push_separator(csv_Stream *self, u32 offset)
 	}
 }
 
-internal b8
+static b8
 csv_Stream_get_fields(csv_Stream *self, MemoryBlock *buffer, u32 offset, u32 num_fields)
 {
 	u32 n = 1 + self->separators.end - self->separators.begin;
@@ -175,13 +175,13 @@ csv_Stream_get_fields(csv_Stream *self, MemoryBlock *buffer, u32 offset, u32 num
 	return 1;
 }
 
-internal u32
+static u32
 csv_Stream_num_fields(csv_Stream *self)
 {
 	return self->separators.end - self->separators.begin + 1;
 }
 
-internal b8
+static b8
 csv_Stream_next(csv_Stream *self)
 {
 	if (self->eof || self->error != csv_OK) {

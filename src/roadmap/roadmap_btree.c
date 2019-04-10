@@ -139,14 +139,14 @@ PTR_SPECIALIZED_SERVICES(rbt_Ptr_Node, rbt_Node)
 // specialize a rotate procedure
 //------------------------------------------------------------------------------
 
-internal void
+static void
 rbt_KeyValue_copy(rbt_KeyValue *self, rbt_KeyValue *other)
 {
 	self->key = other->key;
 	al_Ptr_char_set(&self->value, al_Ptr_char_get(&other->value));
 }
 
-internal void
+static void
 rbt_KeyValue_swap(rbt_KeyValue *a, rbt_KeyValue *b)
 {
 	u64 k = a->key;
@@ -157,7 +157,7 @@ rbt_KeyValue_swap(rbt_KeyValue *a, rbt_KeyValue *b)
 	al_Ptr_char_set(&b->value, v);
 }
 
-internal void
+static void
 rbt_rotate_key_values(rbt_KeyValue *begin, rbt_KeyValue *middle, rbt_KeyValue *end)
 {
 	rbt_KeyValue *next = middle;
@@ -178,7 +178,7 @@ rbt_rotate_key_values(rbt_KeyValue *begin, rbt_KeyValue *middle, rbt_KeyValue *e
 // rbt_Node
 //------------------------------------------------------------------------------
 
-internal void
+static void
 rbt_Node_init(rbt_Node *self)
 {
 	// make sure everything is zeroed
@@ -187,28 +187,28 @@ rbt_Node_init(rbt_Node *self)
 	self->is_leaf     = 1;
 }
 
-internal rbt_Node*
+static rbt_Node*
 rbt_Node_child(rbt_Node *self, u64 index)
 {
 	rbt_Node *child = rbt_Ptr_Node_get(&self->children[index]);
 	return child;
 }
 
-internal rbt_KeyValue*
+static rbt_KeyValue*
 rbt_Node_key_value(rbt_Node *self, u64 index)
 {
 	Assert(index < self->num_entries);
 	return self->data + index;
 }
 
-internal u64
+static u64
 rbt_Node_key(rbt_Node *self, u64 index)
 {
 	Assert(index < self->num_entries);
 	return (self->data + index)->key;
 }
 
-internal b8
+static b8
 rbt_Node_full(rbt_Node* self)
 {
 	return self->num_entries == rbt_MAX_ENTRIES;
@@ -226,7 +226,7 @@ rbt_Node_full(rbt_Node* self)
 //     ...
 //     -k if new entry should be inserted at position index k-1
 //
-internal s64
+static s64
 rbt_Node_key_insert_index(rbt_Node* self, u64 key)
 {
 	// [l,r)
@@ -269,7 +269,7 @@ rbt_Node_key_insert_index(rbt_Node* self, u64 key)
 	}
 }
 
-internal rbt_KeyValue*
+static rbt_KeyValue*
 rbt_Node_find(rbt_Node* self, u64 key)
 {
 	s64 index = rbt_Node_key_insert_index(self, key);
@@ -289,7 +289,7 @@ rbt_Node_find(rbt_Node* self, u64 key)
 
 static u16 rbt_g_btree_index = 0;
 
-internal void
+static void
 rbt_BTree_init(rbt_BTree *self, al_Allocator *allocator)
 {
 	/* @NOTE thread unsafe */
@@ -300,13 +300,13 @@ rbt_BTree_init(rbt_BTree *self, al_Allocator *allocator)
 
 	char  name[al_MAX_CACHE_NAME_LENGTH+1];
 	Print print;
-	Print_init(&print, name, name + al_MAX_CACHE_NAME_LENGTH);
+	print_init(&print, name, al_MAX_CACHE_NAME_LENGTH);
 
 	{  // prepare name of cach
-		Print_clear(&print);
-		Print_cstr(&print, "rbt_Node_");
-		Print_u64(&print,(u64) rbt_id);
-		Print_char(&print, 0);
+		print_clear(&print);
+		print_cstr(&print, "rbt_Node_");
+		print_u64(&print,(u64) rbt_id);
+		print_char(&print, 0);
 		name[al_MAX_CACHE_NAME_LENGTH] = 0;
 	}
 
@@ -314,7 +314,7 @@ rbt_BTree_init(rbt_BTree *self, al_Allocator *allocator)
 
 }
 
-internal void
+static void
 rbt_BTree_split_child(rbt_BTree* self, rbt_Node *node, u64 index)
 {
 	// assumes node is not full
@@ -377,7 +377,7 @@ rbt_BTree_split_child(rbt_BTree* self, rbt_Node *node, u64 index)
 
 }
 
-internal void
+static void
 rbt_BTree_insert_nonfull(rbt_BTree *self, rbt_Node* node, u64 key, char *value)
 {
 	Assert(!rbt_Node_full(node));
@@ -416,7 +416,7 @@ rbt_BTree_insert_nonfull(rbt_BTree *self, rbt_Node* node, u64 key, char *value)
 }
 
 /* @TODO(llins): return error code with failure types */
-internal void
+static void
 rbt_BTree_insert(rbt_BTree* self, u64 key, char *value)
 {
 	rbt_Node *root = rbt_Ptr_Node_get(&self->root);
@@ -439,7 +439,7 @@ rbt_BTree_insert(rbt_BTree* self, u64 key, char *value)
 	rbt_BTree_insert_nonfull(self, root, key, value);
 }
 
-internal b8
+static b8
 rbt_BTree_get_value(rbt_BTree *self, u64 key, char* *value)
 {
 	rbt_Node *root = rbt_Ptr_Node_get(&self->root);
@@ -462,7 +462,7 @@ rbt_BTree_get_value(rbt_BTree *self, u64 key, char* *value)
 // rbt_Iter
 //------------------------------------------------------------------------------
 
-internal void
+static void
 rbt_Iter_init(rbt_Iter *self, rbt_BTree *tree)
 {
 	rbt_Node* node = rbt_Ptr_Node_get(&tree->root);
@@ -477,7 +477,7 @@ rbt_Iter_init(rbt_Iter *self, rbt_BTree *tree)
 	}
 }
 
-internal void
+static void
 rbt_Iter_push_child(rbt_Iter *self, rbt_Node *node, u32 index)
 {
 	Assert(self->stack_size < rbt_ITER_STACK_CAPACITY);
@@ -491,7 +491,7 @@ rbt_Iter_push_child(rbt_Iter *self, rbt_Node *node, u32 index)
 }
 
 
-internal b8
+static b8
 rbt_Iter_next(rbt_Iter *self, u64 *output_key, char* *output_value)
 {
 	if (self->stack_size == 0) return 0;

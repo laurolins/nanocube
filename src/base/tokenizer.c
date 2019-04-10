@@ -85,18 +85,10 @@ typedef struct {
 
 } nt_Tokenizer;
 
-
-
-
-
-
-
-
 /*
  * Implementation (maybe move to a .c)
  */
-
-internal void
+static void
 nt_CharSet_init_eof(nt_CharSet* self)
 {
 	self->any        = 0;
@@ -107,7 +99,7 @@ nt_CharSet_init_eof(nt_CharSet* self)
 	self->not        = 0;
 }
 
-internal void
+static void
 nt_CharSet_init_any(nt_CharSet* self)
 {
 	self->any        = 1;
@@ -118,7 +110,7 @@ nt_CharSet_init_any(nt_CharSet* self)
 	self->not        = 0;
 }
 
-internal void
+static void
 nt_CharSet_init(nt_CharSet* self, char *begin, char *end, b8 not)
 {
 	Assert(begin != 0 && begin < end);
@@ -141,7 +133,7 @@ nt_CharSet_init(nt_CharSet* self, char *begin, char *end, b8 not)
 	}
 }
 
-internal inline b8
+static inline b8
 nt_CharSet_match(nt_CharSet *self, char ch)
 {
 	if (self->any && ch != 0) return 1;
@@ -164,7 +156,7 @@ nt_CharSet_match(nt_CharSet *self, char ch)
 	}
 }
 
-internal char*
+static char*
 nt_NextResult_cstr(nt_NextResult tnr)
 {
 	static char *arr[] =
@@ -176,7 +168,7 @@ nt_NextResult_cstr(nt_NextResult tnr)
 	return arr[(s32)tnr];
 }
 
-internal void
+static void
 nt_Tokenizer_add_transition(nt_Tokenizer* self, s32 state, nt_CharSet* symbols, s32 next_state,
 			    b8 move, nt_Action action, nt_TokenType toktype)
 {
@@ -219,7 +211,7 @@ nt_Tokenizer_add_transition(nt_Tokenizer* self, s32 state, nt_CharSet* symbols, 
 	}
 }
 
-internal MemoryBlock
+static MemoryBlock
 nt_Tokenizer_token_memblock(nt_Tokenizer *self)
 {
 	MemoryBlock result;
@@ -228,7 +220,7 @@ nt_Tokenizer_token_memblock(nt_Tokenizer *self)
 	return result;
 }
 
-internal void
+static void
 nt_Tokenizer_reset_text(nt_Tokenizer *self, char *text_begin, char *text_end)
 {
 	self->eof        = 0;
@@ -246,7 +238,7 @@ nt_Tokenizer_reset_text(nt_Tokenizer *self, char *text_begin, char *text_end)
 	self->state      = self->states;
 }
 
-internal void
+static void
 nt_Tokenizer_init(nt_Tokenizer *self)
 {
 	/* an empty tokenizer */
@@ -263,7 +255,7 @@ nt_Tokenizer_init(nt_Tokenizer *self)
 #define nt_TOKEN_CANONICAL_SEPARATOR 1
 #define nt_TOKEN_CANONICAL_TEXT 2
 
-internal void
+static void
 nt_Tokenizer_insert_skip_token(nt_Tokenizer *self, nt_TokenType toktype)
 {
 	Assert(self->num_skip_tokens < nt_SKIP_TOKENS_CAPACITY);
@@ -273,7 +265,7 @@ nt_Tokenizer_insert_skip_token(nt_Tokenizer *self, nt_TokenType toktype)
 
 
 /* make sure that str_begin and str_end won't chage throughout tokenizer usage */
-internal void
+static void
 nt_Tokenizer_init_canonical(nt_Tokenizer *self, char *sep_begin, char *sep_end)
 {
 	nt_Tokenizer_init(self);
@@ -299,7 +291,7 @@ nt_Tokenizer_init_canonical(nt_Tokenizer *self, char *sep_begin, char *sep_end)
 	nt_Tokenizer_insert_skip_token(self, nt_TOKEN_EOF);
 }
 
-internal b8
+static b8
 nt_Tokenizer_is_skip_token(nt_Tokenizer *self, nt_TokenType toktype)
 {
 	for (s32 i=0;i<self->num_skip_tokens;++i)
@@ -308,7 +300,7 @@ nt_Tokenizer_is_skip_token(nt_Tokenizer *self, nt_TokenType toktype)
 	return 0;
 }
 
-internal b8
+static b8
 nt_Tokenizer_next(nt_Tokenizer *self)
 {
 	Assert(self->num_states);

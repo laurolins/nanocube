@@ -64,22 +64,22 @@ typedef struct {
 	s64 capacity;
 } nvr_Table;
 
-internal void* nvr_Table_deref(nvr_Table *self, u32 offset);
-internal nvr_Block nvr_Table_alloc(nvr_Table *self, u64 size);
+static void* nvr_Table_deref(nvr_Table *self, u32 offset);
+static nvr_Block nvr_Table_alloc(nvr_Table *self, u64 size);
 
 #ifdef NANOCUBE_VECTOR_TABLE_IMPLEMENTATION
-internal void*
+static void*
 nvr_Table_deref(nvr_Table *self, u32 offset)
 {
 	return ((char*) self) + offset;
 }
 
-internal nvr_Block
+static nvr_Block
 nvr_Table_alloc(nvr_Table *self, u64 size)
 {
 	// assuming left is a multiple of 8 bytes
-	Assert( LALIGN((u64) self->left, 8) == (u64) self->left );
-	u64 alloc_size = RALIGN(size,8);
+	Assert( LAlign((u64) self->left, 8) == (u64) self->left );
+	u64 alloc_size = RAlign(size,8);
 	Assert(self->left + alloc_size <= self->capacity);
 	nvr_Block result = { .offset = self->left, .length = size };
 	self->left += alloc_size;

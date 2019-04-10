@@ -98,7 +98,7 @@ u32 set_murmur3_32(const void *data, size_t nbytes) {
 }
 
 #if 0
-internal u32
+static u32
 set_murmur3_32(char* key, size_t len) {
 	u32 h = 0; // seed;
 	if (len > 3) {
@@ -138,7 +138,7 @@ set_murmur3_32(char* key, size_t len) {
 }
 #endif
 
-internal void
+static void
 set_Set_init(set_Set *self, char *base, u32 length)
 {
 	self->num_entries = 0;
@@ -149,19 +149,19 @@ set_Set_init(set_Set *self, char *base, u32 length)
 	self->counter = 0;
 }
 
-internal void
+static void
 set_Set_increment_counter(set_Set *self)
 {
 	++self->counter;
 }
 
-internal void
+static void
 set_Set_set_counter(set_Set *self, u64 counter)
 {
 	self->counter = counter;
 }
 
-internal MemoryBlock
+static MemoryBlock
 set_Set_get_key(set_Set *self, s32 index)
 {
 	Assert(index < self->num_entries);
@@ -172,7 +172,7 @@ set_Set_get_key(set_Set *self, s32 index)
 	return result;
 }
 
-internal MemoryBlock
+static MemoryBlock
 set_Set_get_value(set_Set *self, s32 index)
 {
 	Assert(index < self->num_entries);
@@ -189,7 +189,7 @@ set_Set_get_value(set_Set *self, s32 index)
 }
 
 
-internal s32
+static s32
 set_Set_binary_search_hash(set_Set *self, u32 hash)
 {
 	u32 l = 0;
@@ -242,7 +242,7 @@ set_Set_binary_search_hash(set_Set *self, u32 hash)
 #define set_INSERT_INSERTED  1
 
 
-internal set_Entry*
+static set_Entry*
 set_Set_insert_with_value(set_Set *self, char *begin, char *end, set_Block value, s32 *status)
 {
 	u32 new_item_length = (end - begin);
@@ -265,7 +265,7 @@ set_Set_insert_with_value(set_Set *self, char *begin, char *end, set_Block value
 				break;
 			char *it_text_begin = self->base + self->length - it->key.offset;
 			char *it_text_end   = it_text_begin + it->key.length;
-			s32 cmp = pt_compare_memory(begin, end, it_text_begin, it_text_end);
+			s32 cmp = cstr_compare_memory(begin, end, it_text_begin, it_text_end);
 			if (cmp == 0) {
 				if (status) {
 					*status = set_INSERT_EXISTS;
@@ -332,14 +332,14 @@ set_Set_insert_with_value(set_Set *self, char *begin, char *end, set_Block value
 //
 // value should have beed stored into the set cache earlier
 //
-internal set_Entry*
+static set_Entry*
 set_Set_insert(set_Set *self, char *begin, char *end, s32 *status)
 {
 	return set_Set_insert_with_value(self, begin, end, (set_Block) { .offset=0, .length=0 }, status);
 }
 
 
-internal set_Entry*
+static set_Entry*
 set_Set_find(set_Set *self, char *begin, char *end)
 {
 	/* get hash */
@@ -360,7 +360,7 @@ set_Set_find(set_Set *self, char *begin, char *end)
 				break;
 			char *it_text_begin = self->base + self->length - it->key.offset;
 			char *it_text_end   = it_text_begin + it->key.length;
-			s32 cmp = pt_compare_memory(begin, end, it_text_begin, it_text_end);
+			s32 cmp = cstr_compare_memory(begin, end, it_text_begin, it_text_end);
 			if (cmp == 0) {
 				return it;
 			} else if (cmp < 0) {
@@ -373,7 +373,7 @@ set_Set_find(set_Set *self, char *begin, char *end)
 	return 0;
 }
 
-internal set_Block
+static set_Block
 set_Set_store_value(set_Set *self, char *begin, char *end)
 {
 	u32 length = (u32) (end - begin);

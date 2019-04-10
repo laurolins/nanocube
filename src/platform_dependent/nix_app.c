@@ -1,5 +1,9 @@
 #include "../base/platform.c"
 
+#include "../base/cstr.c"
+#include "../base/arena.c"
+#include "../base/print.c"
+
 #ifdef POLYCOVER
 #include "../polycover/polycover.h"
 #endif
@@ -16,22 +20,22 @@
 //
 // @revise: the platform layer is outdated, should bring in the newer version
 //
-static Print*
-print_new(u64 request_size)
-{
-	u64 size = RALIGN(request_size, 4096);
-	char *buffer = (char*) malloc(size);
-	Assert(buffer);
-	Print *print = (Print*) buffer;
-	Print_init(print, buffer + sizeof(Print), buffer + size);
-	return print;
-}
-
-static void
-print_delete(Print *print)
-{
-	free(print);
-}
+// static Print*
+// print_new(u64 request_size)
+// {
+// 	u64 size = RALIGN(request_size, 4096);
+// 	char *buffer = (char*) malloc(size);
+// 	Assert(buffer);
+// 	Print *print = (Print*) buffer;
+// 	print_init(print, buffer + sizeof(Print), buffer + size);
+// 	return print;
+// }
+// 
+// static void
+// print_delete(Print *print)
+// {
+// 	free(print);
+// }
 
 //
 // include the whole infra-structure (whichi is more or less platform independent)
@@ -144,7 +148,7 @@ main(int num_args, char** args)
 	};
 
 	// buffer
-	Print *print               = print_new(main_BUFFER_SIZE);
+	Print *print = print_new_raw(main_BUFFER_SIZE);
 
 #ifdef POLYCOVER
 
@@ -166,13 +170,13 @@ main(int num_args, char** args)
 	// treat request as a memory block by copying all
 	// the arguments into a single buffer space separated
 	//
-	Print_clear(print);
+	print_clear(print);
 	for (s64 i=1;i<num_args;++i) {
-		if (i > 1) Print_char(print, ' ');
-		Print_cstr(print, args[i]);
+		if (i > 1) print_char(print, ' ');
+		print_cstr(print, args[i]);
 	}
 	// cannot append zero it messes up the options
-	// Print_char(print,0);
+	// print_char(print,0);
 
 	// application process request is implemented
 	application_process_request(&app_state, print->begin, print->end, &platform_stdin, &platform_stdout, &platform_stderr);
@@ -181,7 +185,7 @@ main(int num_args, char** args)
 	nix_free_memory(&profile_memory);
 #endif
 
-	print_delete(print);
+	print_free_raw(print);
 
 	return 0;
 

@@ -89,7 +89,7 @@ nvs_Schema_push_cstr(nvs_Schema *self, char *name)
 {
 	// right the cstring at the end
 	s32 name_len = cstr_len(name);
-	s32 right_requirement = RALIGN(name_len+1,8);
+	s32 right_requirement = RAlign(name_len+1,8);
 	if (self->left + right_requirement > self->right) {
 		return 0; // note that any valid string would have a positive number
 	}
@@ -105,7 +105,7 @@ static s32
 nvs_Schema_push_str(nvs_Schema *self, char *name, s32 name_len)
 {
 	// right the cstring at the end
-	s32 right_requirement = RALIGN(name_len+1,8);
+	s32 right_requirement = RAlign(name_len+1,8);
 	if (self->left + right_requirement > self->right) {
 		return 0; // note that any valid string would have a positive number
 	}
@@ -161,7 +161,7 @@ nvs_push_alias(nvs_Schema *self, s32 index_dimension, char *key_begin, char *key
 	u16 key_length   = key_end - key_begin;
 	u16 value_length = value_end - value_begin;
 
-	u16 length = RALIGN(sizeof(nvs_Alias) + key_length + value_length + 2, 8);
+	u16 length = RAlign(sizeof(nvs_Alias) + key_length + value_length + 2, 8);
 
 	if (self->left + length > self->right) { return 0; }
 
@@ -253,7 +253,7 @@ static nvs_Schema*
 nvs_init_schema(void *buffer, s32 size, char *name, s32 name_len)
 {
 	Assert(size > 0);
-	Assert(size == RALIGN(size,8));
+	Assert(size == RAlign(size,8));
 	Assert(size > sizeof(nvs_Schema));
 	nvs_Schema *schema = buffer;
 	*schema = (nvs_Schema) {
@@ -278,7 +278,7 @@ static void
 nvs_pack(nvs_Schema *self, s32 new_size)
 {
 	// pre-conditions
-	Assert(new_size == RALIGN(new_size,8));
+	Assert(new_size == RAlign(new_size,8));
 	Assert(new_size < self->size);
 	Assert(new_size >= self->size - (self->right - self->left));
 

@@ -8,12 +8,12 @@ typedef struct {
 	al_Ptr_char data;
 } nx_PayloadAggregate;
 
-internal void
+static void
 nx_PayloadAggregate_init(nx_PayloadAggregate *self, void* payload_context);
 
-internal void
+static void
 nx_PayloadAggregate_share(nx_PayloadAggregate* self, nx_PayloadAggregate* other, void *payload_context);
 
-internal void
+static void
 nx_PayloadAggregate_insert(nx_PayloadAggregate* self, void *payload_unit, void *payload_context);
 /******************************************************************************/

@@ -142,7 +142,7 @@ static tm_Time tm_unix_epoch_tm_time = { .time = 62135596800 };
 #define tm_DAYS_PER_LEAP_YEAR    366ll
 
 /* number of divisors of num in { x : begin <= x < end, x: integer } */
-internal s32
+static s32
 tm_divisors(s32 begin, s32 end, s32 num)
 {
 	Assert(num > 0);
@@ -154,7 +154,7 @@ tm_divisors(s32 begin, s32 end, s32 num)
 	return q + (((off == 0 && r>0) || (off + r > num)) ? 1 : 0);
 }
 
-internal s32
+static s32
 tm_leap_years_between(s32 begin, s32 end)
 {
 	Assert(begin <= end);
@@ -164,13 +164,13 @@ tm_leap_years_between(s32 begin, s32 end)
 	return d4 - d100 + d400;
 }
 
-internal s32
+static s32
 tm_is_leap_year(s32 year)
 {
 	return tm_leap_years_between(year, year + 1);
 }
 
-internal s32
+static s32
 tm_days_between_years(s32 begin, s32 end)
 {
 	Assert(begin <= end);
@@ -178,7 +178,7 @@ tm_days_between_years(s32 begin, s32 end)
 }
 
 
-internal void
+static void
 tm_initialize_timezones()
 {
 	if (tm_timezones_initialized)
@@ -217,14 +217,14 @@ tm_initialize_timezones()
 	tm_timezones_initialized = 1;
 }
 
-internal s32
+static s32
 tm_year_days_elapsed(s32 year, s32 month, s32 day)
 {
 	return tm_accum_month_days[month - 1] + (day - 1) + ((month > 2) ? tm_is_leap_year(year) : 0);
 }
 
 /* doesn't include the current date */
-internal s32
+static s32
 tm_year_days_remaining(s32 year, s32 month, s32 day)
 {
 	if (month >= 3 || !tm_is_leap_year(year)) {
@@ -239,25 +239,25 @@ tm_year_days_remaining(s32 year, s32 month, s32 day)
 	}
 }
 
-internal s32
+static s32
 tm_seconds_until_end_of_day(s32 hour, s32 minute, s32 second)
 {
 	return tm_SECONDS_PER_DAY - (hour * tm_SECONDS_PER_HOUR + minute * tm_SECONDS_PER_MINUTE + second);
 }
 
-internal void
+static void
 tm_Time_init_from_unix_time(tm_Time *self, s64 unix_time)
 {
 	self->time = unix_time + tm_unix_epoch_tm_time.time;
 }
 
-internal s64
+static s64
 tm_Time_unix_time(tm_Time *self)
 {
 	return self->time - tm_unix_epoch_tm_time.time;
 }
 
-internal b8
+static b8
 tm_Time_init_from_label(tm_Time *self, tm_Label *label)
 {
 	Assert(label);
@@ -300,7 +300,7 @@ tm_Time_init_from_label(tm_Time *self, tm_Label *label)
 	return 1;
 }
 
-internal s32*
+static s32*
 tm_lower_bound(s32 *begin, s32 *end, s32 num)
 {
 	/* while there are three or more elements */
@@ -344,7 +344,7 @@ tm_lower_bound(s32 *begin, s32 *end, s32 num)
 #define tm_SATURDAY 5
 #define tm_SUNDAY   6
 
-internal u8
+static u8
 tm_weekday(s32 year, s32 month, s32 day)
 {
 	s32 days = tm_days_between_years(tm_epoch.year, year) +
@@ -352,7 +352,7 @@ tm_weekday(s32 year, s32 month, s32 day)
 	return (u8) (days % 7);
 }
 
-internal b8
+static b8
 tm_Label_init(tm_Label *self, tm_Time time)
 {
 	/* only stuff after epoch */
@@ -415,7 +415,7 @@ tm_Label_init(tm_Label *self, tm_Time time)
 }
 
 /* same time different offset minutes */
-internal void
+static void
 tm_Label_adjust_offset(tm_Label *self, s32 new_offset_minutes)
 {
 	tm_Time t;
@@ -428,42 +428,42 @@ tm_Label_adjust_offset(tm_Label *self, s32 new_offset_minutes)
 	self->timezone = 0;
 }
 
-internal void
+static void
 tm_Label_print(tm_Label* self, Print *print)
 {
-	Print_s64(print, self->year);
-	Print_align(print, 4, 1, ' ');
-	Print_cstr(print,"-");
-	Print_s64(print, self->month);
-	Print_align(print, 2, 1, '0');
-	Print_cstr(print,"-");
-	Print_s64(print, self->day);
-	Print_align(print, 2, 1, '0');
-	Print_cstr(print,"T");
-	Print_s64(print, self->hour);
-	Print_align(print, 2, 1, '0');
-	Print_char(print,':');
-	Print_s64(print, self->minute);
-	Print_align(print, 2, 1, '0');
-	Print_char(print,':');
-	Print_s64(print, self->second);
-	Print_align(print, 2, 1, '0');
+	print_s64(print, self->year);
+	print_align(print, 4, 1, ' ');
+	print_cstr(print,"-");
+	print_s64(print, self->month);
+	print_align(print, 2, 1, '0');
+	print_cstr(print,"-");
+	print_s64(print, self->day);
+	print_align(print, 2, 1, '0');
+	print_cstr(print,"T");
+	print_s64(print, self->hour);
+	print_align(print, 2, 1, '0');
+	print_char(print,':');
+	print_s64(print, self->minute);
+	print_align(print, 2, 1, '0');
+	print_char(print,':');
+	print_s64(print, self->second);
+	print_align(print, 2, 1, '0');
 	if (self->offset_minutes == 0) {
-		Print_char(print,'Z');
+		print_char(print,'Z');
 	} else {
 		s32 mins = self->offset_minutes;
 		b8  neg  = mins < 0;
 		if (neg) {
-			Print_char(print,'-');
+			print_char(print,'-');
 			mins = -mins;
 		} else {
-			Print_char(print,'+');
+			print_char(print,'+');
 		}
-		Print_s64(print, mins / tm_MINUTES_PER_HOUR);
-		Print_align(print, 2, 1, '0');
-		Print_char(print,':');
-		Print_s64(print, mins % tm_MINUTES_PER_HOUR);
-		Print_align(print, 2, 1, '0');
+		print_s64(print, mins / tm_MINUTES_PER_HOUR);
+		print_align(print, 2, 1, '0');
+		print_char(print,':');
+		print_s64(print, mins % tm_MINUTES_PER_HOUR);
+		print_align(print, 2, 1, '0');
 	}
 }
 

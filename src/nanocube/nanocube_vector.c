@@ -116,9 +116,9 @@ typedef struct {
 // nv_NumberStorage
 //------------------------------------------------------------------------------
 
-internal char *nv_storage_names[6] = { "s32", "s64", "u32", "u64", "f32", "f64" };
+static char *nv_storage_names[6] = { "s32", "s64", "u32", "u64", "f32", "f64" };
 
-internal char*
+static char*
 nv_storage_name_cstr(nv_NumberStorage s)
 {
 	switch(s) {
@@ -144,7 +144,7 @@ nv_storage_name_cstr(nv_NumberStorage s)
 // nv_Nanocube
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nv_Nanocube_init(nv_Nanocube* self)
 {
 	char *p = (char*) self;
@@ -158,7 +158,7 @@ nv_Nanocube_init(nv_Nanocube* self)
 	self->key_value_store_initialized = 0;
 }
 
-internal al_Allocator*
+static al_Allocator*
 nv_Nanocube_get_allocator(nv_Nanocube* self)
 {
 	al_Cache *cache = al_Ptr_Cache_get(&self->cache_payload);
@@ -166,7 +166,7 @@ nv_Nanocube_get_allocator(nv_Nanocube* self)
 	return allocator;
 }
 
-internal void
+static void
 nv_Nanocube_insert_index_dimension(nv_Nanocube *self, u8 bits_per_level,
 				   u8 num_levels, char *name_begin, char *name_end)
 {
@@ -189,7 +189,7 @@ nv_Nanocube_insert_index_dimension(nv_Nanocube *self, u8 bits_per_level,
 // } nx_PayloadAggregate;
 
 
-internal f64
+static f64
 nv_Nanocube_get_value(nv_Nanocube *self, u32 index, nx_PayloadAggregate *agg)
 {
 	Assert(index < self->num_measure_dimensions);
@@ -222,7 +222,7 @@ nv_Nanocube_get_value(nv_Nanocube *self, u32 index, nx_PayloadAggregate *agg)
 	return result;
 }
 
-internal void
+static void
 nv_Nanocube_insert_measure_dimension(nv_Nanocube *self, nv_NumberStorage storage,
 				     char *name_begin, char *name_end)
 {
@@ -269,7 +269,7 @@ nv_Nanocube_insert_measure_dimension(nv_Nanocube *self, nv_NumberStorage storage
 	++self->num_measure_dimensions;
 }
 
-internal void
+static void
 nv_Nanocube_init_index(nv_Nanocube *self, al_Allocator* allocator)
 {
 	Assert(self->initialized && self->num_index_dimensions > 0 && self->num_measure_dimensions > 0 && !self->index_initialized);
@@ -287,21 +287,21 @@ nv_Nanocube_init_index(nv_Nanocube *self, al_Allocator* allocator)
 	self->index_initialized = 1;
 }
 
-internal void
+static void
 nv_Nanocube_init_key_value_store(nv_Nanocube *self, al_Allocator* allocator)
 {
 	bt_BTree_init(&self->key_value_store, allocator);
 	self->key_value_store_initialized = 1;
 }
 
-internal s32
+static s32
 nv_Nanocube_measure_index_by_name(nv_Nanocube *self, char *measure_name_begin,
 				  char *measure_name_end)
 {
 	u64 n = self->num_measure_dimensions;
 	for (u64 i=0;i<n;++i) {
 		char *name = self->measure_dimensions.names[i];
-		if (pt_compare_memory(measure_name_begin, measure_name_end,
+		if (cstr_compare_memory(measure_name_begin, measure_name_end,
 				      name, cstr_end(name)) == 0) {
 			return (s32) i;
 		}
@@ -310,7 +310,7 @@ nv_Nanocube_measure_index_by_name(nv_Nanocube *self, char *measure_name_begin,
 }
 
 
-internal b8
+static b8
 nv_Nanocube_insert_key_value(nv_Nanocube *self,
 			     char *key_begin,   char *key_end,
 			     char *value_begin, char *value_end)
@@ -320,7 +320,7 @@ nv_Nanocube_insert_key_value(nv_Nanocube *self,
 }
 
 // TODO(llins): try to replace dim_name with a unique index_dimension id in the parameters of this procedure
-internal b8
+static b8
 nv_Nanocube_set_dimension_path_name(nv_Nanocube *self, char *dim_name_begin, char *dim_name_end, u8 *path, u8 path_length,
 				    char *value_begin, char *value_end, Print *print)
 {
@@ -329,12 +329,12 @@ nv_Nanocube_set_dimension_path_name(nv_Nanocube *self, char *dim_name_begin, cha
 
 	// set kv mapping
 	key_begin = print->end;
-	Print_str(print, dim_name_begin, dim_name_end);
-	Print_cstr(print, ":kv:");
+	print_str(print, dim_name_begin, dim_name_end);
+	print_cstr(print, ":kv:");
 	for (s32 i=0;i<path_length;++i) {
 		if (i > 0)
-			Print_cstr(print, ":");
-		Print_u64(print, path[i]);
+			print_cstr(print, ":");
+		print_u64(print, path[i]);
 	}
 	key_end = print->end;
 	ok = nv_Nanocube_insert_key_value(self, key_begin, key_end, value_begin, value_end);
@@ -345,17 +345,17 @@ nv_Nanocube_set_dimension_path_name(nv_Nanocube *self, char *dim_name_begin, cha
 
 	// set vk mapping (reverse mapping: from name to value)
 	key_begin = print->end;
-	Print_str(print, dim_name_begin, dim_name_end);
-	Print_cstr(print, ":vk:");
-	Print_str(print, value_begin, value_end);
+	print_str(print, dim_name_begin, dim_name_end);
+	print_cstr(print, ":vk:");
+	print_str(print, value_begin, value_end);
 	key_end = print->end;
 
 	// note: changing original value_begin and value_end since it won't be used anymore
 	value_begin = key_end;
 	for (s32 i=0;i<path_length;++i) {
 		if (i > 0)
-			Print_cstr(print, ":");
-		Print_u64(print, path[i]);
+			print_cstr(print, ":");
+		print_u64(print, path[i]);
 	}
 	value_end = print->end;
 
@@ -369,7 +369,7 @@ nv_Nanocube_set_dimension_path_name(nv_Nanocube *self, char *dim_name_begin, cha
 }
 
 // TODO(llins): try to replace dim_name with a unique index_dimension id in the parameters of this procedure
-internal MemoryBlock
+static MemoryBlock
 nv_Nanocube_get_dimension_path_name(nv_Nanocube *self, char *dim_name_begin, char *dim_name_end, u8 *path, u8 path_length, Print *print)
 {
 	MemoryBlock mem = { .begin = 0, .end = 0 };
@@ -378,12 +378,12 @@ nv_Nanocube_get_dimension_path_name(nv_Nanocube *self, char *dim_name_begin, cha
 
 	// set kv mapping
 	key_begin = print->end;
-	Print_str(print, dim_name_begin, dim_name_end);
-	Print_cstr(print, ":kv:");
+	print_str(print, dim_name_begin, dim_name_end);
+	print_cstr(print, ":kv:");
 	for (s32 i=0;i<path_length;++i) {
 		if (i > 0)
-			Print_cstr(print, ":");
-		Print_u64(print, path[i]);
+			print_cstr(print, ":");
+		print_u64(print, path[i]);
 	}
 	key_end = print->end;
 	print->end = key_begin; // on return the print original content from begin to end should be the same
@@ -395,7 +395,7 @@ nv_Nanocube_get_dimension_path_name(nv_Nanocube *self, char *dim_name_begin, cha
 
 
 // TODO(llins): try to replace dim_name with a unique index_dimension id in the parameters of this procedure
-internal b8
+static b8
 nv_Nanocube_set_dimension_hint(nv_Nanocube *self, char *dim_name_begin, char *dim_name_end, char *value_begin, char *value_end, Print *print)
 {
 	char *key_begin, *key_end;
@@ -403,8 +403,8 @@ nv_Nanocube_set_dimension_hint(nv_Nanocube *self, char *dim_name_begin, char *di
 
 	// set kv mapping
 	key_begin = print->end;
-	Print_str(print, dim_name_begin, dim_name_end);
-	Print_cstr(print, ":hint");
+	print_str(print, dim_name_begin, dim_name_end);
+	print_cstr(print, ":hint");
 	key_end = print->end;
 	ok = nv_Nanocube_insert_key_value(self, key_begin, key_end, value_begin, value_end);
 	print->end = key_begin;
@@ -415,7 +415,7 @@ nv_Nanocube_set_dimension_hint(nv_Nanocube *self, char *dim_name_begin, char *di
 	return 1;
 }
 
-internal b8
+static b8
 nv_Nanocube_set_dimension_hint_cstr(nv_Nanocube *self, char *dim_name_begin, char *dim_name_end, char *value_cstr, Print *print)
 {
 	return	nv_Nanocube_set_dimension_hint(self, dim_name_begin, dim_name_end, value_cstr, cstr_end(value_cstr), print);
@@ -423,7 +423,7 @@ nv_Nanocube_set_dimension_hint_cstr(nv_Nanocube *self, char *dim_name_begin, cha
 
 
 // TODO(llins): try to replace dim_name with a unique index_dimension id in the parameters of this procedure
-internal MemoryBlock
+static MemoryBlock
 nv_Nanocube_get_dimension_hint(nv_Nanocube *self, char *dim_name_begin, char *dim_name_end, Print *print)
 {
 	MemoryBlock mem = { .begin = 0, .end = 0 };
@@ -432,8 +432,8 @@ nv_Nanocube_get_dimension_hint(nv_Nanocube *self, char *dim_name_begin, char *di
 
 	// set kv mapping
 	key_begin = print->end;
-	Print_str(print, dim_name_begin, dim_name_end);
-	Print_cstr(print, ":hint");
+	print_str(print, dim_name_begin, dim_name_end);
+	print_cstr(print, ":hint");
 	key_end = print->end;
 	print->end = key_begin;
 
@@ -442,7 +442,7 @@ nv_Nanocube_get_dimension_hint(nv_Nanocube *self, char *dim_name_begin, char *di
 	return mem;
 }
 
-internal b8
+static b8
 nv_Nanocube_get_time_binning(nv_Nanocube *self, u8 dim_index, nm_TimeBinning *time_binning)
 {
 	Assert(dim_index < self->num_index_dimensions);
@@ -450,9 +450,9 @@ nv_Nanocube_get_time_binning(nv_Nanocube *self, u8 dim_index, nm_TimeBinning *ti
 
 	char buffer[32];
 	Print print;
-	Print_init(&print, buffer, buffer + sizeof(buffer));
-	Print_cstr(&print, self->index_dimensions.names[dim_index]);
-	Print_cstr(&print, ":time_binning");
+	print_init(&print, buffer, sizeof(buffer));
+	print_cstr(&print, self->index_dimensions.names[dim_index]);
+	print_cstr(&print, ":time_binning");
 
 	MemoryBlock mem;
 	if (!bt_BTree_get_value(&self->key_value_store, print.begin, print.end, &mem)) {
@@ -465,7 +465,7 @@ nv_Nanocube_get_time_binning(nv_Nanocube *self, u8 dim_index, nm_TimeBinning *ti
 	return 1;
 }
 
-internal b8
+static b8
 nv_Nanocube_get_alias_path(nv_Nanocube *self, u8 dim_index, MemoryBlock alias, s32 output_buffer_capacity, u8 *output_buffer, s32 *output_length)
 {
 	// @todo implement this
@@ -473,10 +473,10 @@ nv_Nanocube_get_alias_path(nv_Nanocube *self, u8 dim_index, MemoryBlock alias, s
 
 	char buffer[Kilobytes(1)]; // it would be good to have a local temp storage more capable here
 	Print print;
-	Print_init(&print, buffer, buffer + sizeof(buffer));
-	Print_cstr(&print, self->index_dimensions.names[dim_index]);
-	Print_cstr(&print, ":vk:");
-	Print_str(&print, alias.begin, alias.end);
+	print_init(&print, buffer, sizeof(buffer));
+	print_cstr(&print, self->index_dimensions.names[dim_index]);
+	print_cstr(&print, ":vk:");
+	print_str(&print, alias.begin, alias.end);
 
 	MemoryBlock mem;
 	if (!bt_BTree_get_value(&self->key_value_store, print.begin, print.end, &mem)) {
@@ -503,7 +503,7 @@ nv_Nanocube_get_alias_path(nv_Nanocube *self, u8 dim_index, MemoryBlock alias, s
 	return 1;
 }
 
-internal MemoryBlock
+static MemoryBlock
 nv_Nanocube_get_key_value(nv_Nanocube *self, char *key_begin, char *key_end)
 {
 	MemoryBlock mem = { .begin = 0, .end = 0 };
@@ -512,56 +512,56 @@ nv_Nanocube_get_key_value(nv_Nanocube *self, char *key_begin, char *key_end)
 	return mem;
 }
 
-internal void
+static void
 nv_TableValues_print(nv_TableValues *self, Print *print, u32 record_index)
 {
 	Assert(record_index < self->rows);
 	f64* it = self->values.begin + record_index * self->columns;
 	for (u32 i=0;i<self->columns;++i) {
-		Print_f64(print, *it);
-		Print_align(print, 14, 1,' ');
+		print_f64(print, *it);
+		print_align(print, 14, 1,' ');
 		++it;
 	}
 }
 
-internal void
+static void
 nv_TableValues_print_header(nv_TableValues *self, Print *print)
 {
 	MemoryBlock* it = self->names.begin;
 	for (u32 i=0;i<self->columns;++i) {
-		Print_str(print, it->begin, it->end);
-		Print_align(print, 14, 1,' ');
+		print_str(print, it->begin, it->end);
+		print_align(print, 14, 1,' ');
 		++it;
 	}
 }
 
-internal void
+static void
 nv_TableValues_print_json(nv_TableValues *self, Print *print)
 {
-	Print_cstr(print, "[");
+	print_cstr(print, "[");
 	u32 record_size = self->columns;
 	for (u32 j=0;j<self->columns;++j) {
 		if (j > 0) {
-			Print_char(print, ',');
+			print_char(print, ',');
 		}
-		Print_cstr(print, "{\"name\":\"");
+		print_cstr(print, "{\"name\":\"");
 		MemoryBlock *name =self->names.begin + j;
-		Print_str(print, name->begin, name->end);
-		Print_cstr(print, "\",\"values\":[");
+		print_str(print, name->begin, name->end);
+		print_cstr(print, "\",\"values\":[");
 		f64* it = self->values.begin + j;
 		for (u32 i=0;i<self->rows;++i) {
 			if (i > 0) {
-				Print_char(print, ',');
+				print_char(print, ',');
 			}
-			Print_f64(print, *it);
+			print_f64(print, *it);
 			it += record_size;
 		}
-		Print_cstr(print, "]}");
+		print_cstr(print, "]}");
 	}
-	Print_cstr(print, "]");
+	print_cstr(print, "]");
 }
 
-internal void
+static void
 nv_TableValues_init(nv_TableValues *self, LinearAllocator *memsrc)
 {
 	self->memsrc             = memsrc;
@@ -575,7 +575,7 @@ nv_TableValues_init(nv_TableValues *self, LinearAllocator *memsrc)
 	self->rows               = 0;
 }
 
-internal void
+static void
 nv_TableValues_init_column_names(nv_TableValues *self, MemoryBlock *begin, MemoryBlock *end)
 {
 	Assert(self->names.begin == 0);
@@ -589,13 +589,13 @@ nv_TableValues_init_column_names(nv_TableValues *self, MemoryBlock *begin, Memor
 		u64 name_len = pt_safe_s64_u64(name->end - name->begin);
 		Assert(name_len > 0);
 		MemoryBlock *name_copy = names_copy + i;
-		name_copy->begin = (char*) LinearAllocator_alloc(self->memsrc, RALIGN(name_len,8));
+		name_copy->begin = (char*) LinearAllocator_alloc(self->memsrc, RAlign(name_len,8));
 		name_copy->end = name_copy->begin + name_len;
 		pt_copy_bytes(name->begin, name->end, name_copy->begin, name_copy->end);
 	}
 }
 
-internal void
+static void
 nv_TableValues_init_column_names_uninitialized(nv_TableValues *self, u32 columns)
 {
 	Assert(self->names.begin == 0);
@@ -610,7 +610,7 @@ nv_TableValues_init_column_names_uninitialized(nv_TableValues *self, u32 columns
 	}
 }
 
-internal void
+static void
 nv_TableValues_set_column_name(nv_TableValues *self, u32 index, char *name_begin, char *name_end)
 {
 	Assert(self->rows == 0);
@@ -619,14 +619,14 @@ nv_TableValues_set_column_name(nv_TableValues *self, u32 index, char *name_begin
 	Assert(name_len > 0);
 	MemoryBlock *name_copy = self->names.begin + index;
 	name_copy->begin = (char*)
-		LinearAllocator_alloc(self->memsrc, RALIGN(name_len,8));
+		LinearAllocator_alloc(self->memsrc, RAlign(name_len,8));
 	name_copy->end = name_copy->begin + name_len;
 	pt_copy_bytes(name_begin, name_end,
 		      name_copy->begin,
 		      name_copy->end);
 }
 
-internal void
+static void
 nv_TableValues_init_src_indices(nv_TableValues *self, u32 *begin, u32 *end)
 {
 	Assert(self->rows == 0 && self->columns > 0);
@@ -658,7 +658,7 @@ nv_TableValues_init_src_indices(nv_TableValues *self, u32 *begin, u32 *end)
 /* Assume a global linear allocator */
 static u64 nv_TABLE_VALUE_MAX_SIZE=Megabytes(8);
 
-internal nv_TableValues*
+static nv_TableValues*
 nv_new_table_values(LinearAllocator *nv_table_value_allocator)
 {
 	/*
@@ -669,11 +669,11 @@ nv_new_table_values(LinearAllocator *nv_table_value_allocator)
 	Assert(nv_table_value_allocator);
 	char *mem = LinearAllocator_alloc_aligned(nv_table_value_allocator, nv_TABLE_VALUE_MAX_SIZE, 8);
 	LinearAllocator *memsrc = (LinearAllocator*) mem;
-	mem += RALIGN(sizeof(LinearAllocator),8);
+	mem += RAlign(sizeof(LinearAllocator),8);
 	LinearAllocator_init(memsrc, mem, mem, mem + nv_TABLE_VALUE_MAX_SIZE);
 
 	/* init empty table values */
-	nv_TableValues *result = (nv_TableValues*) LinearAllocator_alloc(memsrc, RALIGN(sizeof(nv_TableValues),8));
+	nv_TableValues *result = (nv_TableValues*) LinearAllocator_alloc(memsrc, RAlign(sizeof(nv_TableValues),8));
 	nv_TableValues_init(result, memsrc);
 
 	return result;
@@ -869,15 +869,15 @@ nm_TABLE_VALUES_COMBINE_ENTRY(nv_tv_combine_entry)
 				if (print_debug) {
 					++COMB;
 					Print *print = &debug_request->print;
-					Print_clear(print);
-					Print_u64(print,COMB);
-					Print_cstr(print," count: ");
-					Print_f64(print, *src);
-					Print_cstr(print," + ");
-					Print_f64(print, *dst);
-					Print_cstr(print," -> ");
-					Print_f64(print, *dst + *src);
-					Print_cstr(print,"\n");
+					print_clear(print);
+					print_u64(print,COMB);
+					print_cstr(print," count: ");
+					print_f64(print, *src);
+					print_cstr(print," + ");
+					print_f64(print, *dst);
+					print_cstr(print," -> ");
+					print_f64(print, *dst + *src);
+					print_cstr(print,"\n");
 					Request_print(debug_request, print);
 					print_debug = 0;
 				}
@@ -944,13 +944,20 @@ nm_TABLE_VALUES_PACK(nv_tv_pack)
 	Assert(n == permutation->end - permutation->begin);
 	Assert(n == repeat_flags.end - repeat_flags.begin);
 
+// struct pt_Memory{
+// 	u8 *base;
+// 	u64 size;
+// 	u64 flags;
+// 	u64 used;
+// 	pt_Memory   *prev;
+// };
 	// initialize an empty table
-	pt_Memory memory = platform.allocate_memory(n * table->columns * sizeof(f64), 3, 0);
+	pt_Memory *memory = platform.allocate_memory(n * table->columns * sizeof(f64), 0);
 
 	LinearAllocator	memsrc;
 	nv_TableValues  target;
 
-	LinearAllocator_init(&memsrc, memory.memblock.begin, memory.memblock.begin, memory.memblock.end);
+	LinearAllocator_init(&memsrc, OffsetedPointer(memory->base,0), OffsetedPointer(memory->base,0), OffsetedPointer(memory->base,memory->size));
 	nv_TableValues_init(&target, &memsrc);
 	target.columns = table->columns;
 
@@ -979,7 +986,7 @@ nm_TABLE_VALUES_PACK(nv_tv_pack)
 		      (char*) table->values.begin,
 		      (char*) table->values.end);
 	table->memsrc->end = (char*) table->values.end;
-	platform.free_memory(&memory);
+	platform.free_memory(memory);
 }
 
 nm_TABLE_VALUES_COMBINE_NUMBER(nv_tv_combine_number)
@@ -1073,7 +1080,7 @@ nm_GET_ALIAS_PATH(nv_get_alias_path)
 	return nv_Nanocube_get_alias_path((nv_Nanocube*) nanocube, dimension, alias, output_buffer_capacity, output_buffer, output_length);
 }
 
-internal void
+static void
 nv_payload_services_init(nm_Services *services)
 {
 	services->create = nv_tv_create;
@@ -1138,7 +1145,7 @@ typedef struct nv_Poly {
 	};
 } nv_Poly;
 
-internal void
+static void
 nv_Poly_init_poly(nv_Poly *self, s32 poly_type, s32 num_points, f32 *coords)
 {
 	self->is_poly = 1;
@@ -1148,7 +1155,7 @@ nv_Poly_init_poly(nv_Poly *self, s32 poly_type, s32 num_points, f32 *coords)
 	self->poly.coords     = coords;
 }
 
-internal void
+static void
 nv_Poly_init_op(nv_Poly *self, s32 op_type, s32 num_polys, nv_Poly* *polys)
 {
 	self->is_poly      = 0;
@@ -1177,7 +1184,7 @@ typedef struct {
 	np_TypeID poly; // polygon
 } nv_CompilerTypes;
 
-internal nv_CompilerTypes nv_compiler_types;
+static nv_CompilerTypes nv_compiler_types;
 
 np_FUNCTION_HANDLER(nv_function_query)
 {
@@ -1197,15 +1204,15 @@ np_FUNCTION_HANDLER(nv_function_format)
 	MemoryBlock format_name = *((MemoryBlock*) format_name_tv->value);
 	nv_Format *result = (nv_Format*) np_Compiler_alloc(compiler, sizeof(nv_Format));
 	// log error message if format name is not json or text
-	if (pt_compare_memory_cstr(format_name.begin, format_name.end, "json") == 0) {
+	if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "json") == 0) {
 		result->format = nv_FORMAT_JSON;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "text") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "text") == 0) {
 		result->format = nv_FORMAT_TEXT;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "bin") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "bin") == 0) {
 		result->format = nv_FORMAT_BINARY;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "psv") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "psv") == 0) {
 		result->format = nv_FORMAT_PSV;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "csv") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "csv") == 0) {
 		result->format = nv_FORMAT_CSV;
 	} else {
 		char *error = "Invalid format (it needs to be either 'text', 'json', 'bin')\n";
@@ -1709,14 +1716,14 @@ np_FUNCTION_HANDLER_FLAG(nv_function_tile2d_range_core)
 
 	{
 		u32 aux = x0;
-		x0 = MIN(x0,x1);
-		x1 = MAX(x1,aux);
+		x0 = Min(x0,x1);
+		x1 = Max(x1,aux);
 	}
 
 	{
 		u32 aux = y0;
-		y0 = MIN(y0,y1);
-		y1 = MAX(y1,aux);
+		y0 = Min(y0,y1);
+		y1 = Max(y1,aux);
 	}
 
 	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
@@ -1760,7 +1767,7 @@ np_FUNCTION_HANDLER(nv_function_mask)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
-internal nm_Binding*
+static nm_Binding*
 nv_copy_binding(np_Compiler *compiler, nm_Binding *binding)
 {
 	nm_Binding *result = 0;
@@ -1784,7 +1791,7 @@ nv_copy_binding(np_Compiler *compiler, nm_Binding *binding)
 	return result;
 }
 
-internal nm_MeasureSourceBinding*
+static nm_MeasureSourceBinding*
 nv_copy_measure_source_binding(BilinearAllocator *memory, nm_MeasureSourceBinding *msb)
 {
 	nm_MeasureSourceBinding *result = 0;
@@ -1807,7 +1814,7 @@ nv_copy_measure_source_binding(BilinearAllocator *memory, nm_MeasureSourceBindin
 	return result;
 }
 
-internal nm_MeasureExpression*
+static nm_MeasureExpression*
 nv_copy_measure_expression(BilinearAllocator *memory, nm_MeasureExpression *measure_expression)
 {
 	nm_MeasureExpression *copy = (nm_MeasureExpression*) BilinearAllocator_alloc_left(memory, sizeof(nm_MeasureExpression));
@@ -1822,7 +1829,7 @@ nv_copy_measure_expression(BilinearAllocator *memory, nm_MeasureExpression *meas
 	return copy;
 }
 
-internal nm_Measure*
+static nm_Measure*
 nv_copy_measure(np_Compiler *compiler, nm_Measure *measure)
 {
 	nm_Measure *measure_copy = (nm_Measure*) np_Compiler_alloc(compiler, sizeof(nm_Measure));
@@ -1865,7 +1872,7 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 	while (it != params_end) {
 		MemoryBlock *tag = (MemoryBlock*) it->value;
 		// check if
-		if (pt_compare_memory_n_cstr(tag->begin, tag->end, "img", 3) == 0) {
+		if (cstr_compare_memory_n_cstr(tag->begin, tag->end, "img", 3) == 0) {
 			u64 n = 0;
 			if (!pt_parse_u64(tag->begin + 3, tag->end, &n)) {
 				char *error = "Invalid img type. Expecting img<NUMBER> (eg. img8, img25), couldn't parse number";
@@ -1875,7 +1882,7 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 			}
 			// assume suffix is a number store in void* slot
 			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_IMG2D, .param = (void*) n };
-		} else if (pt_compare_memory_n_cstr(tag->begin, tag->end, "tile", 4) == 0) {
+		} else if (cstr_compare_memory_n_cstr(tag->begin, tag->end, "tile", 4) == 0) {
 			u64 n = 0;
 			if (!pt_parse_u64(tag->begin + 4, tag->end, &n)) {
 				char *error = "Invalid img type. Expecting tile<NUMBER> (eg. tile8, tile25), couldn't parse number";
@@ -1885,10 +1892,10 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 			}
 			// assume suffix is a number store in void* slot
 			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_TILE2D, .param = (void*) n };
-		} else if (pt_compare_memory_cstr(tag->begin, tag->end, "name") == 0) {
+		} else if (cstr_compare_memory_cstr(tag->begin, tag->end, "name") == 0) {
 			// NOTE(llins) will only know the source of the mapping from ID to NAMEs when we bind a source
 			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_NAME, .param = 0 };
-		} else if (pt_compare_memory_cstr(tag->begin, tag->end, "time") == 0) {
+		} else if (cstr_compare_memory_cstr(tag->begin, tag->end, "time") == 0) {
 			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_TIME, .param = 0 };
 		}
 		++it;
@@ -2030,7 +2037,7 @@ np_FUNCTION_HANDLER(nv_function_poly)
 }
 
 
-internal np_TypeValue
+static np_TypeValue
 nv_function_poly_combine(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, s32 op_type)
 {
 	s32 num_polys = (s32) (params_end - params_begin);
@@ -2081,7 +2088,7 @@ np_FUNCTION_HANDLER(nv_function_poly_intersection)
 
 #ifdef POLYCOVER
 
-internal polycover_Shape
+static polycover_Shape
 nv_shape_combine(polycover_Shape shape1, polycover_Shape shape2, s32 op_type)
 {
 	PolycoverAPI *polycover = &global_app_state->polycover;
@@ -2105,7 +2112,7 @@ nv_shape_combine(polycover_Shape shape1, polycover_Shape shape2, s32 op_type)
 	return (polycover_Shape) { .handle = 0 };
 }
 
-internal polycover_Shape
+static polycover_Shape
 nv_compute_poly_shape(nv_Poly *poly, s32 level)
 {
 	PolycoverAPI *polycover = &global_app_state->polycover;
@@ -2142,7 +2149,7 @@ nv_compute_poly_shape(nv_Poly *poly, s32 level)
 	}
 }
 
-internal char*
+static char*
 nv_compute_poly_mask(nv_Poly *poly, s32 level, char *buffer_begin, char *buffer_end)
 {
 	PolycoverAPI *polycover = &global_app_state->polycover;
@@ -2476,7 +2483,7 @@ np_FUNCTION_HANDLER(nv_function_measure_selection)
 	}
 }
 
-internal np_TypeValue
+static np_TypeValue
 nv_function_measure_op_measure(np_Compiler *compiler,
 		np_TypeValue* params_begin,
 		np_TypeValue *params_end,
@@ -2506,7 +2513,7 @@ nv_function_measure_op_measure(np_Compiler *compiler,
 	return result;
 }
 
-internal np_TypeValue
+static np_TypeValue
 nv_function_measure_op_number(np_Compiler *compiler,
 		np_TypeValue* params_begin,
 		np_TypeValue *params_end,
@@ -2536,7 +2543,7 @@ nv_function_measure_op_number(np_Compiler *compiler,
 	return result;
 }
 
-internal np_TypeValue
+static np_TypeValue
 nv_function_number_op_measure(np_Compiler *compiler,
 		np_TypeValue* params_begin,
 		np_TypeValue *params_end,
@@ -2656,7 +2663,7 @@ np_FUNCTION_HANDLER(nv_function_number_div_measure)
 			nm_MEASURE_EXPRESSION_OPERATION_BINARY_DIV);
 }
 
-internal void
+static void
 nv_Compiler_init(np_Compiler *compiler)
 {
 	nv_compiler_types.number    = compiler->number_type_id;
@@ -3096,10 +3103,10 @@ nv_Compiler_init(np_Compiler *compiler)
 // there is an implicit assumption here that nm_Table has an
 // nv_TableValue payload
 //
-internal nvr_Table*
+static nvr_Table*
 nvr_new_table(void *buffer, u64 size, nm_Table *input_table)
 {
-	Assert( LALIGN((u64) buffer, 8) == (u64) buffer );
+	Assert( LAlign((u64) buffer, 8) == (u64) buffer );
 	Assert(size >= sizeof(nvr_Table));
 
 	nm_TableKeys   *table_keys   = &input_table->table_keys;
@@ -3141,11 +3148,11 @@ nvr_new_table(void *buffer, u64 size, nm_Table *input_table)
 			dst_info->num_levels = src_info->levels;
 			dst_info->bits_per_level = src_info->bits;
 			dst_info->byte_offset = record_offset;
-			dst_info->num_bytes = RALIGN(src_info->levels*src_info->bits,8)/8;
+			dst_info->num_bytes = RAlign(src_info->levels*src_info->bits,8)/8;
 		}
 		record_offset += dst_info->num_bytes;
 	}
-	record_offset = RALIGN(record_offset,8);
+	record_offset = RAlign(record_offset,8);
 
 	// value column info
 	table->value_columns_info = nvr_Table_alloc(table, table->num_value_columns * sizeof(nvr_ValueColumnInfo));
@@ -3240,15 +3247,15 @@ nv_prepare_nvs_schema(nv_Nanocube *nanocube, char *name, s32 name_length, void *
 		MemoryBlock alias_value;
 		char  buffer[256];
 		Print print_prefix;
-		Print_init(&print_prefix, buffer, buffer + sizeof(buffer));
-		Print_format(&print_prefix,"%s:kv:",nanocube->index_dimensions.names[i]);
-		u64 prefix_length = Print_length(&print_prefix);
+		print_init(&print_prefix, buffer, sizeof(buffer));
+		print_format(&print_prefix,"%s:kv:",nanocube->index_dimensions.names[i]);
+		u64 prefix_length = print_length(&print_prefix);
 		s32 num_aliases = 0;
 		while (bt_Iter_next(&iter, &alias_hash, &alias_key, &alias_value))  {
 			if (MemoryBlock_length(&alias_key) < prefix_length) {
 				continue;
 			}
-			if (pt_compare_memory(alias_key.begin, alias_key.begin + prefix_length, print_prefix.begin, print_prefix.end)==0) {
+			if (cstr_compare_memory(alias_key.begin, alias_key.begin + prefix_length, print_prefix.begin, print_prefix.end)==0) {
 				s32 ok = nvs_push_alias(schema, i, alias_key.begin + prefix_length, alias_key.end, alias_value.begin, alias_value.end);
 				if (!ok) {
 					fputs("Not enough memory to prepare binary schema!",stderr);
@@ -3272,7 +3279,7 @@ typedef struct {
 	s32           objects_printed;
 } nv_ResultStream;
 
-internal void
+static void
 nv_ResultStream_init(nv_ResultStream *self, Print *print, nv_Format format)
 {
 	self->format = format;
@@ -3296,7 +3303,7 @@ nv_ResultStream_init(nv_ResultStream *self, Print *print, nv_Format format)
 	}
 }
 
-internal void
+static void
 nv_ResultStream_begin(nv_ResultStream *self)
 {
 	switch(self->format.format) {
@@ -3313,7 +3320,7 @@ nv_ResultStream_begin(nv_ResultStream *self)
 	}
 }
 
-internal void
+static void
 nv_ResultStream_end(nv_ResultStream *self)
 {
 	switch(self->format.format) {
@@ -3330,7 +3337,7 @@ nv_ResultStream_end(nv_ResultStream *self)
 	}
 }
 
-internal void
+static void
 nv_ResultStream_sep(nv_ResultStream *self)
 {
 	if (self->objects_printed > 0) {
@@ -3366,7 +3373,7 @@ typedef struct {
 // Sort aliases by path. Should help integrating it later.
 //
 
-internal void
+static void
 nv_ResultStream_version(nv_ResultStream *self, char *api, char *executable)
 {
 	Print         *print       = self->print_stack.print;
@@ -3389,13 +3396,13 @@ nv_ResultStream_version(nv_ResultStream *self, char *api, char *executable)
 		ut_PrintStack_pop(print_stack);
 	} break;
 	case nv_FORMAT_TEXT: {
-		Print_format(print, "# version\napi: %s\nexecutable: %s", api, executable);
+		print_format(print, "# version\napi: %s\nexecutable: %s", api, executable);
 	} break;
 	case nv_FORMAT_PSV: {
-		Print_format(print, "version|api\n%s|%s\n", api, executable);
+		print_format(print, "version|api\n%s|%s\n", api, executable);
 	} break;
 	case nv_FORMAT_CSV: {
-		Print_format(print, "version,api\n%s,%s\n", api, executable);
+		print_format(print, "version,api\n%s,%s\n", api, executable);
 	} break;
 	case nv_FORMAT_BINARY: {
 		// TODO(llins): send as a table
@@ -3403,7 +3410,7 @@ nv_ResultStream_version(nv_ResultStream *self, char *api, char *executable)
 	}
 }
 
-internal void
+static void
 nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nanocube)
 {
 	Print         *print       = self->print_stack.print;
@@ -3452,15 +3459,15 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 						MemoryBlock alias_value;
 						char  buffer[128];
 						Print print_prefix;
-						Print_init(&print_prefix, buffer, buffer + sizeof(buffer));
-						Print_format(&print_prefix,"%s:kv:",nanocube->index_dimensions.names[i]);
-						u64 prefix_length = Print_length(&print_prefix);
+						print_init(&print_prefix, buffer, sizeof(buffer));
+						print_format(&print_prefix,"%s:kv:",nanocube->index_dimensions.names[i]);
+						u64 prefix_length = print_length(&print_prefix);
 						s32 num_aliases = 0;
 						while (bt_Iter_next(&iter, &alias_hash, &alias_key, &alias_value))  {
 							if (MemoryBlock_length(&alias_key) < prefix_length) {
 								continue;
 							}
-							if (pt_compare_memory(alias_key.begin, alias_key.begin + prefix_length, print_prefix.begin, print_prefix.end)==0) {
+							if (cstr_compare_memory(alias_key.begin, alias_key.begin + prefix_length, print_prefix.begin, print_prefix.end)==0) {
 								if (num_aliases > 0) {
 									ut_PrintStack_append_cstr(print_stack, ",");
 								}
@@ -3499,22 +3506,22 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 
 		// TODO(llins) print aliases on the text schema?
 
-		Print_cstr(print, "# schema: ");
-		Print_str(print, name.begin, name.end);
-		Print_char(print,'\n');
-		Print_char(print,'#');
-		Print_align(print, 53, -1, '#');
-		Print_char(print,'\n');
-		Print_format(print,"%1s %32s %10s %7s %s\n", "#", "index_dimension", "bits", "levels", "hint");
-		Print_char(print,'#');
-		Print_align(print, 53, -1, '#');
-		Print_char(print,'\n');
+		print_cstr(print, "# schema: ");
+		print_str(print, name.begin, name.end);
+		print_char(print,'\n');
+		print_char(print,'#');
+		print_align(print, 53, -1, '#');
+		print_char(print,'\n');
+		print_format(print,"%1s %32s %10s %7s %s\n", "#", "index_dimension", "bits", "levels", "hint");
+		print_char(print,'#');
+		print_align(print, 53, -1, '#');
+		print_char(print,'\n');
 		for (u32 i=0;i<nanocube->num_index_dimensions;++i) {
 			MemoryBlock hint = nv_Nanocube_get_dimension_hint(nanocube,
 									  nanocube->index_dimensions.names[i],
 									  cstr_end(nanocube->index_dimensions.names[i]),
 									  print);
-			Print_format(print,
+			print_format(print,
 				     "%1d %32s %10d %7d %s\n",
 				     i+1,
 				     nanocube->index_dimensions.names[i],
@@ -3522,15 +3529,15 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 				     nanocube->index_dimensions.num_levels[i],
 				     hint.begin);
 		}
-		Print_char(print,'#');
-		Print_align(print, 53, -1, '#');
-		Print_char(print,'\n');
-		Print_format(print, "%1s %32s %10s\n", "#", "measure_dimension", "format");
-		Print_char(print,'#');
-		Print_align(print, 53, -1, '#');
-		Print_char(print,'\n');
+		print_char(print,'#');
+		print_align(print, 53, -1, '#');
+		print_char(print,'\n');
+		print_format(print, "%1s %32s %10s\n", "#", "measure_dimension", "format");
+		print_char(print,'#');
+		print_align(print, 53, -1, '#');
+		print_char(print,'\n');
 		for (u32 i=0;i<nanocube->num_measure_dimensions;++i) {
-			Print_format(print,
+			print_format(print,
 				     "%1d %32s %10s\n",
 				     i+1,
 				     nanocube->measure_dimensions.names[i],
@@ -3538,9 +3545,9 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 		}
 	} break;
 	case nv_FORMAT_CSV: {
-		Print_cstr(print, "nc,num,dim,type,spec,hint,alias\n");
+		print_cstr(print, "nc,num,dim,type,spec,hint,alias\n");
 		for (u32 i=0;i<nanocube->num_index_dimensions;++i) {
-			Print_str(print, name.begin, name.end);
+			print_str(print, name.begin, name.end);
 			MemoryBlock hint = nv_Nanocube_get_dimension_hint(nanocube,
 									  nanocube->index_dimensions.names[i],
 									  cstr_end(nanocube->index_dimensions.names[i]),
@@ -3559,14 +3566,14 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 				Assert(print->end + len + 2 <= print->capacity);
 				hint_cstr = print->capacity - len - 1;
 				print->end = hint_cstr;
-				Print_str(print, hint.begin, hint.end);
+				print_str(print, hint.begin, hint.end);
 				print->end[len]=0;
 				for (s32 k=0;k<len;++k) if (hint_cstr[k] == ',') hint_cstr[k] = '_';
 				print->capacity = hint_cstr - 1;
 				print->end = end_bkup;
 			}
 
-			Print_format(print,
+			print_format(print,
 				     ",%d,%s,%s,b%d:l%d,%s,\n",
 				     i,
 				     nanocube->index_dimensions.names[i],
@@ -3580,8 +3587,8 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 			}
 		}
 		for (u32 i=0;i<nanocube->num_measure_dimensions;++i) {
-			Print_str(print, name.begin, name.end);
-			Print_format(print,
+			print_str(print, name.begin, name.end);
+			print_format(print,
 				     ",%d,%s,%s,%s,%s,\n",
 				     i,
 				     nanocube->measure_dimensions.names[i],
@@ -3591,9 +3598,9 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 		}
 	} break;
 	case nv_FORMAT_PSV: {
-		Print_cstr(print, "nc|num|dim|type|spec|hint|alias\n");
+		print_cstr(print, "nc|num|dim|type|spec|hint|alias\n");
 		for (u32 i=0;i<nanocube->num_index_dimensions;++i) {
-			Print_str(print, name.begin, name.end);
+			print_str(print, name.begin, name.end);
 			MemoryBlock hint = nv_Nanocube_get_dimension_hint(nanocube,
 									  nanocube->index_dimensions.names[i],
 									  cstr_end(nanocube->index_dimensions.names[i]),
@@ -3612,14 +3619,14 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 				Assert(print->end + len + 2 <= print->capacity);
 				hint_cstr = print->capacity - len - 1;
 				print->end = hint_cstr;
-				Print_str(print, hint.begin, hint.end);
+				print_str(print, hint.begin, hint.end);
 				print->end[len]=0;
 				for (s32 k=0;k<len;++k) if (hint_cstr[k] == '|') hint_cstr[k] = '_';
 				print->capacity = hint_cstr - 1;
 				print->end = end_bkup;
 			}
 
-			Print_format(print,
+			print_format(print,
 				     "|%d|%s|%s|b%d:l%d|%s|\n",
 				     i,
 				     nanocube->index_dimensions.names[i],
@@ -3633,8 +3640,8 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 			}
 		}
 		for (u32 i=0;i<nanocube->num_measure_dimensions;++i) {
-			Print_str(print, name.begin, name.end);
-			Print_format(print,
+			print_str(print, name.begin, name.end);
+			print_format(print,
 				     "|%d|%s|%s|%s|%s|\n",
 				     i,
 				     nanocube->measure_dimensions.names[i],
@@ -3652,7 +3659,7 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 		Assert(((u64)print->begin % 8)==0);
 		void *buffer = print->end;
 		s64 buffer_length = print->capacity - print->end;
-		buffer_length = LALIGN(buffer_length, 8);
+		buffer_length = LAlign(buffer_length, 8);
 		// Assert(print->begin == print->end);
 		nvs_Schema *schema = nv_prepare_nvs_schema(nanocube, name.begin, (s32) MemoryBlock_length(&name), buffer, buffer_length);
 		if (!schema) {
@@ -3666,7 +3673,7 @@ nv_ResultStream_schema(nv_ResultStream *self, MemoryBlock name, nv_Nanocube *nan
 	}
 }
 
-internal void
+static void
 nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 {
 	Print         *print       = self->print_stack.print;
@@ -3841,9 +3848,9 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								print->end = (char*) path;
 
 // 								char *key_begin = print->end;
-// 								Print_str(print, it_coltype->name.begin, it_coltype->name.end);
-// 								Print_cstr(print, ":kv:");
-// 								Print_u64(print, value);
+// 								print_str(print, it_coltype->name.begin, it_coltype->name.end);
+// 								print_cstr(print, ":kv:");
+// 								print_u64(print, value);
 // 								// nv_Nanocube_insert_key_value(nanocube,print->begin, print->end, cat_text->begin, cat_text->end);
 // 								MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube, key_begin, print->end);
 // 								print->end = key_begin;
@@ -3897,7 +3904,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							ut_PrintStack_append_cstr(print_stack, ",");
 						}
 						ut_PrintStack_append_formatted(print_stack, "%f", *it);
-						// Print_f64(print, *it);
+						// print_f64(print, *it);
 						it += record_size;
 					}
 					ut_PrintStack_pop(print_stack);
@@ -3931,20 +3938,20 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			{ // index part
 				nm_TableKeysColumnType *it = table_keys->type->begin;
 				while (it != table_keys->type->end) {
-					Print_str(print, it->name.begin, it->name.end);
-					Print_align(print, index_col_fixed_width, 1, ' ');
+					print_str(print, it->name.begin, it->name.end);
+					print_align(print, index_col_fixed_width, 1, ' ');
 					++it;
 				}
 			}
 			{ // value part
 				MemoryBlock *it = table_values->names.begin;
 				while (it != table_values->names.end) {
-					Print_str(print, it->begin, it->end);
-					Print_align(print, value_col_fixed_width, 1, ' ');
+					print_str(print, it->begin, it->end);
+					print_align(print, value_col_fixed_width, 1, ' ');
 					++it;
 				}
 			}
-			Print_char(print, '\n');
+			print_char(print, '\n');
 		}
 		// print rows
 		for (u32 row=0;row<rows;++row) {
@@ -3963,7 +3970,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					case nm_BINDING_HINT_NONE: {
 						if (it_coltype->loop_column) {
 							u32 val = *((u32*) it);
-							Print_u64(print, (u64) val);
+							print_u64(print, (u64) val);
 							it += sizeof(u32);
 						} else {
 							u32 bits   = it_coltype->bits;
@@ -3976,9 +3983,9 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								nx_Label label = 0;
 								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
 								if (j > 0) {
-									Print_cstr(print, ",");
+									print_cstr(print, ",");
 								}
-								Print_u64(print, (u64) label);
+								print_u64(print, (u64) label);
 							}
 							it += bytes;
 						}
@@ -3987,9 +3994,9 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					case nm_BINDING_HINT_IMG2D: {
 						// TODO(llins): generalize to 2d
 						if (it_coltype->loop_column) {
-							Print_cstr(print, "error: expected a path, received a loop column");
+							print_cstr(print, "error: expected a path, received a loop column");
 						} else if (it_coltype->bits != 2) {
-							Print_cstr(print, "error: expected a quadtree path");
+							print_cstr(print, "error: expected a quadtree path");
 						} else {
 							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
@@ -4012,15 +4019,15 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							}
 							it += bytes;
 							if (i > 0) {
-								Print_char(print, ',');
+								print_char(print, ',');
 							}
 							if (it_coltype->hint.hint_id == nm_BINDING_HINT_IMG2D) { y = (1 << param) - 1 - y; }
-							Print_format(print,"%llu,%llu", x, y);
+							print_format(print,"%llu,%llu", x, y);
 						}
 					} break;
 					case nm_BINDING_HINT_NAME: {
 						if (it_coltype->loop_column) {
-							Print_cstr(print, "error: expected a path, received a loop column");
+							print_cstr(print, "error: expected a path, received a loop column");
 						} else {
 							// with the column name and the source, try to find the column names
 							Assert(table->source->num_nanocubes > 0);
@@ -4043,7 +4050,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 												    it_coltype->name.begin, it_coltype->name.end,
 												    path, (u8) levels, print);
 							print->end = (char*) path;
-							Print_str(print, label.begin, label.end);
+							print_str(print, label.begin, label.end);
 						}
 					}
 					default:{
@@ -4051,8 +4058,8 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					}
 
 					// align stuff that was printed
-					Print_fake_last_print(print, check_point);
-					Print_align(print, index_col_fixed_width, 1, ' ');
+					print_fake_last_print(print, check_point);
+					print_align(print, index_col_fixed_width, 1, ' ');
 
 					column_offset += nm_TableKeysColumnType_bytes(it_coltype);
 				}
@@ -4062,11 +4069,11 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 				f64 *it = table_values->values.begin + table_values->columns * row;
 				for (u32 j=0;j<table_values->columns;++j) {
 					f64 value = *(it + j);
-					Print_format(print, "%f", value);
-					Print_align(print, value_col_fixed_width, 1, ' ');
+					print_format(print, "%f", value);
+					print_align(print, value_col_fixed_width, 1, ' ');
 				}
 			}
-			Print_char(print, '\n');
+			print_char(print, '\n');
 
 		} // end row printing loop
 	} break;
@@ -4092,13 +4099,13 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			{ // index part
 				nm_TableKeysColumnType *it = table_keys->type->begin;
 				while (it != table_keys->type->end) {
-					if (continuation) Print_char(print,sep);
+					if (continuation) print_char(print,sep);
 					continuation=1;
 					if (it->hint.hint_id != nm_BINDING_HINT_IMG2D && it->hint.hint_id != nm_BINDING_HINT_TILE2D) {
-						Print_str(print, it->name.begin, it->name.end);
+						print_str(print, it->name.begin, it->name.end);
 					} else {
 						s32 name_length = (s32) (it->name.end - it->name.begin);
-						Print_format(print, "%.*s_x%c%.*s_y",
+						print_format(print, "%.*s_x%c%.*s_y",
 							     name_length, it->name.begin,
 							     sep,
 							     name_length, it->name.begin);
@@ -4109,13 +4116,13 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			{ // value part
 				MemoryBlock *it = table_values->names.begin;
 				while (it != table_values->names.end) {
-					if (continuation) Print_char(print,sep);
+					if (continuation) print_char(print,sep);
 					continuation=1;
-					Print_str(print, it->begin, it->end);
+					print_str(print, it->begin, it->end);
 					++it;
 				}
 			}
-			Print_char(print, '\n');
+			print_char(print, '\n');
 		}
 		// print rows
 		for (u32 row=0;row<rows;++row) {
@@ -4127,7 +4134,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 				// u32 record_size   = table_keys->row_length;
 				for (u32 i=0;i<table_keys->columns;++i) {
 
-					if (continuation) Print_char(print,sep);
+					if (continuation) print_char(print,sep);
 					continuation = 1;
 
 					nm_TableKeysColumnType *it_coltype = table_keys->type->begin + i;
@@ -4136,7 +4143,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					case nm_BINDING_HINT_NONE: {
 						if (it_coltype->loop_column) {
 							u32 val = *((u32*) it);
-							Print_u64(print, (u64) val);
+							print_u64(print, (u64) val);
 							it += sizeof(u32);
 						} else {
 							u32 bits   = it_coltype->bits;
@@ -4149,9 +4156,9 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								nx_Label label = 0;
 								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
 								if (j > 0) {
-									Print_cstr(print, ":");
+									print_cstr(print, ":");
 								}
-								Print_u64(print, (u64) label);
+								print_u64(print, (u64) label);
 							}
 							it += bytes;
 						}
@@ -4160,9 +4167,9 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					case nm_BINDING_HINT_IMG2D: {
 						// TODO(llins): generalize to 2d
 						if (it_coltype->loop_column) {
-							Print_cstr(print, "error: expected a path, received a loop column");
+							print_cstr(print, "error: expected a path, received a loop column");
 						} else if (it_coltype->bits != 2) {
-							Print_cstr(print, "error: expected a quadtree path");
+							print_cstr(print, "error: expected a quadtree path");
 						} else {
 							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
@@ -4185,12 +4192,12 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							}
 							it += bytes;
 							if (it_coltype->hint.hint_id == nm_BINDING_HINT_IMG2D) { y = (1 << param) - 1 - y; }
-							Print_format(print,"%llu%c%llu", x, sep, y);
+							print_format(print,"%llu%c%llu", x, sep, y);
 						}
 					} break;
 					case nm_BINDING_HINT_NAME: {
 						if (it_coltype->loop_column) {
-							Print_cstr(print, "error: expected a path, received a loop column");
+							print_cstr(print, "error: expected a path, received a loop column");
 						} else {
 							// with the column name and the source, try to find the column names
 							Assert(table->source->num_nanocubes > 0);
@@ -4213,7 +4220,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 												    it_coltype->name.begin, it_coltype->name.end,
 												    path, (u8) levels, print);
 							print->end = (char*) path;
-							Print_str(print, label.begin, label.end);
+							print_str(print, label.begin, label.end);
 						}
 					}
 					default:{
@@ -4227,14 +4234,14 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			{ // value columns
 				f64 *it = table_values->values.begin + table_values->columns * row;
 				for (u32 j=0;j<table_values->columns;++j) {
-					if (continuation) Print_char(print,sep);
+					if (continuation) print_char(print,sep);
 					continuation = 1;
 
 					f64 value = *(it + j);
-					Print_format(print, "%f", value);
+					print_format(print, "%f", value);
 				}
 			}
-			Print_char(print, '\n');
+			print_char(print, '\n');
 
 		} // end row printing loop
 	} break;
@@ -4242,7 +4249,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 	} // end switch
 }
 
-internal void
+static void
 nv_Compiler_insert_nanocube(np_Compiler *compiler, nv_Nanocube* cube, char *name_begin, char *name_end)
 {
 	np_Symbol* symbol = np_SymbolTable_find_variable(&compiler->symbol_table, name_begin, name_end);
@@ -4281,7 +4288,7 @@ nv_Compiler_insert_nanocube(np_Compiler *compiler, nv_Nanocube* cube, char *name
 
 // replace the linked nanocube on variable named [name_begin,name_end)
 // returns the old nanocube pointer
-internal nv_Nanocube*
+static nv_Nanocube*
 nv_Compiler_update_singleton_nanocube_symbol(np_Compiler *compiler, nv_Nanocube* cube, char *name_begin, char *name_end)
 {
 	// no allocation on the compiler memory should happend
@@ -4316,7 +4323,7 @@ nv_Compiler_update_singleton_nanocube_symbol(np_Compiler *compiler, nv_Nanocube*
 	return old_nanocube;
 }
 
-internal void
+static void
 nv_Compiler_insert_nanocube_cstr(np_Compiler *compiler, nv_Nanocube* cube, char *name_cstr)
 {
 	nv_Compiler_insert_nanocube(compiler, cube, name_cstr, cstr_end(name_cstr));
@@ -4328,7 +4335,7 @@ nv_Compiler_insert_nanocube_cstr(np_Compiler *compiler, nv_Nanocube* cube, char 
 //
 //------------------------------------------------------------------------------
 
-internal void
+static void
 nx_PayloadAggregate_init(nx_PayloadAggregate *self, void *payload_context)
 {
 	nv_Nanocube *nanocube = (nv_Nanocube*) payload_context;
@@ -4343,7 +4350,7 @@ nx_PayloadAggregate_init(nx_PayloadAggregate *self, void *payload_context)
 	pt_fill(it, it + nanocube->payload_aggregate_size, 0);
 }
 
-internal void
+static void
 nx_PayloadAggregate_share(nx_PayloadAggregate* self, nx_PayloadAggregate* other, void *payload_context)
 {
 	nv_Nanocube *nanocube = (nv_Nanocube*) payload_context;
@@ -4358,7 +4365,7 @@ nx_PayloadAggregate_share(nx_PayloadAggregate* self, nx_PayloadAggregate* other,
 			it_dst, it_dst + nanocube->payload_aggregate_size);
 }
 
-internal void
+static void
 nx_PayloadAggregate_insert(nx_PayloadAggregate* self, void* payload_unit, void* payload_context)
 {
 	nv_Nanocube *nanocube = (nv_Nanocube*) payload_context;

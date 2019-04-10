@@ -26,11 +26,11 @@ typedef struct {
 } pf_Table;
 
 internal void
-pf_Table_init(pf_Table *self, char *buffer_begin, char *buffer_end)
+pf_Table_init(pf_Table *self, void *buffer, u64 buffer_size)
 {
-	s64 n = (buffer_end - buffer_begin)/(sizeof(pf_Event)*2);
+	s64 n = buffer_size/(sizeof(pf_Event)*2);
 	self->event_capacity = n;
-	self->events[0] = (pf_Event*) buffer_begin;
+	self->events[0] = (pf_Event*) buffer;
 	self->events[1] = self->events[0] + n;
 }
 

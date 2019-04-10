@@ -4,7 +4,7 @@
 #define ut_TOKEN_KILOBYTES 3
 #define ut_TOKEN_MEGABYTES 4
 #define ut_TOKEN_GIGABYTES 5
-internal s64
+static s64
 ut_parse_storage_size(char *begin, char *end)
 {
 	static char st_digits[]    = "0123456789";
@@ -82,210 +82,6 @@ ut_parse_storage_size(char *begin, char *end)
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-// BasicAllocator
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct {
-	pt_Memory *begin;
-	pt_Memory *end;
-	pt_Memory *capacity;
-	pt_Memory buffer;
-	u64 used_memory;
-} BasicAllocator;
-
-#define CLEAR(ptr) pt_filln((char*) ptr, sizeof(*ptr), '\0')
-#define BasicAllocator_INITIAL_CAPACITY 16
-
-internal void
-BasicAllocator_init(BasicAllocator *self)
-{
-	CLEAR(self);
-}
-
-internal void
-BasicAllocator_grow(BasicAllocator *self)
-{
-	if (self->begin == 0) {
-		self->buffer   = platform.allocate_memory(sizeof(pt_Memory) * BasicAllocator_INITIAL_CAPACITY, 3, 0);
-		self->begin    = (pt_Memory*) self->buffer.memblock.begin;
-		self->end      = self->begin;
-		self->capacity = self->begin + BasicAllocator_INITIAL_CAPACITY;
-	} else {
-		s64 new_capacity = 2 * (self->capacity - self->begin);
-		s64 current_usage = self->end - self->begin;
-		pt_Memory new_buffer = platform.allocate_memory(new_capacity * sizeof(pt_Memory), 3, 0);
-		pt_Memory *new_begin = (pt_Memory*) new_buffer.memblock.begin;
-		for (s32 i=0;i<current_usage;++i) {
-			new_begin[i] = self->begin[i];
-		}
-		platform.free_memory(&self->buffer);
-		self->buffer = new_buffer;
-		self->begin  = new_begin;
-		self->end    = new_begin + current_usage;
-		self->capacity = new_begin + new_capacity;
-	}
-}
-
-internal void*
-BasicAllocator_alloc(BasicAllocator *self, u64 size, u8 alignment)
-{
-	pt_Memory result = platform.allocate_memory(size, alignment, 0);
-	if (self->end == self->capacity) {
-		BasicAllocator_grow(self);
-	}
-	*self->end = result;
-	++self->end;
-	self->used_memory += size; // we are missing the aligment bytes here
-	return result.memblock.begin;
-}
-
-internal MemoryBlock
-BasicAllocator_alloc_memblock(BasicAllocator *self, u64 size, u8 alignment)
-{
-	pt_Memory result = platform.allocate_memory(size, alignment, 0);
-	if (self->end == self->capacity) {
-		BasicAllocator_grow(self);
-	}
-	*self->end = result;
-	++self->end;
-	self->used_memory += size; // we are missing the aligment bytes here
-	return result.memblock;
-}
-
-internal b8
-BasicAllocator_free(BasicAllocator *self, void *ptr)
-{
-	s64 n = self->end - self->begin;
-	for (s32 i=0;i<n;++i) {
-		if ((void*) self->begin[i].memblock.begin == ptr) {
-
-			self->used_memory -= MemoryBlock_length(&self->begin[i].memblock);
-
-			platform.free_memory(self->begin + i);
-			self->begin[i] = self->begin[n-1];
-			--self->end;
-			return 1;
-		}
-	}
-	Assert(!"Didn't free any memory");
-	return 0;
-}
-
-internal void
-BasicAllocator_free_all(BasicAllocator *self)
-{
-	if (self->begin) {
-		s64 n = self->end - self->begin;
-		for (s32 i=0;i<n;++i) {
-			platform.free_memory(self->begin + i);
-		}
-		platform.free_memory(&self->buffer);
-		self->used_memory = 0;
-	}
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// convert_uri_to_ascii
-////////////////////////////////////////////////////////////////////////////////
-
-
-// TODO(llins): Denormalize HTTP request-target in a more general way (%00-%FF <-> ascii)
-// GET /taxi.b("pickup_location",dive(10)); HTTP/1.1
-// method SP request-tar get SP HTTP-version CRLF
-
-//
-internal inline s32
-ut_hex_digit(char ch)
-{
-// 	ascii code	48	0	(number zero)
-// 	ascii code	65	A	(Capital A)
-// 	ascii code	97	a	(Lowercase a)
-	if (ch < 48 || ch >= 97 + 6) {
-		return -1;
-	} else if (ch < 48 + 10) {
-		return ch - 48;
-	} else if (ch < 65) {
-		return -1;
-	} else if (ch < 65 + 6) {
-		return 10 + (ch - 65);
-	} else if (ch < 97) {
-		return -1;
-	} else { // if (ch < 97 + 6) {
-		return 10 + (ch - 97);
-	}
-}
-
-
-internal MemoryBlock
-ut_convert_uri_to_ascii(MemoryBlock uri)
-{
-	char *dst = uri.begin;
-	char *src = uri.begin;
-	MemoryBlock result;
-	result.begin = dst;
-
-	// no %DD possible output is the same as input
-	if (uri.end - src < 3) {
-		return uri;
-	}
-	char *max_src = uri.end - 3;
-
-loop:
-	if (src[0] == '%') {
-		s32 h = ut_hex_digit(src[1]);
-		if (h < 0)
-			goto normal_advance;
-		s32 l = ut_hex_digit(src[2]);
-		if (l < 0)
-			goto normal_advance;
-		*dst = (char) (h * 16 + l);
-		++dst;
-		src += 3;
-	} else {
-normal_advance:
-		*dst = *src;
-		++dst;
-		++src;
-	}
-	if (src <= max_src)
-		goto loop;
-
-	while (src <= uri.end) {
-		*dst = *src;
-		++dst;
-		++src;
-	}
-
-	result.end = dst;
-	return result;
-}
-
-
-internal MemoryBlock
-ut_convert_uri_to_ascii_old(MemoryBlock uri)
-{
-	char *dst = uri.begin;
-	char *src = uri.begin;
-
-	MemoryBlock result;
-	result.begin = dst;
-	while (src != uri.end) {
-		if (*src == '%' && (uri.end - src > 2)
-		    && (*(src+1) == '2' && *(src+2) == '2')) {
-			*dst = '"';
-			src += 3;
-		} else {
-			*dst = *src;
-			++src;
-		}
-		++dst;
-	}
-	result.end = dst;
-	return result;
-}
-
 
 
 
@@ -306,7 +102,7 @@ typedef struct {
 	Print *print;
 } ut_PrintStack;
 
-internal void
+static void
 ut_PrintStack_init(ut_PrintStack *self, Print *print, char *level_text, char *line_feed)
 {
 	self->num_items = 0;
@@ -315,33 +111,33 @@ ut_PrintStack_init(ut_PrintStack *self, Print *print, char *level_text, char *li
 	self->line_feed = line_feed;
 }
 
-internal inline void
+static inline void
 ut_PrintStack_margin(ut_PrintStack *self)
 {
 	for (s32 i=0;i<self->num_items;++i) {
-		Print_cstr(self->print, self->level_text);
+		print_cstr(self->print, self->level_text);
 	}
 }
 
-internal void
+static void
 ut_PrintStack_print(ut_PrintStack *self, char *text)
 {
 	if (self->print->begin < self->print->end)
-		Print_cstr(self->print, self->line_feed);
+		print_cstr(self->print, self->line_feed);
 	ut_PrintStack_margin(self);
-	Print_cstr(self->print, text);
+	print_cstr(self->print, text);
 }
 
-internal void
+static void
 ut_PrintStack_append_cstr(ut_PrintStack *self, char *text)
 {
-	Print_cstr(self->print, text);
+	print_cstr(self->print, text);
 }
 
-internal void
+static void
 ut_PrintStack_append_str(ut_PrintStack *self, char *begin, char *end)
 {
-	Print_str(self->print, begin, end);
+	print_str(self->print, begin, end);
 }
 
 //
@@ -356,42 +152,42 @@ ut_PrintStack_append_str(ut_PrintStack *self, char *begin, char *end)
 // Backslash is replaced with
 //
 
-internal void
+static void
 ut_PrintStack_append_escaped_json_str(ut_PrintStack *self, char *begin, char *end)
 {
 	Print *print = self->print;
 	for (char *it=begin;it!=end;++it) {
 		if ((*it >= 'a' && *it <= 'z') || (*it >= 'A' && *it <= 'Z') || (*it >= '0' && *it <= '9')) {
-			Print_char(print, *it);
+			print_char(print, *it);
 		} else if (*it == '\\') {
-			Print_cstr(print,"\\\\");
+			print_cstr(print,"\\\\");
 		} else if (*it == 0) {
-			Print_cstr(print,"\\0");
+			print_cstr(print,"\\0");
 		} else if (*it == '"') {
-			Print_cstr(print,"\\\"");
+			print_cstr(print,"\\\"");
 		} else if (*it == '\r') {
-			Print_cstr(print,"\\r");
+			print_cstr(print,"\\r");
 		} else if (*it == '\t') {
-			Print_cstr(print,"\\t");
+			print_cstr(print,"\\t");
 		} else if (*it == '\n') {
-			Print_cstr(print,"\\n");
+			print_cstr(print,"\\n");
 		} else if (*it == '\v') {
-			Print_cstr(print,"\\v");
+			print_cstr(print,"\\v");
 		} else if (*it == '\b') {
-			Print_cstr(print,"\\b");
+			print_cstr(print,"\\b");
 		} else {
-			Print_char(print, *it);
+			print_char(print, *it);
 		}
 	}
 }
 
-internal void
+static void
 ut_PrintStack_align(ut_PrintStack *self, s32 len, s32 alignment, char sep)
 {
-	Print_align(self->print, len, alignment, sep);
+	print_align(self->print, len, alignment, sep);
 }
 
-internal void
+static void
 ut_PrintStack_push(ut_PrintStack *self, char *open_text, char *close_text)
 {
 	Assert(self->num_items < ut_PrintStack_CAPACITY);
@@ -401,29 +197,29 @@ ut_PrintStack_push(ut_PrintStack *self, char *open_text, char *close_text)
 	++self->num_items;
 }
 
-internal inline void
+static inline void
 ut_PrintStack_pop(ut_PrintStack *self)
 {
 	Assert(self->num_items > 0);
 	--self->num_items;
 	if (self->stack[self->num_items]) {
 		ut_PrintStack_print(self, "");
-		Print_cstr(self->print, self->stack[self->num_items]);
+		print_cstr(self->print, self->stack[self->num_items]);
 	}
 }
 
 #define ut_PrintStack_push_formatted(self, close_text, open_text_format, ...) \
 	ut_PrintStack_print((self), ""); \
-	Print_format((self)->print, open_text_format, __VA_ARGS__); \
+	print_format((self)->print, open_text_format, __VA_ARGS__); \
 	(self)->stack[(self)->num_items] = close_text; \
 	++(self)->num_items;
 
 #define ut_PrintStack_print_formatted(self, text_format, ...) \
 	ut_PrintStack_print((self), ""); \
-	Print_format((self)->print, text_format, __VA_ARGS__);
+	print_format((self)->print, text_format, __VA_ARGS__);
 
 #define ut_PrintStack_append_formatted(self, text_format, ...) \
-	Print_format((self)->print, text_format, __VA_ARGS__);
+	print_format((self)->print, text_format, __VA_ARGS__);
 
 
 

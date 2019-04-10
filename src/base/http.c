@@ -1,8 +1,20 @@
-/* http functionality */
+//
+// Minimal http functionality for parsing simple request/response
+// messages from low level raw data
+//
 
 //
-// state machine that parses incoming HTTP messages
+// @todo add minimal support to parse an HTTP response
+// # response example
+// HTTP/1.1 200 OK
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Methods: GET
+// Content-Type: application/json
+// Content-Length: 162                           <----- this is the critical line we want to support
 //
+// two line feeds and then read all the content-length bytes
+//
+
 
 //
 // GET /taxi HTTP/1.1
@@ -32,13 +44,14 @@ typedef enum {
 // request-line  = method SP request-target SP HTTP-Version CRLF
 //
 
-
+//
 // Assumption here is that each channel will have a buffer
 // large enough fit a whole line (either start-line or header-field)
+//
 typedef enum {
-	http_PARSING_REQUEST_LINE,
-	http_PARSING_HEADER_FIELD,
-	http_PARSING_MESSAGE_BODY
+	http_PARSE_STATE_IDLE,
+	http_PARSE_STATE_FIELD,
+	http_PARSE_STATE_DATA
 } http_ParseState;
 
 typedef struct {
@@ -48,26 +61,44 @@ typedef struct {
 
 typedef struct http_Channel http_Channel;
 
-//
-// this callback marks the beginning of a new request
-//
-#define http_REQUEST_LINE_CALLBACK(name) \
-	void name(http_Channel *channel, \
-		  http_Response *response, \
-		  char *method_begin, char *method_end, \
-		  char *request_target_begin, char *request_target_end, \
-		  char *http_version_begin, char *http_version_end)
-typedef http_REQUEST_LINE_CALLBACK(http_RequestLineCallback);
+// the concept of an http_MessagePiece here
+#define http_PIECE_REQUEST            1
+#define http_PIECE_RESPONSE           2
+#define http_PIECE_FIELD              3
+#define http_PIECE_DATA               4
 
-#define http_HEADER_FIELD_CALLBACK(name) \
-	void name(http_Channel *channel, \
-		  http_Response *response, \
-		  char *field_name_begin, char *field_name_end, \
-		  char *field_value_begin, char *field_value_end)
-typedef http_HEADER_FIELD_CALLBACK(http_HeaderFieldCallback);
+typedef struct {
+	char *begin;
+	char *end;
+} http_String;
 
-// #define http_SEND_CALLBACK(name) void name(http_Channel *http_channel, char *buffer, u64 length)
-// typedef http_SEND_CALLBACK(http_SendCallback);
+typedef struct {
+	s32 type;
+	union {
+		struct {
+			http_String method;
+			http_String target;
+			http_String http_version;
+		} request;
+		struct {
+			http_String http_version;
+			http_String status;
+			http_String comment;
+		} response;
+		struct {
+			http_String key;
+			http_String value;
+		} field;
+		struct {
+			http_String raw;
+			s32         done; // is this the last data piece of the message? (based on Content-Length)
+		} data;
+	};
+} http_Piece;
+
+// http_Response *response
+#define http_CALLBACK(name) void name(http_Channel *channel, http_Piece piece)
+typedef http_CALLBACK(http_Callback);
 
 //
 // Channel to receive http requests.
@@ -87,77 +118,48 @@ struct http_Channel {
 		char *end;
 		char *capacity;
 	} buffer;
-	struct {
-		http_RequestLineCallback *request_line;
-		http_HeaderFieldCallback *header_field;
-		// http_SendCallback *send;
-	} callback;
+	http_Callback *callback;
 	struct {
 		http_ParseState state;
 		b8   partial_line;
 		b8   buffer_overflow;
 		b8   invalid_message;
 		s32  buffer_overflow_count;
-		u64  message_body_length;
+		s64  content_length;
+		s64  content_to_push;
 	} parsing;
 	/* data associated with http channel */
-	void *user_data;
+	union {
+		void *user_data;
+		u64   user_index;
+	};
 };
 
 
 internal void
-http_Channel_init(http_Channel *self, char *buffer_begin, char *buffer_end,
-		  http_RequestLineCallback *request_line_callback,
-		  http_HeaderFieldCallback *header_field_callback,
-		  void *user_data)
+http_Channel_init(http_Channel *self, void *buffer, u64 buffer_size, http_Callback *callback, void *user_data)
 {
-	Assert(buffer_begin <= buffer_end);
+	Assert(buffer_size > 0);
 	/* buffer */
-	self->buffer.begin    = buffer_begin;
-	self->buffer.end      = buffer_begin;
-	self->buffer.capacity = buffer_end;
+	self->buffer.begin    = buffer;
+	self->buffer.end      = buffer;
+	self->buffer.capacity = buffer + buffer_size - 1;
 	/* response */
 	self->response.sentinel = 0;
 	self->response.end      = 1;
 	/* callback */
-	self->callback.request_line = request_line_callback;
-	self->callback.header_field = header_field_callback;
+	self->callback = callback;
 	/* parsing */
-	self->parsing.state = http_PARSING_REQUEST_LINE;
+	self->parsing.state = http_PARSE_STATE_IDLE;
 	self->parsing.partial_line = 0;
 	self->parsing.buffer_overflow = 0;
 	self->parsing.invalid_message = 0;
 	self->parsing.buffer_overflow_count = 0;
-	self->parsing.message_body_length = 0;
+	self->parsing.content_length = 0;
+	self->parsing.content_to_push = 0;
 	/* user data associated to channel */
 	self->user_data = user_data;
 }
-
-// internal http_Response*
-// http_Channel_query(http_Channel *self, char *buffer, u64 length)
-// {
-// 	// prepend header write buffer in wide format (with %081)
-// 	// send message
-//
-// 	/* atomic increment response end */
-// 	u32 index    = pt_atomic_add_u32(&self->response.end,1) & http_RESPONSE_BUFFER_MASK;
-//
-// 	// unsafe sanity check
-// 	// assumes no overflow will happen
-// 	Assert(index != (self->response.end & http_RESPONSE_BUFFER_MASK));
-//
-// 	http_Response *response = self->response.buffer + i;
-//
-// 	response->status = http_RESPONSE_STATUS_REQUEST_IN_PROGRESS;
-// 	response->user_data = 0;
-//
-// 	//
-// 	// will translate characters on the buffer to
-// 	// %000 notation (precise bytes)
-// 	//
-// 	// GET translated_buffer_message HTTP/1.1\r\n\r\n
-// 	self->callback.send(self, buffer, length);
-// }
 
 internal http_Response*
 http_Channel_current_response(http_Channel *self)
@@ -181,7 +183,10 @@ http_Channel_append(http_Channel *self, char *begin, char *end)
 	}
 	pt_copy_bytesn(begin, self->buffer.end, length);
 	self->buffer.end += length;
+	*self->buffer.end = 0; // make sure it is a valid c_string
 }
+
+#if 0
 
 internal void
 http_Channel_process_request_line(http_Channel *self, char *begin, char *end)
@@ -235,11 +240,15 @@ http_Channel_process_request_line(http_Channel *self, char *begin, char *end)
 	self->parsing.state = http_PARSING_HEADER_FIELD;
 }
 
+#endif
+
 internal inline b8
 http_is_field_name_separator(char ch)
 {
 	return (ch <= 31 || ch == 127 || ch == ':' || ch == '\t' || ch == ' ');
 }
+
+#if 0
 
 internal void
 http_Channel_process_header_field_line(http_Channel *self, char *begin, char *end)
@@ -278,36 +287,175 @@ http_Channel_process_header_field_line(http_Channel *self, char *begin, char *en
 	}
 	self->parsing.state = http_PARSING_HEADER_FIELD;
 }
-
+#endif
 
 internal void
-http_Channel_process_end_of_header(http_Channel *self)
+http_Channel_goto(http_Channel *self, s32 state)
 {
-	// call back indicating end of message
-	/* reset */
-	self->parsing.state = http_PARSING_REQUEST_LINE;
-	self->parsing.partial_line = 0;
-	self->parsing.buffer_overflow = 0;
-	self->parsing.invalid_message = 0;
-	self->parsing.buffer_overflow_count = 0;
-	self->parsing.message_body_length = 0;
+	switch(state) {
+	case http_PARSE_STATE_IDLE: {
+		self->parsing.state = http_PARSE_STATE_IDLE;
+		self->parsing.partial_line = 0;
+		self->parsing.buffer_overflow = 0;
+		self->parsing.invalid_message = 0;
+		self->parsing.buffer_overflow_count = 0;
+		// clear content length
+		self->parsing.content_length = 0;
+		self->parsing.content_to_push= 0;
+		self->buffer.end = self->buffer.begin;
+	} break;
+	case http_PARSE_STATE_FIELD: {
+		self->parsing.state = http_PARSE_STATE_FIELD;
+		self->parsing.partial_line = 0;
+		self->parsing.buffer_overflow = 0;
+		self->parsing.invalid_message = 0;
+		self->parsing.buffer_overflow_count = 0;
+		self->buffer.end = self->buffer.begin;
+	} break;
+	case http_PARSE_STATE_DATA: {
+		self->parsing.state = http_PARSE_STATE_DATA;
+		self->parsing.partial_line = 0;
+		self->parsing.buffer_overflow = 0;
+		self->parsing.invalid_message = 0;
+		self->parsing.buffer_overflow_count = 0;
+		self->buffer.end = self->buffer.begin;
+	} break;
+	}
 }
 
-/* Assumes a single thread at a time is calling this function on the same channel*/
-/* This is true within the tcp socket management we have on the linux platform layer */
+internal s32
+http_cstr_is_prefix(char *cstr, char *begin, char *end)
+{
+	char *it = begin;
+	while (it != end && *cstr != 0) {
+		if (*it != *cstr)
+			return 0;
+		++it;
+		++cstr;
+	}
+	if (*cstr != 0) {
+		return 0;
+	}
+	return 1;
+}
+
+internal char*
+http_find_next(char *begin, char *end, char ch)
+{
+	char *it = begin;
+	while (it != end) {
+		if (*it == ch) {
+			return it;
+		} else {
+			++it;
+		}
+	}
+	return end;
+}
+
+internal s32
+http_Channel_process_request_or_response_line(http_Channel *self, char *begin, char *end)
+{
+	char *tok1 = http_find_next(begin, end, ' ');
+	if (tok1 == end) { return 0; } // malformed request/response line
+
+	char *tok2 = http_find_next(tok1+1, end, ' ');
+	if (tok2 == end) { return 0; } // malformed request/response line
+
+	// fprintf(stderr, "[request_line]:\n%.*s\n", (s32) (end - begin), begin);
+	// Assert(tok1 <= tok2);
+
+	char *tok3 = tok2+1;
+
+	//
+	// expecte at least 3 tokens on a req/res line
+	//
+	// HTTP/1.1 200 OK
+	// GET /taxi HTTP/1.1
+	//
+
+	http_Piece piece = { 0 };
+	if (http_cstr_is_prefix("HTTP/", begin, tok1)) {
+		// response message
+		piece.type = http_PIECE_RESPONSE;
+		piece.response.http_version = (http_String) { .begin = begin,  .end = tok1 };
+		piece.response.status       = (http_String) { .begin = tok1+1, .end = tok2 };
+		piece.response.comment      = (http_String) { .begin = tok2+1, .end = end  };
+	} else {
+		// request message
+		piece.type = http_PIECE_REQUEST;
+		piece.request.method        = (http_String) { .begin = begin,  .end = tok1 };
+		piece.request.target        = (http_String) { .begin = tok1+1, .end = tok2 };
+		piece.request.http_version  = (http_String) { .begin = tok2+1, .end = end  };
+	}
+	if (self->callback) {
+		self->callback(self, piece);
+	}
+	return 1;
+}
+
+internal s32
+http_Channel_process_field(http_Channel *self, char *begin, char *end)
+{
+	// find method, request-target, http-version fields
+	char *it = begin;
+	while (it != end && !http_is_field_name_separator(*it)) {
+		++it;
+	}
+	char *field_name_end = it;
+	while (it != end && http_is_field_name_separator(*it)) {
+		++it;
+	}
+	char *field_value_begin = it;
+
+	http_Piece piece = { 0 };
+	piece.type = http_PIECE_FIELD;
+	piece.field.key   = (http_String) { .begin = begin, .end = field_name_end };
+	piece.field.value = (http_String) { .begin = field_value_begin, .end = end};
+	if (self->callback) {
+		self->callback(self, piece);
+	}
+
+	if (http_cstr_is_prefix("Content-Length", piece.field.key.begin, piece.field.key.end)) {
+		// try to parse u64 number
+		u64 content_length = 0;
+		if (pt_parse_u64(piece.field.value.begin, piece.field.value.end, &content_length)) {
+			self->parsing.content_length = content_length;
+			self->parsing.content_to_push = content_length;
+		} else {
+			// log a warning that couldn't parse the content length
+		}
+	}
+
+	return 1;
+}
+
+
+
+
+//
+// Assumes a single thread at a time is calling this function on the same channel
+// This is true within the tcp socket management we have on the linux platform layer
+//
 internal void
 http_Channel_receive_data(http_Channel *self, char *buffer, u64 length)
 {
-	if (self->parsing.state == http_PARSING_MESSAGE_BODY) {
+	// while there is still unprocessed data in the incoming buffer
+	// keep advancing the http state machine
 
-	} else {
-		u64 i=0;
-		u64 n = length;
-		char *begin = buffer;
-		while (1) {
+	fprintf(stderr, "http receive data: %d starting with %.16s (partial line: %d)\n", (s32) length, buffer,self->parsing.partial_line);
+
+	// cursor
+	u64 i=0;
+	char *begin = buffer;
+	for (;;) {
+
+		if (self->parsing.state == http_PARSE_STATE_IDLE || self->parsing.state == http_PARSE_STATE_FIELD) {
+
 			b8 eol = 0;
+
 			// find end of line or end of buffer
-			while (i<n) {
+			while (i<length) {
 				if (buffer[i] != '\n') {
 					++i;
 				} else {
@@ -315,11 +463,20 @@ http_Channel_receive_data(http_Channel *self, char *buffer, u64 length)
 					break;
 				}
 			}
+
 			if (!eol) {
+
+				// if we haven't reached the end of line, just copy
+				// bytes to local buffer and tag the parsing state as
+				// partial
 				http_Channel_append(self, begin, buffer + i);
 				self->parsing.partial_line = 1;
 				goto done;
+
 			} else {
+
+				// prepare line_begin and line_end considering
+				// the partial case as well
 				char *line_begin = begin;
 				char *line_end   = buffer + i;
 				if (self->parsing.partial_line) {
@@ -329,32 +486,69 @@ http_Channel_receive_data(http_Channel *self, char *buffer, u64 length)
 					line_end   = self->buffer.end;
 				}
 
+				// avoid the carriage return as the last character
 				if (line_begin < line_end) {
 					if (*(line_end-1) == '\r') {
 						--line_end;
 					}
 				}
 
-				// there is a whole line ready
-				// from line_begin to line_end
-				// (might have a \r at the end)
 				if (line_begin == line_end) {
-					http_Channel_process_end_of_header(self);
-				} else if (self->parsing.state == http_PARSING_REQUEST_LINE) {
-					http_Channel_process_request_line(self, line_begin, line_end);
-				} else if (self->parsing.state == http_PARSING_HEADER_FIELD) {
-					http_Channel_process_header_field_line(self, line_begin, line_end);
-				} else {
-					Assert(0 && "ooops");
-				}
-				++i;
-				begin = buffer + i;
+					if (self->parsing.content_length > 0) {
+						http_Channel_goto(self, http_PARSE_STATE_DATA);
+					} else {
+						http_Channel_goto(self, http_PARSE_STATE_IDLE);
+					}
+				} else if (self->parsing.state == http_PARSE_STATE_IDLE) {
 
-				if (self->parsing.partial_line) {
-					self->buffer.end = self->buffer.begin;
-					self->parsing.partial_line = 0;
-					self->parsing.buffer_overflow = 0;
+					fprintf(stderr, "identified next request/response line: %d ...starting with...\n%.16s\n", (s32) (line_end - line_begin), line_begin);
+
+					// the callback mechanism should copy the data
+					// if it will need later, otherwise it will be lost
+					s32 ok = http_Channel_process_request_or_response_line(self, line_begin, line_end);
+					if (ok) {
+						http_Channel_goto(self, http_PARSE_STATE_FIELD);
+					} else {
+						http_Channel_goto(self, http_PARSE_STATE_IDLE);
+					}
+				} else if (self->parsing.state == http_PARSE_STATE_FIELD) {
+					s32 ok = http_Channel_process_field(self, line_begin, line_end);
+					// regardless of ok or no ok go to field again
+					http_Channel_goto(self, http_PARSE_STATE_FIELD);
 				}
+
+				++i; // if we get here, position i has a new line
+				begin = buffer + i;
+			}
+		} else if (self->parsing.state == http_PARSE_STATE_DATA) {
+			// Check if new batch of data completes the current msg.
+			// If so send the appropriate callback with done=1 flag,
+			// enter the IDLE stata and process the remaining bytes.
+			s64 bytes_available = length - i;
+			if (bytes_available < self->parsing.content_to_push) {
+				// push all the available bytes
+				http_Piece piece = { 0 };
+				piece.type = http_PIECE_DATA;
+				piece.data.raw = (http_String) { .begin = begin, .end = begin + bytes_available };
+				piece.data.done = 0;
+				if (self->callback) {
+					self->callback(self, piece);
+				}
+				self->parsing.content_to_push -= bytes_available;
+				goto done;
+			} else {
+				// push all the available bytes
+				http_Piece piece = { 0 };
+				piece.type = http_PIECE_DATA;
+				piece.data.raw = (http_String) { .begin = begin, .end = begin + self->parsing.content_to_push };
+				piece.data.done = 1;
+				if (self->callback) {
+					self->callback(self, piece);
+				}
+				i += self->parsing.content_to_push;
+				self->parsing.content_to_push = 0;
+				http_Channel_goto(self, http_PARSE_STATE_IDLE);
+				begin = buffer + i;
 			}
 		}
 	}

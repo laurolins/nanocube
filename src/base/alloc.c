@@ -195,32 +195,32 @@ PTR_SPECIALIZED_SERVICES(al_Ptr_Allocator, al_Allocator);
 // SlabList boilerplate code
 //------------------------------------------------------------------------------
 
-internal inline al_Slab*
+static inline al_Slab*
 al_SlabList_first(al_SlabList *self)
 {
 	return al_Ptr_Slab_get(&self->first_p);
 }
 
-internal inline al_Slab*
+static inline al_Slab*
 al_SlabList_last(al_SlabList *self)
 {
 	return al_Ptr_Slab_get(&self->last_p);
 }
 
-internal inline b8
+static inline b8
 al_SlabList_is_empty(al_SlabList *self)
 {
 	return al_Ptr_Slab_is_null(&self->first_p);
 }
 
-internal void
+static void
 al_SlabList_init(al_SlabList *self)
 {
 	al_Ptr_Slab_set_null(&self->first_p);
 	al_Ptr_Slab_set_null(&self->last_p);
 }
 
-internal void
+static void
 al_SlabList_insert(al_SlabList *self, al_Slab *new_item, al_Slab *at)
 {
 	if (!at) { // if at == nullptr append
@@ -251,7 +251,7 @@ al_SlabList_insert(al_SlabList *self, al_Slab *new_item, al_Slab *at)
 	}
 }
 
-internal void
+static void
 al_SlabList_remove(al_SlabList *self, al_Slab *item)
 {
 	al_Slab* item_p = al_Ptr_Slab_get(&item->prev_p);
@@ -278,32 +278,32 @@ al_SlabList_remove(al_SlabList *self, al_Slab *item)
 // CacheList boilerplate code
 //------------------------------------------------------------------------------
 
-internal al_Cache*
+static al_Cache*
 al_CacheList_first(al_CacheList *self)
 {
 	return al_Ptr_Cache_get(&self->first_p);
 }
 
-internal al_Cache*
+static al_Cache*
 al_CacheList_last(al_CacheList *self)
 {
 	return al_Ptr_Cache_get(&self->last_p);
 }
 
-internal b8
+static b8
 al_CacheList_is_empty(al_CacheList *self)
 {
 	return al_Ptr_Cache_is_null(&self->first_p);
 }
 
-internal void
+static void
 al_CacheList_init(al_CacheList *self)
 {
 	al_Ptr_Cache_set_null(&self->first_p);
 	al_Ptr_Cache_set_null(&self->last_p);
 }
 
-internal void
+static void
 al_CacheList_insert(al_CacheList *self, al_Cache *new_item, al_Cache *at)
 {
 	if (!at) { // if at == nullptr append
@@ -334,7 +334,7 @@ al_CacheList_insert(al_CacheList *self, al_Cache *new_item, al_Cache *at)
 	}
 }
 
-internal void
+static void
 al_CacheList_remove(al_CacheList *self, al_Cache *item)
 {
 	al_Cache* item_p = al_Ptr_Cache_get(&item->prev_p);
@@ -361,14 +361,14 @@ al_CacheList_remove(al_CacheList *self, al_Cache *item)
 // al_PageBlock
 //------------------------------------------------------------------------------
 
-internal inline void
+static inline void
 al_PageBlock_init(al_PageBlock* self, u32 base, u32 page_size)
 {
 	self->page_index = base;
 	self->page_size = page_size;
 }
 
-internal inline u64
+static inline u64
 al_PageBlock_bytes(al_PageBlock* self)
 {
 	return (u64) self->page_size * (u64) al_PAGE_SIZE;
@@ -379,12 +379,12 @@ al_PageBlock_bytes(al_PageBlock* self)
 // al_PageBlock
 //------------------------------------------------------------------------------
 
-internal inline u32
+static inline u32
 al_pagemap_index_level1(u32 p) {
 	return p >> al_PAGEMAP_LEVEL2_BITS;
 }
 
-internal inline u32
+static inline u32
 al_pagemap_index_level2(u32 p) {
 	return p & al_PAGEMAP_LEVEL2_MASK;
 }
@@ -393,20 +393,20 @@ al_pagemap_index_level2(u32 p) {
 // Allocator related services: stand-alone ones
 //------------------------------------------------------------------------------
 
-internal inline void*
+static inline void*
 al_Allocator_page_to_ptr(al_Allocator *allocator, u32 index)
 {
 	/* there was a bug here before : oferflow on index * al_PAGE_SIZE */
 	return (char*)allocator + al_PAGE_SIZE * (u64) index;
 }
 
-internal inline u32
+static inline u32
 al_Allocator_ptr_to_page(al_Allocator *self, void *p)
 {
 	return (u32)(((char*)p - (char*) self) >> al_BITS_PER_PAGE);
 }
 
-internal MemoryBlock
+static MemoryBlock
 al_Allocator_memory_block(al_Allocator *self)
 {
 	MemoryBlock memblock;
@@ -420,7 +420,7 @@ al_Allocator_memory_block(al_Allocator *self)
 // of pages was reserved. The reason is that:
 //     if request does not fit, returns a page block with zero pages
 //
-internal al_PageBlock
+static al_PageBlock
 al_Allocator_back_reserve(al_Allocator *self, u32 n)
 {
 	Assert(n > 0);
@@ -440,7 +440,7 @@ al_Allocator_back_reserve(al_Allocator *self, u32 n)
 // al_PageMap_Level2
 //------------------------------------------------------------------------------
 
-internal void
+static void
 al_PageMap_Level2_init(al_PageMap_Level2* self)
 {
 	// should we reset all slabs?
@@ -453,7 +453,7 @@ al_PageMap_Level2_init(al_PageMap_Level2* self)
 // PageMap_Level1
 //------------------------------------------------------------------------------
 
-internal void
+static void
 al_PageMap_Level1_assign(al_PageMap_Level1 *self, al_Allocator* allocator, u32 index, al_Slab* slab)
 {
 	//
@@ -489,7 +489,7 @@ al_PageMap_Level1_assign(al_PageMap_Level1 *self, al_Allocator* allocator, u32 i
 	}
 }
 
-internal al_Slab*
+static al_Slab*
 al_PageMap_Level1_get(al_PageMap_Level1 *self, al_Allocator* allocator, u32 index)
 {
 	if (!self->page) {
@@ -511,14 +511,14 @@ typedef struct
 	u32 index2;
 } al_PageMap_Cursor;
 
-internal void
+static void
 al_PageMap_Cursor_init(al_PageMap_Cursor *self, u32 page_id)
 {
 	self->index1 = al_pagemap_index_level1(page_id);
 	self->index2 = al_pagemap_index_level2(page_id);
 }
 
-internal inline void
+static inline void
 al_PageMap_Cursor_next(al_PageMap_Cursor *self)
 {
 	++self->index2;
@@ -533,7 +533,7 @@ al_PageMap_Cursor_next(al_PageMap_Cursor *self)
 // Allocator related services: stand-alone ones
 //------------------------------------------------------------------------------
 
-internal al_Slab*
+static al_Slab*
 al_Allocator_slab_of(al_Allocator *self, void *p)
 {
 	al_PageMap_Cursor cursor;
@@ -553,7 +553,7 @@ typedef struct al_PageMap_Iterator
 	u32            items_consumed;
 } al_PageMap_Iterator;
 
-internal inline void
+static inline void
 al_PageMap_Iterator_init(al_PageMap_Iterator *self, al_PageBlock* block)
 {
 	al_PageMap_Cursor_init(&self->cursor, block->page_index);
@@ -561,7 +561,7 @@ al_PageMap_Iterator_init(al_PageMap_Iterator *self, al_PageBlock* block)
 	self->items_consumed = 0;
 }
 
-internal inline b8
+static inline b8
 al_PageMap_Iterator_next(al_PageMap_Iterator *self)
 {
 	if (self->items_consumed) {
@@ -585,7 +585,7 @@ al_PageMap_Iterator_next(al_PageMap_Iterator *self)
 // Allocator related services: stand-alone ones
 //------------------------------------------------------------------------------
 
-internal void
+static void
 al_Allocator_tag_pagemap(al_Allocator *self, al_Slab* slab)
 {
 	al_PageMap_Iterator iter;
@@ -603,13 +603,13 @@ al_Allocator_tag_pagemap(al_Allocator *self, al_Slab* slab)
 // Slab
 //------------------------------------------------------------------------------
 
-internal u64
+static u64
 al_Slab_capacity(al_Slab *self)
 {
 	return al_PageBlock_bytes(&self->block) / al_Ptr_Cache_get(&self->cache_p)->chunk_size;
 }
 
-internal void
+static void
 al_Slab_init(al_Slab *self, al_Cache* cache, al_PageBlock block, s64 free_chunk_offset)
 {
 
@@ -662,13 +662,13 @@ al_Slab_init(al_Slab *self, al_Cache* cache, al_PageBlock block, s64 free_chunk_
 }
 
 
-internal b8
+static b8
 al_Slab_is_full(al_Slab *self)
 {
 	return al_Ptr_char_is_null(&self->free_chunks);
 }
 
-internal void*
+static void*
 al_Slab_alloc(al_Slab *self)
 {
 	Assert(al_Ptr_char_is_not_null(&self->free_chunks));
@@ -678,7 +678,7 @@ al_Slab_alloc(al_Slab *self)
 	return result;
 }
 
-internal void
+static void
 al_Slab_free(al_Slab *self, void *p)
 {
 	al_Ptr_char* slot = (al_Ptr_char*) p;
@@ -687,7 +687,7 @@ al_Slab_free(al_Slab *self, void *p)
 	--self->used;
 }
 
-internal void*
+static void*
 al_Slab_chunk_at(al_Slab *self, u64 index)
 {
 	al_Cache     *cache     = al_Ptr_Cache_get(&self->cache_p);
@@ -700,7 +700,7 @@ al_Slab_chunk_at(al_Slab *self, u64 index)
 // Cache
 //------------------------------------------------------------------------------
 
-internal void
+static void
 al_Cache_init(al_Cache *self, al_Allocator* allocator, u64 chunk_size, const char* name, u32 flags)
 {
 	pt_fill((char*) self, (char*) self + sizeof(al_Cache), 0);
@@ -730,7 +730,7 @@ al_Cache_init(al_Cache *self, al_Allocator* allocator, u64 chunk_size, const cha
 	while (it != end) { *it = 0; ++it; } // clear one or more remaining name entries
 }
 
-internal void
+static void
 al_Cache_insert_slab(al_Cache *self, al_Slab *slab)
 {
 	self->pages          += slab->block.page_size;
@@ -743,14 +743,14 @@ al_Cache_insert_slab(al_Cache *self, al_Slab *slab)
 	}
 }
 
-internal u32
+static u32
 al_Cache_more_pages(al_Cache *self)
 {
 	u64 extra_bytes_needed = self->chunk_size * (self->pages ? ((self->chunk_capacity + 1) / 2) : 1);
 	return (u32) ((extra_bytes_needed + al_PAGE_SIZE - 1) / al_PAGE_SIZE);
 }
 
-internal void*
+static void*
 al_Cache_alloc(al_Cache *self)
 {
 	if (!al_SlabList_is_empty(&self->free_slabs)) {
@@ -796,14 +796,14 @@ al_Cache_alloc(al_Cache *self)
 #else
 			/* try smaller fractions */
 			new_slab_pages /= 5;
-			new_slab_pages = MAX(new_slab_pages, min_pages);
+			new_slab_pages = Max(new_slab_pages, min_pages);
 			while (new_slab_pages >= min_pages) {
 				block = al_Allocator_back_reserve(allocator, new_slab_pages);
 				if (block.page_size != 0) {
 					break;
 				} else if (new_slab_pages > min_pages) {
 					new_slab_pages /= 5;
-					new_slab_pages = MAX(new_slab_pages, min_pages);
+					new_slab_pages = Max(new_slab_pages, min_pages);
 				} else {
 					// TODO(llins) should we return 0? at the moment assume
 					// program responsibility to avoid this situation.
@@ -842,7 +842,7 @@ al_Cache_alloc(al_Cache *self)
 	}
 }
 
-internal void
+static void
 al_Cache_free(al_Cache *self, void* p)
 {
 	if (!p)
@@ -876,13 +876,13 @@ al_Cache_free(al_Cache *self, void* p)
  * Finds the slab with the largest number of slots in a non full slab.
  * This number is useful to iterate through all the occupied slots.
  */
-internal u64
+static u64
 al_Cache_max_slots_in_nonfull_slab(al_Cache *self)
 {
 	u64 result = 0;
 	al_Slab *it  = al_Ptr_Slab_get(&self->free_slabs.first_p);
 	while (it) {
-		result = MAX(result, al_Slab_capacity(it));
+		result = Max(result, al_Slab_capacity(it));
 		it = al_Ptr_Slab_get(&it->next_p);
 	}
 	return result;
@@ -892,7 +892,7 @@ al_Cache_max_slots_in_nonfull_slab(al_Cache *self)
 // al_Allocator
 //------------------------------------------------------------------------------
 
-internal al_Allocator*
+static al_Allocator*
 al_Allocator_new(char *begin, char *end)
 {
 
@@ -978,23 +978,23 @@ al_Allocator_new(char *begin, char *end)
 // aligned that can be used to write some custom
 // data. The plan is to use it to watermark the
 // version of the code that created the allocator
-internal MemoryBlock
+static MemoryBlock
 al_Allocator_watermark_area(al_Allocator *self)
 {
-	u64 size0 = RALIGN(sizeof(al_Allocator), al_PAGE_SIZE);
-	u64 watermark_offset = RALIGN(size0 - sizeof(al_Allocator),8);
+	u64 size0 = RAlign(sizeof(al_Allocator), al_PAGE_SIZE);
+	u64 watermark_offset = RAlign(size0 - sizeof(al_Allocator),8);
 	char *begin = (char*) self + watermark_offset;
 	char *end   = (char*) self + size0;
 	return (MemoryBlock) { .begin = begin, .end = end };
 }
 
-internal void
+static void
 al_Allocator_fit(al_Allocator *self)
 {
 	self->page_capacity = self->used_pages;
 }
 
-internal b8
+static b8
 al_Allocator_resize(al_Allocator *self, u64 new_size)
 {
 	u64 new_num_pages = new_size / al_PAGE_SIZE;
@@ -1006,7 +1006,7 @@ al_Allocator_resize(al_Allocator *self, u64 new_size)
 	}
 }
 
-internal al_Cache*
+static al_Cache*
 al_Allocator_create_cache(al_Allocator *self, const char* name, u64 chunk_size)
 {
 	Assert(chunk_size >= al_MIN_CACHE_CHUNK_SIZE);
@@ -1016,19 +1016,19 @@ al_Allocator_create_cache(al_Allocator *self, const char* name, u64 chunk_size)
 	return cache;
 }
 
-internal u64
+static u64
 al_Allocator_used_memory(al_Allocator *self)
 {
 	return (u64) self->used_pages * al_PAGE_SIZE;
 }
 
-internal u64
+static u64
 al_Allocator_capacity(al_Allocator *self)
 {
 	return (u64) self->page_capacity * al_PAGE_SIZE;
 }
 
-internal void
+static void
 al_Allocator_set_root(al_Allocator *self, void *root)
 {
 	u64  used_memory = al_Allocator_used_memory(self);
@@ -1039,7 +1039,7 @@ al_Allocator_set_root(al_Allocator *self, void *root)
 	al_Ptr_char_set(&self->root_p, root_char);
 }
 
-internal void*
+static void*
 al_Allocator_get_root(al_Allocator *self)
 {
 	return (void*) al_Ptr_char_get(&self->root_p);
@@ -1061,7 +1061,7 @@ typedef struct {
 } al_IterCache;
 
 /* assumes there is at least one used slot in this slab or it is null */
-internal void
+static void
 al_IterCache_prepare_slab(al_IterCache *self, al_Slab *slab, b8 is_full)
 {
 	if (slab) {
@@ -1115,7 +1115,7 @@ al_IterCache_prepare_slab(al_IterCache *self, al_Slab *slab, b8 is_full)
 }
 
 //
-internal void
+static void
 al_IterCache_init(al_IterCache *self, al_Cache *cache, char *buffer_begin, char *buffer_end)
 {
 	Assert(buffer_begin <= buffer_end);
@@ -1141,7 +1141,7 @@ al_IterCache_init(al_IterCache *self, al_Cache *cache, char *buffer_begin, char 
 	}
 }
 
-internal void
+static void
 al_IterCache_next_slab(al_IterCache *self)
 {
 	Assert(self->slab);
@@ -1165,7 +1165,7 @@ al_IterCache_next_slab(al_IterCache *self)
 	}
 }
 
-internal void*
+static void*
 al_IterCache_next(al_IterCache *self)
 {
 	if (self->slab == 0)

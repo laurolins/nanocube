@@ -1,3 +1,20 @@
+// TODO
+//
+// - remove tokenizer dependency we can do cleanly without it
+// - make the Options object a block instead of the heavily
+//   pointer based data structure
+//   (maybe the static representation should be the same
+//   as one that could fit a json or an xml description
+//
+
+//
+// depends on tokenizer.c
+//
+
+//
+// @todo Try improving this API for parsing and finding command line options.
+// It is too complicated and heavily based on pointers.
+//
 
 //------------------------------------------------------------------------------
 // Options
@@ -40,7 +57,7 @@ typedef struct {
  * Parameter
  */
 
-internal void
+static void
 op_Parameter_init(op_Parameter *self, char *value_begin, char *value_end)
 {
 	self->value.begin = value_begin;
@@ -48,7 +65,7 @@ op_Parameter_init(op_Parameter *self, char *value_begin, char *value_end)
 	self->next        = 0;
 }
 
-internal u32
+static u32
 op_Parameter_count(op_Parameter *self)
 {
 	u32 count = 0;
@@ -60,7 +77,7 @@ op_Parameter_count(op_Parameter *self)
 	return count;
 }
 
-internal b8
+static b8
 op_Parameter_value_num_bytes(op_Parameter *self, u64 *output)
 {
 	if (!self) {
@@ -95,7 +112,9 @@ op_Parameter_value_num_bytes(op_Parameter *self, u64 *output)
 	}
 }
 
-internal b8
+
+
+static b8
 op_Parameter_value_u64(op_Parameter *self, u64 *output)
 {
 	if (!self) {
@@ -108,7 +127,7 @@ op_Parameter_value_u64(op_Parameter *self, u64 *output)
 	}
 }
 
-internal b8
+static b8
 op_Parameter_value_f32(op_Parameter *self, f32 *output)
 {
 	if (!self) {
@@ -121,7 +140,17 @@ op_Parameter_value_f32(op_Parameter *self, f32 *output)
 	}
 }
 
-internal b8
+static char*
+op_Parameter_value_cstr(op_Parameter *self)
+{
+	if (!self) {
+		return 0;
+	}
+	// assuming there is a '\0' at the end of the string
+	return self->value.begin;
+}
+
+static b8
 op_Parameter_value_s32(op_Parameter *self, s32 *output)
 {
 	if (!self) {
@@ -135,7 +164,7 @@ op_Parameter_value_s32(op_Parameter *self, s32 *output)
 }
 
 
-internal op_Parameter*
+static op_Parameter*
 op_Parameter_at(op_Parameter *self, u32 index)
 {
 	u32 i = 0;
@@ -155,7 +184,13 @@ op_Parameter_at(op_Parameter *self, u32 index)
  * NamedParameter
  */
 
-internal void
+static s32
+op_NamedParameter_matches(op_NamedParameter *self, char *cstr)
+{
+	return cstr_compare_memory_cstr(self->name.begin, self->name.end, cstr) == 0;
+}
+
+static void
 op_NamedParameter_init(op_NamedParameter *self, char *name_begin, char *name_end)
 {
 	self->name.begin      = name_begin;
@@ -165,7 +200,7 @@ op_NamedParameter_init(op_NamedParameter *self, char *name_begin, char *name_end
 	self->next            = 0;
 }
 
-internal op_NamedParameter*
+static op_NamedParameter*
 op_NamedParameter_at(op_NamedParameter *self, u32 index)
 {
 	u32 i = 0;
@@ -181,12 +216,12 @@ op_NamedParameter_at(op_NamedParameter *self, u32 index)
 	return 0;
 }
 
-internal op_NamedParameter*
+static op_NamedParameter*
 op_NamedParameter_find(op_NamedParameter *self, char *name_begin, char *name_end)
 {
 	op_NamedParameter *it = self;
 	while (it) {
-		if (pt_compare_memory(name_begin, name_end, it->name.begin, it->name.end) == 0) {
+		if (cstr_compare_memory(name_begin, name_end, it->name.begin, it->name.end) == 0) {
 			return it;
 		} else {
 			it = it->next;
@@ -195,7 +230,7 @@ op_NamedParameter_find(op_NamedParameter *self, char *name_begin, char *name_end
 	return 0;
 }
 
-internal u32
+static u32
 op_NamedParameter_count(op_NamedParameter *self)
 {
 	u32 count = 0;
@@ -211,8 +246,8 @@ op_NamedParameter_count(op_NamedParameter *self)
  * Options
  */
 
-internal void
-op_Options_init(op_Options *self, char *buffer_begin, char *buffer_end)
+static void
+op_Options_init(op_Options *self, void *buffer, u64 buffer_length)
 {
 	self->first_named_parameter = 0;
 	self->last_named_parameter  = 0;
@@ -220,10 +255,10 @@ op_Options_init(op_Options *self, char *buffer_begin, char *buffer_end)
 	self->first_positioned_parameter = 0;
 	self->last_positioned_parameter  = 0;
 
-	LinearAllocator_init(&self->allocator, buffer_begin, buffer_begin, buffer_end);
+	LinearAllocator_init(&self->allocator, (char*) buffer, (char*) buffer, (char*) buffer + buffer_length);
 }
 
-internal void
+static void
 op_Options_reset(op_Options *self)
 {
 	self->first_named_parameter = 0;
@@ -235,19 +270,19 @@ op_Options_reset(op_Options *self)
 	LinearAllocator_clear(&self->allocator);
 }
 
-internal u32
+static u32
 op_Options_num_positioned_parameters(op_Options *self)
 {
 	return op_Parameter_count(self->first_positioned_parameter);
 }
 
-internal u32
+static u32
 op_Options_num_named_parameters(op_Options *self)
 {
 	return op_NamedParameter_count(self->first_named_parameter);
 }
 
-internal b8
+static b8
 op_Options_u64(op_Options *self, u32 index, u64 *output)
 {
 	op_Parameter *parameter = op_Parameter_at(self->first_positioned_parameter, index);
@@ -258,7 +293,7 @@ op_Options_u64(op_Options *self, u32 index, u64 *output)
 	}
 }
 
-internal b8
+static b8
 op_Options_f32(op_Options *self, u32 index, f32 *output)
 {
 	op_Parameter *parameter = op_Parameter_at(self->first_positioned_parameter, index);
@@ -269,7 +304,7 @@ op_Options_f32(op_Options *self, u32 index, f32 *output)
 	}
 }
 
-internal b8
+static b8
 op_Options_s32(op_Options *self, u32 index, s32 *output)
 {
 	op_Parameter *parameter = op_Parameter_at(self->first_positioned_parameter, index);
@@ -280,7 +315,18 @@ op_Options_s32(op_Options *self, u32 index, s32 *output)
 	}
 }
 
-internal b8
+static b8
+op_Options_num_bytes(op_Options *self, u32 index, u64 *output)
+{
+	op_Parameter *parameter = op_Parameter_at(self->first_positioned_parameter, index);
+	if (!parameter) {
+		return 0;
+	} else {
+		return op_Parameter_value_num_bytes(parameter, output);
+	}
+}
+
+static b8
 op_Options_str(op_Options *self, u32 index, MemoryBlock *memblock)
 {
 	op_Parameter *parameter = op_Parameter_at(self->first_positioned_parameter, index);
@@ -292,25 +338,39 @@ op_Options_str(op_Options *self, u32 index, MemoryBlock *memblock)
 	}
 }
 
-internal op_NamedParameter*
+static char*
+op_Options_cstr(op_Options *self, u32 index)
+{
+	op_Parameter *parameter = op_Parameter_at(self->first_positioned_parameter, index);
+	if (parameter) {
+		return parameter->value.begin;
+	} else {
+		return 0;
+	}
+}
+
+
+
+
+static op_NamedParameter*
 op_Options_named_parameter_at(op_Options *self, u32 index)
 {
 	return op_NamedParameter_at(self->first_named_parameter, index);
 }
 
-internal op_NamedParameter*
+static op_NamedParameter*
 op_Options_find(op_Options *self, char *name_begin, char *name_end)
 {
 	return op_NamedParameter_find(self->first_named_parameter, name_begin, name_end);
 }
 
-internal op_NamedParameter*
+static op_NamedParameter*
 op_Options_find_cstr(op_Options *self, char *name)
 {
 	return op_Options_find(self, name, cstr_end(name));
 }
 
-internal b8
+static b8
 op_Options_named_u64(op_Options *self, char *name_begin, char *name_end, u32 value_index, u64 *output)
 {
 	op_NamedParameter *named_parameter = op_Options_find(self, name_begin, name_end);
@@ -326,7 +386,7 @@ op_Options_named_u64(op_Options *self, char *name_begin, char *name_end, u32 val
 	}
 }
 
-internal b8
+static b8
 op_Options_named_num_bytes(op_Options *self, char *name_begin, char *name_end, u32 value_index, u64 *output)
 {
 	op_NamedParameter *named_parameter = op_Options_find(self, name_begin, name_end);
@@ -342,7 +402,23 @@ op_Options_named_num_bytes(op_Options *self, char *name_begin, char *name_end, u
 	}
 }
 
-internal b8
+static b8
+op_Options_named_s32(op_Options *self, char *name_begin, char *name_end, u32 value_index, s32 *output)
+{
+	op_NamedParameter *named_parameter = op_Options_find(self, name_begin, name_end);
+	if (named_parameter) {
+		op_Parameter *parameter = op_Parameter_at(named_parameter->first_parameter, value_index);
+		if (parameter) {
+			return op_Parameter_value_s32(parameter, output);
+		} else {
+			return 0;
+		}
+	} else {
+		return 0;
+	}
+}
+
+static b8
 op_Options_named_f32(op_Options *self, char *name_begin, char *name_end, u32 value_index, f32 *output)
 {
 	op_NamedParameter *named_parameter = op_Options_find(self, name_begin, name_end);
@@ -358,7 +434,7 @@ op_Options_named_f32(op_Options *self, char *name_begin, char *name_end, u32 val
 	}
 }
 
-internal b8
+static b8
 op_Options_named_str(op_Options *self, char *name_begin, char *name_end, u32 value_index, MemoryBlock *output)
 {
 	op_NamedParameter *named_parameter = op_Options_find(self, name_begin, name_end);
@@ -375,36 +451,55 @@ op_Options_named_str(op_Options *self, char *name_begin, char *name_end, u32 val
 	}
 }
 
-internal b8
+static b8
 op_Options_named_str_cstr(op_Options *self, char *name, u32 value_index, MemoryBlock *output)
 {
 	return op_Options_named_str(self, name, cstr_end(name), value_index, output);
 }
 
-internal b8
+static b8
 op_Options_named_u64_cstr(op_Options *self, char *name, u32 value_index, u64 *output)
 {
 	return op_Options_named_u64(self, name, cstr_end(name), value_index, output);
 }
 
-internal b8
+static b8
 op_Options_named_num_bytes_cstr(op_Options *self, char *name, u32 value_index, u64 *output)
 {
 	return op_Options_named_num_bytes(self, name, cstr_end(name), value_index, output);
 }
 
-internal b8
+
+static b8
+op_Options_named_s32_cstr(op_Options *self, char *name, u32 value_index, s32 *output)
+{
+	return op_Options_named_s32(self, name, cstr_end(name), value_index, output);
+}
+
+
+
+static b8
 op_Options_named_f32_cstr(op_Options *self, char *name, u32 value_index, f32 *output)
 {
 	return op_Options_named_f32(self, name, cstr_end(name), value_index, output);
 }
 
-internal op_NamedParameter*
+static op_NamedParameter*
 op_Options_insert_named_parameter(op_Options *self, char *name_begin, char *name_end)
 {
-	// fprintf(stderr,"append named parameter  %.*s\n", (s32) (name_end - name_begin), name_begin);
+	// copy name locally and make sure we null terminate
+	s64 n = name_end - name_begin;
+	char *name_copy = LinearAllocator_alloc(&self->allocator, n + 1);
+	pt_copy_bytesn(name_begin, name_copy, n);
+	name_copy[n] = 0;
+
 	op_NamedParameter *named_parameter = (op_NamedParameter*) LinearAllocator_alloc(&self->allocator, sizeof(op_NamedParameter));
-	op_NamedParameter_init(named_parameter, name_begin, name_end);
+
+	named_parameter->name.begin = name_copy;
+	named_parameter->name.end   = name_copy + n;
+	named_parameter->next = 0;
+	named_parameter->first_parameter = 0;
+
 	if (!self->last_named_parameter) {
 		self->first_named_parameter = named_parameter;
 		self->last_named_parameter  = named_parameter;
@@ -415,12 +510,21 @@ op_Options_insert_named_parameter(op_Options *self, char *name_begin, char *name
 	return named_parameter;
 }
 
-internal op_Parameter*
+static op_Parameter*
 op_Options_append_parameter(op_Options *self, char *value_begin, char *value_end)
 {
-	// fprintf(stderr,"append parameter %.*s\n", (s32) (value_end - value_begin), value_begin);
+	// copy value locally and make sure we null terminate
+	s64 n = value_end - value_begin;
+	char *value_copy = LinearAllocator_alloc(&self->allocator, n + 1);
+	pt_copy_bytesn(value_begin, value_copy, n);
+	value_copy[n] = 0;
+
 	op_Parameter *parameter = (op_Parameter*) LinearAllocator_alloc(&self->allocator, sizeof(op_Parameter));
-	op_Parameter_init(parameter, value_begin, value_end);
+
+	parameter->value.begin = value_copy;
+	parameter->value.end   = value_copy + n;
+	parameter->next        = 0;
+
 	if (!self->last_positioned_parameter) {
 		self->first_positioned_parameter = parameter;
 		self->last_positioned_parameter  = parameter;
@@ -431,12 +535,21 @@ op_Options_append_parameter(op_Options *self, char *value_begin, char *value_end
 	return parameter;
 }
 
-internal op_Parameter*
-op_Options_append_to_named_parameter(op_Options *self, op_NamedParameter *named_parameter, char *value_begin, char *value_end)
+static op_Parameter*
+op_Options_append_to_named_parameter(op_Options *self, op_NamedParameter *named_parameter,
+				  char *value_begin, char *value_end)
 {
-	// fprintf(stderr,"append parameter to named parameter %.*s\n", (s32) (value_end - value_begin), value_begin);
+	// copy value locally and make sure we null terminate
+	s64 n = value_end - value_begin;
+	char *value_copy = LinearAllocator_alloc(&self->allocator, n + 1);
+	pt_copy_bytesn(value_begin, value_copy, n);
+	value_copy[n] = 0;
+
 	op_Parameter *parameter = (op_Parameter*) LinearAllocator_alloc(&self->allocator, sizeof(op_Parameter));
-	op_Parameter_init(parameter, value_begin, value_end);
+	parameter->value.begin = value_copy;
+	parameter->value.end   = value_copy+n;
+	parameter->next        = 0;
+
 	if (!named_parameter->last_parameter) {
 		named_parameter->first_parameter = parameter;
 		named_parameter->last_parameter  = parameter;
@@ -494,7 +607,7 @@ op_Options_append_to_named_parameter(op_Options *self, op_NamedParameter *named_
  * program -named1=x1,x2  pos1 pos2 -named2 -named3 -named4=a,b,c
  */
 
-internal void
+static void
 op_initialize_tokenizer(nt_Tokenizer *tokenizer)
 {
 	nt_Tokenizer_init(tokenizer);
@@ -593,7 +706,7 @@ typedef struct {
 } op_Parser;
 
 
-internal void
+static void
 op_Parser_reset(op_Parser *self, char *text_begin, char *text_end)
 {
 	self->eof = 0;
@@ -606,18 +719,16 @@ op_Parser_reset(op_Parser *self, char *text_begin, char *text_end)
 	nt_Tokenizer_reset_text(&self->tokenizer, text_begin, text_end);
 }
 
-internal void
+static void
 op_Parser_init(op_Parser *self, op_Options *options)
 {
 	op_initialize_tokenizer(&self->tokenizer);
-	Print_init(&self->log,
-		   self->log_buffer,
-		   self->log_buffer + sizeof(self->log_buffer));
+	print_init(&self->log, self->log_buffer, sizeof(self->log_buffer));
 	self->options = options;
 	op_Parser_reset(self, 0, 0);
 }
 
-internal void
+static void
 op_Parser_fill_buffer(op_Parser *self)
 {
 	if (self->eof || self->error) return;
@@ -646,7 +757,7 @@ op_Parser_fill_buffer(op_Parser *self)
 	}
 }
 
-internal void
+static void
 op_Parser_consume_tokens(op_Parser *self, u32 n)
 {
 	Assert(self->tkend - self->tkbegin >= n);
@@ -656,19 +767,19 @@ op_Parser_consume_tokens(op_Parser *self, u32 n)
 	}
 }
 
-internal b8
+static b8
 op_Parser_compare(op_Parser* self, int index, nt_TokenType type)
 {
 	return (self->tkbegin + index < self->tkend) && (self->tkbegin + index)->type == type;
 }
 
-internal b8
+static b8
 op_Parser_compare_next(op_Parser* self, nt_TokenType type)
 {
 	return op_Parser_compare(self, 0, type);
 }
 
-internal void
+static void
 op_Parser_log_context(op_Parser *self)
 {
 	b8 no_token = self->tkbegin == self->tkend;
@@ -706,31 +817,31 @@ op_Parser_log_context(op_Parser *self)
 
 	Print *print = &self->log;
 
-	Print_cstr(print,"[Context]");
+	print_cstr(print,"[Context]");
 	if (no_token) {
-		Print_cstr(print, " No valid token available. line: ");
-		Print_u64(print, self->tokenizer.line);
-		Print_cstr(print, " column: ");
-		Print_u64(print, self->tokenizer.column);
-		Print_cstr(print, "\n");
+		print_cstr(print, " No valid token available. line: ");
+		print_u64(print, self->tokenizer.line);
+		print_cstr(print, " column: ");
+		print_u64(print, self->tokenizer.column);
+		print_cstr(print, "\n");
 	} else {
-		Print_cstr(print, "\n");
+		print_cstr(print, "\n");
 	}
-	Print_str(print, context_begin, context_end);
-	Print_cstr(print,"\n");
-	Print_cstr(print,"^");
-	Print_align(print,pos - context_begin + 1, 1, ' ');
-	Print_cstr(print,"\n");
+	print_str(print, context_begin, context_end);
+	print_cstr(print,"\n");
+	print_cstr(print,"^");
+	print_align(print,pos - context_begin + 1, 1, ' ');
+	print_cstr(print,"\n");
 }
 
-internal nt_Token*
+static nt_Token*
 op_Parser_token(op_Parser *self, s64 index)
 {
 	Assert(index < self->tkend - self->tkbegin);
 	return self->tkbegin + index;
 }
 
-internal b8 op_Parser_run(op_Parser *self, char *text_begin, char *text_end)
+static b8 op_Parser_run(op_Parser *self, char *text_begin, char *text_end)
 {
 	op_Parser_reset(self, text_begin, text_end);
 	op_Parser_fill_buffer(self);
@@ -741,7 +852,8 @@ internal b8 op_Parser_run(op_Parser *self, char *text_begin, char *text_end)
 				op_Options_append_parameter(self->options, token->begin, token->end);
 			} else {
 				if (self->ready_for_named_parameter) {
-					op_Options_append_to_named_parameter(self->options, self->named_parameter, token->begin, token->end);
+					op_Options_append_to_named_parameter(self->options, self->named_parameter,
+									     token->begin, token->end);
 					self->ready_for_named_parameter = 0;
 				} else {
 					op_Options_append_parameter(self->options, token->begin, token->end);
@@ -755,7 +867,8 @@ internal b8 op_Parser_run(op_Parser *self, char *text_begin, char *text_end)
 				op_Options_append_parameter(self->options, token->begin+1, token->end-1);
 			} else if (self->named_parameter) {
 				if (self->ready_for_named_parameter) {
-					op_Options_append_to_named_parameter(self->options, self->named_parameter, token->begin+1, token->end-1);
+					op_Options_append_to_named_parameter(self->options, self->named_parameter,
+									  token->begin+1, token->end-1);
 					self->ready_for_named_parameter = 0;
 				} else {
 					op_Options_append_parameter(self->options, token->begin+1, token->end-1);
@@ -793,4 +906,25 @@ internal b8 op_Parser_run(op_Parser *self, char *text_begin, char *text_end)
 		}
 	}
 }
+
+static op_Options*
+op_new(a_Arena *arena, u64 max_size, char *text_begin, char *text_end)
+{
+	char *buffer = a_push(arena, max_size, 8, 1);
+	a_Checkpoint chkpt = a_checkpoint(arena);
+	op_Options *options = a_push(arena, sizeof(op_Options), 8, 1);
+	op_Options_init(options, buffer, max_size);
+	op_Parser options_parser;
+	op_Parser_init(&options_parser, options);
+	if (!op_Parser_run(&options_parser, text_begin, text_end)) {
+		a_pop(&chkpt);
+		return 0;
+	} else {
+		return options;
+	}
+}
+
+
+
+
 

@@ -24,7 +24,7 @@ END_TODO
  */
 #include "app_roadmap.c.doc"
 
-internal void
+static void
 ra_service_scanner(Request *request)
 {
 	Print      *print   = request->print;
@@ -50,15 +50,15 @@ ra_service_scanner(Request *request)
 	rp_initialize_tokenizer(&tokenizer, mapped_file.begin, mapped_file.begin + mapped_file.size);
 
 	while (nt_Tokenizer_next(&tokenizer)) {
-		Print_clear(print);
+		print_clear(print);
 		rp_print_token(print, &tokenizer.token);
-		Print_cstr(print,"\n");
+		print_cstr(print,"\n");
 		output_( print);
 	}
 
 	if (tokenizer.next_result_detail != nt_TOKENIZER_NEXT_RESULT_DONE) {
-		Print_clear(print);
-		Print_cstr(print,"No transition found!\n");
+		print_clear(print);
+		print_cstr(print,"No transition found!\n");
 		output_( print);
 	}
 
@@ -68,7 +68,7 @@ ra_service_scanner(Request *request)
 #define ra_result(type) \
 	(parser.next_result == rp_Parser_NEXT_RESULT_ ## type)
 
-internal void
+static void
 ra_service_parser(Request *request)
 {
 	Print      *print   = request->print;
@@ -92,15 +92,15 @@ ra_service_parser(Request *request)
 	}
 
 
-
-	pt_Memory parser_memory = platform.allocate_memory(Megabytes(32), 12, 0);
+	pt_Memory *parser_memory = platform.allocate_memory(Megabytes(32), 0);
 	LinearAllocator parser_linear_allocator;
-	LinearAllocator_init(&parser_linear_allocator, parser_memory.memblock.begin,
-			     parser_memory.memblock.begin, parser_memory.memblock.end);
+	LinearAllocator_init(&parser_linear_allocator,
+			     OffsetedPointer(parser_memory->base, 0),
+			     OffsetedPointer(parser_memory->base, 0),
+			     OffsetedPointer(parser_memory->base, parser_memory->size));
 	rp_Parser parser;
 	rp_Parser_init(&parser, &parser_linear_allocator);
 	rp_Parser_reset(&parser, mapped_file.begin, mapped_file.begin + mapped_file.size);
-
 
 	u64 num_elements = 0;
 	s32 depth        = 0;
@@ -109,11 +109,11 @@ ra_service_parser(Request *request)
 		rp_Element *element = rp_Parser_top_element(&parser);
 
 		if (ra_result(OPEN) || ra_result(OPEN_CLOSE)) {
-			Print_clear(print);
-			Print_char(print, ' ');
-			Print_align(print,8 * depth,-1,' ');
-			Print_str(print, element->tag.begin, element->tag.end);
-			Print_cstr(print,"\n");
+			print_clear(print);
+			print_char(print, ' ');
+			print_align(print,8 * depth,-1,' ');
+			print_str(print, element->tag.begin, element->tag.end);
+			print_cstr(print,"\n");
 			output_(print);
 		}
 		if (ra_result(OPEN)) {
@@ -126,29 +126,29 @@ ra_service_parser(Request *request)
 		if (ra_result(CLOSE)) {
 			--depth;
 		}
-// 		Print_clear(print);
-// 		Print_str(print, element->tag.begin, element->tag.end);
-// 		Print_cstr(print,"  line: ");
-// 		Print_u64(print,parser.tokenizer.line);
-// 		Print_cstr(print,"\n");
+// 		print_clear(print);
+// 		print_str(print, element->tag.begin, element->tag.end);
+// 		print_cstr(print,"  line: ");
+// 		print_u64(print,parser.tokenizer.line);
+// 		print_cstr(print,"\n");
 // 		output_( print);
 	}
 
-	Print_clear(print);
-	Print_cstr(print,"#elements: ");
-	Print_s64(print,num_elements);
-	Print_cstr(print,"\n");
+	print_clear(print);
+	print_cstr(print,"#elements: ");
+	print_s64(print,num_elements);
+	print_cstr(print,"\n");
 	output_( print);
 
 	if (parser.error) {
-		Print_clear(print);
-		Print_cstr(print,"there was an error: line ");
-		Print_u64(print,parser.tokenizer.line);
-		Print_cstr(print,"\n");
+		print_clear(print);
+		print_cstr(print,"there was an error: line ");
+		print_u64(print,parser.tokenizer.line);
+		print_cstr(print,"\n");
 		output_( print);
 	}
 
-	platform.free_memory(&parser_memory);
+	platform.free_memory(parser_memory);
 	platform.close_mmap_file(&mapped_file);
 }
 
@@ -184,7 +184,7 @@ typedef struct {
 	} nodes;
 } ra_TmpObject;
 
-internal void
+static void
 ra_TmpObject_clear(ra_TmpObject *self)
 {
 	self->id      = 0;
@@ -205,7 +205,7 @@ ra_TmpObject_clear(ra_TmpObject *self)
  * single consumer thread. The consumer thread can only
  * start working on this after it is ready.
  */
-internal void
+static void
 ra_TmpObject_swap(ra_TmpObject *self, ra_TmpObject *other)
 {
 	/* should only swap when no element associated */
@@ -233,7 +233,7 @@ ra_TmpObject_swap(ra_TmpObject *self, ra_TmpObject *other)
 	self->ready = 1;
 }
 
-internal void
+static void
 ra_TmpObject_init(ra_TmpObject *self, char *key_value_buffer_begin, char *key_value_buffer_capacity,
 	       u64 *nodes_begin, u64 *nodes_capacity)
 {
@@ -242,7 +242,7 @@ ra_TmpObject_init(ra_TmpObject *self, char *key_value_buffer_begin, char *key_va
 	self->type    = rg_OBJECT_UNDEFINED;
 	self->ready   = 0;
 
-	BilinearAllocator_init(&self->key_value_store, key_value_buffer_begin, key_value_buffer_capacity);
+	BilinearAllocator_init(&self->key_value_store, key_value_buffer_begin, key_value_buffer_capacity - key_value_buffer_begin);
 	self->key_value_pairs.begin = (MemoryBlock*) key_value_buffer_begin;
 	self->key_value_pairs.end   = self->key_value_pairs.begin;
 
@@ -253,7 +253,7 @@ ra_TmpObject_init(ra_TmpObject *self, char *key_value_buffer_begin, char *key_va
 	ra_TmpObject_clear(self);
 }
 
-internal b8
+static b8
 ra_TmpObject_insert_key_value(ra_TmpObject *self, char *key_begin, char *key_end, char *value_begin, char *value_end)
 {
 	s64 n_key   = key_end - key_begin;
@@ -283,20 +283,20 @@ ra_TmpObject_insert_key_value(ra_TmpObject *self, char *key_begin, char *key_end
 	return 1;
 }
 
-internal void
+static void
 ra_TmpObject_set_id(ra_TmpObject *self, u64 id, rp_Element *element)
 {
 	self->id = id;
 	self->element = element;
 }
 
-internal void
+static void
 ra_TmpObject_set_type(ra_TmpObject *self, u8 type)
 {
 	self->type = type;
 }
 
-internal void
+static void
 ra_TmpObject_insert_node(ra_TmpObject *self, u64 node)
 {
 	Assert(self->nodes.end < self->nodes.capacity);
@@ -304,20 +304,20 @@ ra_TmpObject_insert_node(ra_TmpObject *self, u64 node)
 	++self->nodes.end;
 }
 
-internal u32
+static u32
 ra_TmpObject_num_nodes(ra_TmpObject *self)
 {
 	return (u32) (self->nodes.end - self->nodes.begin);
 }
 
-internal b8
+static b8
 ra_match(MemoryBlock memory_block, char *cstr)
 {
-	return (pt_compare_memory_cstr(memory_block.begin, memory_block.end, cstr) == 0);
+	return (cstr_compare_memory_cstr(memory_block.begin, memory_block.end, cstr) == 0);
 }
 
 /* quotes find */
-internal b8
+static b8
 ra_find_key_value_u64(rp_KeyValue *first, char *cstr, u64 *output)
 {
 	/* find id from element kv map */
@@ -337,7 +337,7 @@ ra_find_key_value_u64(rp_KeyValue *first, char *cstr, u64 *output)
 }
 
 /* quotes find */
-internal b8
+static b8
 ra_find_key_value_f32(rp_KeyValue *first, char *cstr, f32 *number)
 {
 	/* find id from element kv map */
@@ -357,7 +357,7 @@ ra_find_key_value_f32(rp_KeyValue *first, char *cstr, f32 *number)
 }
 
 /* quoted find value */
-internal b8
+static b8
 ra_find_key_value_str(rp_KeyValue *first, char *cstr, MemoryBlock *result)
 {
 	/* find id from element kv map */
@@ -375,7 +375,7 @@ ra_find_key_value_str(rp_KeyValue *first, char *cstr, MemoryBlock *result)
 
 
 
-internal u8
+static u8
 ra_highway_type_from_name(MemoryBlock memory_block)
 {
 #define ra_pattern(name) \
@@ -408,22 +408,22 @@ ra_highway_type_from_name(MemoryBlock memory_block)
 #undef ra_pattern
 }
 
-internal void
+static void
 ra_print_object(Print *print, rg_Object *object)
 {
 	rg_Tag *tags = rg_Ptr_Tag_get(&object->tags.begin);
 	for (s32 i=0;i<object->tags.count;++i) {
 		rg_String *key   = rg_Ptr_String_get(&tags[i].key);
 		rg_String *value = rg_Ptr_String_get(&tags[i].value);
-		Print_cstr(print, "...................... ");
-		Print_str(print,&key->begin, &key->begin + key->length);
-		Print_align(print, 40, -1, ' ');
-		Print_str(print,&value->begin, &value->begin + value->length);
-		Print_cstr(print,"\n");
+		print_cstr(print, "...................... ");
+		print_str(print,&key->begin, &key->begin + key->length);
+		print_align(print, 40, -1, ' ');
+		print_str(print,&value->begin, &value->begin + value->length);
+		print_cstr(print,"\n");
 	}
 }
 
-internal void
+static void
 ra_service_print(Request *request)
 {
 	Print      *print   = request->print;
@@ -459,11 +459,11 @@ ra_service_print(Request *request)
 
 		rg_Object *way = (rg_Object*) value;
 
-		Print_clear(print);
-		Print_cstr(print,"[");
-		Print_u64(print,index);
-		Print_align(print, 16, 1, ' ');
-		Print_cstr(print,"] ");
+		print_clear(print);
+		print_cstr(print,"[");
+		print_u64(print,index);
+		print_align(print, 16, 1, ' ');
+		print_cstr(print,"] ");
 
 		ra_print_object(print, way);
 
@@ -474,7 +474,7 @@ ra_service_print(Request *request)
 
 }
 
-internal void
+static void
 ra_service_latlon(Request *request)
 {
 	Print      *print   = request->print;
@@ -499,8 +499,8 @@ ra_service_latlon(Request *request)
 	al_Allocator* allocator = (al_Allocator*) mapped_file.begin;
 	rg_Graph *graph = (rg_Graph*) al_Ptr_char_get(&allocator->root_p);
 
-	Print_clear(print);
-	Print_cstr(print,"id|lat|lon\n");
+	print_clear(print);
+	print_cstr(print,"id|lat|lon\n");
 	output_( print);
 
 	rbt_Iter iter;
@@ -513,13 +513,13 @@ ra_service_latlon(Request *request)
 
 		rg_Locate *node = (rg_Locate*) value;
 
-		Print_clear(print);
-		Print_u64(print,node->id);
-		Print_cstr(print,"|");
-		Print_f64(print,node->lat);
-		Print_cstr(print,"|");
-		Print_f64(print,node->lon);
-		Print_cstr(print,"\n");
+		print_clear(print);
+		print_u64(print,node->id);
+		print_cstr(print,"|");
+		print_f64(print,node->lat);
+		print_cstr(print,"|");
+		print_f64(print,node->lon);
+		print_cstr(print,"\n");
 		output_( print);
 	}
 
@@ -534,7 +534,7 @@ ra_service_latlon(Request *request)
 #define ra_service_create_snap_MAX_THREADS                32
 #define ra_service_create_snap_MAX_INPUT_FILES            256
 
-internal void
+static void
 ra_service_create_snap_error_cstr(Request *request, char *msg)
 {
 	log_cstr_("[ra_service_create_snap] ");
@@ -543,7 +543,7 @@ ra_service_create_snap_error_cstr(Request *request, char *msg)
 	return;
 }
 
-internal void
+static void
 ra_service_create_snap_error_print(Request *request, Print *print)
 {
 	log_cstr_("[ra_service_create_snap] ");
@@ -581,7 +581,7 @@ typedef struct {
 } ra_TmpObject_Queue;
 
 
-internal b8
+static b8
 ra_TmpObject_Queue_full(ra_TmpObject_Queue *self)
 {
 	// Once the queue gets full, only the consumer
@@ -592,7 +592,7 @@ ra_TmpObject_Queue_full(ra_TmpObject_Queue *self)
 	return self->left + self->length == self->right;
 }
 
-internal ra_TmpObject*
+static ra_TmpObject*
 ra_TmpObject_Queue_reserve(ra_TmpObject_Queue *self)
 {
 	// keep trying to reserve a slot on the queue
@@ -619,7 +619,7 @@ ra_TmpObject_Queue_reserve(ra_TmpObject_Queue *self)
 	}
 }
 
-internal ra_TmpObject*
+static ra_TmpObject*
 ra_TmpObject_Queue_head(ra_TmpObject_Queue *self)
 {
 	if (self->left < self->right) {
@@ -634,7 +634,7 @@ ra_TmpObject_Queue_head(ra_TmpObject_Queue *self)
 	}
 }
 
-internal void
+static void
 ra_TmpObject_Queue_pop_head(ra_TmpObject_Queue *self)
 {
 	Assert(self->left < self->right);
@@ -661,7 +661,7 @@ typedef struct {
 	volatile u64   right;
 } ra_Location_Queue;
 
-internal b8
+static b8
 ra_Location_Queue_full(ra_Location_Queue *self)
 {
 	// Once the queue gets full, only the consumer
@@ -672,7 +672,7 @@ ra_Location_Queue_full(ra_Location_Queue *self)
 	return self->left + self->length == self->right;
 }
 
-internal ra_Location*
+static ra_Location*
 ra_Location_Queue_reserve(ra_Location_Queue *self)
 {
 	// keep trying to reserve a slot on the queue
@@ -699,7 +699,7 @@ ra_Location_Queue_reserve(ra_Location_Queue *self)
 	}
 }
 
-internal ra_Location*
+static ra_Location*
 ra_Location_Queue_head(ra_Location_Queue *self)
 {
 	if (self->left < self->right) {
@@ -714,7 +714,7 @@ ra_Location_Queue_head(ra_Location_Queue *self)
 	}
 }
 
-internal void
+static void
 ra_Location_Queue_pop_head(ra_Location_Queue *self)
 {
 	Assert(self->left < self->right);
@@ -755,10 +755,10 @@ typedef struct {
 } ra_service_create_snap_Info;
 
 // should be initized every time we call build
-internal ra_service_create_snap_Info ra_service_create_snap_info;
+static ra_service_create_snap_Info ra_service_create_snap_info;
 
 /* the procedure below was designed to be executed by a single thread */
-internal void
+static void
 ra_service_create_snap_insert_way(ra_TmpObject *tmp_way)
 {
 	rg_Graph *graph = ra_service_create_snap_info.graph;
@@ -796,19 +796,19 @@ ra_service_create_snap_insert_way(ra_TmpObject *tmp_way)
 
 		platform.lock_mutex(ra_service_create_snap_info.mutex);
 
-		Print_clear(print);
-		Print_format(print,"Duplicate way ID. Keeping only the 1st occurrence %llu.\n", tmp_way->id);
+		print_clear(print);
+		print_format(print,"Duplicate way ID. Keeping only the 1st occurrence %llu.\n", tmp_way->id);
 		output_( print);
 // 		MemoryBlock *input_filename = ra_service_create_snap_info.input_filenames + input_index;
-// 		Print_str(print, input_filename->begin, input_filename->end);
-// 		Print_cstr(print, "\n");
+// 		print_str(print, input_filename->begin, input_filename->end);
+// 		print_cstr(print, "\n");
 
 		platform.unlock_mutex(ra_service_create_snap_info.mutex);
 	}
 }
 
 /* the procedure below was designed to be executed by a single thread */
-internal b8
+static b8
 ra_service_create_snap_update_location(ra_Location *location)
 {
 	rg_Graph *graph = ra_service_create_snap_info.graph;
@@ -826,7 +826,7 @@ ra_service_create_snap_update_location(ra_Location *location)
 
 
 
-internal void
+static void
 ra_service_create_snap_parse_ways_single_threaded(s32 input_index)
 {
 
@@ -837,9 +837,12 @@ ra_service_create_snap_parse_ways_single_threaded(s32 input_index)
 	Print          *print       = request->print;
 
 	/* memory for .xml parsing */
-	pt_Memory work_memory = platform.allocate_memory(Megabytes(32), 12, 0);
+	pt_Memory *work_memory = platform.allocate_memory(Megabytes(32), 0);
 	LinearAllocator work_allocator;
-	LinearAllocator_init(&work_allocator, work_memory.memblock.begin, work_memory.memblock.begin, work_memory.memblock.end);
+	LinearAllocator_init(&work_allocator,
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base, work_memory->size));
 
 	/* prepare storage space for runnint tmp_way object */
 	char *way_key_value_pairs_memory  = LinearAllocator_alloc(&work_allocator, ra_service_create_snap_OBJECT_KEY_VALUE_BUFFER_SIZE);
@@ -870,8 +873,8 @@ ra_service_create_snap_parse_ways_single_threaded(s32 input_index)
 
 			// report
 			if (ra_service_create_snap_info.report_frequency && ((num_elements % ra_service_create_snap_info.report_frequency) == 0)) {
-				Print_clear(print);
-				Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
+				print_clear(print);
+				print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 					     input_index, num_elements, num_objects, num_nodes);
 				output_( print);
 			}
@@ -993,22 +996,22 @@ ra_service_create_snap_parse_ways_single_threaded(s32 input_index)
 	}
 
 	if (parser.error) {
-		Print_clear(print);
-		Print_format(print, "Parsing error detected on line %d column %d\n", parser.tokenizer.line, parser.tokenizer.column);
+		print_clear(print);
+		print_format(print, "Parsing error detected on line %d column %d\n", parser.tokenizer.line, parser.tokenizer.column);
 		output_( print);
 		return;
 	}
 
-	Print_clear(print);
-	Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
+	print_clear(print);
+	print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 		     input_index, num_elements, num_objects, num_nodes);
 	output_( print);
 
 	/* free parsing memory */
-	platform.free_memory(&work_memory);
+	platform.free_memory(work_memory);
 }
 
-internal void
+static void
 ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 {
 	Assert(ra_service_create_snap_info.num_threads > 1);
@@ -1026,9 +1029,12 @@ ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 	ra_TmpObject_Queue *queue = &ra_service_create_snap_info.multithread.tmpway_queue;
 
 	/* memory for .xml parsing */
-	pt_Memory work_memory = platform.allocate_memory(Megabytes(16), 12, 0);
+	pt_Memory *work_memory = platform.allocate_memory(Megabytes(16), 0);
 	LinearAllocator work_allocator;
-	LinearAllocator_init(&work_allocator, work_memory.memblock.begin, work_memory.memblock.begin, work_memory.memblock.end);
+	LinearAllocator_init(&work_allocator,
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base,work_memory->size));
 
 	/* prepare storage space for runnint tmp_way object */
 	Assert(thread_index < ra_service_create_snap_info.num_threads);
@@ -1060,8 +1066,8 @@ ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 			if (ra_service_create_snap_info.report_frequency && ((num_elements % ra_service_create_snap_info.report_frequency) == 0)) {
 				platform.lock_mutex(mutex);
 
-				Print_clear(print);
-				Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
+				print_clear(print);
+				print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 					     input_index, num_elements, num_objects, num_nodes);
 				output_( print);
 
@@ -1208,29 +1214,29 @@ ra_service_create_snap_parse_ways_multi_threaded(s32 input_index)
 
 	if (parser.error) {
 		platform.lock_mutex(mutex);
-		Print_clear(print);
-		Print_format(print, "Parsing error detected on line %d column %d\n", parser.tokenizer.line, parser.tokenizer.column);
+		print_clear(print);
+		print_format(print, "Parsing error detected on line %d column %d\n", parser.tokenizer.line, parser.tokenizer.column);
 		output_( print);
 		platform.unlock_mutex(mutex);
 		return;
 	}
 
 	platform.lock_mutex(mutex);
-	Print_clear(print);
-	Print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
+	print_clear(print);
+	print_format(print, "Input %3d | Pass 1 | Elements %12llu | Objects %12llu | Nodes %12llu\n",
 		     input_index, num_elements, num_objects, num_nodes);
 	output_( print);
 	platform.unlock_mutex(mutex);
 
 	/* free parsing memory */
-	platform.free_memory(&work_memory);
+	platform.free_memory(work_memory);
 
 	/* register that job was completed */
 	pt_atomic_add_u32(&ra_service_create_snap_info.multithread.jobs_completed,1);
 
 }
 
-internal void
+static void
 ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 {
 	// s32            input_index  = *((s32*) data);
@@ -1243,9 +1249,12 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 	ra_Location_Queue *queue    = &ra_service_create_snap_info.multithread.location_queue;
 
 	/* memory for .xml parsing */
-	pt_Memory work_memory = platform.allocate_memory(Megabytes(32), 12, 0);
+	pt_Memory *work_memory = platform.allocate_memory(Megabytes(32), 0);
 	LinearAllocator work_allocator;
-	LinearAllocator_init(&work_allocator, work_memory.memblock.begin, work_memory.memblock.begin, work_memory.memblock.end);
+	LinearAllocator_init(&work_allocator,
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base,work_memory->size));
 
 	/* from now on work_allocator becomes exclusive of the parser */
 	rp_Parser parser;
@@ -1266,8 +1275,8 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 			++num_elements;
 			if (ra_service_create_snap_info.report_frequency && ((num_elements % ra_service_create_snap_info.report_frequency) == 0)) {
 				platform.lock_mutex(mutex);
-				Print_clear(print);
-				Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu\n", input_index, num_elements, num_nodes);
+				print_clear(print);
+				print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu\n", input_index, num_elements, num_nodes);
 				output_( print);
 				platform.unlock_mutex(mutex);
 			}
@@ -1316,8 +1325,8 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 
 			// if (slot->ready) {
 // 				platform.lock_mutex(mutex);
-// 				Print_clear(print);
-// 				Print_format(print, "index: %6d slot: %6lld left: %6llu  right: %6llu\n",
+// 				print_clear(print);
+// 				print_format(print, "index: %6d slot: %6lld left: %6llu  right: %6llu\n",
 // 					     input_index, slot - queue->buffer, queue->left % queue->length, queue->right % queue->length);
 // 				output_( print);
 // 				platform.unlock_mutex(mutex);
@@ -1339,13 +1348,13 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 	}
 
 	platform.lock_mutex(mutex);
-	Print_clear(print);
-	Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu\n", input_index, num_elements, num_nodes);
+	print_clear(print);
+	print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu\n", input_index, num_elements, num_nodes);
 	output_( print);
 	platform.unlock_mutex(mutex);
 
 	/* free parsing memory */
-	platform.free_memory(&work_memory);
+	platform.free_memory(work_memory);
 
 	/* register that job was completed */
 	pt_atomic_add_u32(&ra_service_create_snap_info.multithread.jobs_completed,1);
@@ -1353,7 +1362,7 @@ ra_service_create_snap_parse_nodes_multi_threaded(s32 input_index)
 }
 
 
-internal void
+static void
 ra_service_create_snap_parse_nodes_single_threaded(s32 input_index)
 {
 	// s32            input_index  = *((s32*) data);
@@ -1363,9 +1372,12 @@ ra_service_create_snap_parse_nodes_single_threaded(s32 input_index)
 	Print          *print       = request->print;
 
 	/* memory for .xml parsing */
-	pt_Memory work_memory = platform.allocate_memory(Megabytes(32), 12, 0);
+	pt_Memory *work_memory = platform.allocate_memory(Megabytes(32), 0);
 	LinearAllocator work_allocator;
-	LinearAllocator_init(&work_allocator, work_memory.memblock.begin, work_memory.memblock.begin, work_memory.memblock.end);
+	LinearAllocator_init(&work_allocator,
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base,0),
+			     OffsetedPointer(work_memory->base,work_memory->size));
 
 	/* from now on work_allocator becomes exclusive of the parser */
 	rp_Parser parser;
@@ -1385,8 +1397,8 @@ ra_service_create_snap_parse_nodes_single_threaded(s32 input_index)
 			/* new element */
 			++num_elements;
 			if (ra_service_create_snap_info.report_frequency && ((num_elements % ra_service_create_snap_info.report_frequency) == 0)) {
-				Print_clear(print);
-				Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu \n", input_index, num_elements, num_nodes);
+				print_clear(print);
+				print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu \n", input_index, num_elements, num_nodes);
 				output_( print);
 			}
 		}
@@ -1416,12 +1428,12 @@ ra_service_create_snap_parse_nodes_single_threaded(s32 input_index)
 		}
 	}
 
-	Print_clear(print);
-	Print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu \n", input_index, num_elements, num_nodes);
+	print_clear(print);
+	print_format(print, "Input %3d | Pass 2 | Elements %12llu | Nodes %12llu \n", input_index, num_elements, num_nodes);
 	output_( print);
 
 	/* free parsing memory */
-	platform.free_memory(&work_memory);
+	platform.free_memory(work_memory);
 }
 
 
@@ -1446,7 +1458,7 @@ Command to build a *snap* database of *objects* based on a constrained `xml` for
 used by the Open Street Maps project.
 
     -size0=N
-        Some size that should fit the whole final .snap index and should be guessed 
+        Some size that should fit the whole final .snap index and should be guessed
 	correctly beforehand. @todo: improve this. Default is 4G.
 
     -roads
@@ -1464,15 +1476,17 @@ used by the Open Street Maps project.
 END_DOC_STRING
 */
 
-internal void
+static void
 ra_service_create_snap(Request *request)
 {
+	// @todo @uncomment
+#if 0
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help")) {
-		Print_clear(print);
-		Print_cstr(print, ra_service_create_snap_doc);
+		print_clear(print);
+		print_cstr(print, ra_service_create_snap_doc);
 		output_( print);
 		return;
 	}
@@ -1480,9 +1494,9 @@ ra_service_create_snap(Request *request)
 	// at least one input parameter
 	u32 num_ordered_params = op_Options_num_positioned_parameters(options);
 	if (num_ordered_params < 3) {
-		Print_clear(print);
-		Print_cstr(print, ra_service_create_snap_doc);
-		Print_cstr(print, "[issue] not enough input parameters (one output filename and at least one input filename).\n");
+		print_clear(print);
+		print_cstr(print, ra_service_create_snap_doc);
+		print_cstr(print, "[issue] not enough input parameters (one output filename and at least one input filename).\n");
 		output_( print);
 		return;
 	}
@@ -1555,8 +1569,8 @@ ra_service_create_snap(Request *request)
 		return;
 	}
 
-	Print_clear(print);
-	Print_format(print, "Mode: roads %d   buildings %d   tagged nodes %d   cells %d\n", roads, buildings, tagged_nodes, cells);
+	print_clear(print);
+	print_format(print, "Mode: roads %d   buildings %d   tagged nodes %d   cells %d\n", roads, buildings, tagged_nodes, cells);
 	output_( print);
 
 	pt_MappedFile mapped_files[ra_service_create_snap_MAX_INPUT_FILES];
@@ -1567,9 +1581,9 @@ ra_service_create_snap(Request *request)
 		s32 index = i-2;
 		MemoryBlock input_filename = { .begin = 0, .end = 0 };
 		if (!op_Options_str(options, i, &input_filename)) {
-			Print_clear(print);
-			Print_format(print, "couldn't read input filename %d", index);
-			Print_str(print, input_filename.begin, input_filename.end);
+			print_clear(print);
+			print_format(print, "couldn't read input filename %d", index);
+			print_str(print, input_filename.begin, input_filename.end);
 			ra_service_create_snap_error_print(request, print);
 			return;
 		} else {
@@ -1577,9 +1591,9 @@ ra_service_create_snap(Request *request)
 			input_filenames[index] = input_filename;
 			mapped_files[index] = platform.open_mmap_file(input_filename.begin, input_filename.end, 1, 0);
 			if (!mapped_files[index].mapped) {
-				Print_clear(print);
-				Print_format(print, "couldn't memory map input %d filename: ", index);
-				Print_str(print, input_filename.begin, input_filename.end);
+				print_clear(print);
+				print_format(print, "couldn't memory map input %d filename: ", index);
+				print_str(print, input_filename.begin, input_filename.end);
 				ra_service_create_snap_error_print(request, print);
 				return;
 			}
@@ -1609,9 +1623,9 @@ ra_service_create_snap(Request *request)
 	 * lot of RAM without any support to go beyond this initial
 	 * allocated memory.
 	 */
-	pt_Memory data_memory = platform.allocate_memory(size0, 12, Terabytes(2));
+	pt_Memory *data_memory = platform.allocate_memory(size0, 0);
 
-	al_Allocator* allocator = al_Allocator_new(data_memory.memblock.begin, data_memory.memblock.end);
+	al_Allocator* allocator = al_Allocator_new(OffsetedPointer(data_memory->base,0), OffsetedPointer(data_memory->base,data_memory->size));
 	al_Cache *graph_cache = al_Allocator_create_cache(allocator, "rg_Graph", sizeof(rg_Graph));
 	rg_Graph *graph = (rg_Graph*) al_Cache_alloc(graph_cache);
 
@@ -1715,8 +1729,8 @@ ra_service_create_snap(Request *request)
 		// one of the threads is the main thread
 		work_queue = platform.work_queue_create(num_threads-1);
 		// log message to differentiate from sequential server
-		Print_clear(print);
-		Print_format(print, "[ra_service_create_snap] using %llu threads\n", num_threads);
+		print_clear(print);
+		print_format(print, "[ra_service_create_snap] using %llu threads\n", num_threads);
 		output_( print);
 	}
 
@@ -1773,9 +1787,9 @@ ra_service_create_snap(Request *request)
 	}
 
 	{
-		Print_clear(print);
-		Print_cstr(print, "Initializing incidence of nodes...");
-		Print_align(print, 80, -1, '.');
+		print_clear(print);
+		print_cstr(print, "Initializing incidence of nodes...");
+		print_align(print, 80, -1, '.');
 		output_( print);
 
 		f64 t0 = platform.get_time();
@@ -1783,17 +1797,17 @@ ra_service_create_snap(Request *request)
 		/* initialize nodes incidence */
 		rg_Graph_initialize_locates_incidence(graph);
 
-		Print_clear(print);
-		Print_u64(print, (u64) (platform.get_time() - t0));
-		Print_align(print, 14, 1, '.');
-		Print_cstr(print, " secs\n");
+		print_clear(print);
+		print_u64(print, (u64) (platform.get_time() - t0));
+		print_align(print, 14, 1, '.');
+		print_cstr(print, " secs\n");
 		output_( print);
 	}
 
 	f32 t0 = platform.get_time();
-	Print_clear(print);
-	Print_cstr(print, "Second pass over the data (capture nodes lat/lon)...\n");
-// 	Print_align(print, 80, -1, '.');
+	print_clear(print);
+	print_cstr(print, "Second pass over the data (capture nodes lat/lon)...\n");
+// 	print_align(print, 80, -1, '.');
 	output_( print);
 
 // 	for (s32 i=0;i<num_input_files;++i) {
@@ -1852,8 +1866,8 @@ ra_service_create_snap(Request *request)
 	/* vptree */
 	t0 = platform.get_time();
 
-	Print_clear(print);
-	Print_cstr(print, "Creating Vantage Point Tree...");
+	print_clear(print);
+	print_cstr(print, "Creating Vantage Point Tree...");
 	output_( print);
 
 	pt_Memory vp_buffer = platform.allocate_memory(graph->nodes.size * sizeof(rg_VPNode), 3, 0);
@@ -1862,8 +1876,8 @@ ra_service_create_snap(Request *request)
 
 	t0 = platform.get_time() - t0;
 
-	Print_clear(print);
-	Print_format(print, "%.2fs\n",t0);
+	print_clear(print);
+	print_format(print, "%.2fs\n",t0);
 	output_( print);
 
 	/* save graph on file */
@@ -1874,14 +1888,14 @@ ra_service_create_snap(Request *request)
 	platform.close_file(&pfh_db);
 
 
-	Print_clear(print);
-	Print_cstr(print, "file:");
-	Print_str(print, output_filename.begin, output_filename.end);
-	Print_cstr(print, "     time:");
-	Print_u64(print, (u64) (platform.get_time() - t0));
-	Print_cstr(print, "s    size:");
-	Print_u64(print, (u64) al_Allocator_used_memory(allocator));
-	Print_cstr(print, "\n");
+	print_clear(print);
+	print_cstr(print, "file:");
+	print_str(print, output_filename.begin, output_filename.end);
+	print_cstr(print, "     time:");
+	print_u64(print, (u64) (platform.get_time() - t0));
+	print_cstr(print, "s    size:");
+	print_u64(print, (u64) al_Allocator_used_memory(allocator));
+	print_cstr(print, "\n");
 	output_( print);
 
 	platform.free_memory(&tmp_way_memory);
@@ -1892,13 +1906,15 @@ ra_service_create_snap(Request *request)
 		platform.close_mmap_file(mapped_files + i);
 	}
 
-
+#endif
 
 }
 
-internal void
+static void
 ra_service_btree(Request *request)
 {
+	// @todo @uncomment
+#if 0
 	Print *print = request->print;
 
 	pt_Memory data_memory = platform.allocate_memory(Gigabytes(2), 12, Terabytes(2));
@@ -1923,25 +1939,28 @@ ra_service_btree(Request *request)
 	u64  i = 0;
 	while (rbt_Iter_next(&iter,&key, &value)) {
 		++i;
-		Print_clear(print);
-		Print_cstr(print, "[");
-		Print_u64(print, i);
-		Print_align(print, 9, 1, ' ');
-		Print_cstr(print, "] ");
-		Print_u64(print, key);
-		Print_align(print, 20, 1, ' ');
-		Print_cstr(print, " -> ");
-		Print_u64(print, *((u64*) &value));
-		Print_align(print, 20, 1, ' ');
-		Print_cstr(print, "\n");
+		print_clear(print);
+		print_cstr(print, "[");
+		print_u64(print, i);
+		print_align(print, 9, 1, ' ');
+		print_cstr(print, "] ");
+		print_u64(print, key);
+		print_align(print, 20, 1, ' ');
+		print_cstr(print, " -> ");
+		print_u64(print, *((u64*) &value));
+		print_align(print, 20, 1, ' ');
+		print_cstr(print, "\n");
 		output_( print);
 	}
 	platform.free_memory(&data_memory);
+#endif
 }
 
-internal void
+static void
 ra_service_closest(Request *request)
 {
+	// @todo @uncomment
+#if 0
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
@@ -2015,22 +2034,22 @@ ra_service_closest(Request *request)
 	while (it != end) {
 		++index;
 		rg_Locate *node = (rg_Locate*) it->data;
-		Print_clear(print);
-		Print_cstr(print,"[");
-		Print_u64(print,index);
-		Print_align(print,8,1,' ');
-		Print_cstr(print,"]  ");
-		Print_u64(print,node->id);
-		Print_align(print,16,1,' ');
-		Print_f64(print,-it->value);
-		Print_align(print,16,1,' ');
-		Print_cstr(print,"\n");
+		print_clear(print);
+		print_cstr(print,"[");
+		print_u64(print,index);
+		print_align(print,8,1,' ');
+		print_cstr(print,"]  ");
+		print_u64(print,node->id);
+		print_align(print,16,1,' ');
+		print_f64(print,-it->value);
+		print_align(print,16,1,' ');
+		print_cstr(print,"\n");
 		output_( print);
 
 		if (node->num_objects == 1) {
 			rg_Object *object = rg_Ptr_Object_get(&node->singleton);
-			Print_clear(print);
-			Print_cstr(print,"  ");
+			print_clear(print);
+			print_cstr(print,"  ");
 			ra_print_object(print, object);
 			output_( print);
 			ra_print_object(print, object);
@@ -2040,56 +2059,58 @@ ra_service_closest(Request *request)
 			rg_Ptr_Object *it_object = objects_begin;
 			while (it_object != objects_end) {
 				rg_Object *object = rg_Ptr_Object_get(it_object);
-				Print_clear(print);
-				Print_cstr(print,"  ");
+				print_clear(print);
+				print_cstr(print,"  ");
 				ra_print_object(print, object);
 				output_( print);
 				++it_object;
 			}
 		}
 
-		Print_clear(print);
-		Print_cstr(print,"\n");
+		print_clear(print);
+		print_cstr(print,"\n");
 		output_( print);
 
 		++it;
 	}
 
-	Print_clear(print);
-	Print_cstr(print,"Time to find closest points: ");
-	Print_f64(print, (f64) t0);
-	Print_cstr(print, "s\n");
+	print_clear(print);
+	print_cstr(print,"Time to find closest points: ");
+	print_f64(print, (f64) t0);
+	print_cstr(print, "s\n");
 	output_( print);
 
 	platform.free_memory(&heap_memory);
 	platform.close_mmap_file(&mapped_file);
 
+#endif
+
 }
 
-internal void
+static void
 ra_print_vpitems(Print *print, rg_VPNode *begin, rg_VPNode *end, rg_VPNode *highlight)
 {
 	rg_VPNode *it = begin;
 	while (it != end) {
 		if (it == highlight) {
-			Print_cstr(print, "[*");
-			Print_s64(print, it - begin);
-			Print_align(print, 4, 1, ' ');
+			print_cstr(print, "[*");
+			print_s64(print, it - begin);
+			print_align(print, 4, 1, ' ');
 		} else {
-			Print_cstr(print, "[");
-			Print_s64(print, it - begin);
-			Print_align(print, 5, 1, ' ');
+			print_cstr(print, "[");
+			print_s64(print, it - begin);
+			print_align(print, 5, 1, ' ');
 		}
-		Print_cstr(print, "] -> ");
-		Print_u64(print, (u64) it->distance);
-		Print_align(print, 5, 1, ' ');
-		Print_cstr(print, "\n");
+		print_cstr(print, "] -> ");
+		print_u64(print, (u64) it->distance);
+		print_align(print, 5, 1, ' ');
+		print_cstr(print, "\n");
 		++it;
 	}
 }
 
 
-internal void
+static void
 ra_service_ksmall(Request *request)
 {
 	Print      *print   = request->print;
@@ -2126,15 +2147,15 @@ ra_service_ksmall(Request *request)
 	rg_VPNode *begin = array;
 	rg_VPNode *end   = array + N;
 
-	Print_clear(print);
-	Print_cstr(print, "Before: \n");
+	print_clear(print);
+	print_cstr(print, "Before: \n");
 	ra_print_vpitems(print, begin, end, 0);
 	output_( print);
 
 	rg_VPNode *result = rg_vp_kth_smallest(begin, end, k);
 
-	Print_clear(print);
-	Print_cstr(print, "After: \n");
+	print_clear(print);
+	print_cstr(print, "After: \n");
 	ra_print_vpitems(print, begin, end, result);
 	output_( print);
 }
@@ -2259,11 +2280,11 @@ np_FUNCTION_HANDLER(ra_roadsnap_function_order)
 	MemoryBlock order_name = *((MemoryBlock*) order_name_tv->value);
 	ra_roadsnap_Order *result = (ra_roadsnap_Order*) np_Compiler_alloc(compiler, sizeof(ra_roadsnap_Order));
 	// log error message if order name is not json or text
-	if (pt_compare_memory_cstr(order_name.begin, order_name.end, "locates") == 0) {
+	if (cstr_compare_memory_cstr(order_name.begin, order_name.end, "locates") == 0) {
 		result->order = ra_roadsnap_ORDER_LOCATES_OBJECTS;
-	} else if (pt_compare_memory_cstr(order_name.begin, order_name.end, "objects") == 0) {
+	} else if (cstr_compare_memory_cstr(order_name.begin, order_name.end, "objects") == 0) {
 		result->order = ra_roadsnap_ORDER_OBJECTS_LOCATES;
-	} else if (pt_compare_memory_cstr(order_name.begin, order_name.end, "objects_all") == 0) {
+	} else if (cstr_compare_memory_cstr(order_name.begin, order_name.end, "objects_all") == 0) {
 		result->order = ra_roadsnap_ORDER_OBJECTS_ALL_LOCATES;
 	} else {
 		char *error = "Invalid roadsnap order (it needs to be either 'locates', 'objects', 'objects_all')\n";
@@ -2392,15 +2413,15 @@ np_FUNCTION_HANDLER(ra_roadsnap_function_format)
 	MemoryBlock format_name = *((MemoryBlock*) format_name_tv->value);
 	ra_roadsnap_Format *result = (ra_roadsnap_Format*) np_Compiler_alloc(compiler, sizeof(ra_roadsnap_Format));
 	// log error message if format name is not json or text
-	if (pt_compare_memory_cstr(format_name.begin, format_name.end, "json") == 0) {
+	if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "json") == 0) {
 		result->format = ra_roadsnap_FORMAT_JSON;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "text") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "text") == 0) {
 		result->format = ra_roadsnap_FORMAT_TEXT;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "xml") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "xml") == 0) {
 		result->format = ra_roadsnap_FORMAT_XML;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "html") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "html") == 0) {
 		result->format = ra_roadsnap_FORMAT_HTML;
-	} else if (pt_compare_memory_cstr(format_name.begin, format_name.end, "leaflet") == 0) {
+	} else if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "leaflet") == 0) {
 		result->format = ra_roadsnap_FORMAT_LEAFLET;
 	} else {
 		char *error = "Invalid roadsnap format (it needs to be either 'text', 'json', 'xml', 'html' or 'leaflet')\n";
@@ -2579,7 +2600,7 @@ np_FUNCTION_HANDLER(ra_roadsnap_function_config_support)
 	return np_TypeValue_value(ra_roadsnap_compiler_types.config, result);
 }
 
-internal void
+static void
 ra_roadsnap_init_query_compiler(np_Compiler* compiler)
 {
 	/* register types */
@@ -2767,7 +2788,7 @@ ra_roadsnap_init_query_compiler(np_Compiler* compiler)
 	np_Compiler_insert_variable(compiler, (char*) roadsnap_cstr, cstr_end((char*)roadsnap_cstr), ra_roadsnap_compiler_types.config, default_config);
 
 	static const char *help_cstr = "help";
-	ra_roadsnap_Help *default_help = (ra_roadsnap_Help*) np_Compiler_alloc(compiler, MAX(8,sizeof(ra_roadsnap_Help)));
+	ra_roadsnap_Help *default_help = (ra_roadsnap_Help*) np_Compiler_alloc(compiler, Max(8,sizeof(ra_roadsnap_Help)));
 	np_Compiler_insert_variable(compiler, (char*) help_cstr, cstr_end((char*)help_cstr), ra_roadsnap_compiler_types.help,   default_help);
 }
 
@@ -2777,7 +2798,7 @@ typedef struct {
 	rg_Graph              *graph;
 } ra_service_roadsnap_FilterInfo;
 
-internal b8
+static b8
 ra_service_roadsnap_object_filter_exp(rg_Graph *graph, rg_Object *object, ra_roadsnap_FilterExp *exp)
 {
 	Assert(exp);
@@ -2785,7 +2806,7 @@ ra_service_roadsnap_object_filter_exp(rg_Graph *graph, rg_Object *object, ra_roa
 		rg_Tag *tags = rg_Ptr_Tag_get(&object->tags.begin);
 		for (s32 i=0;i<object->tags.count;++i) {
 			rg_String *key   = rg_Ptr_String_get(&tags[i].key);
-			if (pt_compare_memory(exp->key.begin, exp->key.end, &key->begin, &key->begin + key->length) == 0) {
+			if (cstr_compare_memory(exp->key.begin, exp->key.end, &key->begin, &key->begin + key->length) == 0) {
 				return 1;
 			}
 		}
@@ -2794,7 +2815,7 @@ ra_service_roadsnap_object_filter_exp(rg_Graph *graph, rg_Object *object, ra_roa
 		rg_Tag *tags = rg_Ptr_Tag_get(&object->tags.begin);
 		for (s32 i=0;i<object->tags.count;++i) {
 			rg_String *value   = rg_Ptr_String_get(&tags[i].value);
-			if (pt_compare_memory(exp->value.begin, exp->value.end, &value->begin, &value->begin + value->length) == 0) {
+			if (cstr_compare_memory(exp->value.begin, exp->value.end, &value->begin, &value->begin + value->length) == 0) {
 				return 1;
 			}
 		}
@@ -2804,8 +2825,8 @@ ra_service_roadsnap_object_filter_exp(rg_Graph *graph, rg_Object *object, ra_roa
 		for (s32 i=0;i<object->tags.count;++i) {
 			rg_String *key   = rg_Ptr_String_get(&tags[i].key);
 			rg_String *value = rg_Ptr_String_get(&tags[i].value);
-			if (pt_compare_memory(exp->key.begin, exp->key.end, &key->begin, &key->begin + key->length) == 0 &&
-			    pt_compare_memory(exp->value.begin, exp->value.end, &value->begin, &value->begin + value->length) == 0) {
+			if (cstr_compare_memory(exp->key.begin, exp->key.end, &key->begin, &key->begin + key->length) == 0 &&
+			    cstr_compare_memory(exp->value.begin, exp->value.end, &value->begin, &value->begin + value->length) == 0) {
 				return 1;
 			}
 		}
@@ -2823,7 +2844,7 @@ ra_service_roadsnap_object_filter_exp(rg_Graph *graph, rg_Object *object, ra_roa
 	return 0;
 }
 
-internal b8
+static b8
 ra_service_roadsnap_node_filter_exp(rg_Graph *graph, rg_Locate *locate, ra_roadsnap_FilterExp *exp, ra_roadsnap_Support support)
 {
 	if (exp == 0) {
@@ -2886,7 +2907,8 @@ typedef struct {
 	np_Parser              parser;
 	Print                  print_header;
 	Print                  print_result;
-	http_Channel           http_channel;
+	// @todo replace with http2
+	// http_Channel           http_channel;
 	pt_TCP_Socket          *socket;
 } ra_QueryBuffers;
 
@@ -2899,10 +2921,10 @@ typedef struct {
 
 global_variable ra_service_snap_Info ra_service_snap_info;
 
-internal
-http_HEADER_FIELD_CALLBACK(ra_service_snap_header_field_callback)
-{
-}
+// static
+// http_HEADER_FIELD_CALLBACK(ra_service_snap_header_field_callback)
+// {
+// }
 
 typedef struct {
 	s32       rank; /* 0-based */
@@ -2926,7 +2948,7 @@ typedef struct {
  * Returns 1 on success and 0 if not enough memory is available
  * Fills in the objects and allocator.
  */
-internal b8
+static b8
 ra_service_snap_aggregate_locates_by_objects(rg_Graph *graph, rg_Heap *heap, ra_roadsnap_FilterExp *filter,
 		LinearAllocator *allocator, aatree_Tree *objects)
 {
@@ -2991,7 +3013,7 @@ typedef struct {
 	Print *print;
 } ra_PrintStack;
 
-internal void
+static void
 ra_PrintStack_init(ra_PrintStack *self, Print *print, char *level_text, char *line_feed)
 {
 	self->num_items = 0;
@@ -3000,42 +3022,42 @@ ra_PrintStack_init(ra_PrintStack *self, Print *print, char *level_text, char *li
 	self->line_feed = line_feed;
 }
 
-internal inline void
+static inline void
 ra_PrintStack_margin(ra_PrintStack *self)
 {
 	for (s32 i=0;i<self->num_items;++i) {
-		Print_cstr(self->print, self->level_text);
+		print_cstr(self->print, self->level_text);
 	}
 }
 
-internal void
+static void
 ra_PrintStack_print(ra_PrintStack *self, char *text)
 {
 	if (self->print->begin < self->print->end)
-		Print_cstr(self->print, self->line_feed);
+		print_cstr(self->print, self->line_feed);
 	ra_PrintStack_margin(self);
-	Print_cstr(self->print, text);
+	print_cstr(self->print, text);
 }
 
-internal void
+static void
 ra_PrintStack_append_cstr(ra_PrintStack *self, char *text)
 {
-	Print_cstr(self->print, text);
+	print_cstr(self->print, text);
 }
 
-internal void
+static void
 ra_PrintStack_append_str(ra_PrintStack *self, char *begin, char *end)
 {
-	Print_str(self->print, begin, end);
+	print_str(self->print, begin, end);
 }
 
-internal void
+static void
 ra_PrintStack_align(ra_PrintStack *self, s32 len, s32 alignment, char sep)
 {
-	Print_align(self->print, len, alignment, sep);
+	print_align(self->print, len, alignment, sep);
 }
 
-internal void
+static void
 ra_PrintStack_push(ra_PrintStack *self, char *open_text, char *close_text)
 {
 	Assert(self->num_items < ra_PrintStack_CAPACITY);
@@ -3045,31 +3067,31 @@ ra_PrintStack_push(ra_PrintStack *self, char *open_text, char *close_text)
 	++self->num_items;
 }
 
-internal inline void
+static inline void
 ra_PrintStack_pop(ra_PrintStack *self)
 {
 	Assert(self->num_items > 0);
 	--self->num_items;
 	if (self->stack[self->num_items]) {
 		ra_PrintStack_print(self, "");
-		Print_cstr(self->print, self->stack[self->num_items]);
+		print_cstr(self->print, self->stack[self->num_items]);
 	}
 }
 
 #define ra_PrintStack_push_formatted(self, close_text, open_text_format, ...) \
 	ra_PrintStack_print((self), ""); \
-	Print_format((self)->print, open_text_format, __VA_ARGS__); \
+	print_format((self)->print, open_text_format, __VA_ARGS__); \
 	(self)->stack[(self)->num_items] = close_text; \
 	++(self)->num_items;
 
 #define ra_PrintStack_print_formatted(self, text_format, ...) \
 	ra_PrintStack_print((self), ""); \
-	Print_format((self)->print, text_format, __VA_ARGS__);
+	print_format((self)->print, text_format, __VA_ARGS__);
 
 
 
 
-internal void
+static void
 ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 {
 	Print *print_result = &buffer->print_result;
@@ -3087,13 +3109,13 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 	b8 ok = np_Parser_run(&buffer->parser);
 
 	if (!ok) {
-		Print_cstr(print_result, "Syntax Error on Query\n");
-		Print_str(print_result, buffer->parser.log.begin, buffer->parser.log.end);
+		print_cstr(print_result, "Syntax Error on Query\n");
+		print_str(print_result, buffer->parser.log.begin, buffer->parser.log.end);
 
-		Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 
 		output_(print_result);
 		return;
@@ -3104,31 +3126,31 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 	np_TypeValue last_statement = np_Compiler_reduce(&buffer->compiler, buffer->parser.ast_first, text.begin, text.end);
 
 	if (!buffer->compiler.reduce.success) {
-		Print_cstr(print_result, "Compiler Error on Query\n");
-		Print_str(print_result, buffer->compiler.reduce.log.begin, buffer->compiler.reduce.log.end);
+		print_cstr(print_result, "Compiler Error on Query\n");
+		print_str(print_result, buffer->compiler.reduce.log.begin, buffer->compiler.reduce.log.end);
 
-		Print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 
 		output_(print_result);
 		return;
 	}
 
 	if (last_statement.type_id == ra_roadsnap_compiler_types.help || last_statement.type_id == np_TYPE_UNDEFINED) {
-		Print_clear(print_result);
-		Print_cstr(print_result, ra_service_snap_api_doc);
-		Print_clear(print_header);
-		Print_cstr(print_header, "HTTP/1.1 200 Ok\n");
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_clear(print_result);
+		print_cstr(print_result, ra_service_snap_api_doc);
+		print_clear(print_header);
+		print_cstr(print_header, "HTTP/1.1 200 Ok\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 		return;
 	}
 
 	if (last_statement.type_id != ra_roadsnap_compiler_types.config) {
-		Print_cstr(print_header, "HTTP/1.1 400 Compiled to Invalid Type\r\n\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Compiled to Invalid Type\r\n\r\n");
 		return;
 	}
 
@@ -3136,7 +3158,7 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 
 	u64 heap_size = config->k * sizeof(rg_HeapItem);
 	if (heap_size > BilinearAllocator_free_space(&buffer->allocator)) {
-		Print_cstr(print_header, "HTTP/1.1 400 Not Enough Memory for Heap\r\n\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Not Enough Memory for Heap\r\n\r\n");
 		return;
 	}
 
@@ -3179,7 +3201,7 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 	}
 
 
-	Print_clear(print_result);
+	print_clear(print_result);
 
 	ra_PrintStack print_stack;
 	switch (config->format) {
@@ -3264,7 +3286,7 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 					case ra_roadsnap_FORMAT_XML:
 						{
 							ra_PrintStack_push_formatted(&print_stack, "</input>", "<input order=\"%d\" lat=\"%.6f\" lon=\"%.6f\">", locate_index+1, latlon->lat, latlon->lon);
-							// Print_format(print_result, "\n<input order=\"%d\" lat=\"%.6f\" lon=\"%.6f\">", (locate_index+1), latlon->lat, latlon->lon);
+							// print_format(print_result, "\n<input order=\"%d\" lat=\"%.6f\" lon=\"%.6f\">", (locate_index+1), latlon->lat, latlon->lon);
 						} break;
 					case ra_roadsnap_FORMAT_JSON:
 						{
@@ -3824,102 +3846,102 @@ ra_solve_snap_query(rg_Graph *graph, MemoryBlock text, ra_QueryBuffers *buffer)
 				break;
 		}
 		// null terminate result
-		Print_char(print_stack.print, '\0');
+		print_char(print_stack.print, '\0');
 		// ------ print -----
 		goto ok;
 out_of_memory:
 		// header
-		Print_clear(print_result);
-		Print_cstr(print_result, "Out of Memory when trying to aggregate locates into objects\n");
-		Print_clear(print_header);
-		Print_cstr(print_header, "HTTP/1.1 400 Out of Memory\r\n");
-		Print_cstr(print_header, "Content-Type: text/plain\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_clear(print_result);
+		print_cstr(print_result, "Out of Memory when trying to aggregate locates into objects\n");
+		print_clear(print_header);
+		print_cstr(print_header, "HTTP/1.1 400 Out of Memory\r\n");
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 		return;
 ok:
 		// ------ print -----
-		Print_clear(print_header);
-		Print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
+		print_clear(print_header);
+		print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
 		switch (config->format) {
 			case ra_roadsnap_FORMAT_TEXT:
 				{
-					Print_cstr(print_header, "Content-Type: text/plain\r\n");
+					print_cstr(print_header, "Content-Type: text/plain\r\n");
 				} break;
 			case ra_roadsnap_FORMAT_XML:
 				{
-					Print_cstr(print_header, "Content-Type: text/xml\r\n");
+					print_cstr(print_header, "Content-Type: text/xml\r\n");
 				} break;
 			case ra_roadsnap_FORMAT_JSON:
 				{
-					Print_cstr(print_header, "Content-Type: application/json\r\n");
+					print_cstr(print_header, "Content-Type: application/json\r\n");
 				} break;
 			case ra_roadsnap_FORMAT_HTML:
 				{
-					Print_cstr(print_header, "Content-Type: text/html\r\n");
+					print_cstr(print_header, "Content-Type: text/html\r\n");
 				} break;
 		}
-		Print_cstr(print_header, "\r\n");
+		print_cstr(print_header, "\r\n");
 		// ------ print -----
 	} else if (config->format == ra_roadsnap_FORMAT_LEAFLET) {
 
-		Print_cstr(print_result,"<!DOCTYPE html>");
-		Print_cstr(print_result,"<html>");
-		Print_cstr(print_result,"<head>");
-		Print_cstr(print_result,"<title>Leaflet format</title>");
-		Print_cstr(print_result,"<meta charset=\"utf-8\" />");
-		Print_cstr(print_result,"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
-		Print_cstr(print_result,"<link rel=\"shortcut icon\" type=\"image/x-icon\" href=\"docs/images/favicon.ico\" />");
+		print_cstr(print_result,"<!DOCTYPE html>");
+		print_cstr(print_result,"<html>");
+		print_cstr(print_result,"<head>");
+		print_cstr(print_result,"<title>Leaflet format</title>");
+		print_cstr(print_result,"<meta charset=\"utf-8\" />");
+		print_cstr(print_result,"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
+		print_cstr(print_result,"<link rel=\"shortcut icon\" type=\"image/x-icon\" href=\"docs/images/favicon.ico\" />");
 		//
 		// old version of leaflet
-		// Print_cstr(print_result,"<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.0.3/dist/leaflet.css\" />");
-		// Print_cstr(print_result,"<script src=\"https://unpkg.com/leaflet@1.0.3/dist/leaflet.js\"></script>");
-		// 
-		Print_cstr(print_result,"<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.2.0/dist/leaflet.css\" />");
-		Print_cstr(print_result,"<script src=\"https://unpkg.com/leaflet@1.2.0/dist/leaflet.js\"></script>");
+		// print_cstr(print_result,"<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.0.3/dist/leaflet.css\" />");
+		// print_cstr(print_result,"<script src=\"https://unpkg.com/leaflet@1.0.3/dist/leaflet.js\"></script>");
+		//
+		print_cstr(print_result,"<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.2.0/dist/leaflet.css\" />");
+		print_cstr(print_result,"<script src=\"https://unpkg.com/leaflet@1.2.0/dist/leaflet.js\"></script>");
 		// allows us to get full page maps
-                Print_cstr(print_result,"<style>");
-                Print_cstr(print_result,"body {");
-                Print_cstr(print_result,"padding: 0;");
-                Print_cstr(print_result,"margin: 0;");
-                Print_cstr(print_result,"}");
-                Print_cstr(print_result,"html, body, #mapid {");
-                Print_cstr(print_result,"height: 100%;");
-                Print_cstr(print_result,"width: 100%;");
-                Print_cstr(print_result,"}");
-                Print_cstr(print_result,"</style>");
-		Print_cstr(print_result,"</head>");
+                print_cstr(print_result,"<style>");
+                print_cstr(print_result,"body {");
+                print_cstr(print_result,"padding: 0;");
+                print_cstr(print_result,"margin: 0;");
+                print_cstr(print_result,"}");
+                print_cstr(print_result,"html, body, #mapid {");
+                print_cstr(print_result,"height: 100%;");
+                print_cstr(print_result,"width: 100%;");
+                print_cstr(print_result,"}");
+                print_cstr(print_result,"</style>");
+		print_cstr(print_result,"</head>");
 		// body
-		Print_cstr(print_result,"<body>");
-                Print_cstr(print_result,"<style>");
-                Print_cstr(print_result,".custom-popup .leaflet-popup-tip,");
-                Print_cstr(print_result,".custom-popup .leaflet-popup-content-wrapper {");
-                Print_cstr(print_result,"width:600px;");
-                Print_cstr(print_result,"display:inline-block;");
-                Print_cstr(print_result,"white-space:nowrap;");
-                Print_cstr(print_result,"}");
-                Print_cstr(print_result,".leaflet-container {");
-                Print_cstr(print_result,"font-family: Courier, monospace; font-size: 12px;");
-                Print_cstr(print_result,"}");
-                Print_cstr(print_result,"</style>");
-		Print_cstr(print_result,"<div class=\"custom-popup \" id=\"mapid\"></div>");
-		Print_cstr(print_result,"<script>");
+		print_cstr(print_result,"<body>");
+                print_cstr(print_result,"<style>");
+                print_cstr(print_result,".custom-popup .leaflet-popup-tip,");
+                print_cstr(print_result,".custom-popup .leaflet-popup-content-wrapper {");
+                print_cstr(print_result,"width:600px;");
+                print_cstr(print_result,"display:inline-block;");
+                print_cstr(print_result,"white-space:nowrap;");
+                print_cstr(print_result,"}");
+                print_cstr(print_result,".leaflet-container {");
+                print_cstr(print_result,"font-family: Courier, monospace; font-size: 12px;");
+                print_cstr(print_result,"}");
+                print_cstr(print_result,"</style>");
+		print_cstr(print_result,"<div class=\"custom-popup \" id=\"mapid\"></div>");
+		print_cstr(print_result,"<script>");
                 // center map on first input lat,long
                 ra_roadsnap_LatLon *latlon = config->locates.locates;
-                Print_format(print_result,"var mymap = L.map('mapid').setView([%10.6f, %10.6f], 16);", latlon->lat, latlon->lon);
-                Print_cstr(print_result,"L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {");
-                Print_cstr(print_result,"maxZoom: 18,");
-                Print_cstr(print_result,"}).addTo(mymap);");
+                print_format(print_result,"var mymap = L.map('mapid').setView([%10.6f, %10.6f], 16);", latlon->lat, latlon->lon);
+                print_cstr(print_result,"L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {");
+                print_cstr(print_result,"maxZoom: 18,");
+                print_cstr(print_result,"}).addTo(mymap);");
 		// define red marker
-                Print_cstr(print_result,"var redIcon = new L.Icon({");
-                Print_cstr(print_result,"iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',");
-                Print_cstr(print_result,"shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',");
-                Print_cstr(print_result,"iconSize: [25, 41],");
-                Print_cstr(print_result,"iconAnchor: [12, 41],");
-                Print_cstr(print_result,"popupAnchor: [1, -34],");
-                Print_cstr(print_result,"shadowSize: [41, 41]");
-                Print_cstr(print_result,"});");
+                print_cstr(print_result,"var redIcon = new L.Icon({");
+                print_cstr(print_result,"iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',");
+                print_cstr(print_result,"shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',");
+                print_cstr(print_result,"iconSize: [25, 41],");
+                print_cstr(print_result,"iconAnchor: [12, 41],");
+                print_cstr(print_result,"popupAnchor: [1, -34],");
+                print_cstr(print_result,"shadowSize: [41, 41]");
+                print_cstr(print_result,"});");
 
 		// for each input location...
 		for (s32 locate_index=0;locate_index<config->locates.num_locates;++locate_index) {
@@ -3931,14 +3953,14 @@ ok:
                                                filter_callback, &filter_info);
                     rg_Heap_final_sort(&heap);
 		    // place red circle on input location with correct radius
-                    Print_format(print_result,"L.circle([%10.6f, %10.6f], %f, {", latlon->lat, latlon->lon, config->radius);
-                    Print_cstr(print_result,"color: 'red',");
-                    Print_cstr(print_result,"fillColor: '#f03',");
-                    Print_cstr(print_result,"fillOpacity: 0.15");
-                    Print_cstr(print_result,"}).addTo(mymap);");
+                    print_format(print_result,"L.circle([%10.6f, %10.6f], %f, {", latlon->lat, latlon->lon, config->radius);
+                    print_cstr(print_result,"color: 'red',");
+                    print_cstr(print_result,"fillColor: '#f03',");
+                    print_cstr(print_result,"fillOpacity: 0.15");
+                    print_cstr(print_result,"}).addTo(mymap);");
 		    // place transparent red marker in center of circle
-                    Print_format(print_result,"L.marker([%10.6f, %10.6f], {icon: redIcon,opacity:0.50}).addTo(mymap)", latlon->lat, latlon->lon);
-                    Print_format(print_result,".bindPopup(\"Input Locate %03d: %10.6f, %10.6f\");", (locate_index+1), latlon->lat, latlon->lon);
+                    print_format(print_result,"L.marker([%10.6f, %10.6f], {icon: redIcon,opacity:0.50}).addTo(mymap)", latlon->lat, latlon->lon);
+                    print_format(print_result,".bindPopup(\"Input Locate %03d: %10.6f, %10.6f\");", (locate_index+1), latlon->lat, latlon->lon);
 
                     rg_HeapItem *it  = heap.begin;
                     rg_HeapItem *end = heap.end;
@@ -3948,10 +3970,10 @@ ok:
                         ++index;
                         rg_Locate *node = (rg_Locate*) it->data;
 		 	// place blue marker with lat,long and distance from input location point
-                        Print_format(print_result,"L.marker([%10.6f, %10.6f]).addTo(mymap)", node->lat, node->lon);
-                        Print_cstr(print_result,".bindPopup(\""); // start of bindPopup
-                        Print_format(print_result, "[%03d] OSM node id: %llu<br>", index, node->id);
-                        Print_format(print_result, " dist: %8.2fm lat/lon: %10.6f, %10.6f<br>", -it->value, node->lat, node->lon);
+                        print_format(print_result,"L.marker([%10.6f, %10.6f]).addTo(mymap)", node->lat, node->lon);
+                        print_cstr(print_result,".bindPopup(\""); // start of bindPopup
+                        print_format(print_result, "[%03d] OSM node id: %llu<br>", index, node->id);
+                        print_format(print_result, " dist: %8.2fm lat/lon: %10.6f, %10.6f<br>", -it->value, node->lat, node->lon);
 
                         s32 way_index = -1;
                         for (s32 i=0;i<node->num_objects;++i) {
@@ -3967,35 +3989,35 @@ ok:
                                     continue;
                             }
 
-                            Print_format(print_result,"... [%03d] OSM highway id: %llu<br>",
+                            print_format(print_result,"... [%03d] OSM highway id: %llu<br>",
                                          way_index+1, way->id);
                             rg_Tag *tags = rg_Ptr_Tag_get(&way->tags.begin);
                             for (s32 i=0;i<way->tags.count;++i) {
                                 rg_String *key   = rg_Ptr_String_get(&tags[i].key);
                                 rg_String *value = rg_Ptr_String_get(&tags[i].value);
-                                Print_cstr(print_result, "...... ");
-                                Print_str(print_result,&key->begin, &key->begin + key->length);
-                                Print_align(print_result, 32, -1, '.');
-                                Print_str(print_result,&value->begin, &value->begin + value->length);
-                                Print_cstr(print_result,"<br>");
+                                print_cstr(print_result, "...... ");
+                                print_str(print_result,&key->begin, &key->begin + key->length);
+                                print_align(print_result, 32, -1, '.');
+                                print_str(print_result,&value->begin, &value->begin + value->length);
+                                print_cstr(print_result,"<br>");
                             }
                         }
 
-                        Print_cstr(print_result,"\");"); // end of bindPopup
+                        print_cstr(print_result,"\");"); // end of bindPopup
                         ++it;
                     }
 		}
-		Print_cstr(print_result,"</script>");
-		Print_cstr(print_result, "\n</body>");
-		Print_cstr(print_result, "\n</html>");
-		Print_char(print_result, '\0');
+		print_cstr(print_result,"</script>");
+		print_cstr(print_result, "\n</body>");
+		print_cstr(print_result, "\n</html>");
+		print_char(print_result, '\0');
 
 		// header
-		Print_clear(print_header);
-		Print_cstr(print_header, "HTTP/1.1 200 OK\n");
-		Print_cstr(print_header, "Content-Type: text/html\r\n");
-		Print_format(print_header, "Content-Length: %lld\r\n", Print_length(print_result));
-		Print_cstr(print_header, "\r\n");
+		print_clear(print_header);
+		print_cstr(print_header, "HTTP/1.1 200 OK\n");
+		print_cstr(print_header, "Content-Type: text/html\r\n");
+		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+		print_cstr(print_header, "\r\n");
 	}
 
 }
@@ -4112,7 +4134,11 @@ TODO
 
 END_DOC_STRING
 */
-internal
+
+// @todo replace with http2
+
+#if 0
+static
 http_REQUEST_LINE_CALLBACK(ra_service_snap_request_line_callback)
 {
 	u64 index = (u64) channel->user_data;
@@ -4121,14 +4147,14 @@ http_REQUEST_LINE_CALLBACK(ra_service_snap_request_line_callback)
 	Print *print_result = &buffer->print_result;
 	Print *print_header = &buffer->print_header;
 
-	Print_clear(print_header);
-	Print_clear(print_result);
+	print_clear(print_header);
+	print_clear(print_result);
 
 	pt_TCP_Socket *socket = buffer->socket;
 
 	/* check if method is GET */
 	if (pt_compare_memory_cstr(method_begin, method_end, "GET")) {
-		Print_cstr(print_header, "HTTP/1.1 400 Invalid Request (not GET)\r\n\r\n");
+		print_cstr(print_header, "HTTP/1.1 400 Invalid Request (not GET)\r\n\r\n");
 		platform.tcp_write(socket, print_header->begin, print_header->end - print_header->begin);
 		return;
 	}
@@ -4144,12 +4170,12 @@ http_REQUEST_LINE_CALLBACK(ra_service_snap_request_line_callback)
 	ra_solve_snap_query(ra_service_snap_info.graph, text, buffer);
 
 	/* write down result on tcp port */
-	platform.tcp_write(socket, print_header->begin, Print_length(print_header));
-	platform.tcp_write(socket, print_result->begin, Print_length(print_result));
+	platform.tcp_write(socket, print_header->begin, print_length(print_header));
+	platform.tcp_write(socket, print_result->begin, print_length(print_result));
 }
 
 
-internal
+static
 PLATFORM_TCP_CALLBACK(ra_service_snap_request_handler)
 {
 	u64 index = platform.get_thread_index();
@@ -4160,7 +4186,7 @@ PLATFORM_TCP_CALLBACK(ra_service_snap_request_handler)
 	/* push data into http channel */
 	http_Channel_receive_data(&ra_service_snap_info.buffers[index].http_channel, buffer, length);
 }
-
+#endif
 
 /*
 BEGIN_DOC_STRING ra_service_snap_doc
@@ -4180,15 +4206,17 @@ Start an http server based on a snap database.
 END_DOC_STRING
 */
 
-internal void
+static void
 ra_service_snap(Request *request)
 {
+	// @todo @uncomment
+#if 0
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, ra_service_snap_doc);
+		print_clear(print);
+		print_cstr(print, ra_service_snap_doc);
 		output_( print);
 		return;
 	}
@@ -4274,8 +4302,8 @@ ra_service_snap(Request *request)
 		char *print_header_begin = (char*) BasicAllocator_alloc(&basic_allocator, ra_service_snap_PRINT_HEADER_BUFFER_SIZE, 3);
 		char *print_header_end = print_header_begin + ra_service_snap_PRINT_HEADER_BUFFER_SIZE;
 
-		Print_init(&buffer->print_result, print_result_begin, print_result_end);
-		Print_init(&buffer->print_header, print_header_begin, print_header_end);
+		print_init(&buffer->print_result, print_result_begin, print_result_end);
+		print_init(&buffer->print_header, print_header_begin, print_header_end);
 
 		/* compiler linear allocator */
 		char *compiler_buffer_begin = (char*) BasicAllocator_alloc(&basic_allocator, ra_service_snap_COMPILER_BUFFER_SIZE, 3);
@@ -4311,12 +4339,12 @@ ra_service_snap(Request *request)
 	if (num_threads > 1) {
 		work_queue = platform.work_queue_create(num_threads);
 		// log message to differentiate from sequential server
-		Print_clear(print);
-		Print_format(print,"[ra_service_roadnsap_http_server] threads %llu\n", num_threads);
+		print_clear(print);
+		print_format(print,"[ra_service_roadnsap_http_server] threads %llu\n", num_threads);
 		output_( print);
 	} else {
-		Print_clear(print);
-		Print_format(print,"[ra_service_roadnsap_http_server] single threaded\n");
+		print_clear(print);
+		print_format(print,"[ra_service_roadnsap_http_server] single threaded\n");
 		output_( print);
 	}
 
@@ -4329,7 +4357,7 @@ ra_service_snap(Request *request)
 
 	platform.close_mmap_file(&mapped_file);
 	BasicAllocator_free_all(&basic_allocator);
-
+#endif
 }
 
 
@@ -4350,22 +4378,23 @@ Options:
 END_DOC_STRING
 */
 
-internal void
+static void
 ra_service_snap_cli(Request *request)
 {
+#if 0
 	Print      *print   = request->print;
 	op_Options *options = &request->options;
 
 	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
-		Print_clear(print);
-		Print_cstr(print, ra_service_snap_cli_doc);
+		print_clear(print);
+		print_cstr(print, ra_service_snap_cli_doc);
 		output_( print);
 		return;
 	}
 
 	if (op_Options_find_cstr(options,"-help-api")) {
-		Print_clear(print);
-		Print_cstr(print, ra_service_snap_api_doc);
+		print_clear(print);
+		print_cstr(print, ra_service_snap_api_doc);
 		output_( print);
 		return;
 	}
@@ -4420,8 +4449,8 @@ ra_service_snap_cli(Request *request)
 	char *print_header_begin = (char*) BasicAllocator_alloc(&basic_allocator, ra_service_snap_PRINT_HEADER_BUFFER_SIZE, 3);
 	char *print_header_end = print_header_begin + ra_service_snap_PRINT_HEADER_BUFFER_SIZE;
 
-	Print_init(&buffer->print_result, print_result_begin, print_result_end);
-	Print_init(&buffer->print_header, print_header_begin, print_header_end);
+	print_init(&buffer->print_result, print_result_begin, print_result_end);
+	print_init(&buffer->print_header, print_header_begin, print_header_end);
 	Print *print_result = &buffer->print_result;
 	Print *print_header = &buffer->print_header;
 
@@ -4453,6 +4482,6 @@ ra_service_snap_cli(Request *request)
 
 	platform.close_mmap_file(&mapped_file);
 	BasicAllocator_free_all(&basic_allocator);
-
+#endif
 }
 
