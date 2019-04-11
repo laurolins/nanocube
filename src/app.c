@@ -1765,96 +1765,91 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 
 	nv_ResultStream_end(&result_stream);
 
-// 	if (evaluated_statements == 0) {
-// 		print_cstr(print_result, nanocube_api_doc);
-// 		print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
-// 		print_cstr(print_header, "Content-Type: text/plain\r\n");
-// 		print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
-// 		print_cstr(print_header, "\r\n");
-// 	} else {
-		print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
-		app_nanocube_print_http_header_default_flags(print_header);
-		switch(format.format) {
-		case nv_FORMAT_JSON: {
-			print_cstr(print_header, "Content-Type: application/json\r\n");
-		} break;
-		case nv_FORMAT_TEXT: {
-			print_cstr(print_header, "Content-Type: text/plain\r\n");
-		} break;
-		case nv_FORMAT_BINARY: {
-			print_cstr(print_header, "Content-Type: application/octet-stream\r\n");
-		} break;
-		}
-		print_cstr(print_header, "Content-Length: ");
-		print_u64(print_header, print_length(print_result));
-		print_cstr(print_header, "\r\n\r\n");
-// 	}
+	print_cstr(print_header, "HTTP/1.1 200 OK\r\n");
+	app_nanocube_print_http_header_default_flags(print_header);
+	switch(format.format) {
+	case nv_FORMAT_JSON: {
+		print_cstr(print_header, "Content-Type: application/json\r\n");
+	} break;
+	case nv_FORMAT_TEXT: {
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+	} break;
+	case nv_FORMAT_BINARY: {
+		print_cstr(print_header, "Content-Type: application/octet-stream\r\n");
+	} break;
+	}
+	print_cstr(print_header, "Content-Length: ");
+	print_u64(print_header, print_length(print_result));
+	print_cstr(print_header, "\r\n\r\n");
 
 done:
 	return;
 	// pf_END_BLOCK();
-
-
 }
 
-
-#define http_CALLBACK(name) void name(http_Channel *channel, http_Piece piece)
-static
-http2_CALLBACK(http2_handler)
+PLATFORM_TCP_DATA_CALLBACK(serve_tcp_data_callback)
 {
-//      pt_TCP_Socket socket = ((pt_TCP_Socket*) channel->source)[0];
-// 
-//      u64 thread_index = platform.get_thread_index();
-//      Assert(thread_index < g_query_buffers_size);
-//      QueryBuffers *buffer = g_query_buffers[thread_index];
-// 
-//      print      *print_result = buffer->print_result;
-//      print      *print_header = buffer->print_header;
-//      print      *print        = buffer->print; // work print
-//      tok_Tokens *tokens       = buffer->tokens; // work print
+	// we don't need to know the query buffer here,
+	// but we need to set the socket as the user data
+	// of the http channel so it can respond
+	http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
+	channel->source = &socket;
+
+	// note that the same http state machine associated to the
+	// socket is used here from the start. this call will only
+	// trigger the http_handler when a new request is ready
+	http2_push_request_data(channel, buffer, length);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
-// #define http_REQUEST_LINE_CALLBACK(name)
-// 	void name(http_Channel *channel,
-//  	          http_Response *response,
-// 		  char *method_begin, char *method_end,
-// 		  char *request_target_begin, char *request_target_end,
-// 		  char *http_version_begin, char *http_version_end)
-//
-
-#if 0
-
 static
-http_REQUEST_LINE_CALLBACK(service_serve_http_request_line_callback)
+PLATFORM_TCP_EVENT_CALLBACK(serve_tcp_event_callback)
 {
-	serve_QueryBuffers *buffers = (serve_QueryBuffers*) channel->user_data;
+	ServeData *serve_data = context;
+	// log("EVENT thread %03d event: %d\n", (s32) index, (s32) event);
+	if (event == pt_TCP_EVENT_SERVER_SOCKET_INITIALIZATION) {
+		http2_Channel *channel = http2_list_reserve(serve_data->http_channels_list);
+		if (!channel) {
+			msg("could not reserve http channel\n");
+			exit(-1);
+		}
+		channel->user_data = context; // forward context as the channel's user data (ServeData in this case)
+		http2_reset(channel);
+		// couple the channel with the socket
+		platform.tcp_socket_set_custom_data(socket, channel);
+	} else if (event == pt_TCP_EVENT_SERVER_SOCKET_TERMINATION) {
+		http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
+		http2_list_free(serve_data->http_channels_list, channel);
+		channel->source = 0;
+		channel->user_data = 0;
+	} else {
+		// log("Unknown tcp event\n");
+		InvalidCodePath;
+	}
+}
 
-	print *print_result = &buffers->print_result;
-	print *print_header = &buffers->print_header;
+// #define http_CALLBACK(name) void name(http_Channel *channel, http_Piece piece)
+static
+http2_CALLBACK(http_handler)
+{
+	pt_TCP_Socket socket = ((pt_TCP_Socket*) channel->source)[0];
+
+	u64 thread_index = platform.get_thread_index();
+
+	ServeData *serve_data = channel->user_data;
+
+	Assert(serve_data);
+	Assert(thread_index < serve_data->num_buffers);
+
+	serve_QueryBuffers *buffers = serve_data->buffers + thread_index;
+
+	Print *print_result = &buffers->print_result;
+	Print *print_header = &buffers->print_header;
 	print_clear(print_result);
 	print_clear(print_header);
 
-	pt_TCP_Socket *socket = buffers->socket;
-
 	/* check if method is GET */
-	if (pt_compare_memory_cstr(method_begin, method_end, "GET")) {
+	if (!cstr_match(http2_get_string_(channel, channel->request.method, 0), "GET")) {
 		print_cstr(print_result, "Invalid Method\n");
-
 		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 		app_nanocube_print_http_header_default_flags(print_header);
 		print_cstr(print_header, "Content-Type: text/plain\r\n");
@@ -1862,12 +1857,15 @@ http_REQUEST_LINE_CALLBACK(service_serve_http_request_line_callback)
 		print_cstr(print_header, "\r\n");
 		goto done;
 	}
+
+	s32 target_length = 0;
+	char *target = http2_get_string_(channel, channel->request.target, &target_length);
+	char *target_end = target + target_length;
 
 	// http request-target starts with '/'
 	// consider the remaining of the request-target the query
-	if (request_target_begin == request_target_end || *request_target_begin != '/') {
+	if (target == target_end || *target != '/') {
 		print_cstr(print_result, "Expecting request_target to start with '/'\n");
-
 		print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
 		app_nanocube_print_http_header_default_flags(print_header);
 		print_cstr(print_header, "Content-Type: text/plain\r\n");
@@ -1876,13 +1874,13 @@ http_REQUEST_LINE_CALLBACK(service_serve_http_request_line_callback)
 		goto done;
 	}
 
-	MemoryBlock text = { .begin = request_target_begin + 1, .end = request_target_end };
-	text = ut_convert_uri_to_ascii(text);
+	MemoryBlock text = { .begin = target+1, .end = target_end };
+	text = cstr_convert_uri_to_ascii(text);
 
-	ServeData *serve_data = buffers->context;
-	if (serve_data) {
-		// sync mechanism:
-		// try incrementing serve_data->pause_and_active_count
+	//--------------------------------------------------------------------
+	// sync mechanism: try incrementing serve_data->pause_and_active_count
+	//---------------------------------------------------------------------
+	{
 		for (;;) {
 			u64 pause_and_active_count = serve_data->pause_and_active_count;
 			if ((pause_and_active_count & app_ServeData_PAUSE_MASK) != 0) {
@@ -1901,7 +1899,10 @@ http_REQUEST_LINE_CALLBACK(service_serve_http_request_line_callback)
 
 	app_nanocube_solve_query(text, buffers);
 
-	if (serve_data) {
+	//--------------------------------------------------------------------
+	// sync mechanism: try incrementing serve_data->pause_and_active_count
+	//---------------------------------------------------------------------
+	{
 		// regardless if it is paused or not, the active count is going to
 		// be decremented by one and a correct count of events is in play
 		pt_atomic_sub_u64(&serve_data->pause_and_active_count, 1);
@@ -1914,138 +1915,6 @@ done:
 
 }
 
-// #define http_HEADER_FIELD_CALLBACK(name)
-// 	void name(http_Channel *channel,
-// 	          http_Response *response,
-// 		  char *field_name_begin, char *field_name_end,
-// 		  char *field_value_begin, char *field_value_end)
-static
-http_HEADER_FIELD_CALLBACK(service_serve_http_header_field_callback)
-{
-	/* print request_target */
-// 	print *print = &g_request->print;
-// 	print_clear(print);
-// 	print_cstr(print, "[service_http_header_field_callback]: header field is key:'");
-// 	print_str(print, field_name_begin, field_name_end);
-// 	print_cstr(print, "', value:'");
-// 	print_str(print, field_value_begin, field_value_end);
-// 	print_cstr(print, "'\n");
-// 	output_(print);
-}
-
-#endif
-
-
-//
-// associate the right data to the tcp stuff
-//
-// PLATFORM_TCP_DATA_CALLBACK(tcp_data_callback)
-// {
-// 	// we don't need to know the query buffer here,
-// 	// but we need to set the socket as the user data
-// 	// of the http channel so it can respond
-// 	http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
-// 	channel->source = &socket;
-// 
-// 	// slow recording method, but ok for now
-// 	if (g_dump_raw) {
-// 		u64 thread_index = platform.get_thread_index();
-// 		Assert(thread_index < g_query_buffers_size);
-// 		print      *print        = g_query_buffers[thread_index]->print; // work print
-// 		print_clear(print);
-// 		print_cstr(print, g_dump_raw);
-// 		print_format(print , "-thr%02d-conn%04d-chan%02d", (s32) thread_index, (s32) socket.id, (s32) channel->id);
-// 		pt_File file = platform.open_file(print->begin, print->end, pt_FILE_APPEND);
-// 		if (file.open) {
-// 			platform.write_to_file(&file, (char*)buffer, (char*)buffer + length);
-// 		}
-// 		platform.close_file(&file);
-// 	}
-// 
-// 	http2_push_request_data(channel, buffer, length);
-// }
-// 
-
-
-
-
-
-
-
-
-
-
-
-
-// (pt_TCP_Socket *socket, char *begin, char *end)
-// typedef void PlatformTCPCallback(pt_TCP_Socket *socket, char *buffer, u64 length);
-// static
-// PLATFORM_TCP_CALLBACK(serve_request_handler)
-// {
-//
-// 	/* assuming single threaded model for the moment */
-// 	ServeData *serve_data = (ServeData*) socket->user_data;
-//
-// 	// TODO(llins): get thread index
-// 	u64 index = platform.get_thread_index();
-//
-// 	serve_QueryBuffers *buffers = serve_data->buffers + index;
-// 	buffers->socket = socket;
-//
-// 	// push data into http channel
-// 	http_Channel_receive_data(&buffers->http_channel, buffer, length);
-// }
-
-
-PLATFORM_TCP_DATA_CALLBACK(serve_tcp_data_callback)
-{
-	// we don't need to know the query buffer here,
-	// but we need to set the socket as the user data
-	// of the http channel so it can respond
-	http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
-	channel->source = &socket;
-
-	// slow recording method, but ok for now
-	// if (g_dump_raw) {
-	// 	u64 thread_index = platform.get_thread_index();
-	// 	Assert(thread_index < g_query_buffers_size);
-	// 	print      *print        = g_query_buffers[thread_index]->print; // work print
-	// 	print_clear(print);
-	// 	print_cstr(print, g_dump_raw);
-	// 	print_format(print , "-thr%02d-conn%04d-chan%02d", (s32) thread_index, (s32) socket.id, (s32) channel->id);
-	// 	pt_File file = platform.open_file(print->begin, print->end, pt_FILE_APPEND);
-	// 	if (file.open) {
-	// 		platform.write_to_file(&file, (char*)buffer, (char*)buffer + length);
-	// 	}
-	// 	platform.close_file(&file);
-	// }
-
-	http2_push_request_data(channel, buffer, length);
-}
-
-static
-PLATFORM_TCP_EVENT_CALLBACK(serve_tcp_event_callback)
-{
-	ServeData *serve_data = context;
-	// log("EVENT thread %03d event: %d\n", (s32) index, (s32) event);
-	if (event == pt_TCP_EVENT_SERVER_SOCKET_INITIALIZATION) {
-		http2_Channel *channel = http2_list_reserve(serve_data->http_channels_list);
-		if (!channel) {
-			msg("could not reserve http channel\n");
-			exit(-1);
-		}
-		http2_reset(channel);
-		// couple the channel with the socket
-		platform.tcp_socket_set_custom_data(socket, channel);
-	} else if (event == pt_TCP_EVENT_SERVER_SOCKET_TERMINATION) {
-		http2_Channel *channel = platform.tcp_socket_get_custom_data(socket);
-		http2_list_free(serve_data->http_channels_list, channel);
-		channel->source = 0;
-	} else {
-		// log("Unknown tcp event\n");
-		InvalidCodePath;
-	}
-}
 
 // #if 1
 // /* memory in megabytes for solving query */
@@ -2264,7 +2133,87 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 	return self->parse_result;
 }
 
+static void
+app_initialize_serve_data(ServeData *serve_data, app_NanocubesAndAliases *info, Request *request, s32 num_threads)
+{
+	a_Arena *arena = &info->arena;
 
+	serve_data[0] = (ServeData) {
+		.buffers = 0,
+		.request = request,
+		.num_buffers = num_threads,
+		.pause_and_active_count = 0,
+		.http_channels_list = 0
+	};
+
+	// initialize http channels list
+	// @todo check the notion of max connections vs. num_threads being use this server
+	s32 max_connections = Max(num_threads,1);
+	serve_data->http_channels_list = http2_list_new(arena, max_connections, app_service_serve_MEM_HTTP_CHANNEL, http_handler, 0);
+
+	nv_payload_services_init(&serve_data->payload_services);
+
+	serve_data->buffers = a_push(arena, num_threads * sizeof(serve_QueryBuffers), 8, 0);
+	if (!serve_data->buffers) {
+		msg("Couldn't reserve space for query buffers. Exiting.\n");
+		exit(-1);
+	}
+	for (u32 i=0;i<num_threads;++i) {
+		serve_QueryBuffers *buffer = serve_data->buffers + i;
+		buffer->context = serve_data;
+
+		// reserve heap memory for ast, types, and symbols
+		a_Block parse_and_compile_buffer   = a_push_block(arena, app_service_serve_MEM_COMPILER,            8, 0);
+		a_Block table_index_columns_buffer = a_push_block(arena, app_service_serve_MEM_TABLE_INDEX_COLUMNS, 8, 0);
+		a_Block table_value_columns_buffer = a_push_block(arena, app_service_serve_MEM_TABLE_VALUE_COLUMNS, 8, 0);
+		a_Block print_result_buffer        = a_push_block(arena, app_service_serve_MEM_PRINT_RESULT,        8, 0);
+		a_Block print_header_buffer        = a_push_block(arena, app_service_serve_MEM_PRINT_HEADER,        8, 0);
+		a_Block http_channel_buffer        = a_push_block(arena, app_service_serve_MEM_HTTP_CHANNEL,        8, 0);
+
+		/* initialize compiler allocator */
+		BilinearAllocator_init(&buffer->compiler_allocator,
+				       parse_and_compile_buffer.base,
+				       parse_and_compile_buffer.length);
+		/* init compiler */
+		np_Compiler_init(&buffer->compiler, &buffer->compiler_allocator);
+		nv_Compiler_init(&buffer->compiler);
+
+		/* init table_index_columns_allocator */
+		LinearAllocator_init(&buffer->table_index_columns_allocator,
+				     table_index_columns_buffer.base,
+				     table_index_columns_buffer.base,
+				     OffsetedPointer(table_index_columns_buffer.base,table_index_columns_buffer.length));
+
+		/* init table_value_columns_allocator*/
+		LinearAllocator_init(&buffer->table_value_columns_allocator,
+				     table_value_columns_buffer.base,
+				     table_value_columns_buffer.base,
+				     OffsetedPointer(table_value_columns_buffer.base,table_value_columns_buffer.length));
+
+		/* init print_result */
+		print_init(&buffer->print_result, print_result_buffer.base, print_result_buffer.length);
+
+		/* init print_result */
+		print_init(&buffer->print_header, print_header_buffer.base, print_header_buffer.length);
+
+		/* insert nanocube reference aliases into compiler global environment */
+		for (s32 j=0;j<info->num_nanocubes;++j) {
+			nv_Compiler_insert_nanocube(&buffer->compiler, info->nanocubes[j], info->aliases[j].begin, info->aliases[j].end);
+		}
+
+		/* initialize parser table */
+		np_initialize_tokenizer(&buffer->scanner, 0, 0);
+		np_Parser_init(&buffer->parser, &buffer->scanner, buffer->compiler.memory);
+
+		// mark checkpoint on compiler as the fresh
+		// starting point for new compilations
+		buffer->compiler_chkpt = np_Compiler_checkpoint(&buffer->compiler);
+
+		/* initialize socket */
+		buffer->socket = 0;
+		buffer->payload_services = &serve_data->payload_services;
+	}
+}
 
 /*
 BEGIN_DOC_STRING nanocube_executable_version_doc
@@ -2277,7 +2226,6 @@ BEGIN_DOC_STRING nanocube_api_version_doc
 0.4
 END_DOC_STRING
 */
-
 
 /*
 BEGIN_DOC_STRING nanocube_serve_doc
@@ -2425,112 +2373,26 @@ service_serve(Request *request)
 		num_threads = 1;
 	}
 
-	ServeData serve_data = {
-		.buffers = 0,
-		.request = request,
-		.num_buffers = num_threads,
-		.pause_and_active_count = 0,
-		.http_channels_list = 0
-	};
 
-	serve_data.buffers = a_push(&info.arena, num_threads * sizeof(serve_QueryBuffers), 8, 0);
-	if (!serve_data.buffers) {
-		msg("Couldn't reserve space for query buffers. Exiting.\n");
-		return;
-	}
-
-	// initialize http channels list
-	// @todo check the notion of max connections vs. num_threads being use this server
-	s32 max_connections = Max(num_threads,1);
-	serve_data.http_channels_list = http2_list_new(&info.arena, max_connections, app_service_serve_MEM_HTTP_CHANNEL, http2_handler, 0);
-
-	nv_payload_services_init(&serve_data.payload_services);
-	for (u32 i=0;i<num_threads;++i) {
-
-		serve_QueryBuffers *buffer = serve_data.buffers + i;
-		buffer->context = &serve_data;
-
-		// reserve heap memory for ast, types, and symbols
-		a_Block parse_and_compile_buffer   = a_push_block(&info.arena, app_service_serve_MEM_COMPILER,            8, 0);
-		a_Block table_index_columns_buffer = a_push_block(&info.arena, app_service_serve_MEM_TABLE_INDEX_COLUMNS, 8, 0);
-		a_Block table_value_columns_buffer = a_push_block(&info.arena, app_service_serve_MEM_TABLE_VALUE_COLUMNS, 8, 0);
-		a_Block print_result_buffer        = a_push_block(&info.arena, app_service_serve_MEM_PRINT_RESULT,        8, 0);
-		a_Block print_header_buffer        = a_push_block(&info.arena, app_service_serve_MEM_PRINT_HEADER,        8, 0);
-		a_Block http_channel_buffer        = a_push_block(&info.arena, app_service_serve_MEM_HTTP_CHANNEL,        8, 0);
-
-		/* initialize compiler allocator */
-		BilinearAllocator_init(&buffer->compiler_allocator,
-				       parse_and_compile_buffer.base,
-				       parse_and_compile_buffer.length);
-		/* init compiler */
-		np_Compiler_init(&buffer->compiler, &buffer->compiler_allocator);
-		nv_Compiler_init(&buffer->compiler);
-
-		/* init table_index_columns_allocator */
-		LinearAllocator_init(&buffer->table_index_columns_allocator,
-				     table_index_columns_buffer.base,
-				     table_index_columns_buffer.base,
-				     OffsetedPointer(table_index_columns_buffer.base,table_index_columns_buffer.length));
-
-		/* init table_value_columns_allocator*/
-		LinearAllocator_init(&buffer->table_value_columns_allocator,
-				     table_value_columns_buffer.base,
-				     table_value_columns_buffer.base,
-				     OffsetedPointer(table_value_columns_buffer.base,table_value_columns_buffer.length));
-
-		/* init print_result */
-		print_init(&buffer->print_result, print_result_buffer.base, print_result_buffer.length);
-
-		/* init print_result */
-		print_init(&buffer->print_header, print_header_buffer.base, print_header_buffer.length);
-
-		/* insert nanocube reference aliases into compiler global environment */
-		for (s32 j=0;j<info.num_nanocubes;++j) {
-			nv_Compiler_insert_nanocube(&buffer->compiler, info.nanocubes[j], info.aliases[j].begin, info.aliases[j].end);
-		}
-
-		/* initialize parser table */
-		np_initialize_tokenizer(&buffer->scanner, 0, 0);
-		np_Parser_init(&buffer->parser, &buffer->scanner, buffer->compiler.memory);
-
-		// mark checkpoint on compiler as the fresh
-		// starting point for new compilations
-		buffer->compiler_chkpt = np_Compiler_checkpoint(&buffer->compiler);
-
-		/* initialize http channel memory */
-		// http_Channel_init(&buffer->http_channel,
-		// 		  http_channel_buffer.begin,
-		// 		  http_channel_buffer.end,
-		// 		  service_serve_http_request_line_callback,
-		// 		  service_serve_http_header_field_callback,
-		// 		  buffer); /* user data will be the buffer*/
-
-		/* initialize socket */
-		buffer->socket = 0;
-		buffer->payload_services = &serve_data.payload_services;
-	}
+	ServeData serve_data = { 0 };
+	app_initialize_serve_data(&serve_data, &info, request, num_threads);
 
 	pt_TCP tcp = platform.tcp_create();
 	Assert(tcp.handle);
 
-	// #define PLATFORM_TCP_SERVE(name) void name(pt_TCP *tcp, s32 port, void *user_data, PlatformTCPCallback *callback, u32 *status)
 	//
-	// PLATFORM_TCP_LISTEN(name) void name(pt_TCP tcp,
-	//                                     s32 port,
-	//                                     u16 max_connections,
-	//                                     void *user_data,
-	//                                     PlatformTCPDataCallback *data_callback,
-	// 				       PlatformTCPEventCallback *event_callback,
-	// 				       void *context_event_callback,
-	// 				       pt_TCP_Feedback *feedback)
+	// @todo should we allow for more connections than threads?
+	// - consider the number of http state machines
+	// - yes, we can decouble the num_serving threads and num max connections
+	//   just make sure we can get an http state machine for each conneciton
 	//
-
+	s32 max_connections = num_threads;
 	pt_TCP_Feedback feedback;
 	platform.tcp_listen(tcp, port, max_connections,
-			    (void*) &serve_data,
+			    &serve_data,
 			    serve_tcp_data_callback,
 			    serve_tcp_event_callback,
-			    (void*) &serve_data,
+			    &serve_data,
 			    &feedback);
 
 	// should now be available
@@ -2546,6 +2408,12 @@ service_serve(Request *request)
 	print_format(print, "[serve] port: %d\n", port);
 	output_(print);
 
+	// if num_threads is one, than the same thread does everything
+	// process incoming packages using socket calls with timeouts
+	// handle the processing of requests, etc
+	// if num_threads is two or more, than one thread does the
+	// listening of socket request and dispatches work for the
+	// num_threads workers
 	pt_WorkQueue *work_queue = 0;
 	if (num_threads > 1) {
 		work_queue = platform.work_queue_create(num_threads);
@@ -4912,6 +4780,10 @@ csv_PULL_CALLBACK(service_create_pull_callback)
 	}
 }
 
+//
+// @todo cleanup this hard cap and make it adjustable to
+// large aliases if needed
+//
 #define service_create_PARSE_BUFFER_SIZE_MAPPING_CSV Megabytes(32)
 // #define service_create_SCAN_CSV_BUFFER Megabytes(4)
 #define service_create_MAX_FIELDS 1024
@@ -4959,9 +4831,6 @@ typedef struct {
 
 PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 {
-	// @todo @uncomment
-#if 0
-
 	service_create_ServeConfig *serve_config = (service_create_ServeConfig*) data;
 	Request *request = serve_config->request;
 	Print   *print   = request->print;
@@ -4969,81 +4838,34 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 
 	static char *alias_name = "x";
 
+	s32 num_threads = serve_config->num_threads;
+	s32 port = serve_config->port;
+
 	// @todo rename serve data to serve buffers
-	ServeData serve_data = {
-		.buffers = (serve_QueryBuffers*) BasicAllocator_alloc(&serve_info->blocks, serve_config->num_threads * sizeof(serve_QueryBuffers),3),
-		.request = serve_config->request,
-		.num_buffers = serve_config->num_threads,
-		.pause_and_active_count = 0
-	};
-	Assert(serve_data.buffers);
-	nv_payload_services_init(&serve_data.payload_services);
-
-	for (u32 i=0;i<serve_config->num_threads;++i) {
-
-		serve_QueryBuffers *buffer = serve_data.buffers + i;
-		buffer->context = &serve_data;
-
-		// reserve heap memory for ast, types, and symbols
-		MemoryBlock parse_and_compile_buffer   = BasicAllocator_alloc_memblock(&serve_info->blocks, app_service_serve_MEM_COMPILER,            3);
-		MemoryBlock table_index_columns_buffer = BasicAllocator_alloc_memblock(&serve_info->blocks, app_service_serve_MEM_TABLE_INDEX_COLUMNS, 3);
-		MemoryBlock table_value_columns_buffer = BasicAllocator_alloc_memblock(&serve_info->blocks, app_service_serve_MEM_TABLE_VALUE_COLUMNS, 3);
-		MemoryBlock print_result_buffer        = BasicAllocator_alloc_memblock(&serve_info->blocks, app_service_serve_MEM_PRINT_RESULT,        3);
-		MemoryBlock print_header_buffer        = BasicAllocator_alloc_memblock(&serve_info->blocks, app_service_serve_MEM_PRINT_HEADER,        3);
-		MemoryBlock http_channel_buffer        = BasicAllocator_alloc_memblock(&serve_info->blocks, app_service_serve_MEM_HTTP_CHANNEL,        3);
-
-		/* initialize compiler allocator */
-		BilinearAllocator_init(&buffer->compiler_allocator, parse_and_compile_buffer.begin, parse_and_compile_buffer.end);
-
-		/* init compiler */
-		np_Compiler_init(&buffer->compiler, &buffer->compiler_allocator);
-		nv_Compiler_init(&buffer->compiler);
-
-		/* init table_index_columns_allocator */
-		LinearAllocator_init(&buffer->table_index_columns_allocator, table_index_columns_buffer.begin, table_index_columns_buffer.begin, table_index_columns_buffer.end);
-
-		/* init table_value_columns_allocator*/
-		LinearAllocator_init(&buffer->table_value_columns_allocator, table_value_columns_buffer.begin, table_value_columns_buffer.begin, table_value_columns_buffer.end);
-
-		/* init print_result */
-		print_init(&buffer->print_result, print_result_buffer.begin, print_result_buffer.end);
-
-		/* init print_result */
-		print_init(&buffer->print_header, print_header_buffer.begin, print_header_buffer.end);
-
-		/* insert symbol into compiler pointing to a measure linked to the current nanocube */
-		Assert(serve_info->num_nanocubes == 1);
-		nv_Compiler_insert_nanocube(&buffer->compiler, serve_info->nanocubes[0], serve_info->aliases[0].begin, serve_info->aliases[0].end);
-
-		/* initialize parser table */
-		np_initialize_tokenizer(&buffer->scanner, 0, 0);
-		np_Parser_init(&buffer->parser, &buffer->scanner, buffer->compiler.memory);
-
-		// mark checkpoint on compiler as the fresh
-		// starting point for new compilations
-		buffer->compiler_chkpt = np_Compiler_checkpoint(&buffer->compiler);
-
-		/* initialize http channel memory */
-		http_Channel_init(&buffer->http_channel, http_channel_buffer.begin, http_channel_buffer.end,
-				  service_serve_http_request_line_callback, service_serve_http_header_field_callback,
-				  buffer); /* user data will be the buffer*/
-
-		/* initialize socket */
-		buffer->socket = 0;
-		buffer->payload_services = &serve_data.payload_services;
-	}
+	ServeData serve_data = { 0 };
+	app_initialize_serve_data(&serve_data, serve_info, request, num_threads);
 
 	pt_TCP tcp = platform.tcp_create();
 	Assert(tcp.handle);
 
-	// #define PLATFORM_TCP_SERVE(name) void name(pt_TCP *tcp, s32 port, void *user_data, PlatformTCPCallback *callback, u32 *status)
+	//
+	// @todo should we allow for more connections than threads?
+	// - consider the number of http state machines
+	//
+	s32 max_connections = num_threads;
 	pt_TCP_Feedback feedback;
-	platform.tcp_serve(tcp, serve_config->port, (void*) &serve_data, serve_request_handler, &feedback);
+	platform.tcp_listen(tcp, port, max_connections,
+			    &serve_data,
+			    serve_tcp_data_callback,
+			    serve_tcp_event_callback,
+			    &serve_data,
+			    &feedback);
 
 	// should now be available
 	platform.tcp_process_events(tcp, 0);
 
-	if (feedback.status != pt_TCP_SOCKET_OK) {
+	if (feedback.status != pt_TCP_FEEDBACK_OK) {
+		msg("Could not start tcp port %d for listening\n", port);
 		pt_memory_barrier();
 		pt_atomic_exchange_u32(&serve_config->status, service_create_serve_FAILED);
 		return;
@@ -5209,8 +5031,6 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 
 	pt_memory_barrier();
 	pt_atomic_exchange_u32(&serve_config->status, service_create_serve_DONE);
-#endif
-
 }
 
 #endif
@@ -5484,7 +5304,7 @@ static void
 service_create()
 {
 	// @todo @uncomment
-#if 0
+#if 1
 	Print      *print   = g_request->print;
 	op_Options *options = &g_request->options;
 
@@ -5726,8 +5546,6 @@ service_create()
 			return;
 		}
 	}
-	pt_Memory mapping_text;
-	mapping_text.handle = 0;
 
 	/* .csv header comes from an external file */
 	static const u8 HEADER_NONE = 0;
@@ -5753,11 +5571,11 @@ service_create()
 		} else {
 			s32 len = MemoryBlock_length(&st);
 			if (len == 1) sep=st.begin[0];
-			else if (pt_compare_memory_cstr(st.begin, st.end, "\\t")) {
+			else if (cstr_compare_memory_cstr(st.begin, st.end, "\\t")) {
 				sep='\t';
 			} else if (len == 4 && st.begin[0]=='0' && st.begin[1]=='x') {
-			       s32 x0 = ut_hex_digit(st.begin[3]);
-			       s32 x1 = ut_hex_digit(st.begin[2]);
+			       s32 x0 = cstr_hex_digit(st.begin[3]);
+			       s32 x1 = cstr_hex_digit(st.begin[2]);
 			       if (x0 >= 0 && x1 >= 0) {
 				       sep = x1*16+x0;
 			       } else {
@@ -5771,21 +5589,17 @@ service_create()
 		}
 	}
 
-	/* try loading the whole file into a buffer */
-	{
-		pt_File pfh = platform.open_read_file(mapping_filename.begin, mapping_filename.end);
-		if (!pfh.open) {
-			log_cstr_("[csv] could not open mapping filename.\n");
-			return;
-		}
-
-		if (pfh.size==0) {
-			log_cstr_("[csv] file is empty.\n");
-			return;
-		}
-		mapping_text = platform.allocate_memory(pfh.size,0,0);
-		platform.read_next_file_chunk(&pfh, mapping_text.memblock.begin, mapping_text.memblock.end);
-		platform.close_file(&pfh);
+	// memory map the mapping text
+	MemoryBlock mapping_text = { 0 };
+	pt_MappedFile mapping_mapped_file = platform.open_mmap_file(mapping_filename.begin, mapping_filename.end, 1, 0);
+	if (!mapping_mapped_file.mapped) {
+		msg("could not read mapping file\n");
+		exit(-1); // fatal error
+	} else {
+		mapping_text = (MemoryBlock) {
+			.begin = mapping_mapped_file.begin,
+			.end = OffsetedPointer(mapping_mapped_file.begin, mapping_mapped_file.size)
+		};
 	}
 
 	// initialize an empty csv to schema mapping spec
@@ -5793,9 +5607,12 @@ service_create()
 	cm_Spec_init(&spec);
 
 	/* this memory will hold the cm_Dimension objects */
-	pt_Memory csv_mapping_parse_and_compile_buffer = platform.allocate_memory(service_create_PARSE_BUFFER_SIZE_MAPPING_CSV, 0, 0);
+	pt_Memory *csv_mapping_parse_and_compile_buffer = platform.allocate_memory(service_create_PARSE_BUFFER_SIZE_MAPPING_CSV, 0);
 	BilinearAllocator csv_mapping_parse_and_compile_allocator;
-	BilinearAllocator_init(&csv_mapping_parse_and_compile_allocator, csv_mapping_parse_and_compile_buffer.memblock.begin, csv_mapping_parse_and_compile_buffer.memblock.end);
+	BilinearAllocator_init(&csv_mapping_parse_and_compile_allocator,
+			       OffsetedPointer(csv_mapping_parse_and_compile_buffer->base,0),
+			       csv_mapping_parse_and_compile_buffer->size);
+
 	np_Compiler csv_mapping_compiler;
 	np_Compiler_init(&csv_mapping_compiler, &csv_mapping_parse_and_compile_allocator);
 	cm_init_compiler_csv_mapping_infrastructure(&csv_mapping_compiler);
@@ -5803,7 +5620,7 @@ service_create()
 	np_Parser csv_mapping_parser;
 	/* same AST parser as the query language of nanocube */
 	nt_Tokenizer tok;
-	np_initialize_tokenizer(&tok, mapping_text.memblock.begin, mapping_text.memblock.end);
+	np_initialize_tokenizer(&tok, mapping_text.begin, mapping_text.end);
 	np_Parser_init(&csv_mapping_parser, &tok, &csv_mapping_parse_and_compile_allocator);
 
 	/* dummy loop just to goto release resources bt using break */
@@ -5817,7 +5634,7 @@ service_create()
 		}
 
 		// compile
-		np_Compiler_reduce(&csv_mapping_compiler, csv_mapping_parser.ast_first, mapping_text.memblock.begin, mapping_text.memblock.end);
+		np_Compiler_reduce(&csv_mapping_compiler, csv_mapping_parser.ast_first, mapping_text.begin, mapping_text.end);
 		if (!csv_mapping_compiler.reduce.success) {
 			log_(&csv_mapping_compiler.reduce.log);
 			log_cstr_("[csv] compile error.\n");
@@ -5832,7 +5649,6 @@ service_create()
 				cm_Dimension *dim = (cm_Dimension*) (it->data.value);
 				cm_Spec_insert_dimension(&spec, dim);
 
-
 			} // found a dimension
 			it = it->next;
 		}
@@ -5846,19 +5662,18 @@ service_create()
 		}
 
 		// if (spec is valid) -> start reading the input csv file
-		pt_Memory ftok_buffer_memory = platform.allocate_memory(Kilobytes(64), 12, 0);
-
+		// @test
+		// pt_Memory *ftok_buffer_memory = platform.allocate_memory(Kilobytes(64), 0);
 
 		pt_File csv_file;
 		if (!use_stdin) {
-			csv_file = platform.open_read_file(csv_filename.begin, csv_filename.end);
+			csv_file = platform.open_file(csv_filename.begin, csv_filename.end, pt_FILE_READ);
 			if (!csv_file.open) {
 				service_create_usage("couldn't open csv file.");
 				return;
 			}
 		}
 		pt_File *csv_file_ptr = use_stdin ? g_request->pfh_stdin : &csv_file;
-
 
 		csv_Stream       csv_stream;
 		/* every record extracted from the .csv file has its fields pointed to by this array */
@@ -5869,24 +5684,24 @@ service_create()
 		MemoryBlock      csv_header_fields_storage[service_create_MAX_FIELDS];
 		ArrayMemoryBlock csv_header_fields;
 		ArrayMemoryBlock_init(&csv_header_fields, csv_header_fields_storage, csv_header_fields_storage + service_create_MAX_FIELDS);
-		pt_Memory csv_buffer = platform.allocate_memory(scan_buffer_size,3,0);
+		pt_Memory *csv_buffer = platform.allocate_memory(scan_buffer_size,0);
 
 		/* reader header file either from csv file or from a header file */
 		if (header != HEADER_NONE) {
 			pt_File csv_header_file;
 			if (header == HEADER_EXTERNAL) {
-				csv_header_file = platform.open_read_file(external_header_filename.begin, external_header_filename.end);
+				csv_header_file = platform.open_file(external_header_filename.begin, external_header_filename.end, pt_FILE_READ);
 				if (!csv_header_file.open) {
 					service_create_usage("couldn't open external header file;");
 					return;
 				}
 				csv_Stream_init(&csv_stream, sep,
-						csv_buffer.memblock.begin, csv_buffer.memblock.end - csv_buffer.memblock.begin,
+						OffsetedPointer(csv_buffer->base,0), csv_buffer->size,
 						service_create_MAX_FIELDS, service_create_pull_callback, &csv_header_file);
 			} else if (header == HEADER_INTERNAL) {
 				/* initialize csv_stream to csv_file */
 				csv_Stream_init(&csv_stream, sep,
-						csv_buffer.memblock.begin, csv_buffer.memblock.end - csv_buffer.memblock.begin,
+						OffsetedPointer(csv_buffer->base,0), csv_buffer->size,
 						service_create_MAX_FIELDS, service_create_pull_callback, csv_file_ptr);
 			}
 
@@ -5903,8 +5718,10 @@ service_create()
 					return;
 				}
 
-				print header_print;
-				print_init(&header_print, csv_header_content_buffer, csv_header_content_buffer + sizeof(csv_header_content_buffer));
+				Print header_print;
+				print_init(&header_print,
+					   csv_header_content_buffer,
+					   sizeof(csv_header_content_buffer));
 				for (u32 i=0;i<csv_fields_count;++i) {
 					char *field_begin = header_print.end;
 					// TODO(llins): maybe it is the right time to un-2dqute or un-escape
@@ -5929,18 +5746,18 @@ service_create()
 
 				/* initialize csv_stream to csv_file */
 				csv_Stream_init(&csv_stream, sep,
-						csv_buffer.memblock.begin, csv_buffer.memblock.end - csv_buffer.memblock.begin,
+						OffsetedPointer(csv_buffer->base,0), csv_buffer->size,
 						service_create_MAX_FIELDS, service_create_pull_callback, csv_file_ptr);
 			}
 		} else {
 			/* initialize csv_stream to csv_file */
 			csv_Stream_init(&csv_stream, sep,
-					csv_buffer.memblock.begin, csv_buffer.memblock.end - csv_buffer.memblock.begin,
+					OffsetedPointer(csv_buffer->base,0), csv_buffer->size,
 					service_create_MAX_FIELDS, service_create_pull_callback, csv_file_ptr);
 		}
 
 #define service_create_which_field(name) \
-		pt_MemoryBlock_find_first_match(csv_header_fields.begin, csv_header_fields.end, name.begin, name.end);
+		cstr_find_first_match(csv_header_fields.begin, csv_header_fields.end, name.begin, name.end);
 
 		if (qpart.active) {
 			s64 idx;
@@ -6030,7 +5847,7 @@ service_create()
 			while (it_cols != end) {
 				if (it_cols->is_index) {
 					u32 idx = it_cols->index;
-					max_idx = MAX(max_idx,idx);
+					max_idx = Max(max_idx,idx);
 				} else if (it_cols->is_name) {
 					s32 idx = service_create_which_field(it_cols->name);
 					if (idx < 0) {
@@ -6040,7 +5857,7 @@ service_create()
 					} else {
 						it_cols->index = (b8) idx;
 						it_cols->is_index = 1;
-						max_idx = MAX(max_idx,idx);
+						max_idx = Max(max_idx,idx);
 					}
 				}
 				++it_cols;
@@ -6078,9 +5895,10 @@ service_create()
 		char *data_memory_begin = mmap_output.begin;
 		char *data_memory_end   = mmap_output.begin + mmap_output.size;
 #else
-		pt_Memory data_memory = platform.allocate_memory(size, 12, 0);
-		char *data_memory_begin = data_memory.memblock.begin;
-		char *data_memory_end   = data_memory.memblock.end;
+		pt_Memory *data_memory = platform.allocate_memory(size, 0);
+		Assert(data_memory);
+		char *data_memory_begin = OffsetedPointer(data_memory->base,0);
+		char *data_memory_end   = OffsetedPointer(data_memory->base,data_memory->size);
 		// pt_fill(data_memory_begin, data_memory_end, 0);
 		u64 part_number         = 1;
 #endif
@@ -6088,7 +5906,7 @@ service_create()
 		al_Allocator *allocator = service_create_prepare_allocator_and_nanocube(&spec, data_memory_begin, data_memory_end, 0);
 		nv_Nanocube  *nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
 
-		pt_Memory insert_buffer_memory = platform.allocate_memory(sizeof(nx_Threads) + Megabytes(1), 12, 0);
+		pt_Memory *insert_buffer_memory = platform.allocate_memory(sizeof(nx_Threads) + Megabytes(1), 0);
 		// ~4MB of buffer for insertion:  sizeof(Threads): 4259856
 
 		// reserve space for the sequence of paths
@@ -6332,12 +6150,12 @@ service_create()
 				//     for now assume we can fit everything in 16M
 				// @leak
 				//
-				pt_Memory dim_memory = platform.allocate_memory(mem_labels,3,0);
+				pt_Memory *dim_memory = platform.allocate_memory(mem_labels,0);
 
-				set_Set *set = (set_Set*) dim_memory.memblock.begin;
-				u32 set_offset = RALIGN(sizeof(set_Set),8);
-				char *set_buffer_begin = dim_memory.memblock.begin + set_offset;
-				char *set_buffer_end   = dim_memory.memblock.end;
+				set_Set *set = OffsetedPointer(dim_memory->base,0);
+				u32 set_offset = RAlign(sizeof(set_Set),8);
+				char *set_buffer_begin = OffsetedPointer(dim_memory->base,set_offset);
+				char *set_buffer_end   = OffsetedPointer(dim_memory->base,dim_memory->size);
 				set_Set_init(set, set_buffer_begin, set_buffer_end - set_buffer_begin);
 
 				// allocate memory and set
@@ -6377,7 +6195,7 @@ service_create()
 					// TODO(llins): make it more robust to support \r\n
 					char *end_of_first_line = pt_find_char(it, end, '\n');
 
-					b8 mode_normal = pt_compare_memory_cstr(it, end_of_first_line, "@hierarchy") != 0;
+					b8 mode_normal = cstr_compare_memory_cstr(it, end_of_first_line, "@hierarchy") != 0;
 
 					// dim info
 					u8 bits   = dim->mapping_spec.index_mapping.categorical.bits;
@@ -6867,7 +6685,11 @@ service_create()
 				goto finalize_insertion;
 			}
 
-			nx_NanocubeIndex_insert(&nanocube->index, address, payload, nanocube, insert_buffer_memory.memblock);
+			MemoryBlock insert_buffer_memblock = (MemoryBlock) {
+				.begin=OffsetedPointer(insert_buffer_memory->base,0),
+				.end=OffsetedPointer(insert_buffer_memory->base,insert_buffer_memory->size)
+			};
+			nx_NanocubeIndex_insert(&nanocube->index, address, payload, nanocube, insert_buffer_memblock);
 			++records_inserted;
 
 
@@ -6934,25 +6756,42 @@ service_create()
 				print_format(print, "Time to resize in seconds: %llu\n", time_to_resize);
 				log_(print);
 #else
-				/* try doubling the arena size */
-				if (2*size <= max_file_size && platform.resize_memory(&data_memory, 2*size, 12)) {
-					size = 2*size;
+				s32 save_to_file_and_reset = 1;
 
-					print_clear(print);
-					print_format(print,"[create] resizing arena of part %llu to %llu bytes\n", part_number, size);
-					log_(print);
+				// is index still small enough that we don't need to dump it
+				// into a file and restart creating a new one
+				if (2*size <= max_file_size) {
+					save_to_file_and_reset = 0;
+					pt_Memory *new_data_memory = platform.allocate_memory(2*size,0);
+					if (!new_data_memory) {
+						msg("Couldn't allocate more memory needed for the index. Will try to dump current index to disk and reset.\n");
+						save_to_file_and_reset = 1;
+					} else {
+						void *new_data_memory_begin = OffsetedPointer(new_data_memory->base,0);
+						void *new_data_memory_end   = OffsetedPointer(new_data_memory->base,new_data_memory->size);
+						platform.copy_memory(new_data_memory_begin, data_memory_begin, size);
+						platform.free_memory(data_memory);
 
-					data_memory_begin = data_memory.memblock.begin;
-					data_memory_end   = data_memory.memblock.end;
-					allocator = (al_Allocator*) data_memory_begin;
-					if (!al_Allocator_resize(allocator, size)) {
+						size = 2*size;
+
 						print_clear(print);
-						log_cstr_("[create] couldn't resize allocator size (strange)\n");
-						return;
+						print_format(print,"[create] resizing arena of part %llu to %llu bytes\n", part_number, size);
+						log_(print);
+
+						data_memory = new_data_memory;
+						data_memory_begin = new_data_memory_begin;
+						data_memory_end   = new_data_memory_end;
+						allocator = (al_Allocator*) data_memory_begin;
+						if (!al_Allocator_resize(allocator, size)) {
+							print_clear(print);
+							log_cstr_("[create] couldn't resize allocator size (strange)\n");
+							exit(-1);
+						}
+						nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
 					}
-					nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
-					/* ready to continue inserting records into this chunk */
-				} else {
+				}
+
+				if (save_to_file_and_reset) {
 					/* save current arena and create a smaller one from scratch for the new records */
 
 					/* fit memory to used pages to make arena more consistent */
@@ -6969,15 +6808,15 @@ service_create()
 					print_format(print,"[create] saved part %llu size %llu bytes\n", part_number, used_memory);
 					log_(print);
 
-					platform.free_memory(&data_memory);
+					platform.free_memory(data_memory);
 
 					++part_number;
 					size = size0;
 
 					/* TODO(llins): fix the platform API. allocate_memory can fail and that should be handled */
-					data_memory = platform.allocate_memory(size, 12, 0);
-					data_memory_begin = data_memory.memblock.begin;
-					data_memory_end   = data_memory.memblock.end;
+					data_memory = platform.allocate_memory(size, 0);
+					data_memory_begin = OffsetedPointer(data_memory->base,0);
+					data_memory_end   = OffsetedPointer(data_memory->base,data_memory->size);
 					// pt_fill(data_memory_begin, data_memory_end, 0);
 
 					print_clear(print);
@@ -7001,9 +6840,7 @@ service_create()
 					allocator = service_create_prepare_allocator_and_nanocube(&spec, data_memory_begin, data_memory_end, previous_part_nanocube);
 					nanocube  = (nv_Nanocube*) al_Allocator_get_root(allocator);
 
-
 					platform.close_mmap_file(&mapped_file);
-
 				}
 				/* end of doubling arena size or saving file and starting a new part */
 #endif
@@ -7057,7 +6894,7 @@ finalize_insertion:
 		if (!use_stdin) {
 			platform.close_file(&csv_file);
 		}
-		platform.free_memory(&csv_buffer);
+		platform.free_memory(csv_buffer);
 
 		// write to file
 
@@ -7100,7 +6937,7 @@ finalize_insertion:
 		// to be served and wait for the server to finish before
 		// exiting this program
 		if (serve_port == 0) {
-			platform.free_memory(&data_memory);
+			platform.free_memory(data_memory);
 		} else {
 			Assert(serve_work_queue);
 			serve_config.refresh_data = allocator;
@@ -7115,7 +6952,7 @@ finalize_insertion:
 			platform.work_queue_destroy(serve_work_queue);
 
 			// free memory on exit
-			platform.free_memory(&data_memory);
+			platform.free_memory(data_memory);
 		}
 #endif
 
@@ -7130,8 +6967,8 @@ finalize_insertion:
 	// as well as specify the nanocube vector schema.
 	//
 
-	platform.free_memory(&mapping_text);
-	platform.free_memory(&csv_mapping_parse_and_compile_buffer);
+	// platform.free_memory(&mapping_text);
+	platform.free_memory(csv_mapping_parse_and_compile_buffer);
 #endif
 }
 
@@ -7732,17 +7569,17 @@ service_polycover(Request *request)
 		 50.0f,-100.0f
 	};
 	polycover_Shape shape = polycover->new_shape(points, 4, 8);
-	pt_Memory memory = platform.allocate_memory(Megabytes(4),12,0);
+	pt_Memory *memory = platform.allocate_memory_raw(Megabytes(4),0);
 	s32 size = 0;
-	s32 ok = polycover->get_code(shape,memory.memblock.begin,memory.memblock.end,&size);
+	s32 ok = polycover->get_code(shape,OffsetedPointer(memory->base,0),OffsetedPointer(memory->base,memory->size),&size);
 	if (!ok) {
 		print_cstr(print, "not enough memory to get the code of the shape\n");
 	} else {
-		print_cstr(print, memory.memblock.begin);
+		print_cstr(print, OffsetedPointer(memory->base,0));
 		print_cstr(print, "\n");
 	}
 	output_(print);
-	platform.free_memory(&memory);
+	platform.free_memory(memory);
 }
 
 #else
