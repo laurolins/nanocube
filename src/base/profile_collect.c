@@ -47,7 +47,7 @@ typedef struct {
 	pfc_Block *capacity;
 } pfc_BlockSet;
 
-internal void
+static void
 pfc_BlockSet_init(pfc_BlockSet *self, pfc_Block *begin, pfc_Block *capacity)
 {
 	self->begin = begin;
@@ -55,7 +55,7 @@ pfc_BlockSet_init(pfc_BlockSet *self, pfc_Block *begin, pfc_Block *capacity)
 	self->capacity = capacity;
 }
 
-internal void
+static void
 pfc_Block_init(pfc_Block *self, char *id)
 {
 	self->id = id;
@@ -64,7 +64,7 @@ pfc_Block_init(pfc_Block *self, char *id)
 	self->stats_capacity = 0;
 }
 
-internal void
+static void
 pfc_Block_initialize_stats(pfc_Block *self, pfc_Stats *stats, u32 count)
 {
 	Assert(self->stats_capacity == 0);
@@ -87,7 +87,7 @@ pfc_Block_initialize_stats(pfc_Block *self, pfc_Stats *stats, u32 count)
 // return 1 when index is within range
 // 0 when finished. After a return 0 next
 // will cycle again
-internal b8
+static b8
 pfc_Block_next_stats(pfc_Block *self)
 {
 	if (self->stats_index == self->stats_capacity) {
@@ -98,7 +98,7 @@ pfc_Block_next_stats(pfc_Block *self)
 	return self->stats_index < self->stats_capacity;
 }
 
-internal void
+static void
 pfc_Stats_insert(pfc_Stats *self, u64 cycles)
 {
 	Assert(self->recursion_level > 0);
@@ -110,7 +110,7 @@ pfc_Stats_insert(pfc_Stats *self, u64 cycles)
 	self->max_cycles[i] = Max(self->max_cycles[i], cycles);
 }
 
-internal void
+static void
 pfc_Block_begin(pfc_Block *self)
 {
 	Assert(self->stats_index < self->stats_capacity);
@@ -119,7 +119,7 @@ pfc_Block_begin(pfc_Block *self)
 	++self->global_stats.recursion_level;
 }
 
-internal void
+static void
 pfc_Block_end(pfc_Block *self, u64 cycles)
 {
 	pfc_Stats *stats = self->stats + self->stats_index;
@@ -129,7 +129,7 @@ pfc_Block_end(pfc_Block *self, u64 cycles)
 	--self->global_stats.recursion_level;
 }
 
-internal s64
+static s64
 pfc_BlockSet_indexof(pfc_BlockSet *self, char *id)
 {
 	s64 left  = 0;
@@ -177,7 +177,7 @@ pfc_BlockSet_indexof(pfc_BlockSet *self, char *id)
 // TODO(llins) allow for sorting using hits, avg.cy or min.cy also
 // for now only cy is used
 //
-internal sort_Entry*
+static sort_Entry*
 pfc_BlockSet_sort(pfc_BlockSet *self, BilinearAllocator *memory)
 {
 	s32 n = (s32) (self->end - self->begin);
@@ -193,7 +193,7 @@ pfc_BlockSet_sort(pfc_BlockSet *self, BilinearAllocator *memory)
 	return perm;
 }
 
-internal pfc_Block*
+static pfc_Block*
 pfc_BlockSet_find(pfc_BlockSet *self, char *id)
 {
 	s64 index = pfc_BlockSet_indexof(self, id);
@@ -204,7 +204,7 @@ pfc_BlockSet_find(pfc_BlockSet *self, char *id)
 	}
 }
 
-internal u64
+static u64
 pfc_BlockSet_fit(pfc_BlockSet *self)
 {
 	u64 slots_freed = self->capacity - self->end;
@@ -215,7 +215,7 @@ pfc_BlockSet_fit(pfc_BlockSet *self)
 
 /* assuming insertion ids will come in order */
 /* allows multiple insertion of the same id (if it is the largest one) */
-internal void
+static void
 pfc_BlockSet_insert(pfc_BlockSet *self, char *id)
 {
 	if (self->begin == self->end) {
@@ -233,7 +233,7 @@ pfc_BlockSet_insert(pfc_BlockSet *self, char *id)
 
 #define pfc_collect_MAX_THREADS 128
 
-internal pfc_BlockSet*
+static pfc_BlockSet*
 pfc_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 {
 	u32 n = count;
@@ -333,7 +333,7 @@ pfc_collect(pf_Event *begin, u32 count, BilinearAllocator *memory)
 	return block_set;
 }
 
-internal inline void
+static inline void
 pfc_clear_events()
 {
 	pt_atomic_exchange_u64(&global_profile_table->slot_event_index, 0);
@@ -357,7 +357,7 @@ typedef struct {
 
 global_variable pfc_ReportBuffers pfc_report;
 
-internal void
+static void
 pfc_begin()
 {
 	pt_clear(pfc_report);
@@ -366,71 +366,71 @@ pfc_begin()
 	void *print_buffer   = a_push(&pfc_report.arena, pfc_ReportBuffers_print_memory, 8, 1);
 
 	BilinearAllocator_init(&pfc_report.collect_memory, collect_buffer, pfc_ReportBuffers_collect_memory);
-	Print_init(&pfc_report.print, print_buffer, pfc_ReportBuffers_print_memory);
+	print_init(&pfc_report.print, print_buffer, pfc_ReportBuffers_print_memory);
 
 	static char sep[] = "|";
 	nt_Tokenizer_init_canonical(&pfc_report.tok, sep, cstr_end(sep));
 	pfc_clear_events();
 }
 
-internal void
+static void
 pfc_end()
 {
 	a_clear(&pfc_report.arena);
 }
 
-internal void
+static void
 pfc_generate_report_print_level(Print *print, pfc_Stats *stats, s32 level, u64 frame_cycles,
 			       char *name_begin, char *name_end, s32 thread_index)
 {
 	// TODO(llins): Improve infrastructure to print. Use stb ideas.
-	Print_str(print, name_begin, name_end);
-	Print_align(print, 36, -1, ' ');
+	print_str(print, name_begin, name_end);
+	print_align(print, 36, -1, ' ');
 
 	// thread
-	Print_cstr(print, " t");
+	print_cstr(print, " t");
 	if (thread_index < 0) {
-		Print_char(print, '*');
+		print_char(print, '*');
 	} else {
-		Print_u64(print, thread_index);
+		print_u64(print, thread_index);
 	}
-	Print_align(print, 2, -1, ' ');
+	print_align(print, 2, -1, ' ');
 
-	Print_cstr(print," [");
-	Print_u64(print, level);
-	Print_align(print, 2, 1, ' ');
-	Print_cstr(print,"]");
+	print_cstr(print," [");
+	print_u64(print, level);
+	print_align(print, 2, 1, ' ');
+	print_cstr(print,"]");
 
-	Print_cstr(print," ht: ");
-	Print_u64(print,stats->hits[0]);
-	Print_align(print, 10, 1, ' ');
+	print_cstr(print," ht: ");
+	print_u64(print,stats->hits[0]);
+	print_align(print, 10, 1, ' ');
 
-	Print_cstr(print,"  cy: ");
-	Print_u64(print,stats->sum_cycles[0]);
-	Print_align(print, 12, 1, ' ');
+	print_cstr(print,"  cy: ");
+	print_u64(print,stats->sum_cycles[0]);
+	print_align(print, 12, 1, ' ');
 
-	Print_cstr(print," [");
-	Print_u64(print,(100*stats->sum_cycles[0])/frame_cycles);
-	Print_align(print, 3, 1, ' ');
-	Print_cstr(print,"%]");
+	print_cstr(print," [");
+	print_u64(print,(100*stats->sum_cycles[0])/frame_cycles);
+	print_align(print, 3, 1, ' ');
+	print_cstr(print,"%]");
 
-	Print_cstr(print,"  cy/ht{ avg: ");
+	print_cstr(print,"  cy/ht{ avg: ");
 	if (stats->hits[0] > 0) {
-		Print_u64(print,stats->sum_cycles[0]/stats->hits[0]);
+		print_u64(print,stats->sum_cycles[0]/stats->hits[0]);
 	} else {
-		Print_u64(print,0);
+		print_u64(print,0);
 	}
-	Print_align(print, 8, 1, ' ');
-	Print_cstr(print,"  min: ");
-	Print_u64(print,stats->min_cycles[0]);
-	Print_align(print, 8, 1, ' ');
-	Print_cstr(print,"  max: ");
-	Print_u64(print,stats->max_cycles[0]);
-	Print_align(print, 8, 1, ' ');
-	Print_cstr(print," }\n");
+	print_align(print, 8, 1, ' ');
+	print_cstr(print,"  min: ");
+	print_u64(print,stats->min_cycles[0]);
+	print_align(print, 8, 1, ' ');
+	print_cstr(print,"  max: ");
+	print_u64(print,stats->max_cycles[0]);
+	print_align(print, 8, 1, ' ');
+	print_cstr(print," }\n");
 }
 
-internal void
+static void
 pfc_generate_log_events()
 {
 	Print *print = &pfc_report.print;
@@ -440,26 +440,26 @@ pfc_generate_log_events()
 
 	pf_Event *events = global_profile_table->events[slot];
 
-	Print_clear(print);
-	Print_cstr(print,"clock|file|line|counter|name|thread_id|core_index|type\n");
+	print_clear(print);
+	print_cstr(print,"clock|file|line|counter|name|thread_id|core_index|type\n");
 	for (u32 i=0;i<count;++i) {
 		pf_Event event = events[i];
-		Print_u64(print, event.clock);
-		Print_char(print, '|');
-		Print_cstr(print, event.id);
-		Print_char(print, '|');
-		Print_u64(print, event.thread_id);
-		Print_char(print, '|');
-		Print_u64(print, event.core_index);
-		Print_char(print, '|');
-		Print_u64(print, (u64) event.type);
-		Print_char(print, '\n');
+		print_u64(print, event.clock);
+		print_char(print, '|');
+		print_cstr(print, event.id);
+		print_char(print, '|');
+		print_u64(print, event.thread_id);
+		print_char(print, '|');
+		print_u64(print, event.core_index);
+		print_char(print, '|');
+		print_u64(print, (u64) event.type);
+		print_char(print, '\n');
 	}
 }
 
 
 
-internal void
+static void
 pfc_generate_report()
 {
 	u32 slot  = global_profile_table->slot_event_index >> 32;
@@ -482,8 +482,8 @@ pfc_generate_report()
 	Print *print = &pfc_report.print;
 
 	/* print a report */
-	Print_clear(print);
-	Print_cstr(print,"----------------\n");
+	print_clear(print);
+	print_cstr(print,"----------------\n");
 	for (u32 i=0;i<num_blocks;++i) {
 		u32 j = order[i].index;
 		pfc_Block *it = block_set->begin + j;

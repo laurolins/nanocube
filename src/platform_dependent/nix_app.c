@@ -90,7 +90,6 @@ pf_Table *global_profile_table = &global_profile_table_storage;
 
 #define main_BUFFER_SIZE Megabytes(1)
 
-
 int
 main(int num_args, char** args)
 {
@@ -99,9 +98,9 @@ main(int num_args, char** args)
 
 #ifdef PROFILE
 	/* initialize profile table */
-	u64 profile_memory_size = Megabytes(128);
-	pt_Memory profile_memory = nix_allocate_memory(profile_memory_size, 3, 0);
-	pf_Table_init(global_profile_table, profile_memory.memblock.begin, profile_memory.memblock.end);
+	u64 profile_memory_size = Gigabytes(1);
+	pt_Memory *profile_memory = nix_allocate_memory(profile_memory_size, 0);
+	pf_Table_init(global_profile_table, OffsetedPointer(profile_memory->base,0), profile_memory->size);
 	app_state.global_profile_table = (void*) global_profile_table;
 #endif
 
@@ -182,7 +181,7 @@ main(int num_args, char** args)
 	application_process_request(&app_state, print->begin, print->end, &platform_stdin, &platform_stdout, &platform_stderr);
 
 #ifdef PROFILE
-	nix_free_memory(&profile_memory);
+	nix_free_memory(profile_memory);
 #endif
 
 	print_free_raw(print);

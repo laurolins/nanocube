@@ -2426,7 +2426,7 @@ service_serve(Request *request)
 	}
 
 #ifdef PROFILE
-	pf_begin();
+	pfc_begin();
 #endif
 
 	while (!global_app_state->interrupted) {
@@ -2443,9 +2443,9 @@ service_serve(Request *request)
 
 #ifdef PROFILE
 	// pf_generate_log_events();
-	pf_generate_report();
-	output_(&pf_report.print);
-	pf_end();
+	pfc_generate_report();
+	output_(&pfc_report.print);
+	pfc_end();
 
 	{
 		u64 count = pf_Table_current_events_count(global_profile_table);
@@ -6124,10 +6124,6 @@ service_create()
 		ntp_Parser time_parser;
 		ntp_Parser_init(&time_parser);
 
-#ifdef PROFILE
-		pf_begin();
-#endif
-
 		//----------------------------------------------------------
 		// process aliases
 		//----------------------------------------------------------
@@ -6409,6 +6405,11 @@ service_create()
 		// insert records
 		//----------------
 
+#ifdef PROFILE
+		pfc_begin();
+		pf_BEGIN_BLOCK("record_loop");
+#endif
+
 		u64 records_inserted =  0;
 		s64 offset           = -1;
 		s64 last_printed     = -2;
@@ -6544,7 +6545,7 @@ service_create()
 				goto finalize_insertion;
 			}
 
-			// pf_BEGIN_BLOCK("PrepareRecord");
+			pf_BEGIN_BLOCK("prepare_record");
 
 			it_addr          = address;
 			char *it_payload = payload;
@@ -6672,7 +6673,7 @@ service_create()
 				}
 			}
 
-			// pf_END_BLOCK();
+			pf_END_BLOCK();
 
 			if (!could_prepare_record) {
 // 				print_clear(print);
@@ -6685,6 +6686,9 @@ service_create()
 				goto finalize_insertion;
 			}
 
+
+			pf_BEGIN_BLOCK("insert");
+
 			MemoryBlock insert_buffer_memblock = (MemoryBlock) {
 				.begin=OffsetedPointer(insert_buffer_memory->base,0),
 				.end=OffsetedPointer(insert_buffer_memory->base,insert_buffer_memory->size)
@@ -6692,13 +6696,7 @@ service_create()
 			nx_NanocubeIndex_insert(&nanocube->index, address, payload, nanocube, insert_buffer_memblock);
 			++records_inserted;
 
-
-#ifdef PROFILE
-			pf_generate_report();
-			pf_clear_events();
-			log_(&pf_report.print);
-#endif
-
+			pf_END_BLOCK();
 
 			/* TODO(llins): check if utilization of output file is above a threshold? */
 			/* if it is, grow the file. If there is no more disk space, use truncate. */
@@ -6871,6 +6869,14 @@ finalize_insertion:
 
 		} /* input records loop */
 
+		pf_END_BLOCK();
+
+#ifdef PROFILE
+		pfc_generate_report();
+		pfc_clear_events();
+		log_(&pfc_report.print);
+#endif
+
 		/* print final numbers if needed */
 		if (offset != last_printed) {
 			print_clear(print);
@@ -6887,7 +6893,7 @@ finalize_insertion:
 
 
 #ifdef PROFILE
-		pf_end();
+		pfc_end();
 #endif
 
 
@@ -7614,9 +7620,9 @@ service_api(Request *request)
 	cstr_compare_memory_cstr(command.begin, command.end, name) == 0
 
 
-#ifdef PROFILE
-pf_Table *global_profile_table = 0;
-#endif
+// #ifdef PROFILE
+// pf_Table *global_profile_table = 0;
+// #endif
 
 /*
 BEGIN_DOC_STRING nanocube_doc

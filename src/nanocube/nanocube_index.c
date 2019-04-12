@@ -44,10 +44,10 @@ END_TODO
 
 #ifdef nx_PROFILE
 #define nx_pf_BEGIN_BLOCK(a) pf_BEGIN_BLOCK(a)
-#define nx_pf_END_BLOCK(a) pf_END_BLOCK(a)
+#define nx_pf_END_BLOCK() pf_END_BLOCK()
 #else
 #define nx_pf_BEGIN_BLOCK(a)
-#define nx_pf_END_BLOCK(a)
+#define nx_pf_END_BLOCK()
 #endif
 
 #ifndef nx_PAYLOAD
@@ -899,7 +899,7 @@ nx_DetailInfo_smart_init(nx_DetailInfo *self, s32 degree, u8 path_length, u8 bit
 static void
 nx_DetailInfo_init(nx_DetailInfo *self, s32 degree, u8 path_length, u8 bits_per_label)
 {
-	// nx_pf_BEGIN_BLOCK("nx_Detail_info");
+	nx_pf_BEGIN_BLOCK("nx_Detail_info");
 
 	u32 path_bytes     = (path_length * bits_per_label + 7) / 8;
 	u32 children_bytes = (u32) (degree * sizeof(nx_Child));
@@ -968,7 +968,7 @@ nx_DetailInfo_init(nx_DetailInfo *self, s32 degree, u8 path_length, u8 bits_per_
 	nx_DetailInfo_precomputed_init(self, path_bytes, children_bytes, bits_per_label);
 #endif
 
-	// nx_pf_END_BLOCK();
+	nx_pf_END_BLOCK();
 	// return detail_info;
 }
 
@@ -1425,7 +1425,7 @@ nx_INode_own_content(nx_INode *self, nx_Node *content)
 static void
 nx_NodeWrap_init(nx_NodeWrap *self, nx_Node *raw_node, const nx_DetailInfo *detail_info)
 {
-	// nx_pf_BEGIN_BLOCK("nx_NodeWrap_init");
+	nx_pf_BEGIN_BLOCK("nx_NodeWrap_init");
 
 	self->raw_node   = raw_node;
 
@@ -1480,7 +1480,7 @@ nx_NodeWrap_init(nx_NodeWrap *self, nx_Node *raw_node, const nx_DetailInfo *deta
 
 	}
 
-	// nx_pf_END_BLOCK();
+	nx_pf_END_BLOCK();
 }
 
 //------------------------------------------------------------------------------
@@ -3512,7 +3512,6 @@ nx_Nanocube_upstream_insert(nx_InsertionContext  *ctx,
 			nx_Threads_goto_next_dimension(ctx->mfthreads);
 		}
 
-
 		if (index < ctx->nanocube->dimensions - 1) {
 
 			if (mfthread) {
@@ -3591,7 +3590,7 @@ nx_clone_path(nx_InsertionContext* ctx,
 	      nx_HierarchyPosition *pos,
 	      nx_CloneMode mode)
 {
-	// nx_pf_BEGIN_BLOCK("nx_clone_path");
+	nx_pf_BEGIN_BLOCK("nx_clone_path");
 
 	//
 	// pos gives the current position we want to clone
@@ -3664,7 +3663,7 @@ nx_clone_path(nx_InsertionContext* ctx,
 		nx_Node_set_parent(nx_List_NodeP_get(&path,0), context);
 	}
 
-	// nx_pf_END_BLOCK();
+	nx_pf_END_BLOCK();
 }
 
 

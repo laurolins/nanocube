@@ -25,7 +25,7 @@ typedef struct {
 	pf_Event *events[2];
 } pf_Table;
 
-internal void
+static void
 pf_Table_init(pf_Table *self, void *buffer, u64 buffer_size)
 {
 	s64 n = buffer_size/(sizeof(pf_Event)*2);
@@ -34,14 +34,14 @@ pf_Table_init(pf_Table *self, void *buffer, u64 buffer_size)
 	self->events[1] = self->events[0] + n;
 }
 
-internal u64
+static u64
 pf_Table_current_events_count(pf_Table *self)
 {
 	u32 event_index = self->slot_event_index & 0xFFFFFFFF;
 	return event_index;
 }
 
-internal u64
+static u64
 pf_Table_current_slot(pf_Table *self)
 {
 	u32 slot        = self->slot_event_index >> 32;
