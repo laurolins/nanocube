@@ -4130,7 +4130,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			s32 continuation = 0;
 			{ // index columns
 				char *it = table_keys->keys.begin + table_keys->row_length * row;
-				u32 column_offset = 0;
+				// u32 column_offset = 0;
 				// u32 record_size   = table_keys->row_length;
 				for (u32 i=0;i<table_keys->columns;++i) {
 
@@ -4227,7 +4227,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					}break;
 					}
 
-					column_offset += nm_TableKeysColumnType_bytes(it_coltype);
+					// column_offset += nm_TableKeysColumnType_bytes(it_coltype);
 				}
 			}
 #endif
