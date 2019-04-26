@@ -276,7 +276,6 @@ PolygonMap.prototype={
         var mapt = L.tileLayer(this._tilesurl,{
             noWrap:true,
             opacity:0.4,
-            detectRetina:true,
             maxZoom: 18 //Math.min(this._maxlevels-8, 18)
         });
 

@@ -31,6 +31,7 @@ import * as d3 from 'd3';
 //colorbrewer
 import colorbrewer from 'colorbrewer';
 
+let fetch = window.fetch;
 var Heatmap=function(opts,getDataCallback,updateCallback){
     this.getDataCallback = getDataCallback;
     this.updateCallback = updateCallback;
@@ -86,7 +87,25 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
                 m.bindPopup(d.popup);
                 m.addTo(map);
             });
-        }                        
+        }
+
+        if ('geojson' in opts.layers){
+            let widget = this; 
+            opts.layers.geojson.forEach(gj=>{
+                fetch(gj).then(r=>r.json())
+                    .then(j=>{
+                        widget.geojson = {
+                            data: L.geoJSON(j,{onEachFeature:(f,l)=>
+                                               l.bindPopup(JSON.stringify(f.properties)),
+                                               style:{fillOpacity:0}
+                                              }),
+                            fg: L.featureGroup()
+                        };
+                        widget.geojson.fg.addTo(map);
+                        widget.update();
+                    });
+            });
+        }
     }
 };
 
@@ -146,7 +165,7 @@ Heatmap.prototype = {
         var widget = this;
         
         //Leaflet stuffs
-        var map = L.map(this._name);
+        var map = L.map(this._name,{preferCanvas:true});
 
         map.attributionControl.addAttribution('<a href="http://www.nanocubes.net">Nanocubes&trade;</a>');
         map.attributionControl.addAttribution('<a href="http://www.osm.org">OpenStreetMap</a>');
@@ -159,8 +178,7 @@ Heatmap.prototype = {
         var mapt = L.tileLayer(this._tilesurl,{
             noWrap:true,
             opacity: widget._opts.map_opacity,
-            detectRetina:true,
-            maxZoom: Math.min(this._maxlevels-8, 18)
+            maxZoom: Math.min(this._maxlevels-9, 18)
         });
 
 
@@ -279,6 +297,32 @@ Heatmap.prototype = {
             //break;
         default:
             return;
+        }
+    },
+
+    drawGeoJSONLayers: function(){
+        let map = this._map;
+        let widget = this;
+        let bb=map.getBounds();
+        if(widget.geojson){
+            let fg=widget.geojson.fg;
+            let layers = widget.geojson.data.getLayers();
+                let active_layers = layers.filter(g=>bb.intersects(g.getBounds())); 
+            
+            fg.clearLayers();
+            console.log('a',active_layers.length);
+            if(active_layers.length < 500){
+                active_layers.forEach(layer=>{
+                    fg.addLayer(layer);                    
+                });
+            }
+            else{
+                active_layers.forEach(layer=>{
+                    fg.addLayer(L.circleMarker(layer.getBounds().getCenter(), {radius:3,
+                                                                               fillOpacity:0.5,
+                                                                               stroke:0}));            
+                });                
+            }
         }
     },
 
@@ -407,8 +451,10 @@ Heatmap.prototype = {
     },
 
     update: function(){
+        let map = this._map;
+
         //force redraw
-        this._map.invalidateSize();  
+        map.invalidateSize();  
         
         for(var l in this._heatmaps){
             var layer = this._heatmaps[l];
@@ -421,6 +467,7 @@ Heatmap.prototype = {
     drawCanvasLayer: function(res,canvas,cmap,opacity){
         var arr = this.dataToArray(res.opts.pb,res.data);
         this.render(arr,res.opts.pb,cmap,canvas,opacity);
+        this.drawGeoJSONLayers();
     },
 
     dataToArray: function(pb,data){
@@ -591,14 +638,12 @@ Heatmap.prototype = {
                             });
 
                             widget.updateLegend(widget._map,valcolor);
-                            console.log(widget._map);
                         }
                     }
                     
                     var startrender = window.performance.now();
                     widget.drawCanvasLayer(res,canvas,layer._cmap,
                                            layer.options.opacity);
-
                     console.log('rendertime:',
                                 window.performance.now()-startrender);
                     
