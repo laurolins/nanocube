@@ -534,7 +534,9 @@ main()
 	ntp_Parser parser;
 	ntp_Parser_init(&parser);
 
-	char *test1 = "2017-06-01 00:00:00.0";
+	// @bug if we use "2017-06-01 00:00:00.0 PM";
+
+	char *test1 = "2017-06-01 00:00:00 PM";
 	b8 ok = ntp_Parser_run(&parser, test1, cstr_end(test1));
 	if (!ok) {
 		printf("error:\n");
