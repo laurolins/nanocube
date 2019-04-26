@@ -10,6 +10,9 @@
 
 #ifdef time_parser_UNIT_TEST
 #include "platform.c"
+#include "cstr.c"
+#include "arena.c"
+#include "print.c"
 #include "tokenizer.c"
 #include "time.c"
 #endif
@@ -540,9 +543,9 @@ main()
 		printf("tm_Time: %lu\n", parser.time.time);
 		char buffer[1024];
 		Print print;
-		Print_init(&print, buffer, buffer + sizeof(buffer));
+		print_init(&print, buffer, sizeof(buffer));
 		tm_Label_print(&parser.label, &print);
-		Print_char(&print,0);
+		print_char(&print,0);
 		printf("tm_Label: %s", print.begin);
 		printf("\n");
 	}

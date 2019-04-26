@@ -5,6 +5,9 @@
 
 #ifdef time_UNIT_TEST
 #include "platform.c"
+#include "cstr.c"
+#include "arena.c"
+#include "print.c"
 #endif
 
 /*
