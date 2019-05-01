@@ -1796,6 +1796,9 @@ nix_tcp_process_events(nix_tcp_Engine *tcp, pt_WorkQueue *work_queue)
 
 #elif defined(OS_LINUX)
 	s32 num_fd = epoll_wait(tcp->epoll_fd, tcp->events, ArrayCount(tcp->events), nix_tcp_TIMEOUT_MILLISECONDS + 1000 * nix_tcp_TIMEOUT_SECONDS);
+	if (num_fd == -1) {
+		nix_tcp_log("epoll_wait returned error: %d -> %s\n", errno, strerror(errno));
+	}
 #endif
 
 	/* for each socket with some event available process all what
