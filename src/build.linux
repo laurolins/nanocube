@@ -76,14 +76,13 @@ fi
 CFLAGS="$CFLAGS $OPTIONS"
 CXXFLAGS="$CXXFLAGS $OPTIONS"
 
-BUILD="../../build/nanocube"
-SRC="../../nanocube/src"
+EXE="nc41"
+BUILD="../../build/nc41"
+SRC="../../nc41/src"
 CC="gcc"
 CXX="g++"
 LIBS="-L${BUILD} -lm -lpthread"
 APP_EXTRA_LIBS=""
-
-
 
 
 if [ "$POLYCOVER_SUPPORT" = true ]; then
@@ -218,11 +217,12 @@ for f in "${DOC_FILES[@]}"; do
 	f_update_doc "$f" "${VERSION_NAME}"
 done
 
+
 echo ${BUILD}; \
 if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
 # ${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
-${CC} ${CFLAGS} -o nanocube ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
-cp nanocube ${LOCAL}/bin/. ;\
+${CC} ${CFLAGS} -o ${EXE} ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+cp ${EXE} ${LOCAL}/bin/. ;\
 popd
 

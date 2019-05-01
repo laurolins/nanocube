@@ -3332,6 +3332,9 @@ nv_ResultStream_end(nv_ResultStream *self)
 	} break;
 	case nv_FORMAT_BINARY: {
 	} break;
+	case nv_FORMAT_CSV:
+	case nv_FORMAT_PSV: {
+	} break;
 	default: {
 	} break;
 	}
@@ -3348,6 +3351,11 @@ nv_ResultStream_sep(nv_ResultStream *self)
 		case nv_FORMAT_TEXT: {
 		} break;
 		case nv_FORMAT_BINARY: {
+		} break;
+		case nv_FORMAT_CSV:
+		case nv_FORMAT_PSV: {
+			Print *print = self->print_stack.print;
+			print_char(print, 1); // use byte 1 as a result separator
 		} break;
 		default: {
 		} break;
