@@ -4630,6 +4630,33 @@ service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_b
 					nv_Nanocube_insert_index_dimension(nanocube, 2, levels, dim->name.begin, dim->name.end);
 					nv_Nanocube_set_dimension_hint_cstr(nanocube, dim->name.begin, dim->name.end, "spatial:ip", print);
 				} break;
+				case cm_INDEX_MAPPING_NUMERICAL: {
+					u8 levels = dim->mapping_spec.index_mapping.numerical.bits;
+					nv_Nanocube_insert_index_dimension(nanocube, 1, levels, dim->name.begin, dim->name.end);
+#if 0
+					/* TODO(llins): cleanup this insertion of key value */
+					print_clear(print);
+					print_str(print,dim->name.begin, dim->name.end);
+					print_char(print,':');
+					print_cstr(print,"numerical");
+					print_char(print,"numerical");
+					/* copy bytes of the representation of base_time */
+					char *key_end = print->end;
+					print_cstr(print,"numerical");
+					print_char(print,':');
+
+					nm_TimeBinning *time_binning = &dim->mapping_spec.index_mapping.time.time_binning;
+					for (s32 j=0;j<sizeof(nm_TimeBinning);++j) {
+						print_char(print,*((char*)time_binning + j));
+					}
+					nv_Nanocube_insert_key_value(nanocube, print->begin, key_end, key_end, print->end);
+
+					print_clear(print);
+					print_format(print, "%s|%d|%f|%f|%dn"
+					service_create_print_temporal_hint(print, time_binning);
+					nv_Nanocube_set_dimension_hint(nanocube, dim->name.begin, dim->name.end, print->begin, print->end, print);
+#endif
+				} break;
 				case cm_INDEX_MAPPING_TIME: {
 					u8 levels = dim->mapping_spec.index_mapping.time.depth;
 					nv_Nanocube_insert_index_dimension(nanocube, 1, levels, dim->name.begin, dim->name.end);
@@ -5172,6 +5199,24 @@ on the columns of the input .csv file
 		        creates a quad-tree with L levels using the mercator
 			projection. Expects two input columns with floating
 			pointing numbers for latitude and longitude.
+
+		    numerical(BITS,A,B,TO_INT_METHOD_CODE)
+		        creates a binary tree with BITS levels representing integral
+			numbers from 0 to (2^BITS)-1. TO_INT_METHOD_CODE is either:
+
+			    0: truncate
+			    1: floor
+			    2: ceil
+			    3: round
+
+			The input incoming number is converted using the equation
+
+			    Y = TO_INT_METHOD( AX + B )
+
+	                if the above conversion is problematic, the record is discarded.
+			Also, if Y is out of range of [0, 2^BITS) then we also discard
+			the record. When we query with 'by name' we should expect
+			approximately the original X's.
 
 		    xy(L)
 		    xy_slippy(L)

@@ -56,6 +56,7 @@ typedef enum {
 	cm_INDEX_MAPPING_CATEGORICAL,
 	cm_INDEX_MAPPING_IP_HILBERT,
 	cm_INDEX_MAPPING_XY_QUADTREE,
+	cm_INDEX_MAPPING_NUMERICAL
 } cm_IndexMappingType;
 
 typedef enum {
@@ -81,6 +82,12 @@ typedef struct {
 				u8  depth;
 				b8  top_down;
 			} xy;
+			struct {
+				u8  bits;
+				f64 a;
+				f64 b;
+				s32 to_int_method_code;
+			} numerical;
 			struct {
 				u8 depth;
 			} latlon;
@@ -183,6 +190,18 @@ cm_Spec_insert_dimension(cm_Spec *self, cm_Dimension *dim)
 		self->measure_dimensions[self->num_measure_dimensions] = dim;
 		++self->num_measure_dimensions;
 	}
+}
+
+static void
+cm_Mapping_numerical(cm_Mapping *self, u8 bits, f64 a, f64 b, s32 to_int_method_code)
+{
+	self[0] = (cm_Mapping) { 0 };
+	self->mapping_type	           = cm_INDEX_DIMENSION_MAPPING;
+	self->index_mapping.type           = cm_INDEX_MAPPING_NUMERICAL;
+	self->index_mapping.numerical.bits = bits;
+	self->index_mapping.numerical.a    = a;
+	self->index_mapping.numerical.b    = b;
+	self->index_mapping.numerical.to_int_method_code = to_int_method_code;
 }
 
 static void
@@ -756,6 +775,42 @@ np_FUNCTION_HANDLER(cm_compiler_func_categorical)
 }
 
 /* categorical */
+np_FUNCTION_HANDLER(cm_compiler_func_numerical)
+{
+	s64 n = params_end - params_begin;
+	Assert(n == 4);
+
+	np_TypeValue *bits_tv = params_begin;
+	np_TypeValue *a_tv = params_begin+1;
+	np_TypeValue *b_tv = params_begin+2;
+	np_TypeValue *to_int_method_code_tv = params_begin+3;
+
+	s32 bits = (s32) *((f64*) bits_tv->value);
+	f64 a = *((f64*) a_tv->value);
+	f64 b = *((f64*) b_tv->value);
+	s32 to_int_method_code = (s32) *((f64*) to_int_method_code_tv->value);
+
+	if (bits< 1 || bits> 128) {
+		char *error = "categorical function expects bit resolution in {1,2,...,128}\n";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+
+	if (to_int_method_code < 0 || to_int_method_code > 3) {
+		char *error = "invalid to_int_method_code, it can be either 0,1,2 or 3\n";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+
+	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
+	cm_Mapping_numerical(mapping_spec, bits, a, b, to_int_method_code);
+
+	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
+}
+
+/* categorical */
 np_FUNCTION_HANDLER(cm_compiler_func_categorical_with_labels)
 {
 	s64 n = params_end - params_begin;
@@ -1051,6 +1106,18 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		(compiler, "categorical", cm_compiler_types.mapping_spec_id,
 		 parameter_types, parameter_types+3, 0, 0,
 		 cm_compiler_func_categorical_with_labels);
+
+
+	// numerical: (number,number,number,number) -> mapping_spec
+	// read latlon in degrees convert to mercator convert to quadtree
+	parameter_types[0] = cm_compiler_types.number_type_id;
+	parameter_types[1] = cm_compiler_types.number_type_id;
+	parameter_types[2] = cm_compiler_types.number_type_id;
+	parameter_types[3] = cm_compiler_types.number_type_id;
+	np_Compiler_insert_function_cstr
+		(compiler, "numerical", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+4, 0, 0,
+		 cm_compiler_func_numerical);
 
 	// categorical: number -> mapping_spec
 	// read latlon in degrees convert to mercator convert to quadtree
