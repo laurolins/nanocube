@@ -4207,6 +4207,10 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 						if (it_coltype->loop_column) {
 							print_cstr(print, "error: expected a path, received a loop column");
 						} else {
+
+							// would like to convert dates on the temporal queries and numbers
+							// on numerical queries
+
 							// with the column name and the source, try to find the column names
 							Assert(table->source->num_nanocubes > 0);
 							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];

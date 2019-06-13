@@ -73,7 +73,8 @@ typedef struct {
 //---------------------------
 // math stuff
 //---------------------------
-
+#define pt_trunc_f64(x)   trunc(x)
+#define pt_trunc_f32(x)   truncf(x)
 #define pt_modf_f32(x,i)  modff(x,i)
 #define pt_modf_f64(x,i)  modf(x,i)
 #define pt_abs_f32(x)     fabsf(x)
@@ -90,6 +91,10 @@ typedef struct {
 #define pt_cos_f64(x)     cos(x)
 #define pt_floor_f32(x)   floorf(x)
 #define pt_floor_f64(x)   floor(x)
+#define pt_ceil_f32(x)   ceilf(x)
+#define pt_ceil_f64(x)   ceil(x)
+#define pt_round_f32(x)   roundf(x)
+#define pt_round_f64(x)   round(x)
 #define pt_log_f32(x)     logf(x)
 #define pt_log_f64(x)     log(x)
 #define pt_pow_f32(b,e)   powf(b,e)

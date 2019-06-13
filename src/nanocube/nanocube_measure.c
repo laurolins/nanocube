@@ -83,6 +83,21 @@ typedef struct {
 } nm_TimeBinning;
 
 
+#define nm_NUMERICAL_TO_INT_METHOD_TRUNCATE 0
+#define nm_NUMERICAL_TO_INT_METHOD_FLOOR    1
+#define nm_NUMERICAL_TO_INT_METHOD_CEIL     2
+#define nm_NUMERICAL_TO_INT_METHOD_ROUND    3
+
+/*
+ * Numericl specification of the type
+ *     A x + b with additional to int method
+ */
+typedef struct {
+	f64 a;
+	f64 b;
+	s64 to_int_method;
+} nm_Numerical;
+
 /*
  * a flag that will be used to write the column value as text
  * instead of the path sequence of names

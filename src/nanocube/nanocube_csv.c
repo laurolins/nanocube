@@ -84,9 +84,7 @@ typedef struct {
 			} xy;
 			struct {
 				u8  bits;
-				f64 a;
-				f64 b;
-				s32 to_int_method_code;
+				nm_Numerical spec;
 			} numerical;
 			struct {
 				u8 depth;
@@ -199,9 +197,11 @@ cm_Mapping_numerical(cm_Mapping *self, u8 bits, f64 a, f64 b, s32 to_int_method_
 	self->mapping_type	           = cm_INDEX_DIMENSION_MAPPING;
 	self->index_mapping.type           = cm_INDEX_MAPPING_NUMERICAL;
 	self->index_mapping.numerical.bits = bits;
-	self->index_mapping.numerical.a    = a;
-	self->index_mapping.numerical.b    = b;
-	self->index_mapping.numerical.to_int_method_code = to_int_method_code;
+	self->index_mapping.numerical.spec = (nm_Numerical) {
+		.a = a,
+		.b = b,
+		.to_int_method = to_int_method_code
+	};
 }
 
 static void
@@ -781,8 +781,8 @@ np_FUNCTION_HANDLER(cm_compiler_func_numerical)
 	Assert(n == 4);
 
 	np_TypeValue *bits_tv = params_begin;
-	np_TypeValue *a_tv = params_begin+1;
-	np_TypeValue *b_tv = params_begin+2;
+	np_TypeValue *a_tv    = params_begin+1;
+	np_TypeValue *b_tv    = params_begin+2;
 	np_TypeValue *to_int_method_code_tv = params_begin+3;
 
 	s32 bits = (s32) *((f64*) bits_tv->value);
@@ -1106,7 +1106,6 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		(compiler, "categorical", cm_compiler_types.mapping_spec_id,
 		 parameter_types, parameter_types+3, 0, 0,
 		 cm_compiler_func_categorical_with_labels);
-
 
 	// numerical: (number,number,number,number) -> mapping_spec
 	// read latlon in degrees convert to mercator convert to quadtree
@@ -1548,6 +1547,71 @@ cm_mapping_ip_hilbert(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_be
 
 	return 1;
 }
+
+static b8
+cm_mapping_numerical(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin)
+{
+	Assert(dim->mapping_spec.index_mapping.type == cm_INDEX_MAPPING_NUMERICAL);
+
+	cm_Mapping *mapping = &dim->mapping_spec;
+
+	u8 levels = mapping->index_mapping.numerical.bits;
+
+	Assert(levels == array->length);
+
+	cm_ColumnRef *basecol = dim->input_columns.begin;
+
+	Assert(dim->input_columns.end - dim->input_columns.begin == 1);
+
+	u32 timeidx = (basecol+0)->index;
+
+	MemoryBlock *number_text = tokens_begin + timeidx;
+
+	f64 x = 0;
+	s32 ok = 0;
+	// losing the time fraction part of the data
+	if (!pt_parse_f64(number_text->begin, number_text->end, &x)) {
+		return 0;
+	}
+
+	f64 y = mapping->index_mapping.numerical.spec.a * x + mapping->index_mapping.numerical.spec.b;
+
+	s64 bin = 0;
+	switch(mapping->index_mapping.numerical.spec.to_int_method) {
+	case nm_NUMERICAL_TO_INT_METHOD_TRUNCATE: {
+		bin = (s64) pt_trunc_f64(y);
+	} break;
+	case nm_NUMERICAL_TO_INT_METHOD_FLOOR: {
+		bin = (s64) pt_floor_f64(y);
+	} break;
+	case nm_NUMERICAL_TO_INT_METHOD_CEIL: {
+		bin = (s64) pt_ceil_f64(y);
+	} break;
+	case nm_NUMERICAL_TO_INT_METHOD_ROUND: {
+		bin = (s64) pt_round_f64(y);
+	} break;
+	default: {
+		return 0;
+	} break;
+	};
+
+	if (bin < 0 || bin >= (((s64)1) << levels)) {
+		return 0;
+	}
+
+	for (u8 i=0;i<levels;i++) {
+		u8 label = (bin & 1) ? 1 : 0;
+		bin >>= 1;
+		nx_Array_set(array, levels - 1 - i, label);
+	}
+	return 1;
+}
+
+
+
+
+
+
 
 static b8
 cm_mapping_time(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, ntp_Parser *parser)

@@ -4633,27 +4633,22 @@ service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_b
 				case cm_INDEX_MAPPING_NUMERICAL: {
 					u8 levels = dim->mapping_spec.index_mapping.numerical.bits;
 					nv_Nanocube_insert_index_dimension(nanocube, 1, levels, dim->name.begin, dim->name.end);
-#if 0
+					// need to store the a, b, and to_int_method_code
+					// store them as f64 bits
+#if 1
 					/* TODO(llins): cleanup this insertion of key value */
 					print_clear(print);
 					print_str(print,dim->name.begin, dim->name.end);
 					print_char(print,':');
 					print_cstr(print,"numerical");
-					print_char(print,"numerical");
 					/* copy bytes of the representation of base_time */
 					char *key_end = print->end;
-					print_cstr(print,"numerical");
-					print_char(print,':');
-
-					nm_TimeBinning *time_binning = &dim->mapping_spec.index_mapping.time.time_binning;
-					for (s32 j=0;j<sizeof(nm_TimeBinning);++j) {
-						print_char(print,*((char*)time_binning + j));
-					}
+					nm_Numerical numerical = dim->mapping_spec.index_mapping.numerical.spec;
+					print_buffer(print, &numerical, sizeof(nm_Numerical));
 					nv_Nanocube_insert_key_value(nanocube, print->begin, key_end, key_end, print->end);
 
 					print_clear(print);
-					print_format(print, "%s|%d|%f|%f|%dn"
-					service_create_print_temporal_hint(print, time_binning);
+					print_format(print, "numerical:%f:%f:%d", numerical.a, numerical.b, (s32) numerical.to_int_method);
 					nv_Nanocube_set_dimension_hint(nanocube, dim->name.begin, dim->name.end, print->begin, print->end, print);
 #endif
 				} break;
@@ -4724,6 +4719,10 @@ service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_b
 				case cm_INDEX_MAPPING_IP_HILBERT: {
 					u8 levels = dim->mapping_spec.index_mapping.ip_hilbert.depth;
 					nv_Nanocube_insert_index_dimension(nanocube, 2, levels, dim->name.begin, dim->name.end);
+				} break;
+				case cm_INDEX_MAPPING_NUMERICAL: {
+					u8 bits = dim->mapping_spec.index_mapping.numerical.bits;
+					nv_Nanocube_insert_index_dimension(nanocube, 1, bits, dim->name.begin, dim->name.end);
 				} break;
 				case cm_INDEX_MAPPING_TIME: {
 					u8 levels = dim->mapping_spec.index_mapping.time.depth;
@@ -5999,6 +5998,17 @@ service_create()
 					it_paths += levels;
 					++it_addr;
 				} break;
+				case cm_INDEX_MAPPING_NUMERICAL: {
+					Assert(it_addr != end_addr);
+					u8 levels = dim->mapping_spec.index_mapping.numerical.bits;
+					if (it_addr != address) {
+						(it_addr - 1)->next = it_addr;
+					}
+					it_addr->next = 0;
+					nx_Array_init(&it_addr->labels, it_paths, levels);
+					it_paths += levels;
+					++it_addr;
+				} break;
 				case cm_INDEX_MAPPING_TIME: {
 					Assert(it_addr != end_addr);
 					u8 levels = dim->mapping_spec.index_mapping.time.depth;
@@ -6611,6 +6621,9 @@ service_create()
 					} break;
 					case cm_INDEX_MAPPING_TIME: {
 						lok = cm_mapping_time(dim, &it_addr->labels, csv_fields, &time_parser);
+					} break;
+					case cm_INDEX_MAPPING_NUMERICAL: {
+						lok = cm_mapping_numerical(dim, &it_addr->labels, csv_fields);
 					} break;
 					case cm_INDEX_MAPPING_HOUR: {
 						lok = cm_mapping_hour(dim, &it_addr->labels, csv_fields, &time_parser);
