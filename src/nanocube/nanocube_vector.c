@@ -4349,6 +4349,25 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 								f64 x = (y - details[i].numerical.b)/details[i].numerical.a;
 
 								print_format(print, "%f", x);
+							} else if (details[i].type == KeyColumnDetail_TEMPORAL) {
+								u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+								u32 bits   = it_coltype->bits;
+								u32 levels = it_coltype->levels;
+
+								// @note this hack can overflow
+								Assert(bits * levels <= 64);
+
+								u64 y = 0;
+								pt_copy_bytesn(it, (char*) &y, bytes);
+								// pt_read_bits2(it, 0, bits * levels, (char*) &y);
+								// fprintf(stderr,"%llu\n", y);
+								it += bytes;
+
+								tm_Time t = details[i].time_binning.base_time;
+								t.time += y * details[i].time_binning.bin_width;
+								tm_Label lbl;
+								tm_Label_init(&lbl, t);
+								tm_Label_print(&lbl, print);
 							}
 						}
 					} break;

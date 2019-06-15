@@ -3,28 +3,28 @@
 #
 #  https://data.cityofchicago.org/api/views/ijzp-q8t2/rows.csv?accessType=DOWNLOAD
 #
-# ID                           7488772
-# Case Number                  HS290205
-# Date                         05/03/2010 11:30:00 AM
-# Block                        015XX N GREENVIEW AVE
-# IUCR                         0890
-# Primary Type                 THEFT
-# Description                  FROM BUILDING
-# Location Description         RESIDENCE
-# Arrest                       false
-# Domestic                     false
-# Beat                         1433
-# District                     014
-# Ward                         1
-# Community Area               24
-# FBI Code                     06
-# X Coordinate                 1166110
-# Y Coordinate                 1910273
-# Year                         2010
-# Updated On                   02/04/2016 06:33:39 AM
-# Latitude                     41.909371152
-# Longitude                    -87.665218629
-# Location                     '(41.909371152 -87.665218629)'
+# 001  ID                    9418031                                 9418090
+# 002  Case Number           HW561348                                HW561429
+# 003  Date                  12/06/2013 06:25:00 PM                  12/06/2013 06:26:00 PM
+# 004  Block                 040XX W WILCOX ST                       026XX W LITHUANIAN PLAZA CT
+# 005  IUCR                  2024                                    1310
+# 006  Primary Type          NARCOTICS                               CRIMINAL DAMAGE
+# 007  Description           POSS: HEROIN(WHITE)                     TO PROPERTY
+# 008  Location Description  SIDEWALK                                GROCERY FOOD STORE
+# 009  Arrest                true                                    false
+# 010  Domestic              false                                   false
+# 011  Beat                  1115                                    0831
+# 012  District              011                                     008
+# 013  Ward                  28                                      15
+# 014  Community Area        26                                      66
+# 015  FBI Code              18                                      14
+# 016  X Coordinate          1149444                                 1160196
+# 017  Y Coordinate          1899069                                 1858843
+# 018  Year                  2013                                    2013
+# 019  Updated On            12/11/2013 12:40:36 AM                  12/10/2013 12:39:15 AM
+# 020  Latitude              41.8789661034259                        41.76836587673295
+# 021  Longitude             -87.72673345412568                      -87.68836274472295
+# 022  Location              (41.8789661034259, -87.72673345412568)  (41.76836587673295, -87.68836274472295)
 #
 
 # I1. quadtree index dimension for crime location
