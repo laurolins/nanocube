@@ -466,6 +466,46 @@ nv_Nanocube_get_time_binning(nv_Nanocube *self, u8 dim_index, nm_TimeBinning *ti
 }
 
 static b8
+nv_Nanocube_get_time_binning_by_dim_name(nv_Nanocube *self, char *dim_name_begin, char *dim_name_end, nm_TimeBinning *time_binning)
+{
+	char buffer[128];
+	Print print;
+	print_init(&print, buffer, sizeof(buffer));
+	print_str(&print, dim_name_begin, dim_name_end);
+	print_cstr(&print, ":time_binning");
+
+	MemoryBlock mem;
+	if (!bt_BTree_get_value(&self->key_value_store, print.begin, print.end, &mem)) {
+		return 0;
+	}
+
+	Assert(mem.end - mem.begin == sizeof(nm_TimeBinning));
+	pt_copy_bytes(mem.begin, mem.end, (char*) time_binning, (char*) time_binning + sizeof(nm_TimeBinning));
+
+	return 1;
+}
+
+static b8
+nv_Nanocube_get_numerical_by_dim_name(nv_Nanocube *self, char *dim_name_begin, char *dim_name_end, nm_Numerical *numerical)
+{
+	char buffer[128];
+	Print print;
+	print_init(&print, buffer, sizeof(buffer));
+	print_str(&print, dim_name_begin, dim_name_end);
+	print_cstr(&print, ":numerical");
+
+	MemoryBlock mem;
+	if (!bt_BTree_get_value(&self->key_value_store, print.begin, print.end, &mem)) {
+		return 0;
+	}
+
+	Assert(mem.end - mem.begin == sizeof(nm_Numerical));
+	pt_copy_bytes(mem.begin, mem.end, (char*) numerical, (char*) numerical + sizeof(nm_Numerical));
+
+	return 1;
+}
+
+static b8
 nv_Nanocube_get_alias_path(nv_Nanocube *self, u8 dim_index, MemoryBlock alias, s32 output_buffer_capacity, u8 *output_buffer, s32 *output_length)
 {
 	// @todo implement this
@@ -4098,6 +4138,65 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 		nm_TableKeys   *table_keys   = &table->table_keys;
 		nv_TableValues *table_values = (nv_TableValues*) table->table_values_handle;
 
+		//
+		// for all the indexing columns when the query hint is
+		// name we would like to use the detailed spec of the
+		// column to generate more friendly output values:
+		//
+		// - time/unixtime represent as output as date
+		// - numerical do the inverse conversion
+		//
+		typedef struct {
+			s32 type; // 0 is don't care about details
+			          // 1 is numerical
+			          // 2 is temporal
+			union {
+				nm_Numerical numerical;
+				nm_TimeBinning time_binning;
+			};
+		} KeyColumnDetail;
+		static const s32 KeyColumnDetail_DISCARD   = 0;
+		static const s32 KeyColumnDetail_TEMPORAL  = 1;
+		static const s32 KeyColumnDetail_NUMERICAL = 2;
+		KeyColumnDetail details[128];
+		s32 num_details = 0;
+		{
+			// assume the table source is a nv_Nanocube
+			nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+
+			nm_TableKeysColumnType *key_col_types = table_keys->type->begin;
+			num_details = table_keys->type->end - table_keys->type->begin;
+			for (s32 i=0;i<num_details;++i) {
+				nm_TableKeysColumnType *it = key_col_types + i;
+				details[i] = (KeyColumnDetail) { 0 };
+				if (it->hint.hint_id == nm_BINDING_HINT_NAME) {
+					// get the hint type
+					MemoryBlock block = nv_Nanocube_get_dimension_hint(nanocube, it->name.begin, it->name.end, print);
+					// compare the prefix of the hint
+					if (cstr_compare_memory_n_cstr(block.begin, block.end, "temporal", 8) == 0) {
+						details[i].type = KeyColumnDetail_TEMPORAL;
+						s32 ok = nv_Nanocube_get_time_binning_by_dim_name(nanocube, it->name.begin, it->name.end, &details[i].time_binning);
+						if (!ok) {
+							// TODO: cleanup this
+							fprintf(stderr, "could not find the time_binning to resolve the 'name' hint\n");
+							details[i].type = 0;
+						}
+					} else if (cstr_compare_memory_n_cstr(block.begin, block.end, "numerical", 9) == 0) {
+						details[i].type = KeyColumnDetail_NUMERICAL;
+						s32 ok = nv_Nanocube_get_numerical_by_dim_name(nanocube, it->name.begin, it->name.end, &details[i].numerical);
+						if (!ok) {
+							// TODO: cleanup this
+							fprintf(stderr, "could not find the time_binning to resolve the 'name' hint\n");
+							details[i].type = 0;
+						}
+					} else {
+						details[i] = (KeyColumnDetail) { 0 };
+					}
+				}
+			}
+		}
+
+
 		s32 rows = table_keys->rows;
 		Assert(rows == table_values->rows);
 
@@ -4207,36 +4306,54 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 						if (it_coltype->loop_column) {
 							print_cstr(print, "error: expected a path, received a loop column");
 						} else {
+							if (details[i].type == KeyColumnDetail_DISCARD) {
+								// with the column name and the source, try to find the column names
+								Assert(table->source->num_nanocubes > 0);
+								nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
 
-							// would like to convert dates on the temporal queries and numbers
-							// on numerical queries
+								u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+								u32 bits   = it_coltype->bits;
+								u32 levels = it_coltype->levels;
 
-							// with the column name and the source, try to find the column names
-							Assert(table->source->num_nanocubes > 0);
-							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+								// @note this can overflow
+								u8 *path = (u8*) print->end;
+								print->end += levels;
 
-							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
-							u32 bits   = it_coltype->bits;
-							u32 levels = it_coltype->levels;
+								for (u32 j=0;j<levels;++j) {
+									nx_Label label = 0;
+									pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
+									path[j] = label;
+								}
+								it += bytes;
+								MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube,
+													    it_coltype->name.begin, it_coltype->name.end,
+													    path, (u8) levels, print);
+								print->end = (char*) path;
+								print_str(print, label.begin, label.end);
+							} else if (details[i].type == KeyColumnDetail_NUMERICAL) {
+								u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+								u32 bits   = it_coltype->bits;
+								u32 levels = it_coltype->levels;
 
-							u8 *path = (u8*) print->end;
-							print->end += levels;
+								// @note this hack can overflow
+								Assert(bits * levels <= 64);
 
-							for (u32 j=0;j<levels;++j) {
-								nx_Label label = 0;
-								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
-								path[j] = label;
+								u64 y = 0;
+								pt_copy_bytesn(it, (char*) &y, bytes);
+								// pt_read_bits2(it, 0, bits * levels, (char*) &y);
+								// fprintf(stderr,"%llu\n", y);
+								it += bytes;
+
+								// y = a * x + b
+								// x = (y - b) / a
+								f64 x = (y - details[i].numerical.b)/details[i].numerical.a;
+
+								print_format(print, "%f", x);
 							}
-							it += bytes;
-							MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube,
-												    it_coltype->name.begin, it_coltype->name.end,
-												    path, (u8) levels, print);
-							print->end = (char*) path;
-							print_str(print, label.begin, label.end);
 						}
-					}
+					} break;
 					default:{
-					}break;
+					} break;
 					}
 
 					// column_offset += nm_TableKeysColumnType_bytes(it_coltype);

@@ -1221,6 +1221,20 @@ pt_BitStream_read(pt_BitStream *self, u8 bits)
 // 0x7f       0xfe
 //
 
+//
+// 2019-06-15T11:35
+// @TODO there is something weird with the write call on a bitstream
+// where should it write? what is the semantics of the fields below
+//
+// 	u8  *data;
+// 	u64 data_length;
+// 	u64 bit_offset;
+//
+// when we call a pt_BitStream_write
+//
+// note that we don't upload the state of the bitstream's data_length
+// or bit_offset, only its data.
+//
 static void
 pt_BitStream_write(pt_BitStream *self, u8 value, u8 bits)
 {
@@ -1254,6 +1268,7 @@ pt_BitStream_write(pt_BitStream *self, u8 value, u8 bits)
 			self->data[byte_offset+1] = shifted_value + preserved_higher_bits;
 		}
 	}
+	// self->data_length += bits;
 }
 
 static void
