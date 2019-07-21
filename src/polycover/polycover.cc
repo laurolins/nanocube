@@ -119,7 +119,8 @@ namespace polycover {
 		// interactions
 		//
 		if (x < 0 || y < 0) {
-			throw std::runtime_error("ooops");
+			return;
+			// throw std::runtime_error("ooops");
 		}
 
 		auto old_rows_size = static_cast<int>(rows.size());
