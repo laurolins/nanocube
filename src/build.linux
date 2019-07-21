@@ -76,7 +76,7 @@ fi
 CFLAGS="$CFLAGS $OPTIONS"
 CXXFLAGS="$CXXFLAGS $OPTIONS"
 
-EXE="nc41"
+EXE="nc41-dev"
 BUILD="../../build/nc41"
 SRC="../../nc41/src"
 CC="gcc"
