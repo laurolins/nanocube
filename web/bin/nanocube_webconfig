@@ -114,6 +114,9 @@ def main():
     argparser.add_argument('-p','--port',type=int,required=False,
                            const=8000,nargs='?')
 
+    argparser.add_argument('-c','--config',type=str,required=False,
+                           default='',nargs='?')
+
     #default path if installed
     webdir = os.path.dirname(os.path.realpath(__file__))
     webdir += '/../share/nanocube/web'
@@ -173,6 +176,11 @@ def main():
     for t in ts:
         config['widget'][t] = ts[t]
 
+
+    # read supplied config file
+    if(args.config != ''):
+        config=json.load(open(args.config))
+
     if args.port is None:
         print(json.dumps(config,indent=2))
     else:        
@@ -181,7 +189,7 @@ def main():
         shutil.copytree(args.web,
                         tmpdir+'/web')
         os.chdir(tmpdir+'/web')
-        
+                
         f = open('config.json','w')
         f.write(json.dumps(config))
         f.close()
