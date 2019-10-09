@@ -5,20 +5,8 @@
   "repository": "https://github.com/laurolins/nanocube",
   "license": "EPL-1.0",
   "main": "index.js",
-  "dependencies": {
-    "parcel": "^1.9.7"
-  },
   "devDependencies": {
-    "@fortawesome/fontawesome": "*",
-    "@fortawesome/fontawesome-free-solid": "*",
-    "colorbrewer": "*",
-    "d3": "*",
-    "interactjs": "*",
-    "jquery": "*",
-    "jsep": "*",
-    "leaflet": "*",
-    "leaflet-draw": "*",
-    "sprintf-js": "*"
+    "parcel-bundler": "*"
   },
   "scripts": {
     "start": "parcel index.html",
@@ -31,3 +19,4 @@
     "last 2 Firefox versions"
   ]
 }
+

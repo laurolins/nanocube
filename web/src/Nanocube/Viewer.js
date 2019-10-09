@@ -292,8 +292,6 @@ Viewer.prototype = {
     },
 
     update: function(skip,constraints,name,args,datasrc){
-        //console.log("skip: ",skip);
-
         skip = skip || [];
         constraints = constraints || [];
         var viewer = this;
@@ -312,7 +310,7 @@ Viewer.prototype = {
         for (var c in constraints){
             viewer.broadcastConstraint(skip,constraints[c]);
         }
-
+        
         Object.keys(viewer._widget).forEach(function(d){
             if (skip[0] != '*' && skip.indexOf(d) == -1){
                 //re-render
@@ -328,6 +326,13 @@ Viewer.prototype = {
         var queries = {};
         queries.global = nc.query();
 
+
+        Object.keys(this._widget).forEach(d=>{
+            let sel = viewer._widget[d].getSelection();
+            let c =  sel.brush || sel.global;
+            console.log(d,c);
+        });
+            
         //brush
         Object.keys(this._widget).forEach(function(d){
             if (skip[0] != '*' && skip.indexOf(d) == -1){
@@ -357,8 +362,6 @@ Viewer.prototype = {
                 });
             }
         });
-        
-        //console.log(queries.global,skip);
         
         if (Object.keys(queries).length > 1){
             delete queries.global;
