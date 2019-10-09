@@ -219,7 +219,7 @@ def spatialWidget(v,w=1.0):
     return {
         'type':'spatial',
         'title': v['name'],
-        'tilesurl':'http://{s}.tile.stamen.com/toner-lite/{z}/{x}/{y}.png',
+        'tilesurl':'//stamen-tiles-{s}.a.ssl.fastly.net/toner-lite/{z}/{x}/{y}.png',
         'coarse_offset':2,
         'view':{'c':[0,0],'z':0},
         'levels':levels,

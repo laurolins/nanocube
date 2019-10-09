@@ -6,16 +6,14 @@ let $ = window.$ = jquery;
 import * as d3 from 'd3';
 
 //fontawesome
-import fontawesome from '@fortawesome/fontawesome';
-import faForward from '@fortawesome/fontawesome-free-solid/faForward';
-import faPlay from '@fortawesome/fontawesome-free-solid/faPlay';
-import faBackward from '@fortawesome/fontawesome-free-solid/faBackward';
-import faPause from '@fortawesome/fontawesome-free-solid/faPause';
+import { library, dom } from '@fortawesome/fontawesome-svg-core';
+import { faForward } from '@fortawesome/free-solid-svg-icons/faForward';
+import { faPlay } from '@fortawesome/free-solid-svg-icons/faPlay';
+import { faBackward } from '@fortawesome/free-solid-svg-icons/faBackward';
+import { faPause } from '@fortawesome/free-solid-svg-icons/faPause';
 
-fontawesome.library.add(faForward);
-fontawesome.library.add(faPlay);
-fontawesome.library.add(faBackward);
-fontawesome.library.add(faPause);
+library.add(faForward,faPlay,faBackward,faPause);
+dom.watch();
 
 function Timeseries(opts,getDataCallback,updateCallback){
     var id = '#'+ opts.name.replace(/\./g,'\\.');
