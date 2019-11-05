@@ -1,3 +1,6 @@
+from flask import Flask
+app = Flask(__name__)
+
 import pandas as pd
 from sqlalchemy import create_engine
 engine = create_engine('sqlite:////crime.db')
