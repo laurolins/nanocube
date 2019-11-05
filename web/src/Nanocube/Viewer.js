@@ -14,6 +14,11 @@ import GroupedBarChart from './GroupedBarChart';
 import Timeseries from './Timeseries';
 import Expression from './Expression';
 
+import {sprintf} from 'sprintf-js';
+
+
+import { saveAs } from 'file-saver';
+
 let Viewer = function(opts){
     var container = $(opts.div_id);
     //set title
@@ -47,6 +52,19 @@ let Viewer = function(opts){
     timediv.append(timebtndiv);
     container.append(timediv);
     
+    let datatablediv = $('<div>');
+    
+    let inner_datatablediv = $('<div>');
+    datatablediv.attr('id', 'datatable-overlay');
+    inner_datatablediv.attr('id', 'datatable');
+
+    datatablediv.click(()=>datatablediv.css({display:'none'}));
+    inner_datatablediv.click((e)=>e.stopPropagation());
+
+    datatablediv.append(inner_datatablediv);
+    container.append(datatablediv);
+
+
     //setup
     var nanocubes = opts.nanocubes;
     var variables = [];
@@ -56,6 +74,7 @@ let Viewer = function(opts){
     this._catoverlay = catdiv;
     this._fixedoverlay = fixeddiv;
     this._timeoverlay = timediv;
+    this._datatableoverlay = datatablediv;
 
     this._nanocubes = nanocubes;
     this._urlargs = Object.assign({}, opts.urlargs);
@@ -89,14 +108,18 @@ let Viewer = function(opts){
                                                opts.config.widget[w].levels);
     }
 
-    //clearall
+    //bottom div
     let widget = viewer._widget;
-    let clearallbtn= d3.select(container[0])
+    let btndiv= d3.select(container[0])
         .append('div')
+        .attr('id','btns')
         .style('position', 'absolute')
         .style('right', '1ch')
-        .style('top', '1em')
-        .append('button')
+        .style('top', '1em');
+
+
+    //clearall
+    btndiv.append('a')
         .on('click',()=>{
             //console.log('clicked')
             for (let v in widget){
@@ -111,7 +134,102 @@ let Viewer = function(opts){
             viewer.update();
         })
         .html('Clear All');
+
+
+
+    async function fetchdata(url,format,count){
+        let k = Object.keys(viewer._nanocubes);
+        let nc = viewer._nanocubes[k[0]];
+        let sql = viewer.getSQL(nc);
+
+        if(count != undefined){
+            sql+=' LIMIT '+count;
+        }
+
+        let formdata = new FormData();
+        formdata.append('q',sql);
+        formdata.append('format',format);
+
+        let resp=await fetch(url, {method:'POST',
+                                   body: formdata});
+        if(format == 'json'){
+            return await resp.json();
+        }
+        else{
+            return await resp.text();
+        };
+    }
+
+    if(opts.config.sqldb_url){
+        btndiv.append('a')
+            .html('View Sample Data')
+            .on('click', async ()=>{
+                let data = await fetchdata(opts.config.sqldb_url,'json',50);
+                let overlay=viewer._datatableoverlay;
+                let tablediv = d3.select(overlay[0]).select('div');
+                viewer.createTable(data,tablediv);
+                overlay.css({display:'block'});
+                
+            });
+        
+        btndiv.append('a')
+            .html('Download Data')
+            .on('click', async ()=>{
+                let data = await fetchdata(opts.config.sqldb_url,'text');
+                let blob = new Blob([data],
+                                    {type:"text/csv;charset=utf-8"});
+                saveAs(blob, "data.csv");
+            });
+    }
+
+    /*
+    //View data
+    btndiv.append('a')
+        .html('View Sample Data')
+        .on('click',()=>{
+            let k = Object.keys(viewer._nanocubes);
+            let nc = viewer._nanocubes[k[0]];
+            let sql = viewer.getSQL(nc);
+            let formdata = new FormData();
+            formdata.append('q',sql+' LIMIT 50');
+            formdata.append('format','json');
+
+            fetch('http://lion5.research.att.com:5000/data',
+                  {method:'POST',
+                   body: formdata})
+                .then(resp=>resp.json())
+                .then(data=>{
+                    let overlay=viewer._datatableoverlay;
+                    let tablediv = d3.select(overlay[0]).select('div');
+                    viewer.createTable(data,tablediv);
+                    overlay.css({display:'block'});
+                });            
+        });
+    
+    btndiv.append('a')
+        .attr('id','downloadbtn')
+        .attr('href','#')
+        .html('Download Data')
+        .on('click',()=>{            
+            let k = Object.keys(viewer._nanocubes);
+            let nc = viewer._nanocubes[k[0]];
+            let sql = viewer.getSQL(nc);
+            let formdata = new FormData();
+            formdata.append('q',sql);
+            formdata.append('format','csv');
+            fetch('http://lion5.research.att.com:5000/data',
+                  {method:'POST',
+                   body: formdata})
+                .then(resp=>resp.text())
+                .then(data=>{
+                    let blob = new Blob([data],
+                                        {type:"text/csv;charset=utf-8"});
+                    saveAs(blob, "data.csv");
+                });
+        });
+        */
 };
+
 
 
 Viewer.prototype = {
@@ -319,19 +437,59 @@ Viewer.prototype = {
         });
     },
 
+    getSQL:function(nc){
+        let viewer = this;
+        let c  = {};
+        Object.keys(this._widget).map(d=>{
+            let sel = viewer._widget[d].getSelection();
+            c[d] = {
+                type: viewer._widget[d]._opts.type,
+                sel: sel.brush || sel.global
+            };
+        });
+
+
+        let where = Object.keys(c).map(k=>{
+            if(c[k].type=='spatial'){
+                if(c[k].sel.length == 0){
+                    return null;
+                }
+                else{
+                    return sprintf('((%f <= "Latitude") AND ("Latitude"<=%f) AND (%f<="Longitude") AND ("Longitude"<=%f))',
+                                   c[k].sel.coord[0][0],c[k].sel.coord[2][0],
+                                   c[k].sel.coord[0][1],c[k].sel.coord[2][1]);
+                }
+            }
+
+            if(c[k].type=='cat'){
+                if(c[k].sel.length == 0){
+                    return null;
+                }
+                else{
+                    return sprintf('("%s" IN (%s))',k,
+                                   c[k].sel.map(d=>'\''+d.cat+'\'').join(','));
+                }
+            }
+            if(c[k].type=='time'){
+                return sprintf('("%s" BETWEEN \'%s\' AND \'%s\')',k,
+                               c[k].sel.start.toISOString(),
+                               c[k].sel.end.toISOString());
+            }
+            
+            return null;
+        });
+        where = where.filter(k=>k!==null);
+        let sql = sprintf('SELECT * FROM %s WHERE %s',
+                          nc.name,where.join(' AND '));
+        return sql;
+    },
+                
     constructQuery: function(nc,skip){
         skip = skip || [];
 
         var viewer = this;
         var queries = {};
         queries.global = nc.query();
-
-
-        Object.keys(this._widget).forEach(d=>{
-            let sel = viewer._widget[d].getSelection();
-            let c =  sel.brush || sel.global;
-            console.log(d,c);
-        });
             
         //brush
         Object.keys(this._widget).forEach(function(d){
@@ -521,6 +679,87 @@ Viewer.prototype = {
         window.history.pushState('test','title',
                                  window.location.pathname+
                                  argstr);
+    },
+
+    createTable: function(data,div){
+        div.html(""); //clear everything
+        let coloredtable = div.append('table');
+
+        //Bind Data
+        //Rows
+        let headerrow=coloredtable.selectAll('.headerrow')
+            .data([Object.keys(data[0])]);
+
+        let rows=coloredtable.selectAll('.row')
+            .data(data);
+       
+        //Append Rows
+        headerrow.enter()
+            .append('tr')
+            .classed('headerrow',true);
+
+        rows.enter()
+            .append('tr')
+            .classed('row',true);
+
+        //Cells
+        let headercells = coloredtable.selectAll('.headerrow')
+            .selectAll('.headercell')
+            .data(d=>d);
+        
+        let cells = coloredtable.selectAll('.row')
+            .selectAll('.cell')
+            .data(d=>Object.keys(d).map(k=>d[k]));
+
+        //Append Cells
+        headercells.enter()
+            .append('th')
+            .classed('headercell',true);
+
+        cells.enter()
+            .append('td')
+            .classed('cell',true);
+
+        /*coloredtable.selectAll('.cell')
+            .append('div')
+            .classed('tooltip',true)
+            .text(d=>d);*/
+
+        //coloredtable.selectAll('.tooltip')
+        //    .append('span')
+        //    .classed('tooltiptext',true)
+        //    .text(dd=>dd.text);        
+        
+        //Update
+        coloredtable.selectAll('.headercell').text(d=>d);
+        coloredtable.selectAll('.cell').text(d=>d);
+
+        /*coloredtable.selectAll('.headercell').html(d=>{
+            if (d.name !== undefined){
+                return sprintf('%s<br /> (%d/%d)',
+                               d.name,d.valid,d.invalid+d.valid);
+            }
+                return '';
+            });*/
+
+        /*
+        coloredtable.selectAll('.cell')
+            .classed('invalid_count', dd=>dd.invalid_count )
+            .classed('valid', dd=>dd.valid )
+            .classed('invalid', dd=>!dd.valid )
+            .classed('required', dd=>dd.required )
+            .classed('string', dd=>(dd.detected === 'String'));
+        
+        coloredtable.selectAll('.tooltip').text(dd=>dd.text);
+        coloredtable.selectAll('.tooltiptext').text(dd=>dd.text);
+        */
+
+        //Exit
+        headerrow.exit().remove();
+        rows.exit().remove();
+        headercells.exit().remove();
+        cells.exit().remove();
+        return;
     }
 };
 

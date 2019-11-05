@@ -42,6 +42,39 @@ canvas {
     overflow-y:auto;
 }
 
+#datatable-overlay{
+    display:none;
+    width: 100%;
+    height: 100%;
+    margin: 0 auto;
+    position: relative;
+}
+
+#datatable{
+    width: 80%;
+    height: 80%;
+    top: 10%;
+    margin: 0 auto;
+    position: relative;
+    background-color:white;
+    overflow: auto;
+}
+
+#datatable table{
+    border-collapse: collapse;
+}
+#datatable th{
+  background-color: #00a8e0;
+  color: white;
+}
+#datatable td, #datatable th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+#datatable tr:nth-child(even){background-color: #f2f2f2;}
+#datatable tr:hover {background-color: #ddd;}
+
+
 .map-overlay{
     position:absolute;
     height:100%;
@@ -175,4 +208,16 @@ text {
     left: 10ch;
     top:  1em;
     z-index:1000;
+}
+
+
+#btns a{
+    z-index:1000;
+    background:white;
+    color:black;
+    margin:1px;
+    padding:6px;
+    border-radius:4px;
+    cursor: default;
+    text-decoration:none;
 }
