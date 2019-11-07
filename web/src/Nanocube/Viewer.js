@@ -175,7 +175,7 @@ let Viewer = function(opts){
         btndiv.append('a')
             .html('Download Data')
             .on('click', async ()=>{
-                let data = await fetchdata(opts.config.sqldb_url,'text');
+                let data = await fetchdata(opts.config.sqldb_url,'csv');
                 let blob = new Blob([data],
                                     {type:"text/csv;charset=utf-8"});
                 saveAs(blob, "data.csv");
