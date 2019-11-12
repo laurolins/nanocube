@@ -20,15 +20,17 @@ def data():
         q = request.form['q']
         format = request.form['format']
         resp = make_response()
+        print(q)
+        
+        data=pd.read_sql(q,engine).fillna(None)
+        mime
 
-        data=''
-        mime=''
         if format=='json':
-            data = json.dumps(pd.read_sql(q,engine).to_dict(orient='records'))
+            data = json.dumps(data.to_dict(orient='records'))
             mime = 'text/json'
         
         if format=='csv':
-            data = pd.read_sql(q,engine).to_csv(index=False)
+            data = data.to_csv(index=False)
             mime = 'text/csv'
 
         resp.data=data

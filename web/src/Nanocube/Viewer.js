@@ -152,6 +152,9 @@ let Viewer = function(opts){
 
         let resp=await fetch(url, {method:'POST',
                                    body: formdata});
+
+        console.log('sql ',sql);
+        
         if(format == 'json'){
             return await resp.json();
         }
@@ -471,7 +474,7 @@ Viewer.prototype = {
                 }
             }
             if(c[k].type=='time'){
-                return sprintf('("%s" BETWEEN \'%s\' AND \'%s\')',k,
+                return sprintf('("%s" BETWEEN datetime("%s") AND datetime("%s"))',k,
                                c[k].sel.start.toISOString(),
                                c[k].sel.end.toISOString());
             }
