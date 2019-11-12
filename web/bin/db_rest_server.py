@@ -22,8 +22,8 @@ def data():
         resp = make_response()
         print(q)
         
-        data=pd.read_sql(q,engine).fillna(None)
-        mime
+        data=pd.read_sql(q,engine).replace(to_replace=float('nan'),value=None)
+        mime=''
 
         if format=='json':
             data = json.dumps(data.to_dict(orient='records'))
