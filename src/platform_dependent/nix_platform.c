@@ -2141,7 +2141,7 @@ nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFil
 			callback(print->begin, user_data);
 		}
 done:
-		print_rewind(print,p);
+		print_restore(print,p);
 // 		if (ent->d_type == TD_DIR) {
 // 			if (cstr_match(entry->d_name,".") || cstr_match(entry->d_name,"..")) {
 // 				continue;
@@ -2151,7 +2151,7 @@ done:
 // 			print_cstr(print,entry->d_name);
 // 			char *p = print_checkpoint(print);
 // 			callback(print->begin, user_data);
-// 			print_rewind(print,p);
+// 			print_restore(print,p);
 // 		}
 	}
 }

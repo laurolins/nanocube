@@ -58,7 +58,7 @@ print_checkpoint(Print *self)
 }
 
 static void
-print_rewind(Print *self, char *checkpoint)
+print_restore(Print *self, char *checkpoint)
 {
 	Assert(self->begin <= checkpoint && checkpoint <= self->capacity);
 	self->end = checkpoint;
@@ -261,8 +261,7 @@ print_str(Print *self, char* begin, char *end)
 				// valid
 		self->written = n;
 		self->overflow = 0;
-	}
-	else {
+	} else {
 		self->overflow = 1;
 		self->written = 0;
 	}
@@ -656,12 +655,15 @@ print_resize_raw(Print *print, u64 new_size)
 		return 0;
 	}
 	Print *new_print = print_new_raw(new_size);
+	if (!new_print) { return 0; }
 	platform.memory_copy(new_print->begin, print->begin, n);
 	new_print->end = new_print->begin + n;
 	*new_print->end = 0;
 	platform.free_memory_raw(print);
 	return new_print;
 }
+
+#ifdef a_ARENA
 
 static Print*
 print_new(a_Arena *arena, u64 size)
@@ -676,3 +678,5 @@ print_new(a_Arena *arena, u64 size)
 	Assert(raw);
 	return print_init_(raw, size);
 }
+
+#endif

@@ -5065,11 +5065,13 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 /*
 BEGIN_DOC_STRING nanocube_create_doc
 Ver:   __VERSION__
-Usage: nanocube create INPUT MAPPING OUTPUT [OPTIONS]
-       nanocube create -stdin MAPPING OUTPUT [OPTIONS]
-Create a nanocube index from INPUT .csv file (or stdin)
-using the mapping configuration specified in the MAPPING file
-and writes the resulting nanocube index in the OUTPUT file.
+Usage:
+
+    nanocube create (INPUT|-stdin) MAPPING (.|OUTPUT) [OPTIONS]
+
+Create a nanocube index from INPUT file or stdin using the mapping
+configuration specified in the MAPPING file and writes the resulting
+nanocube index into the OUTPUT file (or stdout if '.')
 
 Possible OPTIONS:
 
@@ -5565,17 +5567,16 @@ service_create()
 	}
 
 	b8 use_stdin = op_Options_find_cstr(options, "-stdin") != 0;
-
 	MemoryBlock csv_filename     = { .begin=0, .end=0 };
 	MemoryBlock mapping_filename = { .begin=0, .end=0 };
-	MemoryBlock log_filename  = { .begin=0, .end=0 };
+	MemoryBlock output_filename  = { .begin=0, .end=0 };
 
 	if (use_stdin) {
 		if (op_Options_num_positioned_parameters(options) != 3) {
 			service_create_usage("csv with -stdin uses two required parameters: <mapping-fname> <output-fname>");
 			return;
 		} else if (!op_Options_str(options, 1, &mapping_filename)
-			   || !op_Options_str(options, 2, &log_filename)) {
+			   || !op_Options_str(options, 2, &output_filename)) {
 			service_create_usage("[csv] couldn't parse csv -stdin required params");
 			return;
 		}
@@ -5585,7 +5586,7 @@ service_create()
 			return;
 		} else if (!op_Options_str(options, 1, &csv_filename)
 			   || !op_Options_str(options, 2, &mapping_filename)
-			   || !op_Options_str(options, 3, &log_filename)) {
+			   || !op_Options_str(options, 3, &output_filename)) {
 			service_create_usage("couldn't parser three parameters for csv without -stdin");
 			return;
 		}
@@ -6853,7 +6854,7 @@ service_create()
 					/* fit memory to used pages to make arena more consistent */
 					al_Allocator_fit(allocator);
 
-					if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number, base64)) {
+					if (!service_create_save_arena(allocator, output_filename.begin, output_filename.end, part_number, base64)) {
 						print_clear(print);
 						log_cstr_("[create] aborting loop\n");
 						return;
@@ -6884,7 +6885,7 @@ service_create()
 					// slow, but we assume this op doesnt happen often. It will
 					// be loaded from mmapped file.
 
-					pt_MappedFile mapped_file = platform.open_mmap_file(log_filename.begin, log_filename.end, 1, 0);
+					pt_MappedFile mapped_file = platform.open_mmap_file(output_filename.begin, output_filename.end, 1, 0);
 					if (!mapped_file.mapped) {
 						log_cstr_("[create] couldn't open previous part.\n");
 						return;
@@ -6984,7 +6985,7 @@ finalize_insertion:
 		}
 		log_(print);
 #else
-		if (!service_create_save_arena(allocator, log_filename.begin, log_filename.end, part_number > 1 ? part_number : 0, base64)) {
+		if (!service_create_save_arena(allocator, output_filename.begin, output_filename.end, part_number > 1 ? part_number : 0, base64)) {
 			print_clear(print);
 			print_cstr(print,"[csv] couldn't save arena\n");
 			log_(print);

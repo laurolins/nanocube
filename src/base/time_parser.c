@@ -11,7 +11,6 @@
 #ifdef time_parser_UNIT_TEST
 #include "platform.c"
 #include "cstr.c"
-#include "arena.c"
 #include "print.c"
 #include "tokenizer.c"
 #include "time.c"
@@ -61,7 +60,6 @@ typedef struct {
 	Print           log;
 
 } ntp_Parser;
-
 
 #define ntp_init_charset(name) \
 	nt_CharSet_init(& name, st_ ## name, cstr_end(st_ ## name) , 0)
@@ -429,7 +427,7 @@ ntp_Parser_D(ntp_Parser *self)
 			return 0;
 		}
 		++self->num_date_numbers;
-		if (ntp_n(SLASH) || ntp_n(MINUS)) {
+		if (ntp_n(SLASH) || ntp_n(MINUS) || ntp_n(COLON)) {
 			if (self->num_date_numbers == 3) {
 				print_cstr(&self->log, "[parser error] date with more than 3 numbers?.\n");
 				ntp_Parser_log_context(self);
@@ -468,9 +466,6 @@ ntp_Parser_D(ntp_Parser *self)
 //         ('+'|'-') Z
 //
 
-
-
-
 static b8
 ntp_Parser_run(ntp_Parser *self, char *text_begin, char *text_end)
 {
@@ -482,11 +477,31 @@ ntp_Parser_run(ntp_Parser *self, char *text_begin, char *text_end)
 		return 0;
 
 	Assert(self->num_date_numbers > 0);
-	s32 i= 0;
+	s32 i = 0;
 
-	self->label.year  = self->numbers[i++];
-	self->label.month = (self->num_date_numbers > 1) ? self->numbers[i++] : 1;
-	self->label.day   = (self->num_date_numbers > 2) ? self->numbers[i++] : 1;
+	if (self->num_date_numbers == 1) {
+		// number has more than four digits
+		s64 x = self->numbers[i++];
+		if (x >= 10000000 && x <= 99999999) {
+			// eight digits, consider it YYYYMMDD
+			self->label.year  = x / 10000;
+			self->label.month = (x / 100) % 100;
+			self->label.day   = x % 100;
+		} else if (x >= 100000 && x <= 999999) {
+			// six digits, consider it YYYYMM
+			self->label.year  = x / 100;
+			self->label.month = x % 100;
+			self->label.day   = 1;
+		} else {
+			self->label.year  = x;
+			self->label.month = 1;
+			self->label.day   = 1;
+		}
+	} else {
+		self->label.year  = self->numbers[i++];
+		self->label.month = (self->num_date_numbers > 1) ? self->numbers[i++] : 1;
+		self->label.day   = (self->num_date_numbers > 2) ? self->numbers[i++] : 1;
+	}
 
 	if (self->label.day >= 1000 && self->label.year <= 12) {
 		/* day contains year, month contains day and day contains year */
@@ -534,9 +549,9 @@ main()
 	ntp_Parser parser;
 	ntp_Parser_init(&parser);
 
-	// @bug if we use "2017-06-01 00:00:00.0 PM";
-
-	char *test1 = "2017-06-01 00:00:00 PM";
+	// char *test1 = "2017-06-01 00:00:00.0";
+	// char *test1 = "20170601 00:00:00.0";
+	char *test1 = "20180101 12:32:23 AM";
 	b8 ok = ntp_Parser_run(&parser, test1, cstr_end(test1));
 	if (!ok) {
 		printf("error:\n");
