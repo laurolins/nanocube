@@ -78,7 +78,7 @@ CXXFLAGS="$CXXFLAGS $OPTIONS"
 
 BASENAME=$(pwd | rev | cut -f 2 -d'/' | rev)
 
-EXE="nc41-dev"
+EXE="nc42b"
 BUILD="../../build/${BASENAME}"
 SRC="../../${BASENAME}/src"
 CC="gcc"

@@ -314,6 +314,11 @@ count*width)`.  This target branches the result report.
 timeseries(base:<string>, width_secs:<number>, count:<number>, stride_secs:<number>)
 ctimeseries(base:<string>, width_secs:<number>, count:<number>, stride_secs:<number>)
 timeseriesagg(base:<string>, width_secs:<number>, count:<number>, stride_secs:<number>)
+
+# since months are not a multiple alighment of seconds, hours, or days we
+# give it a special API that gets the month of the base date and
+# moves in multiples of months from there
+monthseries(base:<string>, width_months:<number>, count:<number>, stride_months:<number>)
 ```
 
 Generate a sequence of results based on an initial date. Coarsest hierarchy
@@ -335,6 +340,12 @@ timeseries('2016-06-01 00:00:00 -05:00', 3600, 24, 24*3600)
 
 # same weekday for 4 weeks starting on June 1st, 2016
 timeseries('2016-06-01 00:00:00 -05:00', 24*3600, 4, 7*24*3600)
+
+# monthly aggregate numbers for 12 months, starting on June 2016
+monthseries('2016-06', 1, 12, 1)
+
+# quarter aggregate numbers for two years starting on Jan/2018
+monthseries('2018', 3, 8, 3)
 ```
 
 END_DOC_STRING

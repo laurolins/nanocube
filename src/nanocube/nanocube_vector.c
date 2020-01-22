@@ -1593,6 +1593,50 @@ np_FUNCTION_HANDLER(nv_function_time_series_aggregate)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
+np_FUNCTION_HANDLER(nv_function_month_series)
+{
+	Assert(params_end - params_begin == 4);
+
+	np_TypeValue *base_value_type  = params_begin;
+	np_TypeValue *width_value_type = params_begin + 1;
+	np_TypeValue *count_value_type = params_begin + 2;
+	np_TypeValue *stride_value_type = params_begin + 3;
+
+	// Make sure single parameter is a number
+	Assert(base_value_type->type_id  == nv_compiler_types.string);
+	Assert(width_value_type->type_id == nv_compiler_types.number);
+	Assert(count_value_type->type_id == nv_compiler_types.number);
+	Assert(stride_value_type->type_id == nv_compiler_types.number);
+
+	// value should be an integer number
+	MemoryBlock *base = (MemoryBlock*) base_value_type->value;
+	u64 width         = (u64) *((f64*) width_value_type->value);
+	u64 count         = (u64) *((f64*) count_value_type->value);
+	s64 stride        = (s64) *((f64*) stride_value_type->value);
+
+	/* parse base date and time */
+	ntp_Parser parser;
+	ntp_Parser_init(&parser);
+	if (!ntp_Parser_run(&parser, base->begin, base->end)) {
+		char *error = "Invalid base date on timeseq\n";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+
+	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	target->type = nm_TARGET_MONTH_SERIES;
+	target->anchor=0;
+	target->loop=1;
+	target->time_sequence.base       = parser.time;
+	target->time_sequence.width      = width;
+	target->time_sequence.count      = count;
+	target->time_sequence.stride     = stride;
+	target->time_sequence.cumulative = 0;
+
+	return np_TypeValue_value(nv_compiler_types.target, target);
+}
+
 np_FUNCTION_HANDLER(nv_function_dive_1)
 {
 	Assert(params_end - params_begin == 1);
@@ -2837,6 +2881,16 @@ nv_Compiler_init(np_Compiler *compiler)
 		(compiler, "timeseriesagg", nv_compiler_types.target,
 		 parameter_types, parameter_types + 4, 0, 0,
 		 nv_function_time_series_aggregate);
+
+	// monthseries: string, number, number, number -> target
+	parameter_types[0] = nv_compiler_types.string;
+	parameter_types[1] = nv_compiler_types.number;
+	parameter_types[2] = nv_compiler_types.number;
+	parameter_types[3] = nv_compiler_types.number;
+	np_Compiler_insert_function_cstr
+		(compiler, "monthseries", nv_compiler_types.target,
+		 parameter_types, parameter_types + 4, 0, 0,
+		 nv_function_month_series);
 
 	{
 		char *equivalent_names[] = { "dive", "branch" };

@@ -16,7 +16,8 @@ typedef enum {
 	nm_TARGET_TIME_SERIES_AGGREGATE,
 	nm_TARGET_PATH_LIST,
 	nm_TARGET_FIND_DIVE_LIST,
-	nm_TARGET_TILE2D_RANGE
+	nm_TARGET_TILE2D_RANGE,
+	nm_TARGET_MONTH_SERIES
 } nm_TargetType;
 
 
@@ -1464,6 +1465,14 @@ nm_Target_is_equal(nm_Target *self, nm_Target *other)
 			return 1;
 		}
 	} else if (self->type == nm_TARGET_TIME_SERIES || self->type == nm_TARGET_TIME_SERIES_AGGREGATE) {
+		if ((self->time_sequence.base.time == other->time_sequence.base.time)
+		    && (self->time_sequence.width == other->time_sequence.width)
+		    && (self->time_sequence.count == other->time_sequence.count)
+		    && (self->time_sequence.stride == other->time_sequence.stride)
+		    && (self->time_sequence.cumulative == other->time_sequence.cumulative)) {
+			return 1;
+		}
+	} else if (self->type == nm_TARGET_MONTH_SERIES) {
 		if ((self->time_sequence.base.time == other->time_sequence.base.time)
 		    && (self->time_sequence.width == other->time_sequence.width)
 		    && (self->time_sequence.count == other->time_sequence.count)
@@ -3386,6 +3395,113 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 				begin += stride;
 			end += stride;
 		}
+	} else if (target->type == nm_TARGET_MONTH_SERIES) {
+
+		Assert(target->anchor == 0);
+		Assert(target->loop == 1);
+
+		b8 loop = target->loop;
+
+		/* check if we can align the base date requested */
+		nm_TimeBinning time_binning;
+		if (!context->nm_services->get_time_binning(context->source->nanocubes[nanocube_index], (u8) index, &time_binning)) {
+			return nm_ERROR_TIME_BIN_ALIGNMENT;
+		}
+
+		u64 query_time0         = target->time_sequence.base.time;
+		u64 query_bin_months    = target->time_sequence.width;
+		u64 query_stride_months = target->time_sequence.stride;
+		s32 cumulative          = target->time_sequence.cumulative;
+
+		u64 scheme_time0        = time_binning.base_time.time;
+		u64 scheme_bin_secs     = time_binning.bin_width;
+
+		// the scheme bin in second must be less than one day...
+		s64 seconds_in_a_day = 24 * 60 * 60;
+		if (scheme_bin_secs > seconds_in_a_day) {
+			return nm_ERROR_TIME_BIN_ALIGNMENT;
+		}
+
+		// it also needs to be a divisor of a day in seconds
+		if ((seconds_in_a_day % scheme_bin_secs) != 0) {
+			return nm_ERROR_TIME_BIN_ALIGNMENT;
+		}
+
+		// bins in a day
+		s64 scheme_bins_in_a_day = seconds_in_a_day / scheme_bin_secs;
+
+		u8 depth = *(context->source->levels.begin + index);
+
+		tm_Label time_label_0 = { 0 };
+		tm_Label_init(&time_label_0, (tm_Time) { .time = query_time0 });
+		s32 year_0  = time_label_0.year;
+		s32 month_offset_0 = time_label_0.month-1; // make it 0-based
+
+		NanocubeIndex_Interval it;
+		for (u32 i=0;i<target->time_sequence.count;++i) {
+
+			tm_Time  t_start = { 0 };
+			tm_Time  t_finish = { 0 };
+
+			{ // init start
+				s32 month_offset_i = month_offset_0 + i * query_stride_months;
+				s32 year_i = year_0 + month_offset_i / 12;
+				s32 month_i = (month_offset_i % 12) + 1;
+				tm_Label label_start = {.year=year_i, .month=month_i, .day=1, .hour=0, .minute=0, .second=0, .offset_minutes=0, .timezone = 0};
+				tm_Time_init_from_label(&t_start, &label_start);
+			}
+
+			{ // init finish
+				s32 month_offset_i = month_offset_0 + i * query_stride_months + query_bin_months;
+				s32 year_i = year_0 + month_offset_i / 12;
+				s32 month_i = (month_offset_i % 12) + 1;
+				tm_Label label_finish= {.year=year_i, .month=month_i, .day=1, .hour=0, .minute=0, .second=0, .offset_minutes=0, .timezone = 0};
+				tm_Time_init_from_label(&t_finish, &label_finish);
+			}
+
+			// not it is time to find out the interval, and if it is needed
+			s64 bin_start  = (t_start.time - scheme_time0) / scheme_bin_secs;
+			s64 bin_finish = (t_finish.time - scheme_time0) / scheme_bin_secs;
+
+			// clamp to the actual valid interval
+			bin_start  = Max(0,bin_start);
+			bin_finish = Max(0,bin_finish);
+
+			if (bin_start == bin_finish || bin_finish == 0) {
+				continue;
+			}
+
+			NanocubeIndex_Interval_init(&it, context->source->indices[nanocube_index], root, index, depth, (u64) bin_start, (u64) bin_finish);
+
+			TableKeys_push_loop_column(context->table_keys, i);
+
+			nx_Node *target_node;
+
+			while ((target_node = NanocubeIndex_Interval_next(&it))) {
+				if (last_dimension) {
+					nx_PNode* pnode = (nx_PNode*) target_node;
+
+					// commit
+					nm_RUN_AND_CHECK(
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							);
+					nm_RUN_AND_CHECK(
+							 nm_TableKeys_commit_key(context->table_keys)
+							);
+				} else {
+					nx_INode* inode = (nx_INode*) target_node;
+					nx_Node* next_root = nx_Ptr_Node_get(&inode->content_p);
+
+					// recursive
+					nm_RUN_AND_CHECK(
+							 nm_Measure_solve_query(context, next_root, index + 1, nanocube_index)
+							);
+				}
+			}
+
+			nm_TableKeys_pop_column(context->table_keys);
+
+		} // loop on the intervals
 	} else {
 		Assert(0 && "Case not implemented!");
 	}
