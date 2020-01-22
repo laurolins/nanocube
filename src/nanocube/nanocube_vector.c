@@ -1951,7 +1951,15 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 	binding->next   = 0;
 
 	// search for the "text" keyword on the tag list
-	binding->hint = (nm_BindingHint) { .hint_id = 0 };
+	binding->hint = (nm_BindingHint) { .hint_id = 0, 0 };
+
+	// set hints
+	if (binding->target->type == nm_TARGET_TIME_SERIES || binding->target->type == nm_TARGET_MONTH_SERIES) {
+		binding->hint.time_sequence = binding->target->time_sequence;
+		binding->hint.has_time_sequence = 1;
+		binding->hint.time_sequence_is_monthly = (binding->target->type == nm_TARGET_MONTH_SERIES);
+	}
+
 	np_TypeValue *it = params_begin + 2;
 	while (it != params_end) {
 		MemoryBlock *tag = (MemoryBlock*) it->value;
@@ -1965,7 +1973,8 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 				return np_TypeValue_error();
 			}
 			// assume suffix is a number store in void* slot
-			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_IMG2D, .param = (void*) n };
+			binding->hint.hint_id = nm_BINDING_HINT_IMG2D;
+			binding->hint.number = (s32) n;
 		} else if (cstr_compare_memory_n_cstr(tag->begin, tag->end, "tile", 4) == 0) {
 			u64 n = 0;
 			if (!pt_parse_u64(tag->begin + 4, tag->end, &n)) {
@@ -1975,12 +1984,13 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 				return np_TypeValue_error();
 			}
 			// assume suffix is a number store in void* slot
-			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_TILE2D, .param = (void*) n };
+			binding->hint.hint_id = nm_BINDING_HINT_TILE2D;
+			binding->hint.number = (s32) n;
 		} else if (cstr_compare_memory_cstr(tag->begin, tag->end, "name") == 0) {
 			// NOTE(llins) will only know the source of the mapping from ID to NAMEs when we bind a source
-			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_NAME, .param = 0 };
+			binding->hint.hint_id = nm_BINDING_HINT_NAME;
 		} else if (cstr_compare_memory_cstr(tag->begin, tag->end, "time") == 0) {
-			binding->hint = (nm_BindingHint) { .hint_id = nm_BINDING_HINT_TIME, .param = 0 };
+			binding->hint.hint_id = nm_BINDING_HINT_TIME;
 		}
 		++it;
 	}
@@ -3876,7 +3886,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					} else if (it_coltype->bits != 2) {
 						ut_PrintStack_print(print_stack, "\"error\":\"expected a quadtree path\"");
 					} else {
-						u32 param = (u32) ((u64) it_coltype->hint.param);
+						u32 param = (u32) it_coltype->hint.number;
 						ut_PrintStack_print_formatted(print_stack, "\"hint\":\"img%llu\",",param);
 						ut_PrintStack_print(print_stack, "\"values_per_row\":2,");
 						// values will be listed as x, y
@@ -4103,7 +4113,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
 							u32 levels = it_coltype->levels;
-							u32 param = (u32) ((u64) it_coltype->hint.param);
+							u32 param = (u32) it_coltype->hint.number;
 							u64 x = 0;
 							u64 y = 0;
 							u32 j0 = (param < levels) ? (levels - param) : 0;
@@ -4204,10 +4214,10 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 			s32 type; // 0 is don't care about details
 			          // 1 is numerical
 			          // 2 is temporal
-			union {
-				nm_Numerical numerical;
-				nm_TimeBinning time_binning;
-			};
+			nm_Numerical numerical;
+			nm_TimeBinning time_binning;
+			// when hint comes with a time_sequence set get its labels
+			tm_Label label_of_time_sequence_base;
 		} KeyColumnDetail;
 		static const s32 KeyColumnDetail_DISCARD   = 0;
 		static const s32 KeyColumnDetail_TEMPORAL  = 1;
@@ -4229,6 +4239,14 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					// compare the prefix of the hint
 					if (cstr_compare_memory_n_cstr(block.begin, block.end, "temporal", 8) == 0) {
 						details[i].type = KeyColumnDetail_TEMPORAL;
+
+						if (it->hint.has_time_sequence) {
+							tm_Label time_label = { 0 };
+							tm_Time  time = it->hint.time_sequence.base;
+							tm_Label_init(&time_label, time);
+							details[i].label_of_time_sequence_base = time_label;
+						}
+
 						s32 ok = nv_Nanocube_get_time_binning_by_dim_name(nanocube, it->name.begin, it->name.end, &details[i].time_binning);
 						if (!ok) {
 							// TODO: cleanup this
@@ -4335,7 +4353,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
 							u32 levels = it_coltype->levels;
-							u32 param = (u32) ((u64) it_coltype->hint.param);
+							u32 param = (u32) it_coltype->hint.number;
 							u64 x = 0;
 							u64 y = 0;
 							u32 j0 = (param < levels) ? (levels - param) : 0;
@@ -4357,65 +4375,138 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 						}
 					} break;
 					case nm_BINDING_HINT_NAME: {
-						if (it_coltype->loop_column) {
-							print_cstr(print, "error: expected a path, received a loop column");
-						} else {
-							if (details[i].type == KeyColumnDetail_DISCARD) {
-								// with the column name and the source, try to find the column names
-								Assert(table->source->num_nanocubes > 0);
-								nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+						if (details[i].type == KeyColumnDetail_DISCARD) {
+							// with the column name and the source, try to find the column names
+							Assert(table->source->num_nanocubes > 0);
+							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
 
-								u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
-								u32 bits   = it_coltype->bits;
-								u32 levels = it_coltype->levels;
+							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+							u32 bits   = it_coltype->bits;
+							u32 levels = it_coltype->levels;
 
-								// @note this can overflow
-								u8 *path = (u8*) print->end;
-								print->end += levels;
+							// @note this can overflow
+							u8 *path = (u8*) print->end;
+							print->end += levels;
 
-								for (u32 j=0;j<levels;++j) {
-									nx_Label label = 0;
-									pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
-									path[j] = label;
+							for (u32 j=0;j<levels;++j) {
+								nx_Label label = 0;
+								pt_read_bits2(it, bits * (levels - 1 - j), bits, (char*) &label);
+								path[j] = label;
+							}
+							it += bytes;
+							MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube,
+														it_coltype->name.begin, it_coltype->name.end,
+														path, (u8) levels, print);
+							print->end = (char*) path;
+							print_str(print, label.begin, label.end);
+						} else if (details[i].type == KeyColumnDetail_NUMERICAL) {
+							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+							u32 bits   = it_coltype->bits;
+							u32 levels = it_coltype->levels;
+
+							// @note this hack can overflow
+							Assert(bits * levels <= 64);
+
+							u64 y = 0;
+							pt_copy_bytesn(it, (char*) &y, bytes);
+							// pt_read_bits2(it, 0, bits * levels, (char*) &y);
+							// fprintf(stderr,"%llu\n", y);
+							it += bytes;
+
+							// y = a * x + b
+							// x = (y - b) / a
+							f64 x = (y - details[i].numerical.b)/details[i].numerical.a;
+
+							print_format(print, "%f", x);
+						} else if (details[i].type == KeyColumnDetail_TEMPORAL) {
+
+							// y is a full path in a binary tree which corresponds to the offfset
+							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
+							u32 bits   = it_coltype->bits;
+							u32 levels = it_coltype->levels;
+
+							// read next value
+							u64 y = 0;
+
+							if (it_coltype->loop_column) {
+								pt_copy_bytesn(it, (char*) &y, 4);
+								it += 4;
+							} else {
+								pt_copy_bytesn(it, (char*) &y, bytes);
+								it += bytes;
+							}
+
+							// pt_read_bits2(it, 0, bits * levels, (char*) &y);
+							// fprintf(stderr,"%llu\n", y);
+
+							if (it_coltype->loop_column) {
+
+								nm_BindingHint hint = it_coltype->hint;
+
+								// y is the slot on the loop
+								if (hint.time_sequence_is_monthly) {
+									s32 year_base = details[i].label_of_time_sequence_base.year;
+									s32 month_base = details[i].label_of_time_sequence_base.month;
+
+									// avoid computing this for each result
+									s32 month_offset_0 = month_base - 1 + y * hint.time_sequence.stride;
+									s32 year_0 = year_base + month_offset_0 / 12;
+									s32 month_0 = (month_offset_0 % 12) + 1;
+
+									print_format(print, "%04d-%02d", year_0, month_0);
+									if (hint.time_sequence.width > 1) {
+										s32 month_offset_1 = month_offset_0 + hint.time_sequence.width - 1;
+										s32 year_1 = year_base + month_offset_1 / 12;
+										s32 month_1 = (month_offset_1 % 12) + 1;
+										print_format(print, "..%04d-%02d", year_1, month_1);
+									}
+								} else {
+									// regular time sequence in multiples of the unit associated with
+									// the dimension
+
+									s32 scheme_bin_width = details[i].time_binning.bin_width;
+
+									tm_Label lbl;
+									if (hint.time_sequence.width == 24 * 60 * 60) {
+										tm_Time t = { .time = hint.time_sequence.base.time + y * hint.time_sequence.stride };
+										tm_Label_init(&lbl, t);
+										print_format(print, "%04d-%02d-%02d", lbl.year, lbl.month, lbl.day);
+									} else {
+										print_cstr(print,"[");
+
+										tm_Time t = { .time = hint.time_sequence.base.time + y * hint.time_sequence.stride };
+										tm_Label_init(&lbl, t);
+										if (scheme_bin_width == 60) {
+											print_format(print, "%04d-%02d-%02d %02d:%02d", lbl.year, lbl.month, lbl.day, lbl.hour, lbl.minute);
+										} else if (scheme_bin_width == 3600) {
+											print_format(print, "%04d-%02d-%02d %02d", lbl.year, lbl.month, lbl.day, lbl.hour);
+										} else if (scheme_bin_width == 24 * 3600) {
+											print_format(print, "%04d-%02d-%02d", lbl.year, lbl.month, lbl.day);
+										} else {
+											tm_Label_print(&lbl, print);
+										}
+
+										print_cstr(print,"..");
+
+										t = (tm_Time) { .time = t.time + hint.time_sequence.width };
+										tm_Label_init(&lbl, t);
+										if (scheme_bin_width == 60) {
+											print_format(print, "%04d-%02d-%02d %02d:%02d", lbl.year, lbl.month, lbl.day, lbl.hour, lbl.minute);
+										} else if (scheme_bin_width == 3600) {
+											print_format(print, "%04d-%02d-%02d %02d", lbl.year, lbl.month, lbl.day, lbl.hour);
+										} else if (scheme_bin_width == 24 * 3600) {
+											print_format(print, "%04d-%02d-%02d", lbl.year, lbl.month, lbl.day);
+										} else {
+											tm_Label_print(&lbl, print);
+										}
+										print_cstr(print,")");
+									}
+
 								}
-								it += bytes;
-								MemoryBlock label = nv_Nanocube_get_dimension_path_name(nanocube,
-													    it_coltype->name.begin, it_coltype->name.end,
-													    path, (u8) levels, print);
-								print->end = (char*) path;
-								print_str(print, label.begin, label.end);
-							} else if (details[i].type == KeyColumnDetail_NUMERICAL) {
-								u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
-								u32 bits   = it_coltype->bits;
-								u32 levels = it_coltype->levels;
+							} else {
 
 								// @note this hack can overflow
 								Assert(bits * levels <= 64);
-
-								u64 y = 0;
-								pt_copy_bytesn(it, (char*) &y, bytes);
-								// pt_read_bits2(it, 0, bits * levels, (char*) &y);
-								// fprintf(stderr,"%llu\n", y);
-								it += bytes;
-
-								// y = a * x + b
-								// x = (y - b) / a
-								f64 x = (y - details[i].numerical.b)/details[i].numerical.a;
-
-								print_format(print, "%f", x);
-							} else if (details[i].type == KeyColumnDetail_TEMPORAL) {
-								u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
-								u32 bits   = it_coltype->bits;
-								u32 levels = it_coltype->levels;
-
-								// @note this hack can overflow
-								Assert(bits * levels <= 64);
-
-								u64 y = 0;
-								pt_copy_bytesn(it, (char*) &y, bytes);
-								// pt_read_bits2(it, 0, bits * levels, (char*) &y);
-								// fprintf(stderr,"%llu\n", y);
-								it += bytes;
 
 								tm_Time t = details[i].time_binning.base_time;
 								t.time += y * details[i].time_binning.bin_width;
@@ -4427,9 +4518,10 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					} break;
 					default:{
 					} break;
-					}
+					} // end switch
 
 					// column_offset += nm_TableKeysColumnType_bytes(it_coltype);
+
 				}
 			}
 #endif

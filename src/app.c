@@ -346,6 +346,7 @@ monthseries('2016-06', 1, 12, 1)
 
 # quarter aggregate numbers for two years starting on Jan/2018
 monthseries('2018', 3, 8, 3)
+
 ```
 
 END_DOC_STRING

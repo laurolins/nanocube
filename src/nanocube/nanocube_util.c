@@ -122,9 +122,7 @@ nu_BufferTokenizer_next(nu_BufferTokenizer *btok)
 // return number of bytes written to the "buffer"
 //
 static u64
-nu_BufferTokenizer_copy_token(nu_BufferTokenizer* btok,
-			      char *buffer,
-			      u64 capacity)
+nu_BufferTokenizer_copy_token(nu_BufferTokenizer* btok, char *buffer, u64 capacity)
 {
 	u64 n = (u64) (btok->token.end - btok->token.begin);
 	if (n > capacity) n = capacity;
@@ -795,8 +793,7 @@ nu_NodeDepth_Ordered_Set_find(nu_NodeDepth_Ordered_Set* self,
 }
 
 static void
-nu_NodeDepth_Ordered_Set_insert(nu_NodeDepth_Ordered_Set* self,
-				nu_NodeDepth *item)
+nu_NodeDepth_Ordered_Set_insert(nu_NodeDepth_Ordered_Set* self, nu_NodeDepth *item)
 {
 	s32 index = nu_NodeDepth_Ordered_Set_find(self, item);
 

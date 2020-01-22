@@ -20,7 +20,6 @@ typedef enum {
 	nm_TARGET_MONTH_SERIES
 } nm_TargetType;
 
-
 typedef struct {
 	s32         by_alias; // if by name, consider alias, otherwise consider array
 	nx_Array    array;
@@ -31,6 +30,14 @@ typedef struct {
 	nm_Path  path;
 	u8       depth;
 } nm_Dive;
+
+typedef struct {
+	tm_Time base;
+	u64     width;
+	u64     count;
+	s64     stride;
+	s64     cumulative; // fix the start point and move only the end point
+} nm_TimeSequence;
 
 typedef struct {
 	nm_TargetType type;
@@ -54,13 +61,7 @@ typedef struct {
 			s64 stride;
 			u8  depth; // base, width, count and stride are numbers with max_depth digits (accirding base)
 		} interval_sequence;
-		struct {
-			tm_Time base;
-			u64     width;
-			u64     count;
-			s64     stride;
-			s64     cumulative; // fix the start point and move only the end point
-		} time_sequence;
+		nm_TimeSequence time_sequence;
 		struct {
 			u32 z;
 			u32 x0;
@@ -109,9 +110,25 @@ typedef struct {
 #define nm_BINDING_HINT_NAME    0x3
 #define nm_BINDING_HINT_TIME    0x4
 
+
 typedef struct {
-	s32  hint_id;
-	void *param;
+	s32 hint_id;
+	//
+	// hint number is used on hint_id:
+	//	nm_BINDING_HINT_IMG2D
+	//	nm_BINDING_HINT_TILE2D
+	//
+	s32 number;
+	//
+	// time sequence is used when timeseries or monthseries
+	// columns are used
+	//
+	s16 has_time_sequence;
+	s16 time_sequence_is_monthly;
+	//
+	// otherwise it should be reported as bins
+	//
+	nm_TimeSequence time_sequence;
 } nm_BindingHint;
 
 /*
