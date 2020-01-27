@@ -72,8 +72,6 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
         this._range = opts.range || undefined;
     }
 
-
-
     
     //add Legend
     if (opts.legend){
@@ -192,12 +190,10 @@ Heatmap.prototype = {
 
         //layer control
         if (Object.keys(this._heatmaps).length > 1){
-            L.control.layers(null,this._heapmaps,
-                             {
-                                 collapsed: false,
-                                 position: 'bottomright'
-                             })
-                .addTo(map);
+            L.control.layers(null,this._heatmaps,{
+                collapsed: false,
+                position: 'bottomright'
+            }).addTo(map);
         }
 
         map.on('overlayadd', function (e) {
