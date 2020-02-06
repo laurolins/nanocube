@@ -5089,34 +5089,34 @@ Possible OPTIONS:
 
     -size0=S
          initial nanocube index file size. This size doubles
-	 everytime the usage gets closer to the current capacity.
-	 Once the building process finishes the resulting index
-	 file shrinks to the actual used pages. Example values for
+         everytime the usage gets closer to the current capacity.
+         Once the building process finishes the resulting index
+         file shrinks to the actual used pages. Example values for
          S: 4M, 16M, 32M, 256M, 1G. (default is 32MB)
     -max-size=S
          every time we need to increase the current capacity (initially
-	 equals to size0), we check to see if the new capacity exceeds
-	 max-size. If so, we create a new nanocube index file.
+         equals to size0), we check to see if the new capacity exceeds
+         max-size. If so, we create a new nanocube index file.
     -scan-buffer-size=S
          read S bytes before processing input records. Note that this
-	 buffer needs to fit the largest record size (.csv row bytes).
-	 The default is 4MB, which might be slow for slow input
-	 streams.
+         buffer needs to fit the largest record size (.csv row bytes).
+         The default is 4MB, which might be slow for slow input
+         streams.
     -filter=OFFSET,COUNT
          insert csv records in the range [OFFSET,OFFSET+COUNT).
-	 Note this is zero-based. The first .csv record corresponds
-	 to OFFSET==0.
+         Note this is zero-based. The first .csv record corresponds
+         to OFFSET==0.
     -header[=F]
          if the -header file option is defined, then we assume the
-	 input .csv file has a header. If the -header=F form is used
-	 we assume no header is coming in the input stream, but that
-	 the header in in file F (using the same separator for the data).
-	 Headers are important for the map files when we use the name
-	 based mapping.
+         input .csv file has a header. If the -header=F form is used
+         we assume no header is coming in the input stream, but that
+         the header in in file F (using the same separator for the data).
+         Headers are important for the map files when we use the name
+         based mapping.
     -sep[=S]
          set separator of columns in both header and INPUT. Default
-	 separator is comma ','; to specify a byte value use the
-	 hex notation '0x??' with hex digits on ??; to specify tab use '\t'.
+         separator is comma ','; to specify a byte value use the
+         hex notation '0x??' with hex digits on ??; to specify tab use '\t'.
     -report-frequency=N
          report progress every N records.
     -report-cache={0,1}
@@ -5125,17 +5125,17 @@ Possible OPTIONS:
          port to serve cube while building and after finished.
     -serve-refresh-rate=SECONDS
          a large memory copy operation will be performed every SECONDS
-	 to install a copy of the current NC index in a new safe memory
-	 section. Note that this should not interrupt the current server
-	 from solving queries.
+         to install a copy of the current NC index in a new safe memory
+         section. Note that this should not interrupt the current server
+         from solving queries.
     -serve-threads=N
          number of threads for solving queries.
     -mem_labels=S
          memory for the label sets.
     -base64
          Save output indices in base64 text format. This option was
-	 implemented to enable 'nanocube create' to be executed on
-	 hadoop reducers.
+         implemented to enable 'nanocube create' to be executed on
+         hadoop reducers.
 
 The MAPPING file consists of a series of specifications of which index
 and measure dimensions we want the output nanocube index to have based
@@ -5144,155 +5144,159 @@ on the columns of the input .csv file
     index_dimension(NAME, INPUT, INDEX_SPEC)
         NAME        is the name of the nanocube dimension.
         INPUT       identifies the .csv column names that will be used
-       	            as input by the MAPSPEC rule to generate the info for
-		    the nanocube index dimension
+                           as input by the MAPSPEC rule to generate the info for
+                    the nanocube index dimension
 
-	            input()              # no input columns needed
-		    input('lat','lon')   # two input values coming
+                    input()              # no input columns needed
+                    input('lat','lon')   # two input values coming
                                          # from columns 'lat' and
                                          # 'lon'
-	INDEX_SPEC  identifies (possibly-parameterized) the index dimension
-	            encoding (flat-tree, binary tree, quad-tree, k-ary tree)
-		    and resolution (number of levels), and how to map input
-		    values into 'bins' in this dimension.
+        INDEX_SPEC  identifies (possibly-parameterized) the index dimension
+                    encoding (flat-tree, binary tree, quad-tree, k-ary tree)
+                    and resolution (number of levels), and how to map input
+                    values into 'bins' in this dimension.
 
-		    categorical()
-		    categorical(S)
-		    categorical(B,L)
-		    categorical(B,L,S)
-		        Hierarchy with B bits of resolution (eg. 8) in L
-			levels; expects one input column and every distinct
-			value that appears in the .csv input column is mapped
-			into a unique number with L digits in {0,1,...,2^(B)-1}.
-			Numbers are automatically generated by their appearence
-			order in the .csv file if the string S is not specified.
+                    categorical()
+                    categorical(S)
+                    categorical(B,L)
+                    categorical(B,L,S)
+                        Hierarchy with B bits of resolution (eg. 8) in L
+                        levels; expects one input column and every distinct
+                        value that appears in the .csv input column is mapped
+                        into a unique number with L digits in {0,1,...,2^(B)-1}.
+                        Numbers are automatically generated by their appearence
+                        order in the .csv file if the string S is not specified.
 
-			S is a string encoding an alias table. In its simplest
-			form (A), we just name nodes on the deepest level of the
-			hierarchy. In its more elaborate form (B) we allow
-			naming intermediate nodes.
-			(A)
-				in_lbl_1 <nl>
-				in_lbl_2 <nl>
-				...
-				in_lbl_n <nl>
-			or
-				in_lbl_1 <tab> out_lbl_1 <nl>
-				in_lbl_2 <nl>
-				...
-				in_lbl_n <tab> out_lbl_1 <nl>
-			or
-				in_lbl_1_1 <tab> ... <tab> in_lbl_1_k <tab> out_lbl_1 <nl>
-				in_lbl_2 <nl>
-				...
-				in_lbl_n <tab> out_lbl_n <nl>
-			(B)
-				@hierarchy
-				alias_root
-				<tab> alias_level_1
-				<tab> <tab> alias_level_2
-				<tab> <tab> <tab> input_text (== alias_level_3)
-				<tab> <tab> <tab> input_text_1 <tab> input_text_2 <tab> alias_leaf_level
-				<tab> <tab> <tab> input_text (== alias_level_3)
-				<tab> alias_level_1
-				<tab> <tab> alias_level_2
-				<tab> <tab> <tab> input_text (== alias_level_3)
-				<tab> <tab> <tab> input_text (== alias_level_3)
-			or
-				@hierarchy
-				<tab> alias_level_1
-				<tab> <tab> <tab> input_text (== alias_level_3)
-				<tab> <tab> <tab> input_text_1 <tab> input_text_2 <tab> alias_leaf_level
-				<tab> <tab> <tab> input_text (== alias_level_3)
-				<tab> alias_level_1
-				<tab> <tab> <tab> input_text (== alias_level_3)
-				<tab> <tab> <tab> input_text (== alias_level_3)
+                        S is a string encoding an alias table. In its simplest
+                        form (A), we just name nodes on the deepest level of the
+                        hierarchy. In its more elaborate form (B) we allow
+                        naming intermediate nodes.
+                        (A)
+                                in_lbl_1 <nl>
+                                in_lbl_2 <nl>
+                                ...
+                                in_lbl_n <nl>
+                        or
+                                in_lbl_1 <tab> out_lbl_1 <nl>
+                                in_lbl_2 <nl>
+                                ...
+                                in_lbl_n <tab> out_lbl_1 <nl>
+                        or
+                                in_lbl_1_1 <tab> ... <tab> in_lbl_1_k <tab> out_lbl_1 <nl>
+                                in_lbl_2 <nl>
+                                ...
+                                in_lbl_n <tab> out_lbl_n <nl>
+                        (B)
+                                @hierarchy
+                                alias_root
+                                <tab> alias_level_1
+                                <tab> <tab> alias_level_2
+                                <tab> <tab> <tab> input_text (== alias_level_3)
+                                <tab> <tab> <tab> input_text_1 <tab> input_text_2 <tab> alias_leaf_level
+                                <tab> <tab> <tab> input_text (== alias_level_3)
+                                <tab> alias_level_1
+                                <tab> <tab> alias_level_2
+                                <tab> <tab> <tab> input_text (== alias_level_3)
+                                <tab> <tab> <tab> input_text (== alias_level_3)
+                        or
+                                @hierarchy
+                                <tab> alias_level_1
+                                <tab> <tab> <tab> input_text (== alias_level_3)
+                                <tab> <tab> <tab> input_text_1 <tab> input_text_2 <tab> alias_leaf_level
+                                <tab> <tab> <tab> input_text (== alias_level_3)
+                                <tab> alias_level_1
+                                <tab> <tab> <tab> input_text (== alias_level_3)
+                                <tab> <tab> <tab> input_text (== alias_level_3)
 
-		    latlon(L)
-		        creates a quad-tree with L levels using the mercator
-			projection. Expects two input columns with floating
-			pointing numbers for latitude and longitude.
+                    latlon(L)
+                        creates a quad-tree with L levels using the mercator
+                        projection. Expects two input columns with floating
+                        pointing numbers for latitude and longitude.
 
-		    numerical(BITS,A,B,TO_INT_METHOD_CODE)
-		        creates a binary tree with BITS levels representing integral
-			numbers from 0 to (2^BITS)-1. TO_INT_METHOD_CODE is either:
+                    numerical(BITS,A,B,TO_INT_METHOD_CODE)
+                        creates a binary tree with BITS levels representing integral
+                        numbers from 0 to (2^BITS)-1. TO_INT_METHOD_CODE is either:
 
-			    0: truncate
-			    1: floor
-			    2: ceil
-			    3: round
+                            0: truncate
+                            1: floor
+                            2: ceil
+                            3: round
 
-			The input incoming number is converted using the equation
+                        The input incoming number is converted using the equation
 
-			    Y = TO_INT_METHOD( AX + B )
+                            Y = TO_INT_METHOD( AX + B )
 
-	                if the above conversion is problematic, the record is discarded.
-			Also, if Y is out of range of [0, 2^BITS) then we also discard
-			the record. When we query with 'by name' we should expect
-			approximately the original X's.
+                        if the above conversion is problematic, the record is discarded.
+                        Also, if Y is out of range of [0, 2^BITS) then we also discard
+                        the record. When we query with 'by name' we should expect
+                        approximately the original X's.
 
-		    xy(L)
-		    xy_slippy(L)
-		        creates a quad-tree with L levels using the coords of
-			2^L x 2^L grid (0 based coords). Expects input coming
-			from two input columns (y grows bottom-up on xy and
-			top down on xy_slippy).
+                    xy(L)
+                    xy_slippy(L)
+                        creates a quad-tree with L levels using the coords of
+                        2^L x 2^L grid (0 based coords). Expects input coming
+                        from two input columns (y grows bottom-up on xy and
+                        top down on xy_slippy).
 
-		    time(BASE,WIDTH_SECS)
-		    time(L,BASE,WIDTH_SECS,OFFSET_SECS)
-		        creates a binary-tree with L levels. Expects one input
-			column with a string that is convertible to a timestamp.
-			Some accepted formats are:
-		           '2000-01-01T00:00:00-06:00.125'
-		           '2000-01-01T00:00:00-06:00'
-		           '2000-01-01T00:00-06:00'
-		           '2000-01-01T00:00'
-		           '2000-01-01T00'
-		           '2000-01-01'
+                    time(BASE,WIDTH_SECS)
+                    time(L,BASE,WIDTH_SECS,OFFSET_SECS)
+                        creates a binary-tree with L levels. Expects one input
+                        column with a string that is convertible to a timestamp.
+                        Some accepted formats are:
+                           '2000-01-01T00:00:00-06:00.125'
+                           '2000-01-01T00:00:00-06:00'
+                           '2000-01-01T00:00-06:00'
+                           '2000-01-01T00:00'
+                           '2000-01-01T00'
+                           '2000-01-01'
                         It uses BASE the timestamp (also in a format from the
-			above) as the alignment point for temporal bins. The
-			bins have width given in seconds: WIDTH_SECS; and a
-			conversion is possibly applied to align cases where
-			data will come for instance in local time and we want
-			to correct it to UTC.
+                        above) as the alignment point for temporal bins. The
+                        bins have width given in seconds: WIDTH_SECS; and a
+                        conversion is possibly applied to align cases where
+                        data will come for instance in local time and we want
+                        to correct it to UTC.
 
-			If L is not specified assumes L=16.
+                        If L is not specified assumes L=16.
 
-		    unixtime(BASE,WIDTH_SECS)
-		    unixtime(L,BASE,WIDTH_SECS,OFFSET_SECS)
-			Analogous to time, but instead of expecting a date
-			and time string, it expects a string with the number
-			of seconds since unix epoch (1970-01-01 UTC).
+                    btime(BASE,WIDTH_SECS)
+                    btime(L,BASE,WIDTH_SECS,OFFSET_SECS)
+                        same as time(...) API, but expects the bin offset per si
 
-			If L is not specified assumes L=16.
+                    unixtime(BASE,WIDTH_SECS)
+                    unixtime(L,BASE,WIDTH_SECS,OFFSET_SECS)
+                        Analogous to time, but instead of expecting a date
+                        and time string, it expects a string with the number
+                        of seconds since unix epoch (1970-01-01 UTC).
 
-		    ip(L)
-		        creates a quad-tree with L levels mapping IPv4 entries
-			(eg. 123.122.122.98) into a corresponding entry using the
-			hilbert space-filling curve convention.
+                        If L is not specified assumes L=16.
+
+                    ip(L)
+                        creates a quad-tree with L levels mapping IPv4 entries
+                        (eg. 123.122.122.98) into a corresponding entry using the
+                        hilbert space-filling curve convention.
 
     measure_dimension(NAME, INPUT, MEASURE_SPEC)
         NAME and INPUT are the same as in the index_dimension.
-	MEASURE_SPEC
-	    either a primitive scalar type like
-	    signed integer, unsigned integer, or floating point
-	    numbers with 32/64 bits. Or a pre-defined function to
-	    convert input columns into something meaningful
+        MEASURE_SPEC
+            either a primitive scalar type like
+            signed integer, unsigned integer, or floating point
+            numbers with 32/64 bits. Or a pre-defined function to
+            convert input columns into something meaningful
 
-	    u32, u64
-	    f32, f64
-	    row_bitset()
-	    duration(f32,UNITS)
-	    duration2(f32,UNITS)
+            u32, u64
+            f32, f64
+            row_bitset()
+            duration(f32,UNITS)
+            duration2(f32,UNITS)
                 e.g measure_dimension('duration',input('a','b') ,duration2(f32,60));
                 e.g measure_dimension('duration2',input('a','b') ,duration2(f32,60));
 
-	    duration2(f32,UNITS)
+            duration2(f32,UNITS)
 
     file(F)
-	reads content of file F as a string. Can be used together
-	with categorical index dimensions to point to alias mapping
-	descriptions (see categorical).
+        reads content of file F as a string. Can be used together
+        with categorical index dimensions to point to alias mapping
+        descriptions (see categorical).
 
 Example 1
 

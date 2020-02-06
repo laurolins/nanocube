@@ -73,6 +73,10 @@ typedef enum {
 	cm_MEASURE_DIMENSION_MAPPING
 } cm_MappingType;
 
+#define cm_TIME_INPUT_TYPE_DATE      0
+#define cm_TIME_INPUT_TYPE_UNIX_TIME 1
+#define cm_TIME_INPUT_TYPE_BIN       2
+
 typedef struct {
 	cm_MappingType mapping_type;
 	union {
@@ -103,7 +107,7 @@ typedef struct {
 				 * we should add 5 * 60 minutes.
 				 */
 				s64            minutes_to_add;
-				b8             unix_time;
+				u8             time_input_type;
 			} time;
 			struct {
 				/* one level of bits: values from 0 to 2^bits - 1 */
@@ -274,7 +278,7 @@ cm_Mapping_weekday(cm_Mapping *self)
 
 static void
 cm_Mapping_time(cm_Mapping *self, u8 depth, tm_Time base_time,
-		s64 default_minute_offset, u64 bin_width, s64 minutes_to_add, b8 unix_time)
+		s64 default_minute_offset, u64 bin_width, s64 minutes_to_add, u8 time_input_type)
 {
 	pt_fill((char*) self, (char*) self + sizeof(cm_Mapping), 0);
 
@@ -283,7 +287,7 @@ cm_Mapping_time(cm_Mapping *self, u8 depth, tm_Time base_time,
 	self->index_mapping.type	        = cm_INDEX_MAPPING_TIME;
 	self->index_mapping.time.depth          = depth;
 	self->index_mapping.time.minutes_to_add = minutes_to_add;
-	self->index_mapping.time.unix_time      = unix_time;
+	self->index_mapping.time.time_input_type= time_input_type;
 
 	nm_TimeBinning *time_binning = &self->index_mapping.time.time_binning;
 	nm_TimeBinning_init(time_binning, base_time, default_minute_offset, bin_width);
@@ -568,7 +572,7 @@ np_FUNCTION_HANDLER(cm_compiler_func_ip_hilbert)
 }
 
 static np_TypeValue
-cm_compiler_funct_time_base(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, b8 unix_time)
+cm_compiler_funct_time_base(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, b8 time_input_type)
 {
 	/*
 	 * time(16,"2015-01-01",1*HOUR,0)
@@ -608,13 +612,13 @@ cm_compiler_funct_time_base(np_Compiler* compiler, np_TypeValue *params_begin, n
 	u64 binw = (u64) bin_width_float;
 
 	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
-	cm_Mapping_time(mapping_spec, depth, parser.time, (s64) parser.label.offset_minutes, (u64) binw, minadd, unix_time);
+	cm_Mapping_time(mapping_spec, depth, parser.time, (s64) parser.label.offset_minutes, (u64) binw, minadd, time_input_type);
 
 	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
 }
 
 static np_TypeValue
-cm_compiler_funct_time_base_short(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, b8 unix_time)
+cm_compiler_funct_time_base_short(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, u8 time_input_type)
 {
 	/*
 	 * time(16,"2015-01-01",1*HOUR,0)
@@ -644,37 +648,42 @@ cm_compiler_funct_time_base_short(np_Compiler* compiler, np_TypeValue *params_be
 	u64 binw = (u64) bin_width_float;
 
 	cm_Mapping *mapping_spec = (cm_Mapping*) np_Compiler_alloc(compiler, sizeof(cm_Mapping));
-	cm_Mapping_time(mapping_spec, depth, parser.time, (s64) parser.label.offset_minutes, (u64) binw, minadd, unix_time);
+	cm_Mapping_time(mapping_spec, depth, parser.time, (s64) parser.label.offset_minutes, (u64) binw, minadd, time_input_type);
 
 	return np_TypeValue_value(cm_compiler_types.mapping_spec_id, mapping_spec);
 }
 
-
-
 /* time */
 np_FUNCTION_HANDLER(cm_compiler_func_time)
 {
-	b8 not_unix_time = 0;
-	return cm_compiler_funct_time_base(compiler, params_begin, params_end, not_unix_time);
+	return cm_compiler_funct_time_base(compiler, params_begin, params_end, cm_TIME_INPUT_TYPE_DATE);
 }
 
 np_FUNCTION_HANDLER(cm_compiler_func_time_short)
 {
-	b8 not_unix_time = 0;
-	return cm_compiler_funct_time_base_short(compiler, params_begin, params_end, not_unix_time);
+	return cm_compiler_funct_time_base_short(compiler, params_begin, params_end, cm_TIME_INPUT_TYPE_DATE);
+}
+
+/* btime */
+np_FUNCTION_HANDLER(cm_compiler_func_btime)
+{
+	return cm_compiler_funct_time_base(compiler, params_begin, params_end, cm_TIME_INPUT_TYPE_BIN);
+}
+
+np_FUNCTION_HANDLER(cm_compiler_func_btime_short)
+{
+	return cm_compiler_funct_time_base_short(compiler, params_begin, params_end, cm_TIME_INPUT_TYPE_BIN);
 }
 
 /* unix time */
 np_FUNCTION_HANDLER(cm_compiler_func_unix_time)
 {
-	b8 unix_time = 1;
-	return cm_compiler_funct_time_base(compiler, params_begin, params_end, unix_time);
+	return cm_compiler_funct_time_base(compiler, params_begin, params_end, cm_TIME_INPUT_TYPE_UNIX_TIME);
 }
 
 np_FUNCTION_HANDLER(cm_compiler_func_unix_time_short)
 {
-	b8 unix_time = 1;
-	return cm_compiler_funct_time_base_short(compiler, params_begin, params_end, unix_time);
+	return cm_compiler_funct_time_base_short(compiler, params_begin, params_end, cm_TIME_INPUT_TYPE_UNIX_TIME);
 }
 
 /* weekday */
@@ -1155,6 +1164,27 @@ cm_init_compiler_csv_mapping_infrastructure(np_Compiler *compiler)
 		 cm_compiler_func_time_short);
 
 
+	// btime
+	parameter_types[0] = cm_compiler_types.number_type_id;
+	parameter_types[1] = cm_compiler_types.string_type_id;
+	parameter_types[2] = cm_compiler_types.number_type_id;
+	parameter_types[3] = cm_compiler_types.number_type_id;
+	np_Compiler_insert_function_cstr
+		(compiler, "btime", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+4, 0, 0,
+		 cm_compiler_func_btime);
+
+	// btime
+	parameter_types[0] = cm_compiler_types.string_type_id;
+	parameter_types[1] = cm_compiler_types.number_type_id;
+	np_Compiler_insert_function_cstr
+		(compiler, "btime", cm_compiler_types.mapping_spec_id,
+		 parameter_types, parameter_types+2, 0, 0,
+		 cm_compiler_func_btime_short);
+
+
+
+
 
 	// latlon: number -> mapping_spec
 	// read latlon in degrees convert to mercator convert to quadtree
@@ -1632,8 +1662,11 @@ cm_mapping_time(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, n
 
 	MemoryBlock *time_text = tokens_begin + timeidx;
 
+	nm_TimeBinning *time_binning = &mapping->index_mapping.time.time_binning;
+
 	s64 time = 0;
-	if (dim->mapping_spec.index_mapping.time.unix_time) {
+	switch(dim->mapping_spec.index_mapping.time.time_input_type) {
+	case cm_TIME_INPUT_TYPE_UNIX_TIME: {
 		s32 ok = 0;
 		// losing the time fraction part of the data
 		if (!pt_parse_s64(time_text->begin, time_text->end, &time)) {
@@ -1653,17 +1686,24 @@ cm_mapping_time(cm_Dimension *dim, nx_Array *array, MemoryBlock *tokens_begin, n
 		tm_Time tm_time;
 		tm_Time_init_from_unix_time(&tm_time, time);
 		time = tm_time.time;
-	} else {
+		// adjustment if it is coming as a calendar based representation
+		time += mapping->index_mapping.time.minutes_to_add * tm_SECONDS_PER_MINUTE;
+	}break;
+	case cm_TIME_INPUT_TYPE_DATE: {
 		if (!ntp_Parser_run(parser, time_text->begin, time_text->end)) {
 			return 0;
 		}
 		time = parser->time.time;
-	}
-
-	nm_TimeBinning *time_binning = &mapping->index_mapping.time.time_binning;
-
-	// s64 time = parser->time.time;
-	time += mapping->index_mapping.time.minutes_to_add * tm_SECONDS_PER_MINUTE;
+		// adjustment if it is coming as a calendar based representation
+		time += mapping->index_mapping.time.minutes_to_add * tm_SECONDS_PER_MINUTE;
+	} break;
+	case cm_TIME_INPUT_TYPE_BIN: {
+		if (!pt_parse_s64(time_text->begin, time_text->end, &time)) {
+			return 0;
+		}
+		time = time_binning->base_time.time + time_binning->bin_width * time;
+	} break;
+	};
 
 	if (time < time_binning->base_time.time) {
 		// @maybe 2017-06-27T17:12
