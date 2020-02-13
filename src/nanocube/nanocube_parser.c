@@ -1844,7 +1844,7 @@ np_Compiler_insert_variable_cstr(np_Compiler *self, char *name_cstr,
 					      value, self->memory);
 }
 
-static char*
+static void*
 np_Compiler_alloc(np_Compiler *self, u64 num_bytes)
 {
 	return BilinearAllocator_alloc_left(self->memory, num_bytes);

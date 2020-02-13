@@ -467,6 +467,8 @@ log_format_(const char *cstr)
 
 #define msg_raw(st) fprintf(app_MSG_CHANNEL, "%s", st)
 
+#define msg_f(format, ...) fprintf(app_MSG_CHANNEL, format, ##  __VA_ARGS__)
+
 #define outputf(format, ...) fprintf(app_OUTPUT_CHANNEL, format, ##  __VA_ARGS__)
 
 #define outputc(c) fputc(c, app_OUTPUT_CHANNEL)
@@ -1726,7 +1728,8 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 						nm_MeasureSource *source = measure->sources[0];
 						Assert(source);
 						Assert(source->num_nanocubes > 0);
-						nv_Nanocube *nanocube = (nv_Nanocube*) source->nanocubes[source->num_nanocubes-1];
+						// nv_Nanocube *nanocube = (nv_Nanocube*) source->nanocubes[source->num_nanocubes-1];
+						nv_Nanocube *nanocube = nm_measure_source_nanocube(source, source->num_nanocubes-1);
 						nv_ResultStream_schema(&result_stream, symbol->name, nanocube);
 					}
 				}
@@ -2353,7 +2356,7 @@ service_serve(Request *request)
 
 	//
 	// @todo should estimate the amount of memory needed in the arena
-	// to aligne well with the various buffers needed... for now just
+	// to align well with the various buffers needed... for now just
 	// let it fly and be a bit wasteful
 	//
 
@@ -2384,7 +2387,6 @@ service_serve(Request *request)
 	if (num_threads < 1) {
 		num_threads = 1;
 	}
-
 
 	ServeData serve_data = { 0 };
 	app_initialize_serve_data(&serve_data, &info, request, num_threads);
@@ -2482,6 +2484,281 @@ free_resources:
 	app_NanocubesAndAliases_free_resources(&info);
 
 }
+
+/*
+BEGIN_DOC_STRING nanocube_serve2_doc
+Ver:   __VERSION__
+Usage:
+
+	nanocube serve2 PORT FOLDER [-max-folder-depth=N]
+
+Scan folder for all .nanocube files and their relative paths.
+User should then be able to query one or more cubes by running
+the command:
+
+q(src(STR_PATTERN).b('location',dive(4)))
+
+The source function searches for that substring within the
+files that are in the FOLDER.
+
+Let's say we have a directory structure
+
+NY/Brooklyn/123456789.nanocube
+NY/Brooklyn/912345678.nanocube
+NY/Queens/987654321.nanocube
+NY/Queens/876543219.nanocube
+
+so in this case, the query
+
+# results should be merged on a single table
+q(src_merge('Brook').b('location',dive(4)))
+# results should be split (later parameterize the split?)
+q(src_split('Brook').b('location',dive(4)))
+
+would merge the results from the first two indices. There is
+also an implicit assumption that the schema of the indices that
+are hit should be the same.
+
+Initial ideas:
+- scan FOLDER at start time for the .nanocube files
+- create a search-by-substring structure (suffix tree) to quickly
+  identify which .nanocube files should be used.
+- keep a cache of memory mapped cubes and keep it alive while it
+  is being used (after a period of idle time, unmap files).
+- on map file compute a kind of checksum just to bring all its
+  pages to main memory; maybe do this periodically.
+
+Possible OPTIONS:
+
+    -threads=N
+         threads used to process http requests. If single threaded,
+	 the same thread that establishes connections is the one
+	 processing and responding client requests. If more than
+	 one thread is used, one thread is responsible for establishing
+	 connections while the other threads process incoming requests.
+	 At this moment, multiple requests might be processed in parallel
+	 by different threads, but each request is processed sequentially.
+
+    -mem_compiler=SIZE                  (default  8M)
+    -mem_print_result=SIZE              (default 64M)
+    -mem_print_header=SIZE              (default  4K)
+    -mem_table_index_columns=SIZE       (default 64M)
+    -mem_table_value_columns=SIZE       (default 64M)
+    -mem_http_channel=SIZE              (default  4M)
+    -mem_table_value=SIZE               (default  8M)
+         Maximum memory sizes used by nanocube. On overflow report error.
+
+END_DOC_STRING
+*/
+
+
+//------------------------------------------------------------------------------
+//
+// StringArray:
+//     - double it if we need more
+//     - pack it when we finish
+//
+// [ StringArray ] [ text ] ----> <---- [ pos ]
+//
+//------------------------------------------------------------------------------
+
+typedef struct {
+	u32  count;
+	u32  left;
+	u32  right;
+	u32  length;
+	char text[];
+} StringArray;
+
+//
+// if init != 0, then copy content from 'init' string array
+//
+static StringArray*
+string_array_init(void *buffer, u32 length, StringArray *init)
+{
+	Assert(length >= sizeof(StringArray));
+	AssertMultiple(buffer,8);
+	AssertMultiple(length,8);
+
+	StringArray *result = buffer;
+	if (init == 0) {
+		result[0] = (StringArray) {
+			.count = 0,
+			.left = sizeof(StringArray),
+			.right = length,
+			.length = length
+		};
+	} else {
+		// returns 0 if it
+		u32 pos_array_length = init->length - init->right;
+		u32 required_space = RAlign(init->left, 4) + pos_array_length;
+		if (required_space > length) {
+			return 0;
+		}
+		platform.copy_memory(buffer, init, init->left);
+		StringArray *result = buffer;
+		result->length = length;
+		result->right  = length - pos_array_length;
+		platform.memory_copy(OffsetedPointer(result,result->right),OffsetedPointer(init,init->right),pos_array_length);
+	}
+
+	return result;
+}
+
+static u32
+string_array_available_storage(StringArray *self)
+{
+	if (self->left + sizeof(u32) >= self->right) return 0;
+	else return self->right - self->left - sizeof(u32);
+}
+
+static u32
+string_array_push(StringArray *self, void *string, u32 string_length)
+{
+	u32 storage_required = string_length + sizeof(u32);
+	if (self->left + storage_required > self->right) {
+		return 0;
+	}
+
+	self->right -= sizeof(u32);
+	u32 *p = OffsetedPointer(self,self->right);
+	p[0] = self->left;
+	//
+	// NOTE this is not the convention dst <- src, length
+	//
+	pt_copy_bytesn(string, OffsetedPointer(self,self->left), string_length);
+	++self->count;
+	self->left += string_length;
+
+	return 1;
+}
+
+//
+// returns new length
+//
+static u32
+string_array_pack(StringArray *self)
+{
+	u32 new_right = RAlign(self->left,4);
+	if (new_right < self->right) {
+		u32 pos_array_length = self->length - self->right;
+		pt_copy_bytesn(OffsetedPointer(self,new_right), OffsetedPointer(self,self->right), pos_array_length);
+		self->right = new_right;
+		self->length = self->right + pos_array_length;
+	}
+	return self->length;
+}
+
+// @perf this looks pretty slow: 1M extra calls
+PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve2_scan_filename_)
+{
+	StringArray** array_pointer_slot = user_data;
+	StringArray *array = array_pointer_slot[0];
+
+	u32 filename_length = cstr_length(filename);
+
+	// filter files with .nanocube extension only
+	static const char suffix[] = ".nanocube";
+	static const u32  suffix_length = 9;
+
+	if (!cstr_is_suffix(filename, filename_length, suffix, suffix_length)) {
+		return;
+	}
+
+	u32 filename_length_to_store = filename_length - suffix_length;
+	s32 inserted = string_array_push(array, filename, filename_length_to_store);
+	if (!inserted) {
+		u32 new_length = RAlign(Max(2*array->length,array->length + filename_length_to_store),8);
+		// msg_f("resizing filename array to %.0fKb bytes\n", new_length/1024.0);
+
+		void *buffer = platform.allocate_memory_raw(new_length, 0);
+		StringArray *new_array = string_array_init(buffer, new_length, array);
+
+		platform.free_memory_raw(array); // free previous array
+
+		array = new_array;
+		array_pointer_slot[0] = array;
+		Assert(new_array);
+
+		inserted = string_array_push(array, filename, filename_length_to_store);
+		Assert(inserted);
+	}
+	// msg_f("filename pushed: %.*s\n", (s32)filename_length_to_store, filename);
+}
+
+// run unit test of api calls
+static void
+service_serve2(Request *request)
+{
+	// search all files matching .nanocube extension
+	Print        *print   = request->print;
+	op_Options   *options = &request->options;
+
+	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) < 3) {
+		print_clear(print);
+		print_cstr(print, nanocube_serve2_doc);
+		output_(print);
+		return;
+	}
+
+	s32 port = 0;
+	if (!op_Options_s32(options, 1, &port)) {
+		output_cstr_("[serve] could not parse port number.\n");
+		return;
+	}
+
+	char *folder = op_Options_cstr(options, 2);
+
+// #define PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(name) void name(char *filename, void *user_data)
+// typedef PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(PlatformGetFilenamesInDirectoryCallback);
+// #define PLATFORM_GET_FILENAMES_IN_DIRECTORY(name) s32 name(char *directory, s32 recursive, PlatformGetFilenamesInDirectoryCallback *callback, void *user_data)
+// typedef PLATFORM_GET_FILENAMES_IN_DIRECTORY(PlatformGetFilenamesInDirectory);
+// #define PLATFORM_ALLOCATE_MEMORY_RAW(name) void* name(u64 size, u64 flags)
+
+	StringArray *filenames = 0;
+	{
+		u32   buffer_length = Kilobytes(16);
+		void *buffer = platform.allocate_memory_raw(buffer_length,0);
+		filenames = string_array_init(buffer, buffer_length, 0);
+	}
+
+	//
+	// note: would rather have an iterator than a callback
+	// but for now keep it this way so we can more forward
+	//
+	// this is ugly, but the filenames array might have to grow
+	// and we pass the slot that stores a pointer to the current
+	// string array. It might change if the array has to grow in
+	// the callback to scan filenames
+	//
+	platform.get_filenames_in_directory(folder, 1, service_serve2_scan_filename_, &filenames);
+
+	msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder);
+
+	//
+	// go see what we need to have a first version of the 'g(src(pattern))' API
+	//
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
  * Service Query
@@ -7762,7 +8039,7 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 	g_request = &request;
 	op_Options *options = &request.options;
 
-	pt_Memory *options_memory = platform.allocate_memory(Kilobytes(16),0);
+	pt_Memory *options_memory = platform.allocate_memory(Kilobytes(256),0);
 	op_Options_init(options,
 			OffsetedPointer(options_memory->base,0),
 			options_memory->size);
@@ -7806,6 +8083,8 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 		service_sizes(&request);
 	} else if (cmd_is("serve")) {
 		service_serve(&request);
+	} else if (cmd_is("serve2")) {
+		service_serve2(&request);
 	} else if (cmd_is("btree")) {
 		service_btree(&request);
 	} else if (cmd_is("create")) {

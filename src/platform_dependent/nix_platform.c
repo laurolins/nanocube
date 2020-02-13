@@ -2126,7 +2126,7 @@ nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFil
 		print_cstr(print, ent->d_name);
 		s32 status = stat(print->begin, &stat_data);
 		if (status != 0) {
-			fprintf(stderr,"[Warning] Could not stat file %s\n",print->begin);
+			fprintf(stderr,"[Warning] Could not stat file %s (status: %d)\n",print->begin, status);
 			goto done;
 		}
 		if (S_ISDIR(stat_data.st_mode)) {
@@ -2137,6 +2137,7 @@ nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFil
 			}
 			print_char(print,'/');
 			nix_get_filenames_in_directory_recursive_(print, dir2, callback, user_data);
+			closedir(dir2);
 		} else {
 			callback(print->begin, user_data);
 		}

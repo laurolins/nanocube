@@ -170,7 +170,7 @@ cstr_compare(char *a, char *b)
 }
 
 static s32
-cstr_match_n(char *a, char *b, s32 n)
+cstr_match_n(const char *a, const char *b, s32 n)
 {
 	while (n > 0) {
 		if (*a != *b) {
@@ -179,6 +179,23 @@ cstr_match_n(char *a, char *b, s32 n)
 		++a;
 		++b;
 		--n;
+	}
+	return 1;
+}
+
+static s32
+cstr_is_suffix(const char *text, s32 text_length, const char *suffix, s32 suffix_length)
+{
+	if (suffix_length > text_length) return 0;
+	const char *txt_it = text + text_length - 1;
+	const char *suf_it = suffix + suffix_length - 1;
+	for (s32 i=0;i<suffix_length;++i) {
+		if (*txt_it != *suf_it) {
+			return 0;
+		} else {
+			--txt_it;
+			--suf_it;
+		}
 	}
 	return 1;
 }

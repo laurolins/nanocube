@@ -147,23 +147,136 @@ typedef struct nm_Binding {
 #define nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE 1024
 
 typedef struct {
+
+	char *dim_name;
+	s32 dim_levels;
+	s32 dim_name_length;
+
+	nx_NanocubeIndex *src_index;
+	void *src_nanocube; // wrapper of the index
+
+} nm_MeasureSourceItem;
+
+typedef struct {
 	/*
 	 * QUESTION(llins): could we have the nx_NanocubeIndex have a void
 	 * ptr to its specific parent/wrapper?
 	 */
-	nx_NanocubeIndex *indices[nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE];
-	void             *nanocubes[nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE];
-	s32              num_nanocubes;
-	struct {
-		u8 *begin;
-		u8 *end;
-	} levels;
-	struct {
-		MemoryBlock *begin;
-		MemoryBlock *end;
-	} names;
+	// nx_NanocubeIndex    *indices[nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE];
+	// void                *nanocubes[nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE];
+	// u32                 length; // size of this object
+	// nm_MeasureSourceDim dimensions[]; // name and number of levels
+	u32 num_nanocubes;
+	u32 num_dimensions; // index dimensions
+	u32 left;
+	u32 length;
+	nm_MeasureSourceItem items[];
+	// each item slot has two parts that might or might not be used
+	// dim and nanocube
+
+	// the total storage of a nm_MeasureSource is sizoef(nm_MeasureSource) + sizeof(nm_MeasureSourceDim) * num_index_dimensions;
+	//
+	// struct {
+	// 	u8 *begin;
+	// 	u8 *end;
+	// } levels;
+	//
+	// // these are the index dimension names
+	// struct {
+	// 	MemoryBlock *begin;
+	// 	MemoryBlock *end;
+	// } names;
+	//
 } nm_MeasureSource;
 
+static s32
+nm_measure_source_storage_needs(s32 num_dimensions, s32 num_nanocubes)
+{
+	return sizeof(nm_MeasureSource) + Max(num_dimensions,num_nanocubes) * sizeof(nm_MeasureSourceItem);
+}
+
+static nx_NanocubeIndex*
+nm_measure_source_index(nm_MeasureSource* self, s32 index)
+{
+	Assert(index < self->num_nanocubes);
+	return self->items[index].src_index;
+}
+
+static void*
+nm_measure_source_nanocube(nm_MeasureSource* self, s32 index)
+{
+	Assert(index < self->num_nanocubes);
+	return self->items[index].src_nanocube;
+}
+
+static MemoryBlock
+nm_measure_source_dim_name(nm_MeasureSource* self, s32 index)
+{
+	Assert(index < self->num_dimensions);
+	char *begin = self->items[index].dim_name;
+	char *end   = begin + self->items[index].dim_name_length;
+	return (MemoryBlock) {
+		.begin = begin,
+		.end = end
+	};
+}
+
+static u8
+nm_measure_source_dim_levels(nm_MeasureSource* self, s32 index)
+{
+	Assert(index < self->num_dimensions);
+	return self->items[index].dim_levels;
+}
+
+
+static nm_MeasureSource*
+nm_measure_source_init(void *buffer, u32 length)
+{
+	Assert(length > sizeof(nm_MeasureSource));
+	nm_MeasureSource *result = buffer;
+	result[0] = (nm_MeasureSource) {
+		.num_nanocubes = 0,
+		.num_dimensions = 0,
+		.left = sizeof(nm_MeasureSource),
+		.length = length
+	};
+	return result;
+}
+
+static s32
+nm_measure_source_insert_dimension(nm_MeasureSource *self, char *name, s32 name_length, u8 levels)
+{
+	s32 index = self->num_dimensions;
+	if (index >= self->num_nanocubes) {
+		if (self->left + sizeof(nm_MeasureSourceItem) > self->length) {
+			return 0;
+		}
+		self->left += sizeof(nm_MeasureSourceItem);
+		self->items[index] = (nm_MeasureSourceItem) { 0 };
+	}
+	self->items[index].dim_levels = levels;
+	self->items[index].dim_name   = name;
+	self->items[index].dim_name_length = name_length;
+	++self->num_dimensions;
+	return 1;
+}
+
+static s32
+nm_measure_source_insert_nanocube(nm_MeasureSource *self, nx_NanocubeIndex *index, void *nanocube)
+{
+	s32 offset = self->num_nanocubes;
+	if (offset >= self->num_dimensions) {
+		if (self->left + sizeof(nm_MeasureSourceItem) > self->length) {
+			return 0;
+		}
+		self->items[offset] = (nm_MeasureSourceItem) { 0 };
+		self->left += sizeof(nm_MeasureSourceItem);
+	}
+	self->items[offset].src_index = index;
+	self->items[offset].src_nanocube = nanocube;
+	++self->num_nanocubes;
+	return 1;
+}
 
 /*
  * This is a measure source binding.
@@ -202,10 +315,12 @@ typedef struct nm_MeasureExpression {
 #define nm_Measure_Max_Sources 64
 
 /*
+ *
  * An equivalence class notion for the opaque payload
  * config needs to be available:
  *
  * taxirides.select("fare")/taxirides.select("count")
+ *
  */
 typedef struct {
 	u8                       num_sources;
@@ -1517,7 +1632,8 @@ nm_Target_is_equal(nm_Target *self, nm_Target *other)
 //------------------------------------------------------------------------------
 // nm_MeasureSource
 //------------------------------------------------------------------------------
-
+//
+/*
 static void
 nm_MeasureSource_init(nm_MeasureSource *self, MemoryBlock *names_begin, MemoryBlock *names_end, u8 *levels_begin, u8* levels_end)
 {
@@ -1538,34 +1654,17 @@ nm_MeasureSource_insert_nanocube(nm_MeasureSource *self, nx_NanocubeIndex *index
 	self->nanocubes[self->num_nanocubes] = nanocube;
 	++self->num_nanocubes;
 }
+*/
 
 static s32
 nm_MeasureSource_dimension_by_name(nm_MeasureSource *self, char *name_begin, char *name_end)
 {
-	Assert(self->num_nanocubes > 0);
-// 	printf("measure: ");
-// 	fwrite(name_begin, 1, name_end - name_begin, stdout);
-// 	printf("\n");
-
-	s32 n = self->indices[0]->dimensions;
-
-// 	printf("n: %d\n",n);
-
-	MemoryBlock *it_name = self->names.begin;
-	for (s32 i=0;i<n;++i) {
-
-// 		printf("compare with: ");
-// 		fwrite(it_name->begin, 1, it_name->end - it_name->begin, stdout);
-// 		printf("\n");
-// 		printf(".... len %d\n",(s32)(it_name->end - it_name->begin));
-
-		if (cstr_compare_memory(name_begin, name_end, it_name->begin, it_name->end) == 0) {
-// 			printf(".... found %d\n",i);
+	for (s32 i=0;i<self->num_dimensions;++i) {
+		nm_MeasureSourceItem *item = &self->items[i];
+		if (cstr_compare_memory(name_begin, name_end, item->dim_name, item->dim_name + item->dim_name_length) == 0) {
 			return i;
 		}
-		++it_name;
 	}
-// 	printf(".... not found\n");
 	return -1;
 }
 
@@ -1792,7 +1891,7 @@ nm_sources_are_the_same(nm_Measure *a, u32 a_src, nm_Measure *b, u32 b_src)
 	Assert(a->sources[a_src]->num_nanocubes > 0);
 	Assert(b->sources[b_src]->num_nanocubes > 0);
 
-	if (a->sources[a_src]->indices[0] != b->sources[b_src]->indices[0])
+	if (a->sources[a_src]->items[0].src_index != b->sources[b_src]->items[0].src_index)
 		return 0;
 
 	if (a->num_bindings[a_src] != b->num_bindings[b_src])
@@ -1906,7 +2005,7 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 		if (it->target.anchor) {
 			// found column
 			nm_TableKeysColumnType *newcol = (nm_TableKeysColumnType*) LinearAllocator_alloc(memsrc, sizeof(nm_TableKeysColumnType));
-			newcol->name   = *(src->names.begin + it->dimension);
+			newcol->name = nm_measure_source_dim_name(src,it->dimension); // *(src->names.begin + it->dimension);
 
 			// figure depth of target
 			s32 depth = -1;
@@ -1927,7 +2026,7 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 					// assume the path is not by_alias anymore
 					if (it2->path.by_alias) {
 						s32 candidate_depth = 0;
-						if (nm_services->get_alias_path(src->nanocubes[0], (u8) it->dimension, it2->path.alias, sizeof(path_buffer), path_buffer, &candidate_depth)) {
+						if (nm_services->get_alias_path(src->items[0].src_nanocube, (u8) it->dimension, it2->path.alias, sizeof(path_buffer), path_buffer, &candidate_depth)) {
 							candidate_depth += it2->depth;
 							if (depth < 0) {
 								depth = candidate_depth;
@@ -1953,7 +2052,7 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 				}
 			}
 			newcol->levels = depth; // it->target.find_dive.path.array.length + it->target.find_dive.depth;
-			newcol->bits = src->indices[0]->bits_per_label[it->dimension];
+			newcol->bits = src->items[0].src_index->bits_per_label[it->dimension];
 			newcol->loop_column = 0;
 			newcol->hint = it->hint;
 			if (tkct_begin == 0) {
@@ -1966,7 +2065,7 @@ nm_TableKeysType_from_measure_source_and_bindings(LinearAllocator *memsrc, nm_Me
 		} else if (it->target.loop) {
 			// found column
 			nm_TableKeysColumnType *newcol = (nm_TableKeysColumnType*) LinearAllocator_alloc(memsrc, sizeof(nm_TableKeysColumnType));
-			newcol->name   = *(src->names.begin + it->dimension);
+			newcol->name   = nm_measure_source_dim_name(src, it->dimension);
 			newcol->levels = 0; /* not well defined */
 			newcol->bits   = 0;
 			newcol->loop_column = 1;
@@ -2959,7 +3058,8 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 				nx_PNode* pnode = (nx_PNode*) root;
 
 				nm_RUN_AND_CHECK(
-						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate,
+									      nm_measure_source_nanocube(context->source,nanocube_index))
 						);
 
 				nm_RUN_AND_CHECK(
@@ -2987,7 +3087,8 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		while (it_dive != end_dive) {
 			if (it_dive->path.by_alias) {
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, it_dive->path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(nm_measure_source_nanocube(context->source,nanocube_index), (u8) index,
+									 it_dive->path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					it_dive->path.array.begin  = path_buffer;
 					it_dive->path.array.length = path_length;
 				} else {
@@ -3000,7 +3101,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			u8  depth             = it_dive->depth;
 
 			nm_NanocubeIndex_FindDive it;
-			nm_NanocubeIndex_FindDive_init(&it, context->source->indices[nanocube_index], root, index, path_array, depth);
+			nm_NanocubeIndex_FindDive_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, path_array, depth);
 
 			u8 target_depth = depth + path_array->length;
 			nx_Node *target_node;
@@ -3021,7 +3122,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit record
 					nm_RUN_AND_CHECK(
-							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 							);
 
 					nm_RUN_AND_CHECK(
@@ -3047,7 +3148,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 			if (target->find_dive.path.by_alias) {
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(nm_measure_source_nanocube(context->source,nanocube_index), (u8) index, target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					target->find_dive.path.array.begin  = path_buffer;
 					target->find_dive.path.array.length = path_length;
 				} else {
@@ -3060,7 +3161,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			u8  depth = target->find_dive.depth;
 
 			nm_NanocubeIndex_FindDive it;
-			nm_NanocubeIndex_FindDive_init(&it, context->source->indices[nanocube_index], root, index, path_array, depth);
+			nm_NanocubeIndex_FindDive_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, path_array, depth);
 
 			u8 target_depth = depth + path_array->length;
 			nx_Node *target_node;
@@ -3081,7 +3182,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit record
 					nm_RUN_AND_CHECK(
-						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 					);
 
 					nm_RUN_AND_CHECK(
@@ -3101,7 +3202,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			if (target->find_dive.path.by_alias) {
 				// @todo make sure we fill in the array
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(nm_measure_source_nanocube(context->source,nanocube_index), (u8) index, target->find_dive.path.alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					target->find_dive.path.array.begin  = path_buffer;
 					target->find_dive.path.array.length = path_length;
 				} else {
@@ -3115,7 +3216,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			u8  depth = 0;
 
 			nm_NanocubeIndex_FindDive it;
-			nm_NanocubeIndex_FindDive_init(&it, context->source->indices[nanocube_index], root, index, path_array, depth);
+			nm_NanocubeIndex_FindDive_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, path_array, depth);
 			nx_Node *target_node;
 			while ((target_node = nm_NanocubeIndex_FindDive_next(&it))) {
 				if (last_dimension) {
@@ -3123,7 +3224,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit
 					nm_RUN_AND_CHECK(
-							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 							);
 					nm_RUN_AND_CHECK(
 							 nm_TableKeys_commit_key (context->table_keys)
@@ -3150,7 +3251,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			if (path->by_alias) {
 				// @todo make sure we fill in the array
 				s32 path_length = 0;
-				if (context->nm_services->get_alias_path(context->source->nanocubes[nanocube_index], (u8) index, path->alias, sizeof(path_buffer), path_buffer, &path_length)) {
+				if (context->nm_services->get_alias_path(nm_measure_source_nanocube(context->source,nanocube_index), (u8) index, path->alias, sizeof(path_buffer), path_buffer, &path_length)) {
 					path->array.begin  = path_buffer;
 					path->array.length = path_length;
 				} else {
@@ -3162,7 +3263,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			u8  depth = 0;
 
 			nm_NanocubeIndex_FindDive it;
-			nm_NanocubeIndex_FindDive_init(&it, context->source->indices[nanocube_index], root, index, path_array, depth);
+			nm_NanocubeIndex_FindDive_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, path_array, depth);
 			nx_Node *target_node;
 			while ((target_node = nm_NanocubeIndex_FindDive_next(&it))) {
 				if (last_dimension) {
@@ -3170,7 +3271,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit
 					nm_RUN_AND_CHECK(
-							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 							);
 
 					nm_RUN_AND_CHECK(
@@ -3192,7 +3293,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		Assert(target->anchor == 0);
 
 		nm_Mask it;
-		nm_Mask_init(&it, context->source->indices[nanocube_index], root, index, target->mask);
+		nm_Mask_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, target->mask);
 
 		nx_Node *target_node;
 		while ( (target_node = nm_Mask_next(&it) ) )
@@ -3202,7 +3303,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 				// commit
 				nm_RUN_AND_CHECK(
-						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 						);
 
 				nm_RUN_AND_CHECK(
@@ -3223,7 +3324,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		Assert(target->loop == 0);
 
 		nm_Tile2D_Range_Iterator it;
-		nm_Tile2D_Range_Iterator_init(&it, context->source->indices[nanocube_index], root, index,
+		nm_Tile2D_Range_Iterator_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index,
 					      target->tile2d_range.z,
 					      target->tile2d_range.x0,
 					      target->tile2d_range.y0,
@@ -3238,7 +3339,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 				// commit
 				nm_RUN_AND_CHECK(
-						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 						);
 
 				nm_RUN_AND_CHECK(
@@ -3271,7 +3372,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 		u8 depth = target->interval_sequence.depth;
 		if (depth == 0) {
-			depth = *(context->source->levels.begin + index);
+			depth = nm_measure_source_dim_levels(context->source,index);
 		}
 
 		NanocubeIndex_Interval it;
@@ -3279,7 +3380,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			u64 begin = (begin_it >= 0) ? (u64) begin_it : 0ull;
 			u64 end   = begin + target->interval_sequence.width;
 
-			NanocubeIndex_Interval_init(&it, context->source->indices[nanocube_index], root, index, depth, begin, end);
+			NanocubeIndex_Interval_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, depth, begin, end);
 
 			if (loop) {
 				TableKeys_push_loop_column(context->table_keys, i);
@@ -3293,7 +3394,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit
 					nm_RUN_AND_CHECK(
-						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+						context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 					);
 					nm_RUN_AND_CHECK(
 						nm_TableKeys_commit_key (context->table_keys)
@@ -3329,7 +3430,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 		/* check if we can align the base date requested */
 		nm_TimeBinning time_binning;
-		if (!context->nm_services->get_time_binning(context->source->nanocubes[nanocube_index], (u8) index, &time_binning)) {
+		if (!context->nm_services->get_time_binning(nm_measure_source_nanocube(context->source,nanocube_index), (u8) index, &time_binning)) {
 			return nm_ERROR_TIME_BIN_ALIGNMENT;
 		}
 
@@ -3360,7 +3461,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		s64 stride  = (s64) query_stride_secs / (s64) scheme_bin_secs;
 		s64 base = offset / (s64) scheme_bin_secs;
 
-		u8 depth = *(context->source->levels.begin + index);
+		u8 depth = nm_measure_source_dim_levels(context->source, index);//*(context->source->levels.begin + index);
 
 		s64 begin = base;
 		s64 end   = base + bin_width;
@@ -3373,7 +3474,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 			s64 clamped_end   = Max(end, 0);
 			if (clamped_begin < clamped_end) {
 
-				NanocubeIndex_Interval_init(&it, context->source->indices[nanocube_index], root, index, depth, (u64) clamped_begin, (u64) clamped_end);
+				NanocubeIndex_Interval_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, depth, (u64) clamped_begin, (u64) clamped_end);
 
 				if (loop) {
 					TableKeys_push_loop_column(context->table_keys, i);
@@ -3387,7 +3488,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 						// commit
 						nm_RUN_AND_CHECK(
-							context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 						);
 						nm_RUN_AND_CHECK(
 							nm_TableKeys_commit_key(context->table_keys)
@@ -3421,7 +3522,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 		/* check if we can align the base date requested */
 		nm_TimeBinning time_binning;
-		if (!context->nm_services->get_time_binning(context->source->nanocubes[nanocube_index], (u8) index, &time_binning)) {
+		if (!context->nm_services->get_time_binning(nm_measure_source_nanocube(context->source,nanocube_index), (u8) index, &time_binning)) {
 			return nm_ERROR_TIME_BIN_ALIGNMENT;
 		}
 
@@ -3447,7 +3548,8 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 		// bins in a day
 		s64 scheme_bins_in_a_day = seconds_in_a_day / scheme_bin_secs;
 
-		u8 depth = *(context->source->levels.begin + index);
+		u8 depth = nm_measure_source_dim_levels(context->source, index);
+		// u8 depth = *(context->source->levels.begin + index);
 
 		tm_Label time_label_0 = { 0 };
 		tm_Label_init(&time_label_0, (tm_Time) { .time = query_time0 });
@@ -3488,7 +3590,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 				continue;
 			}
 
-			NanocubeIndex_Interval_init(&it, context->source->indices[nanocube_index], root, index, depth, (u64) bin_start, (u64) bin_finish);
+			NanocubeIndex_Interval_init(&it, nm_measure_source_index(context->source,nanocube_index), root, index, depth, (u64) bin_start, (u64) bin_finish);
 
 			TableKeys_push_loop_column(context->table_keys, i);
 
@@ -3500,7 +3602,7 @@ nm_Measure_solve_query(nm_MeasureSolveQueryData *context, nx_Node *root, s32 ind
 
 					// commit
 					nm_RUN_AND_CHECK(
-							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, context->source->nanocubes[nanocube_index])
+							 context->nm_services->append(context->table_values_handle, &pnode->payload_aggregate, nm_measure_source_nanocube(context->source,nanocube_index))
 							);
 					nm_RUN_AND_CHECK(
 							 nm_TableKeys_commit_key(context->table_keys)
@@ -4143,9 +4245,9 @@ nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_servi
 
 		// @todo(llins): this is error prone
 		Assert(source->num_nanocubes > 0);
-		table->table_values_handle = nm_services->create(source->nanocubes[0], payload_config, allocation_context);
+		table->table_values_handle = nm_services->create(nm_measure_source_nanocube(source,0), payload_config, allocation_context);
 
-		u8 num_dimensions = source->indices[0]->dimensions;
+		u8 num_dimensions = source->num_dimensions;
 
 		// clear all the targets
 		for (s32 j=0;j<num_dimensions;++j) {
@@ -4167,7 +4269,8 @@ nm_Measure_eval(nm_Measure *self, LinearAllocator *memsrc, nm_Services *nm_servi
 		query_context.nm_services         = nm_services;
 
 		for (s32 j=0;j<source->num_nanocubes;++j) {
-			nx_Node* root = nx_Ptr_Node_get(&source->indices[j]->root_p);
+			//nx_Node* root = nx_Ptr_Node_get(&  source->indices[j] ->root_p);
+			nx_Node* root = nx_Ptr_Node_get(&nm_measure_source_index(source,j)->root_p);
 
 			if (!root) {
 				// empty cube

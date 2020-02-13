@@ -1231,7 +1231,7 @@ np_FUNCTION_HANDLER(nv_function_query)
 	Assert(params_begin + 1 == params_end);
 	np_TypeValue *measure_tv = params_begin;
 	Assert(measure_tv->type_id  == nv_compiler_types.measure);
-	nv_Query *result = (nv_Query*) np_Compiler_alloc(compiler, sizeof(nv_Query));
+	nv_Query *result = np_Compiler_alloc(compiler, sizeof(nv_Query));
 	*result = (nv_Query) { .measure = (nm_Measure*) measure_tv->value };
 	return np_TypeValue_value(nv_compiler_types.query, result);
 }
@@ -1242,7 +1242,7 @@ np_FUNCTION_HANDLER(nv_function_format)
 	np_TypeValue *format_name_tv = params_begin;
 	Assert(format_name_tv->type_id == nv_compiler_types.string);
 	MemoryBlock format_name = *((MemoryBlock*) format_name_tv->value);
-	nv_Format *result = (nv_Format*) np_Compiler_alloc(compiler, sizeof(nv_Format));
+	nv_Format *result = np_Compiler_alloc(compiler, sizeof(nv_Format));
 	// log error message if format name is not json or text
 	if (cstr_compare_memory_cstr(format_name.begin, format_name.end, "json") == 0) {
 		result->format = nv_FORMAT_JSON;
@@ -1311,9 +1311,9 @@ np_FUNCTION_HANDLER(nv_function_select)
 
 	s64 n = params_end - params_begin;
 
-	nv_Selection *selection = (nv_Selection*) np_Compiler_alloc(compiler, sizeof(nv_Selection));
+	nv_Selection *selection = np_Compiler_alloc(compiler, sizeof(nv_Selection));
 
-	MemoryBlock *names = (MemoryBlock*) np_Compiler_alloc(compiler, n * sizeof(MemoryBlock));
+	MemoryBlock *names = np_Compiler_alloc(compiler, n * sizeof(MemoryBlock));
 
 	selection->begin = names;
 	selection->end   = names + n;
@@ -1341,13 +1341,13 @@ np_FUNCTION_HANDLER(nv_function_interval_sequence)
 	Assert(count_value_type->type_id == nv_compiler_types.number);
 
 	// value should be an integer number
-	s64 base   = (s64) *((f64*) base_value_type->value);
-	u64 width  = (u64) *((f64*) width_value_type->value);
-	u64 count  = (u64) *((f64*) count_value_type->value);
+	s64 base   = (s64) np_f64(base_value_type); //*((f64*) base_value_type->value);
+	u64 width  = (u64) np_f64(width_value_type); //*((f64*) width_value_type->value);
+	u64 count  = (u64) np_f64(count_value_type); //*((f64*) count_value_type->value);
 	u64 stride = width;
 	u8  depth  = 0; // use max depth
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_INTERVAL_SEQUENCE;
 	target->anchor=0;
 	target->loop=1;
@@ -1382,7 +1382,7 @@ np_FUNCTION_HANDLER(nv_function_interval_sequence_with_stride)
 	u64 stride = (u64) *((f64*) stride_value_type->value);
 	u8  depth  = 0; // use max depth
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_INTERVAL_SEQUENCE;
 	target->anchor=0;
 	target->loop=1;
@@ -1416,7 +1416,7 @@ np_FUNCTION_HANDLER(nv_function_interval_aggregate)
 	u64 stride = width;
 	u8  depth  = 0; // use max depth
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_INTERVAL_SEQUENCE_AGGREGATE;
 	target->anchor=0;
 	target->loop=0;
@@ -1449,7 +1449,7 @@ np_FUNCTION_HANDLER(nv_function_interval_sequence_aggregate)
 	u64 stride = width;
 	u8  depth  = 0; // use max depth
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_INTERVAL_SEQUENCE_AGGREGATE;
 	target->anchor=0;
 	target->loop=0;
@@ -1493,7 +1493,7 @@ np_FUNCTION_HANDLER(nv_function_time_series)
 		return np_TypeValue_error();
 	}
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_TIME_SERIES;
 	target->anchor=0;
 	target->loop=1;
@@ -1537,7 +1537,7 @@ np_FUNCTION_HANDLER(nv_function_cumulative_time_series)
 		return np_TypeValue_error();
 	}
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_TIME_SERIES;
 	target->anchor=0;
 	target->loop=1;
@@ -1581,7 +1581,7 @@ np_FUNCTION_HANDLER(nv_function_time_series_aggregate)
 		return np_TypeValue_error();
 	}
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_TIME_SERIES_AGGREGATE;
 	target->anchor=0;
 	target->loop=0;
@@ -1624,7 +1624,7 @@ np_FUNCTION_HANDLER(nv_function_month_series)
 		return np_TypeValue_error();
 	}
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_MONTH_SERIES;
 	target->anchor=0;
 	target->loop=1;
@@ -1650,7 +1650,7 @@ np_FUNCTION_HANDLER(nv_function_dive_1)
 
 	Assert(depth_value >= 0);
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_FIND_DIVE;
 	target->anchor=1;
 	target->find_dive.path.by_alias = 0;
@@ -1685,7 +1685,7 @@ np_FUNCTION_HANDLER(nv_function_dive_list)
 			++it;
 		}
 
-		nm_Dive* dive_list = (nm_Dive*) np_Compiler_alloc(compiler,sizeof(nm_Dive)*len);
+		nm_Dive* dive_list = np_Compiler_alloc(compiler,sizeof(nm_Dive)*len);
 		begin = dive_list;
 		end   = dive_list + len;
 		s64 i = 0;
@@ -1697,7 +1697,7 @@ np_FUNCTION_HANDLER(nv_function_dive_list)
 		}
 
 	}
-	nm_Target* target = (nm_Target*) np_Compiler_alloc(compiler,sizeof(nm_Target));
+	nm_Target* target = np_Compiler_alloc(compiler,sizeof(nm_Target));
 	target->type = nm_TARGET_FIND_DIVE_LIST;
 	target->find_dive_list.begin = begin;
 	target->find_dive_list.end = end;
@@ -1723,7 +1723,7 @@ np_FUNCTION_HANDLER(nv_function_dive_2)
 
 	Assert(depth_value >= 0);
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 
 	target->type = nm_TARGET_FIND_DIVE;
 	target->anchor=1;
@@ -1749,7 +1749,7 @@ np_FUNCTION_HANDLER(nv_function_dive_by_alias)
 
 	Assert(depth_value >= 0);
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 
 	target->type = nm_TARGET_FIND_DIVE;
 	target->anchor=1;
@@ -1810,7 +1810,7 @@ np_FUNCTION_HANDLER_FLAG(nv_function_tile2d_range_core)
 		y1 = Max(y1,aux);
 	}
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_TILE2D_RANGE;
 	target->anchor=0;
 	target->loop=0;
@@ -1842,7 +1842,7 @@ np_FUNCTION_HANDLER(nv_function_mask)
 	// Make sure single parameter is a number
 	Assert(mask_tv->type_id == nv_compiler_types.string);
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type   = nm_TARGET_MASK;
 	target->anchor = 0;
 	target->loop   = 0;
@@ -1851,6 +1851,37 @@ np_FUNCTION_HANDLER(nv_function_mask)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
+
+
+
+np_FUNCTION_HANDLER(nv_function_src)
+{
+	Assert(params_end - params_begin == 1);
+	np_TypeValue *src_tv = params_begin;
+
+	// Make sure single parameter is a number
+	Assert(src_tv->type_id == nv_compiler_types.string);
+
+	//
+	// context to get a
+	//
+	// nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
+	// target->type   = nm_TARGET_MASK;
+	// target->anchor = 0;
+	// target->loop   = 0;
+	// target->mask   = *((MemoryBlock*) mask_tv->value);
+	//
+
+	return np_TypeValue_value(nv_compiler_types.measure, 0);
+}
+
+
+
+
+
+
+
+
 static nm_Binding*
 nv_copy_binding(np_Compiler *compiler, nm_Binding *binding)
 {
@@ -1858,7 +1889,7 @@ nv_copy_binding(np_Compiler *compiler, nm_Binding *binding)
 	nm_Binding *prev_copy = 0;
 	nm_Binding *it = binding;
 	while (it) {
-		nm_Binding *it_copy = (nm_Binding*) np_Compiler_alloc(compiler, sizeof(nm_Binding));
+		nm_Binding *it_copy = np_Compiler_alloc(compiler, sizeof(nm_Binding));
 		it_copy->dimension_name = it->dimension_name;
 		it_copy->target		= it->target;
 		it_copy->hint           = it->hint;
@@ -1916,7 +1947,7 @@ nv_copy_measure_expression(BilinearAllocator *memory, nm_MeasureExpression *meas
 static nm_Measure*
 nv_copy_measure(np_Compiler *compiler, nm_Measure *measure)
 {
-	nm_Measure *measure_copy = (nm_Measure*) np_Compiler_alloc(compiler, sizeof(nm_Measure));
+	nm_Measure *measure_copy = np_Compiler_alloc(compiler, sizeof(nm_Measure));
 
 	pt_fill((char*) measure_copy, (char*) measure_copy + sizeof(nm_Measure), 0);
 
@@ -1945,7 +1976,7 @@ np_FUNCTION_HANDLER(nv_function_binding_target)
 	Assert(dimension_name_tv->type_id == nv_compiler_types.string);
 	Assert(target_tv->type_id == nv_compiler_types.target);
 
-	nm_Binding *binding = (nm_Binding*) np_Compiler_alloc(compiler, sizeof(nm_Binding));
+	nm_Binding *binding = np_Compiler_alloc(compiler, sizeof(nm_Binding));
 	binding->dimension_name = *((MemoryBlock*) dimension_name_tv->value);
 	binding->target = (nm_Target*) target_tv->value;
 	binding->next   = 0;
@@ -2010,7 +2041,7 @@ np_FUNCTION_HANDLER(nv_function_binding_path)
 
 	nm_Path *path = (nm_Path*) path_tv->value;
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_FIND_DIVE;
 	target->anchor = 0;
 	target->loop   = 0;
@@ -2019,7 +2050,7 @@ np_FUNCTION_HANDLER(nv_function_binding_path)
 	target->find_dive.path.array.length = path->array.length;
 	target->find_dive.depth = 0;
 
-	nm_Binding *binding = (nm_Binding*) np_Compiler_alloc(compiler, sizeof(nm_Binding));
+	nm_Binding *binding = np_Compiler_alloc(compiler, sizeof(nm_Binding));
 	binding->dimension_name = *((MemoryBlock*) dimension_name_tv->value);
 	binding->target = target;
 	binding->next   = 0;
@@ -2037,7 +2068,7 @@ np_FUNCTION_HANDLER(nv_function_binding_alias)
 	Assert(dimension_name_tv->type_id == nv_compiler_types.string);
 	Assert(alias_tv->type_id	  == nv_compiler_types.string);
 
-	nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 	target->type = nm_TARGET_FIND_DIVE;
 	target->anchor = 0;
 	target->loop   = 0;
@@ -2045,7 +2076,7 @@ np_FUNCTION_HANDLER(nv_function_binding_alias)
 	target->find_dive.path.alias = *((MemoryBlock*) alias_tv->value);
 	target->find_dive.depth = 0;
 
-	nm_Binding *binding = (nm_Binding*) np_Compiler_alloc(compiler, sizeof(nm_Binding));
+	nm_Binding *binding = np_Compiler_alloc(compiler, sizeof(nm_Binding));
 	binding->dimension_name = *((MemoryBlock*) dimension_name_tv->value);
 	binding->target = target;
 	binding->next   = 0;
@@ -2074,7 +2105,7 @@ np_FUNCTION_HANDLER(nv_function_poly)
 		++it;
 	}
 
-	f32 *coords_begin    = (f32*) np_Compiler_alloc(compiler, coords_upper_bound * sizeof(f32));
+	f32 *coords_begin    = np_Compiler_alloc(compiler, coords_upper_bound * sizeof(f32));
 	f32 *coords_capacity = coords_begin + coords_upper_bound;
 
 	f32  *coords_end = coords_begin;
@@ -2124,7 +2155,7 @@ np_FUNCTION_HANDLER(nv_function_poly)
 		return np_TypeValue_error();
 	}
 
-	nv_Poly *poly = (nv_Poly*) np_Compiler_alloc(compiler, sizeof(nv_Poly));
+	nv_Poly *poly = np_Compiler_alloc(compiler, sizeof(nv_Poly));
 	s32 num_points = (s32) (coords_end - coords_begin) / 2;
 	nv_Poly_init_poly(poly, nv_Poly_TYPE_INTERIOR_AND_BOUNDARY, num_points, coords_begin);
 	return np_TypeValue_value(nv_compiler_types.poly, poly);
@@ -2138,11 +2169,11 @@ nv_function_poly_combine(np_Compiler* compiler, np_TypeValue *params_begin, np_T
 	for (s32 i=0;i<num_polys;++i) {
 		Assert(params_begin[i].type_id == nv_compiler_types.poly);
 	}
-	nv_Poly* *list = (nv_Poly**) np_Compiler_alloc(compiler, num_polys * sizeof(nv_Poly*));
+	nv_Poly* *list = np_Compiler_alloc(compiler, num_polys * sizeof(nv_Poly*));
 	for (s32 i=0;i<num_polys;++i) {
 		list[i] = (nv_Poly*) params_begin[i].value;
 	}
-	nv_Poly* poly_combine = (nv_Poly*) np_Compiler_alloc(compiler, sizeof(nv_Poly));
+	nv_Poly* poly_combine = np_Compiler_alloc(compiler, sizeof(nv_Poly));
 	nv_Poly_init_op(poly_combine, op_type, num_polys, list);
 	return np_TypeValue_value(nv_compiler_types.poly, poly_combine);
 }
@@ -2151,11 +2182,11 @@ np_FUNCTION_HANDLER(nv_function_poly_complement)
 {
 	s32 num_polys = (s32) (params_end - params_begin);
 	Assert(num_polys == 1);
-	nv_Poly* *list = (nv_Poly**) np_Compiler_alloc(compiler, num_polys * sizeof(nv_Poly*));
+	nv_Poly* *list = np_Compiler_alloc(compiler, num_polys * sizeof(nv_Poly*));
 	for (s32 i=0;i<num_polys;++i) {
 		list[i] = (nv_Poly*) params_begin[i].value;
 	}
-	nv_Poly* poly_complement = (nv_Poly*) np_Compiler_alloc(compiler, sizeof(nv_Poly));
+	nv_Poly* poly_complement = np_Compiler_alloc(compiler, sizeof(nv_Poly));
 	nv_Poly_init_op(poly_complement, nv_Poly_OP_COMPLEMENT, num_polys, list);
 	return np_TypeValue_value(nv_compiler_types.poly, poly_complement);
 }
@@ -2280,7 +2311,7 @@ np_FUNCTION_HANDLER(nv_function_region)
 	} else {
 		// a bit hacky, but should be a correct way to get the code
 		char *code = np_Compiler_alloc(compiler, end - free_memblock.begin);
-		nm_Target *target = (nm_Target*) np_Compiler_alloc(compiler, sizeof(nm_Target));
+		nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
 		target->type   = nm_TARGET_MASK;
 		target->anchor = 0;
 		target->loop   = 0;
@@ -2306,7 +2337,7 @@ np_FUNCTION_HANDLER(nv_function_alias)
 	np_TypeValue *alias_tv = params_begin;
 	Assert(alias_tv->type_id == nv_compiler_types.string);
 
-	nm_Path *path = (nm_Path*) np_Compiler_alloc(compiler, sizeof(nm_Path));
+	nm_Path *path = np_Compiler_alloc(compiler, sizeof(nm_Path));
 	path->by_alias = 1;
 	path->alias = *((MemoryBlock*) alias_tv->value);
 
@@ -2323,7 +2354,7 @@ np_FUNCTION_HANDLER(nv_function_path)
 
 	u8 *labels = 0;
 	if (len) {
-		labels = (u8*) np_Compiler_alloc(compiler,(u64) len);
+		labels = np_Compiler_alloc(compiler,(u64) len);
 		for (s64 i=0;i<len;++i) {
 			np_TypeValue* tv = params_begin + i;
 			Assert(tv->type_id == nv_compiler_types.number);
@@ -2332,7 +2363,7 @@ np_FUNCTION_HANDLER(nv_function_path)
 		}
 	}
 
-	nm_Path *path = (nm_Path*) np_Compiler_alloc(compiler, sizeof(nm_Path));
+	nm_Path *path = np_Compiler_alloc(compiler, sizeof(nm_Path));
 	path->by_alias = 0;
 	path->array.begin  = labels;
 	path->array.length = (u8) len;
@@ -2353,13 +2384,13 @@ np_FUNCTION_HANDLER(nv_function_path_list_aggregation)
 	}
 
 	// allocate an array of path pointers
-	nm_Path* *begin = (nm_Path**) np_Compiler_alloc(compiler,(u64) len * sizeof(nm_Path*));
+	nm_Path* *begin = np_Compiler_alloc(compiler,(u64) len * sizeof(nm_Path*));
 	nm_Path* *end   = begin + len;
 	for (s32 i=0;i<len;++i) {
 		begin[i] = (nm_Path*) params_begin[i].value;
 	}
 
-	nm_Target* target = (nm_Target*) np_Compiler_alloc(compiler,sizeof(nm_Target));
+	nm_Target* target = np_Compiler_alloc(compiler,sizeof(nm_Target));
 	target->type = nm_TARGET_PATH_LIST;
 	target->anchor=0;
 	target->loop=0;
@@ -2382,16 +2413,16 @@ np_FUNCTION_HANDLER(nv_function_path_list_aggregation_from_aliases)
 	}
 
 	// allocate an array of path pointers
-	nm_Path* *begin = (nm_Path**) np_Compiler_alloc(compiler,(u64) len * sizeof(nm_Path*));
+	nm_Path* *begin = np_Compiler_alloc(compiler,(u64) len * sizeof(nm_Path*));
 	nm_Path* *end   = begin + len;
 	for (s32 i=0;i<len;++i) {
-		nm_Path* path = (nm_Path*) np_Compiler_alloc(compiler, sizeof(nm_Path));
+		nm_Path* path = np_Compiler_alloc(compiler, sizeof(nm_Path));
 		path->by_alias = 1;
 		path->alias = *((MemoryBlock*) params_begin[i].value);
 		begin[i] = path;
 	}
 
-	nm_Target* target = (nm_Target*) np_Compiler_alloc(compiler,sizeof(nm_Target));
+	nm_Target* target = np_Compiler_alloc(compiler,sizeof(nm_Target));
 	target->type = nm_TARGET_PATH_LIST;
 	target->anchor=0;
 	target->loop=0;
@@ -2422,13 +2453,13 @@ np_FUNCTION_HANDLER(nv_function_tile2d)
 		return np_TypeValue_error();
 	}
 
-	u8 *labels = (u8*) np_Compiler_alloc(compiler,(u64) level_value * sizeof(u8));
+	u8 *labels = np_Compiler_alloc(compiler,(u64) level_value * sizeof(u8));
 	for (s32 i=0;i<level_value;++i) {
 		labels[i] = ((x_value & (1 << (level_value - 1 - i))) ? 1 : 0) +
 			    ((y_value & (1 << (level_value - 1 - i))) ? 2 : 0);
 
 	}
-	nm_Path *path = (nm_Path*) np_Compiler_alloc(compiler, sizeof(nm_Path));
+	nm_Path *path = np_Compiler_alloc(compiler, sizeof(nm_Path));
 	path->by_alias = 0;
 	path->array.begin  = labels;
 	path->array.length = level_value;
@@ -2458,13 +2489,13 @@ np_FUNCTION_HANDLER(nv_function_img2d)
 
 	y_value = (1 << level_value) - 1 - y_value;
 
-	u8 *labels = (u8*) np_Compiler_alloc(compiler,(u64) level_value * sizeof(u8));
+	u8 *labels = np_Compiler_alloc(compiler,(u64) level_value * sizeof(u8));
 	for (s32 i=0;i<level_value;++i) {
 		labels[i] = ((x_value & (1 << (level_value - 1 - i))) ? 1 : 0) +
 			    ((y_value & (1 << (level_value - 1 - i))) ? 2 : 0);
 
 	}
-	nm_Path *path = (nm_Path*) np_Compiler_alloc(compiler, sizeof(nm_Path));
+	nm_Path *path = np_Compiler_alloc(compiler, sizeof(nm_Path));
 	path->by_alias = 0;
 	path->array.begin  = labels;
 	path->array.length = level_value;
@@ -3027,6 +3058,17 @@ nv_Compiler_init(np_Compiler *compiler)
 		(compiler, "mask", nv_compiler_types.target,
 		 parameter_types, parameter_types + 1, 0, 0,
 		 nv_function_mask);
+
+	//
+	// search based method of finding a nanocube file.
+	// this will be interesting
+	//
+	// src: string x target -> binding
+	parameter_types[0] = nv_compiler_types.string;
+	np_Compiler_insert_function_cstr
+		(compiler, "src", nv_compiler_types.target,
+		 parameter_types, parameter_types + 1, 0, 0,
+		 nv_function_src);
 
 	// b: string x target -> binding
 	parameter_types[0] = nv_compiler_types.string;
@@ -3927,7 +3969,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					} else {
 						// with the column name and the source, try to find the column names
 						Assert(table->source->num_nanocubes > 0);
-						nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+						nv_Nanocube *nanocube = nm_measure_source_nanocube(table->source,0);
 
 						// temporarily
 						ut_PrintStack_print(print_stack, "\"hint\":\"name\",");
@@ -4143,7 +4185,8 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 						} else {
 							// with the column name and the source, try to find the column names
 							Assert(table->source->num_nanocubes > 0);
-							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+							// nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+							nv_Nanocube *nanocube = nm_measure_source_nanocube(table->source,0);
 
 							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
@@ -4226,7 +4269,10 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 		s32 num_details = 0;
 		{
 			// assume the table source is a nv_Nanocube
-			nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+			// nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+			nv_Nanocube *nanocube = nm_measure_source_nanocube(table->source,0);
+
+
 
 			nm_TableKeysColumnType *key_col_types = table_keys->type->begin;
 			num_details = table_keys->type->end - table_keys->type->begin;
@@ -4378,7 +4424,8 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 						if (details[i].type == KeyColumnDetail_DISCARD) {
 							// with the column name and the source, try to find the column names
 							Assert(table->source->num_nanocubes > 0);
-							nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+							// nv_Nanocube *nanocube = (nv_Nanocube*) table->source->nanocubes[0];
+							nv_Nanocube *nanocube = nm_measure_source_nanocube(table->source,0);
 
 							u32 bytes  = (it_coltype->bits * it_coltype->levels + 7)/8;
 							u32 bits   = it_coltype->bits;
@@ -4543,36 +4590,51 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 	} // end switch
 }
 
+
+
+static nm_MeasureSource*
+nv_initialize_measure_source_with_nanocube(void *buffer, u32 buffer_length, nv_Nanocube* cube)
+{
+	nm_MeasureSource* result = nm_measure_source_init(buffer, buffer_length);
+	for (s32 i=0;i < cube->num_index_dimensions;++i) {
+		u8    levels = cube->index_dimensions.num_levels[i];
+		char *name = cube->index_dimensions.names[i];
+		s32   name_length = cstr_length(name);
+		nm_measure_source_insert_dimension(result, name, name_length, levels);
+	}
+	nm_measure_source_insert_nanocube(result, &cube->index, cube);
+	return result;
+}
+
 static void
 nv_Compiler_insert_nanocube(np_Compiler *compiler, nv_Nanocube* cube, char *name_begin, char *name_end)
 {
 	np_Symbol* symbol = np_SymbolTable_find_variable(&compiler->symbol_table, name_begin, name_end);
 	if (symbol) {
+
 		Assert(symbol->is_variable);
 		Assert(symbol->variable.type_id == nv_compiler_types.measure);
 		nm_Measure *measure = (nm_Measure*) symbol->variable.value;
 		Assert(measure->num_sources == 1);
 
 		// TODO(llins): check that the cube is compatible with previously inserted cubes
-		nm_MeasureSource_insert_nanocube(measure->sources[0], &cube->index, cube);
-	} else {
+		// every measure has at least one valid source at position zero
+		// nm_MeasureSource_insert_nanocube(measure->sources[0], &cube->index, cube);
 
+		nm_measure_source_insert_nanocube(measure->sources[0], &cube->index, cube);
+
+	} else {
 		u32 n = (u32) cube->num_index_dimensions;
 		// reserve space for MeasureSource names and link them
-		MemoryBlock *names= (MemoryBlock*) np_Compiler_alloc(compiler, sizeof(MemoryBlock) * n);
-		for (u32 i=0;i<n;++i) {
-			names[i].begin = cube->index_dimensions.names[i];
-			names[i].end   = cstr_end(cube->index_dimensions.names[i]);
-			// 		printf("%d %p %p ----------> [",(s32)*names[i].begin, names[i].begin, names[i].end);
-			// 		fwrite(names[i].begin, 1, 20, stdout);
-			// 		printf("]\n");
-		}
 
-		nm_MeasureSource *source= (nm_MeasureSource*) np_Compiler_alloc(compiler, sizeof(nm_MeasureSource));
-		nm_MeasureSource_init(source, names, names+n, cube->index_dimensions.num_levels, cube->index_dimensions.num_levels + n);
-		nm_MeasureSource_insert_nanocube(source, &cube->index, cube);
+		// the max nanocubes per soruce constraint is not
+		// great right here
+		u32  measure_source_storage_required = nm_measure_source_storage_needs(n, nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE);
+		void *measure_source_buffer = np_Compiler_alloc(compiler, measure_source_storage_required);
 
-		nm_Measure *measure= (nm_Measure*) np_Compiler_alloc(compiler, sizeof(nm_Measure));
+		nm_MeasureSource *source = nv_initialize_measure_source_with_nanocube(measure_source_buffer, measure_source_storage_required, cube);
+
+		nm_Measure *measure = np_Compiler_alloc(compiler, sizeof(nm_Measure));
 		nm_Measure_init(measure, source, compiler->memory); // this measure should be copied and
 		// a buffer added before it can be combined
 
@@ -4593,28 +4655,20 @@ nv_Compiler_update_singleton_nanocube_symbol(np_Compiler *compiler, nv_Nanocube*
 	Assert(symbol->is_variable);
 	Assert(symbol->variable.type_id == nv_compiler_types.measure);
 	nm_Measure *measure = (nm_Measure*) symbol->variable.value;
+
 	Assert(measure->num_sources == 1);
 
 	nm_MeasureSource *source = measure->sources[0];
 
-	nv_Nanocube *old_nanocube = (nv_Nanocube*) source->nanocubes[0];
+	nv_Nanocube *old_nanocube = nm_measure_source_nanocube(source,0);
 
-	// the names don't change, but the levels should point
-	// into the new cube
-	u32 n = (u32) cube->num_index_dimensions;
-	MemoryBlock *names = source->names.begin;
-	Assert(names + n == source->names.end);
-	for (u32 i=0;i<n;++i) {
-		names[i].begin = cube->index_dimensions.names[i];
-		names[i].end   = cstr_end(cube->index_dimensions.names[i]);
-		// 		printf("%d %p %p ----------> [",(s32)*names[i].begin, names[i].begin, names[i].end);
-		// 		fwrite(names[i].begin, 1, 20, stdout);
-		// 		printf("]\n");
-	}
-	nm_MeasureSource_init(source, names, names + n, cube->index_dimensions.num_levels, cube->index_dimensions.num_levels + n);
-	nm_MeasureSource_insert_nanocube(source, &cube->index, cube);
+	// it is the same source buffer with updated content
+	source = nv_initialize_measure_source_with_nanocube(source, source->length, cube);
+
 	Assert(source->num_nanocubes == 1);
+
 	return old_nanocube;
+
 }
 
 static void

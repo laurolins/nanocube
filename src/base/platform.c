@@ -761,6 +761,9 @@ global_variable PlatformAPI platform;
 #define StaticAssertAlignment(type,alignment) \
 	_Static_assert(sizeof(type) % alignment == 0, StaticAssertAlignment_cat_(type,_size_is_not_multiple_of_,alignment))
 
+#define AssertMultiple(expr,bytes) Assert( ((u64)(expr) % bytes) == 0 )
+
+
 /*
  * functions
  */
