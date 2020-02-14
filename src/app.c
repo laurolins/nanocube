@@ -1747,6 +1747,16 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 			LinearAllocator_clear(&buffers->table_index_columns_allocator);
 			LinearAllocator_clear(&buffers->table_value_columns_allocator);
 
+
+			//
+			// check if any of the measure requires pattern matching
+			// the right sources.
+			//
+			// make sure we have access to the scanned cubes at startup
+			//
+
+
+
 			// pf_BEGIN_BLOCK("nm_Measure_eval");
 			s32 error = nm_OK;
 			nm_Table *table = nm_Measure_eval(measure, &buffers->table_index_columns_allocator, buffers->payload_services, &buffers->table_value_columns_allocator, &error);

@@ -227,11 +227,13 @@ typedef struct {
 	b8            error;
 } np_TypeValue;
 
+
 static s32 np_s32(np_TypeValue *self) { return (s32) ((f64*) self->value)[0]; }
-static s32 np_f32(np_TypeValue *self) { return (f32) ((f64*) self->value)[0]; }
-static s32 np_f64(np_TypeValue *self) { return ((f64*) self->value)[0]; }
-static s32 np_s64(np_TypeValue *self) { return (s64) ((f64*) self->value)[0]; }
-static s32 np_u32(np_TypeValue *self) { return (u32) ((f64*) self->value)[0]; }
+static f32 np_f32(np_TypeValue *self) { return (f32) ((f64*) self->value)[0]; }
+static f64 np_f64(np_TypeValue *self) { return ((f64*) self->value)[0]; }
+static s64 np_s64(np_TypeValue *self) { return (s64) ((f64*) self->value)[0]; }
+static u32 np_u32(np_TypeValue *self) { return (u32) ((f64*) self->value)[0]; }
+static MemoryBlock* np_memory_block(np_TypeValue *self) { return (MemoryBlock*) self->value; }
 
 typedef np_TypeValue (*FunctionSymbolPtr)(np_Compiler*, np_TypeValue*,
 					  np_TypeValue*);

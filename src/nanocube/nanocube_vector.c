@@ -1144,8 +1144,9 @@ nv_payload_services_init(nm_Services *services)
 #define nv_FORMAT_PSV    4
 #define nv_FORMAT_CSV    5
 
+// let the pattern bubble up to the main caller
 typedef struct {
-	nm_Measure *measure;
+	nm_Measure  *measure;
 } nv_Query;
 
 typedef struct {
@@ -1232,7 +1233,9 @@ np_FUNCTION_HANDLER(nv_function_query)
 	np_TypeValue *measure_tv = params_begin;
 	Assert(measure_tv->type_id  == nv_compiler_types.measure);
 	nv_Query *result = np_Compiler_alloc(compiler, sizeof(nv_Query));
-	*result = (nv_Query) { .measure = (nm_Measure*) measure_tv->value };
+	result[0] = (nv_Query) {
+		.measure = (nm_Measure*) measure_tv->value,
+	};
 	return np_TypeValue_value(nv_compiler_types.query, result);
 }
 
@@ -1851,36 +1854,23 @@ np_FUNCTION_HANDLER(nv_function_mask)
 	return np_TypeValue_value(nv_compiler_types.target, target);
 }
 
-
-
-
 np_FUNCTION_HANDLER(nv_function_src)
 {
 	Assert(params_end - params_begin == 1);
 	np_TypeValue *src_tv = params_begin;
-
-	// Make sure single parameter is a number
 	Assert(src_tv->type_id == nv_compiler_types.string);
 
-	//
-	// context to get a
-	//
-	// nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
-	// target->type   = nm_TARGET_MASK;
-	// target->anchor = 0;
-	// target->loop   = 0;
-	// target->mask   = *((MemoryBlock*) mask_tv->value);
-	//
-
-	return np_TypeValue_value(nv_compiler_types.measure, 0);
+	// TODO cleanup this number: measure_source_storage_required
+	// stretcheable buffers in the future after a major cleanup
+	u32  measure_source_storage_required = Kilobytes(16);
+	void *measure_source_buffer = np_Compiler_alloc(compiler, measure_source_storage_required);
+	nm_MeasureSource *source = nm_measure_source_init(measure_source_buffer, measure_source_storage_required);
+	MemoryBlock *pattern = np_memory_block(src_tv);
+	nm_measure_source_set_pattern(source, pattern->begin, pattern->end - pattern->begin);
+	nm_Measure *measure = np_Compiler_alloc(compiler, sizeof(nm_Measure));
+	nm_Measure_init(measure, source, compiler->memory); // this measure should be copied and
+	return np_TypeValue_readonly_value(nv_compiler_types.measure, measure);
 }
-
-
-
-
-
-
-
 
 static nm_Binding*
 nv_copy_binding(np_Compiler *compiler, nm_Binding *binding)
@@ -3066,7 +3056,7 @@ nv_Compiler_init(np_Compiler *compiler)
 	// src: string x target -> binding
 	parameter_types[0] = nv_compiler_types.string;
 	np_Compiler_insert_function_cstr
-		(compiler, "src", nv_compiler_types.target,
+		(compiler, "src", nv_compiler_types.measure,
 		 parameter_types, parameter_types + 1, 0, 0,
 		 nv_function_src);
 
@@ -4606,6 +4596,7 @@ nv_initialize_measure_source_with_nanocube(void *buffer, u32 buffer_length, nv_N
 	return result;
 }
 
+// to use as variable while evaluating
 static void
 nv_Compiler_insert_nanocube(np_Compiler *compiler, nv_Nanocube* cube, char *name_begin, char *name_end)
 {

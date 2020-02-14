@@ -158,35 +158,16 @@ typedef struct {
 } nm_MeasureSourceItem;
 
 typedef struct {
-	/*
-	 * QUESTION(llins): could we have the nx_NanocubeIndex have a void
-	 * ptr to its specific parent/wrapper?
-	 */
-	// nx_NanocubeIndex    *indices[nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE];
-	// void                *nanocubes[nm_MeasureSource_MAX_NANOCUBES_PER_SOURCE];
-	// u32                 length; // size of this object
-	// nm_MeasureSourceDim dimensions[]; // name and number of levels
 	u32 num_nanocubes;
 	u32 num_dimensions; // index dimensions
 	u32 left;
+	u32 right; // if it is a pattern based source,
+	           // write the pattern at the end
 	u32 length;
-	nm_MeasureSourceItem items[];
-	// each item slot has two parts that might or might not be used
-	// dim and nanocube
 
-	// the total storage of a nm_MeasureSource is sizoef(nm_MeasureSource) + sizeof(nm_MeasureSourceDim) * num_index_dimensions;
-	//
-	// struct {
-	// 	u8 *begin;
-	// 	u8 *end;
-	// } levels;
-	//
-	// // these are the index dimension names
-	// struct {
-	// 	MemoryBlock *begin;
-	// 	MemoryBlock *end;
-	// } names;
-	//
+	// each item slot has two parts that might or
+	// might not be used dim and nanocube
+	nm_MeasureSourceItem items[];
 } nm_MeasureSource;
 
 static s32
@@ -228,6 +209,29 @@ nm_measure_source_dim_levels(nm_MeasureSource* self, s32 index)
 	return self->items[index].dim_levels;
 }
 
+MemoryBlock
+nm_measure_source_get_pattern(nm_MeasureSource* self)
+{
+	if (self->right < self->length) {
+		return (MemoryBlock) {
+			.begin = OffsetedPointer(self, self->right),
+			.end = OffsetedPointer(self, self->length)
+		};
+	} else {
+		return (MemoryBlock) { 0 };
+	}
+}
+
+static s32
+nm_measure_source_set_pattern(nm_MeasureSource* self, char *pattern, s32 pattern_length)
+{
+	if (self->left + pattern_length > self->length) {
+		return 0;
+	}
+	self->right = self->left - pattern_length;
+	platform.copy_memory(OffsetedPointer(self, self->right), pattern, pattern_length);
+	return 1;
+}
 
 static nm_MeasureSource*
 nm_measure_source_init(void *buffer, u32 length)
@@ -238,6 +242,7 @@ nm_measure_source_init(void *buffer, u32 length)
 		.num_nanocubes = 0,
 		.num_dimensions = 0,
 		.left = sizeof(nm_MeasureSource),
+		.right = length,
 		.length = length
 	};
 	return result;
