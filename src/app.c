@@ -1977,7 +1977,7 @@ done:
 #define app_NanocubesAndAliases_NO_NANOCUBE_FOR_ALIAS 6
 
 typedef struct {
-	a_Arena        arena;
+//	a_Arena        arena;
 	pt_MappedFile  mapped_files[1024];
 	nv_Nanocube    *nanocubes[1024];
 	MemoryBlock    aliases[1024];
@@ -1986,15 +1986,18 @@ typedef struct {
 	u8             parse_result;
 } app_NanocubesAndAliases;
 
-// zero is initialization
 static void
 app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
 {
-	self->arena = (a_Arena) { 0 }; // zero is initialization
-	self->num_mapped_files = 0;
-	self->num_nanocubes = 0;
-	self->parse_result = app_NanocubesAndAliases_OK;
+	self[0] = (app_NanocubesAndAliases) {
+		.mapped_files = {{ 0 }},
+		.nanocubes = { 0 },
+		.aliases = {{ 0 }},
+		0
+	};
 }
+
+
 
 // internal void
 // app_NanocubesAndAliases_free_nanocubes(app_NanocubesAndAliases *self)
@@ -2025,7 +2028,7 @@ app_NanocubesAndAliases_free_and_pop_nanocube(app_NanocubesAndAliases *self, s32
 static void
 app_NanocubesAndAliases_free_resources(app_NanocubesAndAliases *self)
 {
-	a_clear(&self->arena);
+//	a_clear(&self->arena);
 	// BasicAllocator_free_all(&self->blocks);
 	for (s32 i=0;i<self->num_mapped_files;++i) {
 		platform.close_mmap_file(self->mapped_files + i);
@@ -2166,9 +2169,10 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 }
 
 static void
-app_initialize_serve_data(ServeData *serve_data, app_NanocubesAndAliases *info, Request *request, s32 num_threads)
+app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
+			  app_NanocubesAndAliases *info, Request *request, s32 num_threads)
 {
-	a_Arena *arena = &info->arena;
+// 	a_Arena *arena = &info->arena;
 
 	serve_data[0] = (ServeData) {
 		.buffers = 0,
@@ -2246,6 +2250,51 @@ app_initialize_serve_data(ServeData *serve_data, app_NanocubesAndAliases *info, 
 		buffer->payload_services = &serve_data->payload_services;
 	}
 }
+
+
+
+
+
+
+// @perf this looks pretty slow: 1M extra calls
+PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve_folder_scan_filename_)
+{
+	StringArray** array_pointer_slot = user_data;
+	StringArray *array = array_pointer_slot[0];
+
+	u32 filename_length = cstr_length(filename);
+
+	// filter files with .nanocube extension only
+	static const char suffix[] = ".nanocube";
+	static const u32  suffix_length = 9;
+
+	if (!cstr_is_suffix(filename, filename_length, suffix, suffix_length)) {
+		return;
+	}
+
+	u32 filename_length_to_store = filename_length - suffix_length;
+	s32 inserted = string_array_push(array, filename, filename_length_to_store);
+	if (!inserted) {
+		u32 new_length = RAlign(Max(2*array->length,array->length + filename_length_to_store),8);
+		// msg_f("resizing filename array to %.0fKb bytes\n", new_length/1024.0);
+
+		void *buffer = platform.allocate_memory_raw(new_length, 0);
+		StringArray *new_array = string_array_init(buffer, new_length, array);
+
+		platform.free_memory_raw(array); // free previous array
+
+		array = new_array;
+		array_pointer_slot[0] = array;
+		Assert(new_array);
+
+		inserted = string_array_push(array, filename, filename_length_to_store);
+		Assert(inserted);
+	}
+	// msg_f("filename pushed: %.*s\n", (s32)filename_length_to_store, filename);
+}
+
+
+
 
 /*
 BEGIN_DOC_STRING nanocube_executable_version_doc
@@ -2379,14 +2428,7 @@ service_serve(Request *request)
 	msg_f("Ver: %s\n",nanocube_executable_version_doc);
 
 
-
-
-
-
-
-
-
-
+	a_Arena arena = { 0 };
 
 	app_NanocubesAndAliases info;
 	app_NanocubesAndAliases_init(&info);
@@ -2399,34 +2441,58 @@ service_serve(Request *request)
 
 	b8 ok = 1;
 
-	//
-	// Reuse this block in both 'serve' and 'query'. Note that we end
-	// up with a set of nanocubes, aliases memory mapped files, in memory
-	// files etc
-	//
-	MemoryBlock source_text = {.begin=0, .end=0};
-	for (u32 param=2;param<num_parameters;++param) {
-		op_Options_str(options, param, &source_text);
-		print_clear(print);
-		u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
-		output_(print);
-		output_cstr_("\n");
-		if (status != app_NanocubesAndAliases_OK) {
-			ok = 0;
-			break;
+	if (!serve_folder) {
+		//
+		// Reuse this block in both 'serve' and 'query'. Note that we end
+		// up with a set of nanocubes, aliases memory mapped files, in memory
+		// files etc
+		//
+		MemoryBlock source_text = {.begin=0, .end=0};
+		for (u32 param=2;param<num_parameters;++param) {
+			op_Options_str(options, param, &source_text);
+			print_clear(print);
+			u8 status = app_NanocubesAndAliases_parse_and_load_alias(&info, source_text.begin, source_text.end, print);
+			output_(print);
+			output_cstr_("\n");
+			if (status != app_NanocubesAndAliases_OK) {
+				ok = 0;
+				break;
+			}
 		}
+
+		if (!ok) {
+			goto free_resources;
+		}
+	} else {
+		//
+		// serve folder... scan folder for files
+		//
+		StringArray *filenames = 0;
+		{
+			u32   buffer_length = Kilobytes(16);
+			void *buffer = platform.allocate_memory_raw(buffer_length,0);
+			filenames = string_array_init(buffer, buffer_length, 0);
+		}
+
+		//
+		// note: would rather have an iterator than a callback
+		// but for now keep it this way so we can more forward
+		//
+		// this is ugly, but the filenames array might have to grow
+		// and we pass the slot that stores a pointer to the current
+		// string array. It might change if the array has to grow in
+		// the callback to scan filenames
+		//
+		platform.get_filenames_in_directory(folder, 1, service_serve2_scan_filename_, &filenames);
+
+		msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder);
+
 	}
 
-	if (!ok) {
-		goto free_resources;
-	}
-
-	if (num_threads < 1) {
-		num_threads = 1;
-	}
+	if (num_threads < 1) { num_threads = 1; }
 
 	ServeData serve_data = { 0 };
-	app_initialize_serve_data(&serve_data, &info, request, num_threads);
+	app_initialize_serve_data(&serve_data, &arena, &info, request, num_threads);
 
 	pt_TCP tcp = platform.tcp_create();
 	Assert(tcp.handle);
@@ -2588,42 +2654,6 @@ Possible OPTIONS:
 END_DOC_STRING
 */
 
-// @perf this looks pretty slow: 1M extra calls
-PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve2_scan_filename_)
-{
-	StringArray** array_pointer_slot = user_data;
-	StringArray *array = array_pointer_slot[0];
-
-	u32 filename_length = cstr_length(filename);
-
-	// filter files with .nanocube extension only
-	static const char suffix[] = ".nanocube";
-	static const u32  suffix_length = 9;
-
-	if (!cstr_is_suffix(filename, filename_length, suffix, suffix_length)) {
-		return;
-	}
-
-	u32 filename_length_to_store = filename_length - suffix_length;
-	s32 inserted = string_array_push(array, filename, filename_length_to_store);
-	if (!inserted) {
-		u32 new_length = RAlign(Max(2*array->length,array->length + filename_length_to_store),8);
-		// msg_f("resizing filename array to %.0fKb bytes\n", new_length/1024.0);
-
-		void *buffer = platform.allocate_memory_raw(new_length, 0);
-		StringArray *new_array = string_array_init(buffer, new_length, array);
-
-		platform.free_memory_raw(array); // free previous array
-
-		array = new_array;
-		array_pointer_slot[0] = array;
-		Assert(new_array);
-
-		inserted = string_array_push(array, filename, filename_length_to_store);
-		Assert(inserted);
-	}
-	// msg_f("filename pushed: %.*s\n", (s32)filename_length_to_store, filename);
-}
 
 // run unit test of api calls
 static void
@@ -5075,9 +5105,11 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 	s32 num_threads = serve_config->num_threads;
 	s32 port = serve_config->port;
 
+	a_Arena arena = { 0 };
+
 	// @todo rename serve data to serve buffers
 	ServeData serve_data = { 0 };
-	app_initialize_serve_data(&serve_data, serve_info, request, num_threads);
+	app_initialize_serve_data(&serve_data, &arena, serve_info, request, num_threads);
 
 	pt_TCP tcp = platform.tcp_create();
 	Assert(tcp.handle);
