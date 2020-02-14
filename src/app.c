@@ -547,6 +547,7 @@ b64_encode_block(void *raw, u64 len)
 #include "base/set.c"
 #include "base/csv.c"
 #include "base/aatree.c"
+#include "base/string_array.c"
 
 
 /* btree data structure */
@@ -1754,7 +1755,13 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 			//
 			// make sure we have access to the scanned cubes at startup
 			//
-
+			for (s32 i=0;i<measure->num_sources;++i) {
+				nm_MeasureSource *source = measure->sources[i];
+				MemoryBlock pattern = nm_measure_source_get_pattern(source);
+				if (pattern.begin) {
+					// search for nanocubes to attach
+				}
+			}
 
 
 			// pf_BEGIN_BLOCK("nm_Measure_eval");
@@ -2255,7 +2262,7 @@ END_DOC_STRING
 /*
 BEGIN_DOC_STRING nanocube_serve_doc
 Ver:   __VERSION__
-Usage: nanocube serve PORT *(ALIAS=([@]NANOCUBE_FILE)*(,[@]NANOCUBE_FILE))
+Usage: nanocube serve PORT (*(ALIAS=([@]NANOCUBE_FILE)*(,[@]NANOCUBE_FILE)) | -folder=FOLDER)
 Start an http server on port PORT and serve one or more nanocube
 indices using the given ALIAS names. The same ALIAS can refer to multiple
 nanocube index files. The assumption in this case is that they all have
@@ -2274,6 +2281,13 @@ Possible OPTIONS:
 	 connections while the other threads process incoming requests.
 	 At this moment, multiple requests might be processed in parallel
 	 by different threads, but each request is processed sequentially.
+
+    -folder=FOLDER
+         if the -folder option is present, all .nanocube files inside
+	 the folder are scanned and served. The queries should use
+	 the pattern q(src('pattern')) to identify which sources are
+	 to be queried. further assumptions on all matched sources
+	 are that they must have same schema.
 
     -mem_compiler=SIZE                  (default  8M)
     -mem_print_result=SIZE              (default 64M)
@@ -2295,24 +2309,34 @@ service_serve(Request *request)
 	//	   serve <port> <alias1>=<db1> <alias2>=<db2> ... <aliasn>=<dbn>
 	//	   serve 8000 crimes.ncc mts.ncc weather.ncc
 
-	//
-	// Use platform to find .ncc files in <db>
-	// folder. Memory map all ncc files. Use flag
-	// to indicate if we should bring .ncc files
-	// to memory to eanble "interactivity right away".
-	// maybe not necessary. Give it a shot without
-	// it.
-	//
 	Print        *print   = request->print;
 	op_Options   *options = &request->options;
 
 	// get next two tokens
 
-	if (op_Options_find_cstr(options,"-help") || op_Options_num_positioned_parameters(options) == 1) {
+	if (op_Options_find_cstr(options,"-help")) {
 		print_clear(print);
 		print_cstr(print, nanocube_serve_doc);
 		output_(print);
 		return;
+	}
+
+	s32 serve_folder = 0;
+	MemoryBlock folder = { 0 };
+	if (op_Options_find_cstr(options,"-folder")) {
+		serve_folder = 1;
+		if (!op_Options_named_str_cstr(options,"-folder",0,&folder)) {
+			output_cstr_("[serve] incorrect usage of options: -folder=FOLDER\n");
+			return;
+		}
+	}
+
+	u64 num_threads = 0;
+	if (op_Options_find_cstr(options,"-threads")) {
+		if (!op_Options_named_u64_cstr(options,"-threads",0,&num_threads)) {
+			output_cstr_("[serve] incorrect usage of options: -threads=<num-threads>\n");
+			return;
+		}
 	}
 
 	s32 port = 0;
@@ -2322,18 +2346,14 @@ service_serve(Request *request)
 	}
 
 	u32 num_parameters = op_Options_num_positioned_parameters(options);
-	if (num_parameters < 3) {
-		output_cstr_("[serve] requires at least one source.\n");
-		output_cstr_("[serve] usage: nanocube serve <port> (<src>)+.\n");
-		return;
-	}
 
-	u64 num_threads = 0;
-	if (op_Options_find_cstr(options,"-threads")) {
-		if (!op_Options_named_u64_cstr(options,"-threads",0,&num_threads)) {
-			output_cstr_("[serve] incorrect usage of options: -threads=<num-threads>\n");
-			return;
-		}
+
+	if (serve_folder && num_parameters > 2) {
+		msg_f("when -folder=FOLDER is used, only PORT should be provided\n");
+		return;
+	} else if (!serve_folder && num_parameters < 3) {
+		msg_f("when -folder=FOLDER is not used, there needs to be an a set of alias nanocube parameters after PORT\n");
+		return;
 	}
 
 	{
@@ -2356,10 +2376,17 @@ service_serve(Request *request)
 
 	}
 
-	print_clear(print);
-	print_format(print,"Ver: %s\n",nanocube_executable_version_doc);
-	output_(print);
-	print_clear(print);
+	msg_f("Ver: %s\n",nanocube_executable_version_doc);
+
+
+
+
+
+
+
+
+
+
 
 	app_NanocubesAndAliases info;
 	app_NanocubesAndAliases_init(&info);
@@ -2561,104 +2588,6 @@ Possible OPTIONS:
 END_DOC_STRING
 */
 
-
-//------------------------------------------------------------------------------
-//
-// StringArray:
-//     - double it if we need more
-//     - pack it when we finish
-//
-// [ StringArray ] [ text ] ----> <---- [ pos ]
-//
-//------------------------------------------------------------------------------
-
-typedef struct {
-	u32  count;
-	u32  left;
-	u32  right;
-	u32  length;
-	char text[];
-} StringArray;
-
-//
-// if init != 0, then copy content from 'init' string array
-//
-static StringArray*
-string_array_init(void *buffer, u32 length, StringArray *init)
-{
-	Assert(length >= sizeof(StringArray));
-	AssertMultiple(buffer,8);
-	AssertMultiple(length,8);
-
-	StringArray *result = buffer;
-	if (init == 0) {
-		result[0] = (StringArray) {
-			.count = 0,
-			.left = sizeof(StringArray),
-			.right = length,
-			.length = length
-		};
-	} else {
-		// returns 0 if it
-		u32 pos_array_length = init->length - init->right;
-		u32 required_space = RAlign(init->left, 4) + pos_array_length;
-		if (required_space > length) {
-			return 0;
-		}
-		platform.copy_memory(buffer, init, init->left);
-		StringArray *result = buffer;
-		result->length = length;
-		result->right  = length - pos_array_length;
-		platform.memory_copy(OffsetedPointer(result,result->right),OffsetedPointer(init,init->right),pos_array_length);
-	}
-
-	return result;
-}
-
-static u32
-string_array_available_storage(StringArray *self)
-{
-	if (self->left + sizeof(u32) >= self->right) return 0;
-	else return self->right - self->left - sizeof(u32);
-}
-
-static u32
-string_array_push(StringArray *self, void *string, u32 string_length)
-{
-	u32 storage_required = string_length + sizeof(u32);
-	if (self->left + storage_required > self->right) {
-		return 0;
-	}
-
-	self->right -= sizeof(u32);
-	u32 *p = OffsetedPointer(self,self->right);
-	p[0] = self->left;
-	//
-	// NOTE this is not the convention dst <- src, length
-	//
-	pt_copy_bytesn(string, OffsetedPointer(self,self->left), string_length);
-	++self->count;
-	self->left += string_length;
-
-	return 1;
-}
-
-//
-// returns new length
-//
-static u32
-string_array_pack(StringArray *self)
-{
-	u32 new_right = RAlign(self->left,4);
-	if (new_right < self->right) {
-		u32 pos_array_length = self->length - self->right;
-		pt_copy_bytesn(OffsetedPointer(self,new_right), OffsetedPointer(self,self->right), pos_array_length);
-		self->right = new_right;
-		self->length = self->right + pos_array_length;
-	}
-	return self->length;
-}
-
 // @perf this looks pretty slow: 1M extra calls
 PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve2_scan_filename_)
 {
@@ -2748,27 +2677,7 @@ service_serve2(Request *request)
 	//
 	// go see what we need to have a first version of the 'g(src(pattern))' API
 	//
-
-
-
-
-
-
-
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 /*
  * Service Query
