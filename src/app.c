@@ -1933,10 +1933,16 @@ typedef struct {
 
 	// folder based method of finding index files
 	struct {
-		StringArray   *string_array;
-		id2bl_Map     *mapped_cubes;
+		StringArray   *available_nanocube_filenames;
+		id2bl_Map     *mapped_nanocubes;
 	} folder;
 } app_NanocubesAndAliases;
+
+typedef struct {
+	u32 id;
+	pt_MappedFile  mapped_file;
+	nv_Nanocube   *nanocube;
+} app_MappedNanocube;
 
 static void
 app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
@@ -2438,7 +2444,6 @@ service_serve(Request *request)
 		// insert/delete
 		//
 
-
 		//
 		// note: would rather have an iterator than a callback
 		// but for now keep it this way so we can more forward
@@ -2448,7 +2453,18 @@ service_serve(Request *request)
 		// string array. It might change if the array has to grow in
 		// the callback to scan filenames
 		//
+
 		platform.get_filenames_in_directory(folder.begin, 1, service_serve_folder_scan_filename_, &filenames);
+
+		id2bl_Map *mapped_nanocubes = 0;
+		{
+			u32   buffer_length = Kilobytes(512);
+			void *buffer = platform.allocate_memory_raw(buffer_length,0);
+			mapped_nanocubes = id2bl_init(buffer, buffer_length, sizeof(app_MappedNanocube), 2048);
+		}
+
+		info.folder.available_nanocube_filenames = filenames;
+		info.folder.mapped_nanocubes = mapped_nanocubes;
 
 		msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder.begin);
 
