@@ -1875,7 +1875,7 @@ nix_tcp_process_events(nix_tcp_Engine *tcp, pt_WorkQueue *work_queue)
 				pt_atomic_add_u16(&socket->listen.num_connections,1);
 
 				// nix_tcp_Socket_init_server(new_socket, socket, new_socket_fd, socket->user_data, socket->callback, start_time);
-				// nix_tcp_Socket_init_server(nix_tcp_Socket *self, nix_tcp_Socket *listen_socket, s32 file_descriptor, void *user_data, 
+				// nix_tcp_Socket_init_server(nix_tcp_Socket *self, nix_tcp_Socket *listen_socket, s32 file_descriptor, void *user_data,
 				//                                                     PlatformTCPCallback *callback, u64 start_time)
 				{
 					// {
@@ -2137,7 +2137,7 @@ nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFil
 			}
 			print_char(print,'/');
 			nix_get_filenames_in_directory_recursive_(print, dir2, callback, user_data);
-			closedir(dir2);
+
 		} else {
 			callback(print->begin, user_data);
 		}

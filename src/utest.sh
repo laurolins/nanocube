@@ -10,7 +10,6 @@ if [ "${OPTIONAL_OUTPUT_DIR}" != "" ]; then
 	TEST="${OPTIONAL_OUTPUT_DIR}/${BASENAME}"
 fi
 
-
 FLAGS="
 -Wall
 -Werror
@@ -24,13 +23,14 @@ FLAGS="
 -std=gnu11
 -DOS_LINUX"
 
+LIBS="-pthread"
 DEBUG="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
 RELEASE="-g -ggdb -O3"
 PROFILE="-g -ggdb -O2 -fno-omit-frame-pointer"
 OPTIONS="${FLAGS} ${DEBUG}"
-CMD="gcc -D${BASENAME}_UNIT_TEST $OPTIONS -o ${TEST} ${FULLNAME}"
+CMD="gcc -D${BASENAME}_UNIT_TEST $OPTIONS -o ${TEST} ${FULLNAME} ${LIBS} "
 
 echo $CMD
-gcc -D${BASENAME}_UNIT_TEST $OPTIONS -o ${TEST} ${FULLNAME}
+gcc -D${BASENAME}_UNIT_TEST $OPTIONS -o ${TEST} ${FULLNAME} ${LIBS}
 ${TEST}
 

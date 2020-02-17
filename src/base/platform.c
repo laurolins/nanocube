@@ -41,6 +41,7 @@ typedef struct {
 #define PointerDifference(b,a) (((char*)(b))-((char*)(a)))
 #define OffsetedPointer(ptr,offset) ((void*) ((char*) ptr + offset))
 #define RightOffsetedPointer(ptr,size,offset) ((void*) ((char*) ptr + size - offset))
+#define Offset(a,b) (s64)((char*)(b) - (char*)(a))
 
 // static, local_persist, global_variable
 // #if !defined(static)
@@ -296,6 +297,63 @@ typedef struct {
 } MemoryBlock;
 
 //------------------------------------------------------------------------------
+// log
+//------------------------------------------------------------------------------
+
+#define pt_DEBUG_LEVEL 1
+
+// #define DEBUG_CHANNEL stdout
+
+#ifndef pt_OUTPUT_CHANNEL
+#define pt_OUTPUT_CHANNEL stdout
+#endif
+
+#ifndef pt_MSG_CHANNEL
+#define pt_MSG_CHANNEL stderr
+#endif
+
+#define msg_raw(st) fprintf(pt_MSG_CHANNEL, "%s", st)
+
+#define msg_f(format, ...) fprintf(pt_MSG_CHANNEL, format, ##  __VA_ARGS__)
+
+#define outputf(format, ...) fprintf(pt_OUTPUT_CHANNEL, format, ##  __VA_ARGS__)
+
+#define outputc(c) fputc(c, pt_OUTPUT_CHANNEL)
+
+#define outputs(s) fputs(s, pt_OUTPUT_CHANNEL)
+
+#if pt_DEBUG_LEVEL >= 0
+#define msg0(format, ...) fprintf(pt_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg0(format, ...)
+#endif
+
+#if pt_DEBUG_LEVEL > 0
+#define msg(format, ...) fprintf(pt_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg(format, ...)
+#endif
+
+#if pt_DEBUG_LEVEL > 1
+#define msg2(format, ...) fprintf(pt_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg2(format, ...)
+#endif
+
+#if pt_DEBUG_LEVEL > 2
+#define msg3(format, ...) fprintf(pt_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
+#else
+#define msg3(format, ...)
+#endif
+
+
+
+
+
+
+
+
+//------------------------------------------------------------------------------
 // LinearAllocator
 //------------------------------------------------------------------------------
 
@@ -393,7 +451,7 @@ typedef struct {
 	u64 write:     1;
 	u64 size:     60;
 	char *begin;
-	void *handle;
+	void *handle; // opaque link to lower level stuff
 } pt_MappedFile;
 
 //------------------------------------------------------------------------------

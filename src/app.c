@@ -445,61 +445,6 @@ log_format_(const char *cstr)
 	print_clear(g_request->print);
 }
 
-//------------------------------------------------------------------------------
-//
-// log
-//
-// we are using the libc stdio stuff here
-//
-//------------------------------------------------------------------------------
-
-#define app_DEBUG_LEVEL 1
-
-// #define DEBUG_CHANNEL stdout
-
-#ifndef app_OUTPUT_CHANNEL
-#define app_OUTPUT_CHANNEL stdout
-#endif
-
-#ifndef app_MSG_CHANNEL
-#define app_MSG_CHANNEL stderr
-#endif
-
-#define msg_raw(st) fprintf(app_MSG_CHANNEL, "%s", st)
-
-#define msg_f(format, ...) fprintf(app_MSG_CHANNEL, format, ##  __VA_ARGS__)
-
-#define outputf(format, ...) fprintf(app_OUTPUT_CHANNEL, format, ##  __VA_ARGS__)
-
-#define outputc(c) fputc(c, app_OUTPUT_CHANNEL)
-
-#define outputs(s) fputs(s, app_OUTPUT_CHANNEL)
-
-#if app_DEBUG_LEVEL >= 0
-#define msg0(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
-#else
-#define msg0(format, ...)
-#endif
-
-#if app_DEBUG_LEVEL > 0
-#define msg(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
-#else
-#define msg(format, ...)
-#endif
-
-#if app_DEBUG_LEVEL > 1
-#define msg2(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
-#else
-#define msg2(format, ...)
-#endif
-
-#if app_DEBUG_LEVEL > 2
-#define msg3(format, ...) fprintf(app_MSG_CHANNEL, "[%s] " format, __FUNCTION__, ##  __VA_ARGS__)
-#else
-#define msg3(format, ...)
-#endif
-
-
 
 
 
@@ -2464,15 +2409,28 @@ service_serve(Request *request)
 			goto free_resources;
 		}
 	} else {
-		//
 		// serve folder... scan folder for files
-		//
 		StringArray *filenames = 0;
 		{
 			u32   buffer_length = Kilobytes(16);
 			void *buffer = platform.allocate_memory_raw(buffer_length,0);
 			filenames = string_array_init(buffer, buffer_length, 0);
 		}
+
+		//
+		// search_structure ---> pops an id number and file name
+		// hash structure associates such id to a payload
+		//      in our case it would be
+		//
+		//      struct {
+		//		pt_MappedFile  mapped_files[1024];
+		// 		nv_Nanocube    *nanocubes[1024];
+		// 		MemoryBlock    aliases[1024];
+		//      }
+		//
+		// insert/delete
+		//
+
 
 		//
 		// note: would rather have an iterator than a callback
