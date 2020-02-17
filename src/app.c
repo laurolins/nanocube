@@ -493,6 +493,7 @@ b64_encode_block(void *raw, u64 len)
 #include "base/csv.c"
 #include "base/aatree.c"
 #include "base/string_array.c"
+#include "base/id2bl.c"
 
 
 /* btree data structure */
@@ -1929,6 +1930,12 @@ typedef struct {
 	u32            num_nanocubes;
 	u32            num_mapped_files;
 	u8             parse_result;
+
+	// folder based method of finding index files
+	struct {
+		StringArray   *string_array;
+		id2bl_Map     *mapped_cubes;
+	} folder;
 } app_NanocubesAndAliases;
 
 static void
@@ -2441,9 +2448,9 @@ service_serve(Request *request)
 		// string array. It might change if the array has to grow in
 		// the callback to scan filenames
 		//
-		platform.get_filenames_in_directory(folder, 1, service_serve2_scan_filename_, &filenames);
+		platform.get_filenames_in_directory(folder.begin, 1, service_serve_folder_scan_filename_, &filenames);
 
-		msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder);
+		msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder.begin);
 
 	}
 
@@ -2658,7 +2665,7 @@ service_serve2(Request *request)
 	// string array. It might change if the array has to grow in
 	// the callback to scan filenames
 	//
-	platform.get_filenames_in_directory(folder, 1, service_serve2_scan_filename_, &filenames);
+	platform.get_filenames_in_directory(folder, 1, service_serve_folder_scan_filename_, &filenames);
 
 	msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder);
 

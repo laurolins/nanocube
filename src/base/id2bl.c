@@ -71,6 +71,11 @@
 //
 
 typedef struct {
+	void *base;
+	u16   length;
+} id2bl_Payload;
+
+typedef struct {
 	u32 bhandle;
 	u32 hash;
 	u32 dib:31;
@@ -194,7 +199,7 @@ id2bl_block_to_bhandle_(id2bl_Map *self, id2bl_Block *block) { return (block) ? 
 // find first hash entry matching a given hash
 //
 static id2bl_HashEntry*
-id2bl_get_hentry_from_hash_(id2bl_Map *self, u64 hash)
+id2bl_get_hentry_from_hash_(id2bl_Map *self, u32 hash)
 {
 	u64 pos = hash % self->num_slots;
 	id2bl_HashEntry *entries = id2bl_entries_(self);
@@ -215,6 +220,29 @@ id2bl_get_hentry_from_hash_(id2bl_Map *self, u64 hash)
 		}
 	}
 }
+
+static id2bl_HashEntry*
+id2bl_get_hentry_from_hash_id_(id2bl_Map *self, u32 hash, u32 id)
+{
+	id2bl_HashEntry* it = id2bl_get_hentry_from_hash_(self, hash);
+	id2bl_HashEntry *entries = id2bl_entries_(self);
+	id2bl_HashEntry *end = entries + self->num_slots;
+	u64 dib = 0;
+	while (it->used && it->hash == hash) {
+		id2bl_Block *block = id2bl_bhandle_to_block_(self,it->bhandle);
+		if (block->id == id) {
+			return it;
+		} else {
+			++it;
+			if (it == end) {
+				it = entries;
+			}
+		}
+	}
+	return 0;
+}
+
+
 
 static id2bl_Block*
 id2bl_linear_exact_search_(id2bl_Map *self, id2bl_HashEntry *it, u32 hash, u32 id)
@@ -259,6 +287,13 @@ id2bl_insert_hentry_(id2bl_Map *self, u32 hash, u32 bhandle)
 		pos = (pos+1) % self->num_slots;
 	}
 }
+
+
+
+
+
+
+
 
 
 
@@ -317,6 +352,70 @@ id2bl_insert_(id2bl_Map *self, u32 id, void *payload, s32 dont_duplicate, s32 *o
 
 }
 
+
+static s32
+id2bl_delete_(id2bl_Map *self, u32 hash, u32 id)
+{
+	id2bl_HashEntry *it = id2bl_get_hentry_from_hash_id_(self, hash, id);
+
+	// item does not exist
+	if (!it) return 0;
+
+	id2bl_HashEntry *entries = id2bl_entries_(self);
+	id2bl_HashEntry *end     = entries + self->num_slots;
+
+	u32 bhandle_dst = it->bhandle;
+
+	//
+	// it exists: delete from entries and push back everything that was
+	// move the payload of the last block to the place
+	//
+	for (;;) {
+		id2bl_HashEntry *next_it = it + 1;
+		if (next_it == end) next_it = entries;
+		if (next_it->used && next_it->dib > 0) {
+			--next_it->dib;
+			it[0] = next_it[0];
+		} else {
+			// mark it as not used
+			it[0] = (id2bl_HashEntry) { 0 };
+			break;
+		}
+		it = next_it;
+	}
+
+	//
+	u32 bhandle_src = self->left - self->block_length;
+	if (bhandle_src != bhandle_dst) {
+
+		Assert(bhandle_dst < bhandle_src);
+
+		platform.copy_memory(OffsetedPointer(self,bhandle_dst),
+				     OffsetedPointer(self,bhandle_src),
+				     self->block_length);
+
+		id2bl_Block *block_dst = id2bl_bhandle_to_block_(self, bhandle_dst);
+		u32 id_dst = block_dst->id;
+		u32 hash_dst = id2bl_hash(id_dst);
+		id2bl_HashEntry *hentry_dst = id2bl_get_hentry_from_hash_id_(self, hash_dst, id_dst);
+		Assert(hentry_dst->bhandle = bhandle_src);
+		hentry_dst->bhandle = bhandle_dst;
+	}
+
+	// shrink the payload used storage and used_slots
+	--self->used_slots;
+	self->left -= self->block_length;
+
+	return 1;
+}
+
+static s32
+id2bl_delete(id2bl_Map *self, u32 id)
+{
+	u32 hash = id2bl_hash(id);
+	return id2bl_delete_(self, hash, id);
+}
+
 static id2bl_Block*
 id2bl_get_(id2bl_Map *self, u32 id)
 {
@@ -325,262 +424,22 @@ id2bl_get_(id2bl_Map *self, u32 id)
 	return id2bl_linear_exact_search_(self, e, hash, id);
 }
 
-static u32
+static id2bl_Payload
 id2bl_get(id2bl_Map *self, u32 id)
 {
 	id2bl_Block *block = id2bl_get_(self, id);
-	return id2bl_block_to_bhandle_(self, block);
+	return (id2bl_Payload) { .base = &block->data[0], .length = self->payload_length };
 }
 
 // return the block_handle of inserted element
 static u32
-id2bl_insert(id2bl_Map *self, u32 id, void *payload, u16 payload_length, s32 dont_duplicate, s32 *out_status)
+id2bl_insert(id2bl_Map *self, u32 id, id2bl_Payload payload, s32 dont_duplicate, s32 *out_status)
 {
-	Assert(payload_length == self->payload_length);
-	id2bl_Block *block = id2bl_insert_(self, id, payload, dont_duplicate, out_status);
+	Assert(payload.length == self->payload_length);
+	id2bl_Block *block = id2bl_insert_(self, id, payload.base, dont_duplicate, out_status);
 	return id2bl_block_to_bhandle_(self, block);
 }
 
-/*
-
-#define id2bl_hash hash_murmur_u32
-
-static u32
-id2bl_block_storage_size_(u16 element_length)
-{
-	return (u32) RAlign(sizeof(id2bl_Block) + element_length,8);
-}
-
-static u32*
-id2bl_eorder_to_id_array_(id2bl_Map *self)
-{
-	// array comes right after the hash entries
-	return (u32*) &self->entries[self->num_slots];
-}
-
-static u32
-id2bl_block_to_id_(id2bl_Map *self, id2bl_Block *block)
-{
-	return (block)
-		? (u32) (self->size - Offset(self, block))
-		: (u32) 0;
-}
-
-
-static id2bl_Map*
-id2bl_init(void *buffer, u32 length, u16 payload_size, u32 slots)
-{
-	// zero is initialization
-	memset(buffer, 0, length);
-
-	u32 min_storage_required = sizeof(id2bl_Map) + slots * sizeof(id2bl_HashEntry);
-	if (length < min_storage_required) {
-		return 0;
-	}
-
-	id2bl_Map *dict = buffer;
-	dict[0] = (id2bl_Map) {
-		.used_slots = 0,
-		.num_slots = slots,
-		.left = sizeof(id2bl_Map) + slots * sizeof(id2bl_HashEntry),
-		.right = length,
-		.size = length
-	};
-
-
-	return dict;
-}
-
-static s32
-id2bl_insert_hentry_(id2bl_Map *self, u32 hash, u32 bhandle)
-{
-	if (self->used_slots == self->num_slots) return 0;
-	u32 pos = hash % self->num_slots;
-	u32 dib = 0;
-	id2bl_HashEntry *entries = &self->entries[0];
-	for (;;) {
-		if (!entries[pos].used) {
-			// it is empty. go ahead and insert it.
-			entries[pos] = (id2bl_HashEntry) { .hash = hash, .bhandle = bhandle, .dib=dib, .used = 1 };
-			++self->used_slots;
-			return 1;
-		} else if (entries[pos].dib < dib) {
-			// swap
-			Swap(bhandle, entries[pos].bhandle);
-			Swap(hash, entries[pos].hash);
-			u32 aux = dib;
-			dib = entries[pos].dib;
-			entries[pos].dib = aux;
-		}
-		++dib;
-		pos = (pos+1) % self->num_slots;
-	}
-}
-
-//
-// find first hash entry matching a given hash
-//
-static id2bl_HashEntry*
-id2bl_get_hentry_from_hash_(id2bl_Map *self, u64 hash)
-{
-	u64 pos = hash % self->num_slots;
-	id2bl_HashEntry *entries = &self->entries[0];
-	u64 dib = 0;
-	for (;;) {
-		if (entries[pos].used) {
-			if (entries[pos].hash == hash) {
-				return entries + pos;
-			} else if (dib > entries[pos].dib) {
-				// hash and key_handle not inserted
-				return 0;
-			} else {
-				++dib;
-				pos = (pos+1) % self->num_slots;
-			}
-		} else {
-			return 0;
-		}
-	}
-}
-
-static id2bl_Block*
-id2bl_linear_exact_search_(id2bl_Map *self, id2bl_HashEntry *it, u32 hash, char *element, u16 element_length)
-{
-	id2bl_HashEntry *entries = &self->entries[0];
-	id2bl_HashEntry *end     = &self->entries[self->num_slots];
-	// assuming that dict is never full
-	while (it && it->used && (it->hash == hash)) {
-		id2bl_Block *record = id2bl_bhandle_to_block_(self, it->bhandle);
-		if (record->length == element_length && cstr_match_n(record->element, element, record->length)) {
-			return record;
-		} else {
-			++it;
-			if (it == end) it = entries;
-		}
-	}
-	return 0;
-}
-
-static id2bl_Block*
-id2bl_get_(id2bl_Map *self, char *element, s32 element_length)
-{
-	u32 hash = id2bl_hash(element, element_length);
-	id2bl_HashEntry *e = id2bl_get_hentry_from_hash_(self, hash);
-	return id2bl_linear_exact_search_(self, e, hash, element, element_length);
-}
-
-static u32
-id2bl_get(id2bl_Map *self, char *element, s32 element_length)
-{
-	id2bl_Block *block = id2bl_get_(self, element, element_length);
-	return id2bl_block_to_id_(self, block);
-}
-
-#define id2bl_OK 0
-#define id2bl_SLOT_PRESSURE -1
-#define id2bl_DATA_PRESSURE -2
-
-static id2bl_Block*
-id2bl_insert_(id2bl_Map *self, char *element, u16 element_length, s32 dont_duplicate, s32 *out_status)
-{
-	u32 hash = id2bl_hash(element, element_length);
-
-	if (dont_duplicate) {
-		// check if element already exists
-		id2bl_HashEntry *it = id2bl_get_hentry_from_hash_(self, hash);
-		id2bl_Block *block = id2bl_linear_exact_search_(self, it, hash, element, element_length);
-		if (block) return block;
-	}
-
-	// check for slot pressure
-	if (4 * self->used_slots >= 3 * self->num_slots) {
-		msg2("dictinary is suffering from slot pressure\n");
-		if (out_status) out_status[0] = id2bl_SLOT_PRESSURE;
-		return 0;
-	}
-
-	// index = size of u32
-	u32 block_storage_size = id2bl_block_storage_size_(element_length);
-
-	// check if we can fit new data
-	if (self->left + sizeof(u32) + block_storage_size > self->right) {
-		msg2("dictinary is suffering from data pressure\n");
-		if (out_status) out_status[0] = id2bl_DATA_PRESSURE;
-		return 0;
-	}
-
-	u32 eorder = self->used_slots + 1;
-
-	self->right -= block_storage_size;
-	id2bl_Block *record = OffsetedPointer(self,self->right);
-	record[0] = (id2bl_Block) {
-		.eorder = eorder,
-		.length = element_length
-	};
-	memcpy(record->element, element, element_length);
-
-	u32 bhandle = self->size - self->right;
-
-	u32 *order_to_id = id2bl_eorder_to_id_array_(self);
-	order_to_id[self->num_slots] = bhandle;
-	self->left += sizeof(u32);
-
-	s32 ok = id2bl_insert_hentry_(self, hash, bhandle);
-
-	Assert(ok);
-
-	msg("set %p element '%.*s' order %"PRIu32" handle %"PRIu32"\n",
-		self,
-		record->length,
-		record->element,
-		record->eorder,
-		bhandle);
-
-
-	if (out_status) out_status[0] = id2bl_OK;
-
-	return record;
-
-}
-
-//
-// return the e_handle of inserted element
-//
-static u32
-id2bl_insert(id2bl_Map *self, char *element, u16 element_length, s32 dont_duplicate, s32 *out_status)
-{
-	id2bl_Block *block = id2bl_insert_(self, element, element_length, dont_duplicate, out_status);
-	return id2bl_block_to_id_(self, block);
-}
-
-static id2bl_Block*
-id2bl_block_from_eorder_(id2bl_Map *self, u32 eorder)
-{
-	if (eorder <= 0 || eorder > self->num_slots) return 0;
-	u32 *order_to_element_array = id2bl_eorder_to_id_array_(self);
-	u32 bhandle = order_to_element_array[eorder-1];
-	return id2bl_bhandle_to_block_(self, bhandle);
-}
-
-static Blk
-id2bl_element_from_eorder(id2bl_Map *self, u32 eorder)
-{
-	Blk result = { 0 };
-	id2bl_Block *ee = id2bl_block_from_eorder_(self, eorder);
-	if (!ee) return (Blk) { 0 };
-	return (Blk) { .base = &ee->element[0], .length = ee->length };
-}
-
-static Blk
-id2bl_element_from_id(id2bl_Map *self, u32 bhandle)
-{
-	id2bl_Block *block = id2bl_bhandle_to_block_(self,bhandle);
-	if (!block) return (Blk) { 0 };
-	return (Blk) { .base = &block->element[0], .length = block->length };
-}
-
-
-*/
 
 
 #ifdef id2bl_UNIT_TEST
@@ -608,10 +467,27 @@ int main(int argc, char *argv[])
 
 	s32 status = 0;
 	for (u32 i=0;i<512;++i) {
-		u32 block_handle = id2bl_insert(map, i, &i, 4, 1, &status);
-		msg("%"PRIu32" --> %"PRIu32"\n", i, block_handle);
-		// id2bl_insert(id2bl_Map *self, u32 id, s32 dont_duplicate, s32 *out_status)
+		id2bl_Payload payload = {.base=&i, .length=sizeof(u32) };
+		u32 block_handle = id2bl_insert(map, i, payload, 1, &status);
+		msg("insert %"PRIu32" --> %"PRIu32"\n", i, block_handle);
 	}
+
+	for (u32 i=0;i<512;++i) {
+		id2bl_Payload payload = id2bl_get(map, i);
+		u32 value = ((u32*)payload.base)[0];
+		msg("get %"PRIu32" --> %"PRIu32"\n", i, value);
+	}
+
+	for (u32 i=1;i<512;i+=2) {
+		id2bl_delete(map, i);
+	}
+
+	for (u32 i=0;i<512;i+=2) {
+		id2bl_Payload payload = id2bl_get(map, i);
+		u32 value = ((u32*)payload.base)[0];
+		msg("get2 %"PRIu32" --> %"PRIu32"\n", i, value);
+	}
+
 
 	platform.free_memory_raw(buffer);
 
