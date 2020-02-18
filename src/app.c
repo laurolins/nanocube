@@ -550,16 +550,6 @@ static u64 app_service_serve_MEM_TABLE_VALUE_COLUMNS = Megabytes(64);
 static u64 app_service_serve_MEM_HTTP_CHANNEL        = Megabytes(4);
 
 //------------------------------------------------------------------------------
-// app_MappedNanocube
-//------------------------------------------------------------------------------
-
-typedef struct {
-	u32 id;
-	pt_MappedFile  mapped_file;
-	nv_Nanocube   *nanocube;
-} app_MappedNanocube;
-
-//------------------------------------------------------------------------------
 // snap function
 //------------------------------------------------------------------------------
 
@@ -1573,8 +1563,8 @@ struct ServeData {
 
 	// because the pattern matching sources, I am adding this to the ServeData
 	// 2020-02-18T10:32:37
-	StringArray *folder_available_nanocube_filenames;
-	id2bl_Map   *folder_mapped_nanocubes;
+	// StringArray *folder_available_nanocube_filenames;
+	// id2bl_Map   *folder_mapped_nanocubes;
 };
 
 static void
@@ -1714,6 +1704,7 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 			//
 			// make sure we have access to the scanned cubes at startup
 			//
+			/*
 			s32 folder_based_errors = 0;
 			if (buffers->context->folder_mapped_nanocubes) {
 				id2bl_Map *mapped_nanocubes = buffers->context->folder_mapped_nanocubes;
@@ -1804,7 +1795,7 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 										// allow the same
 										//
 										if (!source->num_nanocubes) {
-											for (s32 i=0;i < mapped_nanocube.nanocube->num_index_dimensions;++i) {
+											for (s32 i=0;i<mapped_nanocube.nanocube->num_index_dimensions;++i) {
 												u8    levels = mapped_nanocube.nanocube->index_dimensions.num_levels[i];
 												char *name   = mapped_nanocube.nanocube->index_dimensions.names[i];
 												s32   name_length = cstr_length(name);
@@ -1837,6 +1828,7 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 				} // for each of the sources
 
 			} // there is folder search info
+			*/
 
 			// pf_BEGIN_BLOCK("nm_Measure_eval");
 			s32 error = nm_OK;
@@ -2256,9 +2248,7 @@ app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
 		.request = request,
 		.num_buffers = num_threads,
 		.pause_and_active_count = 0,
-		.http_channels_list = 0,
-		.folder_available_nanocube_filenames = available_nanocube_filenames,
-		.folder_mapped_nanocubes = mapped_nanocubes
+		.http_channels_list = 0
 	};
 
 	// initialize http channels list
@@ -2292,6 +2282,10 @@ app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
 		/* init compiler */
 		np_Compiler_init(&buffer->compiler, &buffer->compiler_allocator);
 		nv_Compiler_init(&buffer->compiler);
+
+		/* init search environment for queries */
+		buffer->compiler.folder_available_nanocube_filenames = available_nanocube_filenames;
+		buffer->compiler.folder_mapped_nanocubes = mapped_nanocubes;
 
 		/* init table_index_columns_allocator */
 		LinearAllocator_init(&buffer->table_index_columns_allocator,

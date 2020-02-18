@@ -296,6 +296,7 @@ typedef struct {
 #define np_TYPE_STRING    2
 
 struct np_Compiler {
+
 	BilinearAllocator *memory;
 
 	np_TypeTable    type_table;
@@ -305,6 +306,10 @@ struct np_Compiler {
 	np_TypeID       undefined_type_id;
 	np_TypeID       number_type_id;
 	np_TypeID       string_type_id;
+
+	// for searching sources on the fly
+	StringArray    *folder_available_nanocube_filenames;
+	id2bl_Map      *folder_mapped_nanocubes;
 
 	struct {
 

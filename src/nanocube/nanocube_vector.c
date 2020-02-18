@@ -113,6 +113,19 @@ typedef struct {
  */
 
 //------------------------------------------------------------------------------
+// app_MappedNanocube
+//------------------------------------------------------------------------------
+
+// CLEANUP THIS MESS: look at the app_ prefix where should things go?
+
+typedef struct {
+	u32 id;
+	pt_MappedFile  mapped_file;
+	nv_Nanocube   *nanocube;
+} app_MappedNanocube;
+
+
+//------------------------------------------------------------------------------
 // nv_NumberStorage
 //------------------------------------------------------------------------------
 
@@ -1865,8 +1878,132 @@ np_FUNCTION_HANDLER(nv_function_src)
 	u32  measure_source_storage_required = Kilobytes(16);
 	void *measure_source_buffer = np_Compiler_alloc(compiler, measure_source_storage_required);
 	nm_MeasureSource *source = nm_measure_source_init(measure_source_buffer, measure_source_storage_required);
-	MemoryBlock *pattern = np_memory_block(src_tv);
-	nm_measure_source_set_pattern(source, pattern->begin, pattern->end - pattern->begin);
+	MemoryBlock pattern = np_memory_block(src_tv)[0];
+
+
+	//
+	// check if any of the measure requires pattern matching
+	// the right sources.
+	//
+	// make sure we have access to the scanned cubes at startup
+	//
+	s32 folder_based_errors = 0;
+	if (compiler->folder_mapped_nanocubes && pattern.begin) {
+
+		id2bl_Map *mapped_nanocubes = compiler->folder_mapped_nanocubes;
+		StringArray *available_nanocube_filenames = compiler->folder_available_nanocube_filenames;
+		s32 pattern_n = pattern.end - pattern.begin;
+
+		// silly linear search before we have a nice
+		// suffix tree to search pattern
+		for (s32 id=0;id<available_nanocube_filenames->count;++id) {
+			// stupid substring match
+			MemoryBlock text = string_array_get(available_nanocube_filenames, id);
+			s32 text_n = text.end - text.begin;
+			s32 possible_starts = text_n - pattern_n;
+			s32 substr_match = 0;
+			for (s32 ps=0;ps<possible_starts;++ps) {
+				substr_match = 1;
+				for (s32 j=0;j<pattern_n;++j) {
+					if (pattern.begin[j] != text.begin[ps+j]) {
+						substr_match = 0;
+						break;
+					}
+				}
+				if (substr_match) {
+					break;
+				}
+			}
+			if (substr_match) {
+				msg("found a nanocube filename match: %.*s\n", text_n, text.begin);
+
+				// multiple threads might be trying to access the cache at the same time
+				// insert a mutex here for now
+
+				id2bl_Payload payload = id2bl_get(mapped_nanocubes,id);
+				app_MappedNanocube mapped_nanocube = { 0 };
+				if (payload.base) {
+					// nanocube is already mapped
+					mapped_nanocube = ((app_MappedNanocube*) payload.base)[0];
+					if (!source->num_nanocubes) {
+						for (s32 i=0;i < mapped_nanocube.nanocube->num_index_dimensions;++i) {
+							u8    levels = mapped_nanocube.nanocube->index_dimensions.num_levels[i];
+							char *name   = mapped_nanocube.nanocube->index_dimensions.names[i];
+							s32   name_length = cstr_length(name);
+							nm_measure_source_insert_dimension(source, name, name_length, levels);
+						}
+					}
+					nm_measure_source_insert_nanocube(source, &mapped_nanocube.nanocube->index, mapped_nanocube.nanocube);
+				} else {
+					// what a hack: using the log print for an intermediate operation
+					// shoul have a tmp arena where we can do these things like in Jon Blow's demo
+					Print *print = &compiler->reduce.log;
+					char *chkpt = print_checkpoint(print);
+					print_format(print, "%.*s.nanocube", text_n, text.begin);
+					mapped_nanocube.mapped_file = platform.open_mmap_file(chkpt, print->end, 1, 0);
+					print_restore(print, chkpt);
+
+					if (!mapped_nanocube.mapped_file.mapped) {
+
+						msg("ERROR pattern matching nanocube source: could not map file: %*.s\n", text_n, text.begin);
+
+					} else {
+						al_Allocator* allocator = mapped_nanocube.mapped_file.begin;
+						mapped_nanocube.nanocube = al_Allocator_get_root(allocator);
+
+						msg("scanning file: %*.s... ", text_n, text.begin);
+						u32 sum = 0;
+						for (s32 k=0;k<mapped_nanocube.mapped_file.size;k+=4096) {
+							sum += ((u8*) mapped_nanocube.mapped_file.begin)[k];
+						}
+						msg_raw("DONE\n");
+
+
+						payload = (id2bl_Payload) { .base = &mapped_nanocube, .length = sizeof(app_MappedNanocube) };
+						s32 status = 0;
+						id2bl_insert(mapped_nanocubes, id, payload, 0, &status);
+						if (status != id2bl_OK) {
+							msg("ERROR problem updating nanocube cache: %*.s\n", text_n, text.begin);
+						}
+
+						// insert nanocube on the source
+
+						//
+						// not checking, but the schema need to match
+						// TODO: create some checksum for a schema so that we only
+						// allow the same
+						//
+						if (!source->num_nanocubes) {
+							for (s32 i=0;i<mapped_nanocube.nanocube->num_index_dimensions;++i) {
+								u8    levels = mapped_nanocube.nanocube->index_dimensions.num_levels[i];
+								char *name   = mapped_nanocube.nanocube->index_dimensions.names[i];
+								s32   name_length = cstr_length(name);
+								nm_measure_source_insert_dimension(source, name, name_length, levels);
+							}
+						}
+
+						nm_measure_source_insert_nanocube(source, &mapped_nanocube.nanocube->index, mapped_nanocube.nanocube);
+
+					} // nanocube file not mapped yet: map it and cache it
+
+				} // nanocube is not on match list
+
+			} // match a file
+
+		} // loop on filenames availabe as nanocube sources
+
+	} // there is folder search info
+
+
+	if (!source->num_nanocubes) {
+		char *error = "No src match on pattern based src('') query\n";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+
+
+	// nm_measure_source_set_pattern(source, pattern->begin, pattern->end - pattern->begin);
 	nm_Measure *measure = np_Compiler_alloc(compiler, sizeof(nm_Measure));
 	nm_Measure_init(measure, source, compiler->memory); // this measure should be copied and
 	return np_TypeValue_readonly_value(nv_compiler_types.measure, measure);
