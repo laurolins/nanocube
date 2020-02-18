@@ -23,18 +23,22 @@ typedef struct {
 static StringArray*
 string_array_init(void *buffer, u32 length, StringArray *init)
 {
-	Assert(length >= sizeof(StringArray));
+	Assert(sizeof(StringArray) + sizeof(u32) <= length);
 	AssertMultiple(buffer,8);
 	AssertMultiple(length,8);
+
+	// make sure we can retrieve the end-points
 
 	StringArray *result = buffer;
 	if (init == 0) {
 		result[0] = (StringArray) {
 			.count = 0,
 			.left = sizeof(StringArray),
-			.right = length,
+			.right = length - sizeof(u32),
 			.length = length
 		};
+		u32* p = OffsetedPointer(result,result->right);
+		p[0] = result->left;
 	} else {
 		// returns 0 if it
 		u32 pos_array_length = init->length - init->right;
@@ -67,15 +71,16 @@ string_array_push(StringArray *self, void *string, u32 string_length)
 		return 0;
 	}
 
-	self->right -= sizeof(u32);
-	u32 *p = OffsetedPointer(self,self->right);
-	p[0] = self->left;
 	//
 	// NOTE this is not the convention dst <- src, length
 	//
 	pt_copy_bytesn(string, OffsetedPointer(self,self->left), string_length);
 	++self->count;
 	self->left += string_length;
+
+	self->right -= sizeof(u32);
+	u32 *p = OffsetedPointer(self,self->right);
+	p[0] = self->left;
 
 	return 1;
 }
@@ -95,4 +100,19 @@ string_array_pack(StringArray *self)
 	}
 	return self->length;
 }
+
+static MemoryBlock
+string_array_get(StringArray *self, s32 index)
+{
+	Assert(index >= 0 && index < self->count);
+	u32 *rev_indices = OffsetedPointer(self, self->right);
+
+	s32 i = self->count - index;
+	u32 a = rev_indices[i];
+	u32 b = rev_indices[i-1];
+
+	return (MemoryBlock) { .begin =OffsetedPointer(self,a), .end = OffsetedPointer(self,b) };
+}
+
+
 

@@ -332,7 +332,7 @@ id2bl_insert_(id2bl_Map *self, u32 id, void *payload, s32 dont_duplicate, s32 *o
 		.mru_prev = 0,
 		.mru_next = 0
 	};
-	platform.copy_memory(record->data, payload, self->payload_length);
+	platform.copy_memory(&record->data[0], payload, self->payload_length);
 
 	s32 ok = id2bl_insert_hentry_(self, hash, bhandle);
 
@@ -428,7 +428,11 @@ static id2bl_Payload
 id2bl_get(id2bl_Map *self, u32 id)
 {
 	id2bl_Block *block = id2bl_get_(self, id);
-	return (id2bl_Payload) { .base = &block->data[0], .length = self->payload_length };
+	if (block) {
+		return (id2bl_Payload) { .base = &block->data[0], .length = self->payload_length };
+	} else {
+		return (id2bl_Payload) { .base = 0, .length = 0 };
+	}
 }
 
 // return the block_handle of inserted element

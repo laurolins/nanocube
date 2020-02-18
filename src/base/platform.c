@@ -450,7 +450,7 @@ typedef struct {
 	u64 read:      1;
 	u64 write:     1;
 	u64 size:     60;
-	char *begin;
+	void *begin;
 	void *handle; // opaque link to lower level stuff
 } pt_MappedFile;
 

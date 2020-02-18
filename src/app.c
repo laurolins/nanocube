@@ -550,6 +550,16 @@ static u64 app_service_serve_MEM_TABLE_VALUE_COLUMNS = Megabytes(64);
 static u64 app_service_serve_MEM_HTTP_CHANNEL        = Megabytes(4);
 
 //------------------------------------------------------------------------------
+// app_MappedNanocube
+//------------------------------------------------------------------------------
+
+typedef struct {
+	u32 id;
+	pt_MappedFile  mapped_file;
+	nv_Nanocube   *nanocube;
+} app_MappedNanocube;
+
+//------------------------------------------------------------------------------
 // snap function
 //------------------------------------------------------------------------------
 
@@ -1547,7 +1557,6 @@ struct ServeData {
 	nm_Services            payload_services;
 	u32                    num_buffers;
 
-
 	// high 32 bits is either 0 or 1 (paused)
 	// low  32 bits is the active count
 	// can only increment active count if pause is off.
@@ -1561,6 +1570,11 @@ struct ServeData {
 
 	// keep a list of http2 state machines
 	http2_List             *http_channels_list;
+
+	// because the pattern matching sources, I am adding this to the ServeData
+	// 2020-02-18T10:32:37
+	StringArray *folder_available_nanocube_filenames;
+	id2bl_Map   *folder_mapped_nanocubes;
 };
 
 static void
@@ -1694,21 +1708,135 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 			LinearAllocator_clear(&buffers->table_index_columns_allocator);
 			LinearAllocator_clear(&buffers->table_value_columns_allocator);
 
-
 			//
 			// check if any of the measure requires pattern matching
 			// the right sources.
 			//
 			// make sure we have access to the scanned cubes at startup
 			//
-			for (s32 i=0;i<measure->num_sources;++i) {
-				nm_MeasureSource *source = measure->sources[i];
-				MemoryBlock pattern = nm_measure_source_get_pattern(source);
-				if (pattern.begin) {
-					// search for nanocubes to attach
-				}
-			}
+			s32 folder_based_errors = 0;
+			if (buffers->context->folder_mapped_nanocubes) {
+				id2bl_Map *mapped_nanocubes = buffers->context->folder_mapped_nanocubes;
+				StringArray *available_nanocube_filenames = buffers->context->folder_available_nanocube_filenames;
+				for (s32 i=0;i<measure->num_sources;++i) {
+					nm_MeasureSource *source = measure->sources[i];
+					MemoryBlock pattern = nm_measure_source_get_pattern(source);
+					s32 pattern_n = pattern.end - pattern.begin;
+					if (pattern.begin) {
 
+						// silly linear search before we have a nice
+						// suffix tree to search pattern
+						s32 num_matches = 0;
+						for (s32 id=0;id<available_nanocube_filenames->count;++id) {
+							// stupid substring match
+							MemoryBlock text = string_array_get(available_nanocube_filenames, id);
+							s32 text_n = text.end - text.begin;
+							s32 possible_starts = text_n - pattern_n;
+							s32 substr_match = 0;
+							for (s32 ps=0;ps<possible_starts;++ps) {
+								substr_match = 1;
+								for (s32 j=0;j<pattern_n;++j) {
+									if (pattern.begin[j] != text.begin[ps+j]) {
+										substr_match = 0;
+										break;
+									}
+								}
+								if (substr_match) {
+									break;
+								}
+							}
+							if (substr_match) {
+								++num_matches;
+
+								msg("found a nanocube filename match: %.*s\n", text_n, text.begin);
+
+								// multiple threads might be trying to access the cache at the same time
+								// insert a mutex here for now
+
+								id2bl_Payload payload = id2bl_get(mapped_nanocubes,id);
+								app_MappedNanocube mapped_nanocube = { 0 };
+								if (payload.base) {
+									// nanocube is already mapped
+									mapped_nanocube = ((app_MappedNanocube*) payload.base)[0];
+									if (!source->num_nanocubes) {
+										for (s32 i=0;i < mapped_nanocube.nanocube->num_index_dimensions;++i) {
+											u8    levels = mapped_nanocube.nanocube->index_dimensions.num_levels[i];
+											char *name   = mapped_nanocube.nanocube->index_dimensions.names[i];
+											s32   name_length = cstr_length(name);
+											nm_measure_source_insert_dimension(source, name, name_length, levels);
+										}
+									}
+									nm_measure_source_insert_nanocube(source, &mapped_nanocube.nanocube->index, mapped_nanocube.nanocube);
+								} else {
+									char *chkpt = print_checkpoint(print_result);
+									print_format(print_result, "%.*s.nanocube", text_n, text.begin);
+									mapped_nanocube.mapped_file = platform.open_mmap_file(chkpt, print_result->end, 1, 0);
+									print_restore(print_result, chkpt);
+
+									if (!mapped_nanocube.mapped_file.mapped) {
+
+										msg("ERROR pattern matching nanocube source: could not map file: %*.s\n", text_n, text.begin);
+
+									} else {
+										al_Allocator* allocator = mapped_nanocube.mapped_file.begin;
+										mapped_nanocube.nanocube = al_Allocator_get_root(allocator);
+
+										msg("scanning file: %*.s... ", text_n, text.begin);
+										u32 sum = 0;
+										for (s32 k=0;k<mapped_nanocube.mapped_file.size;k+=4096) {
+											sum += ((u8*) mapped_nanocube.mapped_file.begin)[k];
+										}
+										msg_raw("DONE\n");
+
+
+										payload = (id2bl_Payload) { .base = &mapped_nanocube, .length = sizeof(app_MappedNanocube) };
+										s32 status = 0;
+										id2bl_insert(mapped_nanocubes, i, payload, 0, &status);
+										if (status != id2bl_OK) {
+											msg("ERROR problem updating nanocube cache: %*.s\n", text_n, text.begin);
+										}
+
+										// insert nanocube on the source
+
+										//
+										// not checking, but the schema need to match
+										// TODO: create some checksum for a schema so that we only
+										// allow the same
+										//
+										if (!source->num_nanocubes) {
+											for (s32 i=0;i < mapped_nanocube.nanocube->num_index_dimensions;++i) {
+												u8    levels = mapped_nanocube.nanocube->index_dimensions.num_levels[i];
+												char *name   = mapped_nanocube.nanocube->index_dimensions.names[i];
+												s32   name_length = cstr_length(name);
+												nm_measure_source_insert_dimension(source, name, name_length, levels);
+											}
+										}
+
+										nm_measure_source_insert_nanocube(source, &mapped_nanocube.nanocube->index, mapped_nanocube.nanocube);
+
+									} // nanocube file not mapped yet: map it and cache it
+
+								} // nanocube is not on match list
+
+							} // match a file
+
+						} // loop on filenames availabe as nanocube sources
+
+						if (num_matches == 0) {
+							print_cstr(print_result, "ERROR: did not match patter to any source");
+							print_cstr(print_header, "HTTP/1.1 400 Syntax Error\r\n");
+							app_nanocube_print_http_header_default_flags(print_header);
+							print_cstr(print_header, "Content-Type: text/plain\r\n");
+							print_format(print_header, "Content-Length: %lld\r\n", print_length(print_result));
+							print_cstr(print_header, "\r\n");
+							goto done;
+						}
+
+					} // if source has a pattern
+
+				} // for each of the sources
+
+			} // there is folder search info
 
 			// pf_BEGIN_BLOCK("nm_Measure_eval");
 			s32 error = nm_OK;
@@ -1930,19 +2058,7 @@ typedef struct {
 	u32            num_nanocubes;
 	u32            num_mapped_files;
 	u8             parse_result;
-
-	// folder based method of finding index files
-	struct {
-		StringArray   *available_nanocube_filenames;
-		id2bl_Map     *mapped_nanocubes;
-	} folder;
 } app_NanocubesAndAliases;
-
-typedef struct {
-	u32 id;
-	pt_MappedFile  mapped_file;
-	nv_Nanocube   *nanocube;
-} app_MappedNanocube;
 
 static void
 app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
@@ -2128,7 +2244,10 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 
 static void
 app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
-			  app_NanocubesAndAliases *info, Request *request, s32 num_threads)
+			  app_NanocubesAndAliases *info,
+			  StringArray *available_nanocube_filenames,
+			  id2bl_Map *mapped_nanocubes,
+			  Request *request, s32 num_threads)
 {
 // 	a_Arena *arena = &info->arena;
 
@@ -2137,7 +2256,9 @@ app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
 		.request = request,
 		.num_buffers = num_threads,
 		.pause_and_active_count = 0,
-		.http_channels_list = 0
+		.http_channels_list = 0,
+		.folder_available_nanocube_filenames = available_nanocube_filenames,
+		.folder_mapped_nanocubes = mapped_nanocubes
 	};
 
 	// initialize http channels list
@@ -2391,6 +2512,10 @@ service_serve(Request *request)
 	app_NanocubesAndAliases info;
 	app_NanocubesAndAliases_init(&info);
 
+	// folder search infra-structure: replace string array with suffix tree
+	StringArray *folder_available_nanocube_filenames = { 0 };
+	id2bl_Map   *folder_mapped_nanocubes = { 0 };
+
 	//
 	// @todo should estimate the amount of memory needed in the arena
 	// to align well with the various buffers needed... for now just
@@ -2463,8 +2588,8 @@ service_serve(Request *request)
 			mapped_nanocubes = id2bl_init(buffer, buffer_length, sizeof(app_MappedNanocube), 2048);
 		}
 
-		info.folder.available_nanocube_filenames = filenames;
-		info.folder.mapped_nanocubes = mapped_nanocubes;
+		folder_available_nanocube_filenames = filenames;
+		folder_mapped_nanocubes = mapped_nanocubes;
 
 		msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder.begin);
 
@@ -2473,7 +2598,10 @@ service_serve(Request *request)
 	if (num_threads < 1) { num_threads = 1; }
 
 	ServeData serve_data = { 0 };
-	app_initialize_serve_data(&serve_data, &arena, &info, request, num_threads);
+	app_initialize_serve_data(&serve_data, &arena, &info,
+				  folder_available_nanocube_filenames,
+				  folder_mapped_nanocubes,
+				  request, num_threads);
 
 	pt_TCP tcp = platform.tcp_create();
 	Assert(tcp.handle);
@@ -5062,7 +5190,12 @@ app_util_fill_nx_Array_with_path_from_u64(nx_Array *target, u8 bits, u8 levels, 
 typedef struct {
 	s32 num_threads;
 	s32 port;
+
 	app_NanocubesAndAliases *info;
+
+	StringArray             *folder_available_nanocube_filenames;
+	id2bl_Map               *folder_mapped_nanocubes;
+
 	Request *request;
 	volatile u32 status;
 	// refresh status and data
@@ -5090,7 +5223,10 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 
 	// @todo rename serve data to serve buffers
 	ServeData serve_data = { 0 };
-	app_initialize_serve_data(&serve_data, &arena, serve_info, request, num_threads);
+	app_initialize_serve_data(&serve_data, &arena, serve_info,
+				  serve_config->folder_available_nanocube_filenames,
+				  serve_config->folder_mapped_nanocubes,
+				  request, num_threads);
 
 	pt_TCP tcp = platform.tcp_create();
 	Assert(tcp.handle);
@@ -6333,7 +6469,9 @@ service_create()
 			.request = g_request,
 			.status = service_create_serve_NOT_INITIALIZED,
 			.refresh_status = service_create_serve_refresh_NO_REFRESH,
-			.refresh_data = 0
+			.refresh_data = 0,
+			.folder_available_nanocube_filenames = 0,
+			.folder_mapped_nanocubes = 0
 		};
 
 		pt_WorkQueue *serve_work_queue = 0;

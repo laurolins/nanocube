@@ -228,7 +228,7 @@ nm_measure_source_set_pattern(nm_MeasureSource* self, char *pattern, s32 pattern
 	if (self->left + pattern_length > self->length) {
 		return 0;
 	}
-	self->right = self->left - pattern_length;
+	self->right = self->length - pattern_length;
 	platform.copy_memory(OffsetedPointer(self, self->right), pattern, pattern_length);
 	return 1;
 }
