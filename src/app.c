@@ -2327,16 +2327,11 @@ app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
 	}
 }
 
-
-
-
-
-
 // @perf this looks pretty slow: 1M extra calls
 PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve_folder_scan_filename_)
 {
-	StringArray** array_pointer_slot = user_data;
-	StringArray *array = array_pointer_slot[0];
+	StringArray* *array_pointer_slot = user_data;
+	StringArray  *array = array_pointer_slot[0];
 
 	u32 filename_length = cstr_length(filename);
 
@@ -2367,6 +2362,15 @@ PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve_folder_scan_filename_
 		Assert(inserted);
 	}
 	// msg_f("filename pushed: %.*s\n", (s32)filename_length_to_store, filename);
+}
+
+
+
+// @perf this looks pretty slow: 1M extra calls
+PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve2_folder_scan_filename_)
+{
+	u32 filename_length = cstr_length(filename);
+	msg("%s\n", filename);
 }
 
 
@@ -2806,7 +2810,7 @@ service_serve2(Request *request)
 	// string array. It might change if the array has to grow in
 	// the callback to scan filenames
 	//
-	platform.get_filenames_in_directory(folder, 1, service_serve_folder_scan_filename_, &filenames);
+	platform.get_filenames_in_directory(folder, 1, service_serve2_folder_scan_filename_, &filenames);
 
 	msg_f("found %"PRIu32" '.nanocube' files in the folder '%s'\n", filenames->count, folder);
 

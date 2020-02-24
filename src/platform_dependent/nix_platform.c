@@ -2114,7 +2114,6 @@ PLATFORM_MEMORY_COMPARE(nix_memory_compare)
 static void
 nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFilenamesInDirectoryCallback *callback, void *user_data)
 {
-
 	struct stat stat_data;
 
 	struct dirent *ent = 0;
@@ -2123,10 +2122,10 @@ nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFil
 			continue;
 		}
 		char *p = print_checkpoint(print);
-		print_cstr(print, ent->d_name);
+		print_format(print, "/%s", ent->d_name);
 		s32 status = stat(print->begin, &stat_data);
 		if (status != 0) {
-			fprintf(stderr,"[Warning] Could not stat file %s (status: %d)\n",print->begin, status);
+			fprintf(stderr,"[Warning] Could not stat file %s (status: %d err: %s)\n",print->begin, status, strerror(errno));
 			goto done;
 		}
 		if (S_ISDIR(stat_data.st_mode)) {
@@ -2135,7 +2134,7 @@ nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFil
 				fprintf(stderr,"[Warning] Could not open directory %s\n",print->begin);
 				goto done;
 			}
-			print_char(print,'/');
+			// print_char(print,'/');
 			nix_get_filenames_in_directory_recursive_(print, dir2, callback, user_data);
 
 		} else {
@@ -2173,6 +2172,11 @@ PLATFORM_GET_FILENAMES_IN_DIRECTORY(nix_get_filenames_in_directory)
 		}
 	} else {
 		Print *print = print_new_raw(Kilobytes(4)); // longest filename
+		if (directory[0] == 0) {
+			print_char(print, '.');
+		} else {
+			print_format(print, directory);
+		}
 		nix_get_filenames_in_directory_recursive_(print, dir, callback, user_data);
 		platform.free_memory_raw(print);
 	}
@@ -2216,7 +2220,6 @@ PLATFORM_FILENAME_MATCH(nix_filename_match)
 {
 	return !fnmatch(pattern, text, FNM_PATHNAME);
 }
-
 
 PLATFORM_GETENV(nix_getenv)
 {
