@@ -1869,6 +1869,9 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 	case nv_FORMAT_JSON: {
 		print_cstr(print_header, "Content-Type: application/json\r\n");
 	} break;
+	case nv_FORMAT_PSV: {
+		print_cstr(print_header, "Content-Type: text/plain\r\n");
+	} break;
 	case nv_FORMAT_TEXT: {
 		print_cstr(print_header, "Content-Type: text/plain\r\n");
 	} break;
