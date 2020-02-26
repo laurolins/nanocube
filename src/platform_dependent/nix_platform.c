@@ -2131,12 +2131,12 @@ nix_get_filenames_in_directory_recursive_(Print *print, DIR *dir, PlatformGetFil
 		if (S_ISDIR(stat_data.st_mode)) {
 			DIR *dir2 = opendir(print->begin);
 			if (!dir2) {
-				fprintf(stderr,"[Warning] Could not open directory %s\n",print->begin);
+				fprintf(stderr,"[Warning] Could not open directory %s (err: %s)\n",print->begin,strerror(errno));
 				goto done;
 			}
 			// print_char(print,'/');
 			nix_get_filenames_in_directory_recursive_(print, dir2, callback, user_data);
-
+			closedir(dir2);
 		} else {
 			callback(print->begin, user_data);
 		}

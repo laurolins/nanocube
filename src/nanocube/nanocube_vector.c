@@ -1166,7 +1166,6 @@ typedef struct {
 	u8         format;
 } nv_Format;
 
-
 #define nv_Poly_TYPE_INTERIOR_AND_BOUNDARY 0
 #define nv_Poly_TYPE_INTERIOR_ONLY 1
 #define nv_Poly_TYPE_BOUNDARY_ONLY 2
@@ -1282,38 +1281,23 @@ np_FUNCTION_HANDLER(nv_function_format)
 np_FUNCTION_HANDLER(nv_function_schema)
 {
 	Assert(params_begin == params_end);
-// 	np_TypeValue *query_tv = params_begin;
-// 	np_TypeValue *format_tv = params_begin + 1;
-// 	Assert(query_tv->type_id == nv_compiler_types.query);
-// 	Assert(format_tv->type_id == nv_compiler_types.format);
-// 	nv_Query *result = (nv_Query*) query_tv->value;
-// 	if (query_tv->readonly) {
-// 	nv_Schema *result = (nv_Schema*) query_tv->value;
-// 	result  = (nv_Query*) np_Compiler_alloc(compiler, sizeof(nv_Query));
-// 		*result = *((nv_Query*) query_tv->value);
-// 	}
-// 	result->format = ((nv_Format*)format_tv->value)->format;
 	return np_TypeValue_value(nv_compiler_types.schema, 0);
+}
+
+np_FUNCTION_HANDLER(nv_function_schema_with_measure)
+{
+	Assert(params_begin + 1 == params_end);
+	np_TypeValue *measure_tv = params_begin;
+	Assert(measure_tv->type_id == nv_compiler_types.measure);
+	nm_Measure *measure = (nm_Measure*) measure_tv->value;
+	return np_TypeValue_value(nv_compiler_types.schema, measure );
 }
 
 np_FUNCTION_HANDLER(nv_function_version)
 {
 	Assert(params_begin == params_end);
-// 	np_TypeValue *query_tv = params_begin;
-// 	np_TypeValue *format_tv = params_begin + 1;
-// 	Assert(query_tv->type_id == nv_compiler_types.query);
-// 	Assert(format_tv->type_id == nv_compiler_types.format);
-// 	nv_Query *result = (nv_Query*) query_tv->value;
-// 	if (query_tv->readonly) {
-// 	nv_Schema *result = (nv_Schema*) query_tv->value;
-// 	result  = (nv_Query*) np_Compiler_alloc(compiler, sizeof(nv_Query));
-// 		*result = *((nv_Query*) query_tv->value);
-// 	}
-// 	result->format = ((nv_Format*)format_tv->value)->format;
 	return np_TypeValue_value(nv_compiler_types.version, 0);
 }
-
-
 
 np_FUNCTION_HANDLER(nv_function_select)
 {
@@ -1392,10 +1376,10 @@ np_FUNCTION_HANDLER(nv_function_interval_sequence_with_stride)
 	Assert(stride_value_type->type_id == nv_compiler_types.number);
 
 	// value should be an integer number
-	s64 base   = (s64) *((f64*) base_value_type->value);
-	u64 width  = (u64) *((f64*) width_value_type->value);
-	u64 count  = (u64) *((f64*) count_value_type->value);
-	u64 stride = (u64) *((f64*) stride_value_type->value);
+	s64 base   = (s64) (s64) np_f64(base_value_type);
+	u64 width  = (u64) (u64) np_f64(width_value_type);
+	u64 count  = (u64) (u64) np_f64(count_value_type);
+	u64 stride = (u64) (u64) np_f64(stride_value_type);
 	u8  depth  = 0; // use max depth
 
 	nm_Target *target = np_Compiler_alloc(compiler, sizeof(nm_Target));
@@ -3350,6 +3334,14 @@ nv_Compiler_init(np_Compiler *compiler)
 		(compiler, "schema", nv_compiler_types.schema,
 		 0, 0, 0, 0,
 		 nv_function_schema);
+
+	// info goes totally on the type here
+	// schema: void -> 0 of type schema
+	parameter_types[0] = nv_compiler_types.measure;
+	np_Compiler_insert_function_cstr
+		(compiler, "schema", nv_compiler_types.schema,
+		 parameter_types, parameter_types + 1, 0, 0,
+		 nv_function_schema_with_measure);
 
 	// info goes totally on the type here
 	// schema: void -> 0 of type schema

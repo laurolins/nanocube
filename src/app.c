@@ -1668,23 +1668,36 @@ app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 	while (it) {
 		// once a format has been used, we stick to it
 		if (it->data.type_id == nv_compiler_types.schema) {
-
-			// loop through all the sources to print their schema
-			np_Symbol *symbol = buffers->compiler.symbol_table.begin;
-			while (symbol != buffers->compiler.symbol_table.end) {
-				if (symbol->is_variable && symbol->variable.type_id == nv_compiler_types.measure) {
-					// all pre-stored measures
-					nm_Measure *measure = (nm_Measure*) symbol->variable.value;
-					if (measure->expression->is_source && measure->num_sources == 1) {
-						nm_MeasureSource *source = measure->sources[0];
-						Assert(source);
-						Assert(source->num_nanocubes > 0);
-						// nv_Nanocube *nanocube = (nv_Nanocube*) source->nanocubes[source->num_nanocubes-1];
-						nv_Nanocube *nanocube = nm_measure_source_nanocube(source, source->num_nanocubes-1);
-						nv_ResultStream_schema(&result_stream, symbol->name, nanocube);
+			nm_Measure *measure = it->data.value;
+			if (!measure) {
+				// loop through all the sources to print their schema
+				np_Symbol *symbol = buffers->compiler.symbol_table.begin;
+				while (symbol != buffers->compiler.symbol_table.end) {
+					if (symbol->is_variable && symbol->variable.type_id == nv_compiler_types.measure) {
+						// all pre-stored measures
+						nm_Measure *measure = (nm_Measure*) symbol->variable.value;
+						if (measure->expression->is_source && measure->num_sources == 1) {
+							nm_MeasureSource *source = measure->sources[0];
+							Assert(source);
+							Assert(source->num_nanocubes > 0);
+							// nv_Nanocube *nanocube = (nv_Nanocube*) source->nanocubes[source->num_nanocubes-1];
+							nv_Nanocube *nanocube = nm_measure_source_nanocube(source, source->num_nanocubes-1);
+							nv_ResultStream_schema(&result_stream, symbol->name, nanocube);
+						}
 					}
+					++symbol;
 				}
-				++symbol;
+			} else {
+				for (s32 i=0;i<measure->num_sources;++i) {
+					nm_MeasureSource *source = measure->sources[0];
+					Assert(source);
+					Assert(source->num_nanocubes > 0);
+					// nv_Nanocube *nanocube = (nv_Nanocube*) source->nanocubes[source->num_nanocubes-1];
+					nv_Nanocube *nanocube = nm_measure_source_nanocube(source, source->num_nanocubes-1);
+					static char *name ="src_";
+					MemoryBlock name_mb = { .begin = name, .end = cstr_end(name) };
+					nv_ResultStream_schema(&result_stream, name_mb, nanocube);
+				}
 			}
 		}  else if (it->data.type_id == nv_compiler_types.query) {
 			//
