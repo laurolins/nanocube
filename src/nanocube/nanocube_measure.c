@@ -1770,7 +1770,6 @@ nm_Measure_init(nm_Measure *self, nm_MeasureSource *source, BilinearAllocator* m
 	}
 	self->sources[0]      = source;
 	self->num_sources     = 1;
-
 	self->expression = nm_Measure_alloc_expression(self);
 	nm_MeasureExpression_init_source(self->expression, 0);
 }

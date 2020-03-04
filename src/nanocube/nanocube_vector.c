@@ -1899,7 +1899,7 @@ np_FUNCTION_HANDLER(nv_function_src)
 				}
 			}
 			if (substr_match) {
-				msg("found a nanocube filename match: %.*s\n", text_n, text.begin);
+				msg2("found a nanocube filename match: %.*s\n", text_n, text.begin);
 
 				// multiple threads might be trying to access the cache at the same time
 				// insert a mutex here for now
@@ -1929,25 +1929,25 @@ np_FUNCTION_HANDLER(nv_function_src)
 
 					if (!mapped_nanocube.mapped_file.mapped) {
 
-						msg("ERROR pattern matching nanocube source: could not map file: %*.s\n", text_n, text.begin);
+						msg2("ERROR pattern matching nanocube source: could not map file: %*.s\n", text_n, text.begin);
 
 					} else {
 						al_Allocator* allocator = mapped_nanocube.mapped_file.begin;
 						mapped_nanocube.nanocube = al_Allocator_get_root(allocator);
 
-						msg("scanning file: %*.s... ", text_n, text.begin);
+						msg2("scanning file: %*.s... ", text_n, text.begin);
 						u32 sum = 0;
 						for (s32 k=0;k<mapped_nanocube.mapped_file.size;k+=4096) {
 							sum += ((u8*) mapped_nanocube.mapped_file.begin)[k];
 						}
-						msg_raw("DONE\n");
+						// msg_raw("DONE\n");
 
 
 						payload = (id2bl_Payload) { .base = &mapped_nanocube, .length = sizeof(app_MappedNanocube) };
 						s32 status = 0;
 						id2bl_insert(mapped_nanocubes, id, payload, 0, &status);
 						if (status != id2bl_OK) {
-							msg("ERROR problem updating nanocube cache: %*.s\n", text_n, text.begin);
+							msg2("ERROR problem updating nanocube cache: %*.s\n", text_n, text.begin);
 						}
 
 						// insert nanocube on the source
@@ -1989,6 +1989,8 @@ np_FUNCTION_HANDLER(nv_function_src)
 
 	// nm_measure_source_set_pattern(source, pattern->begin, pattern->end - pattern->begin);
 	nm_Measure *measure = np_Compiler_alloc(compiler, sizeof(nm_Measure));
+	// TODO: cleanup this
+	memset(measure,0,sizeof(nm_Measure));
 	nm_Measure_init(measure, source, compiler->memory); // this measure should be copied and
 	return np_TypeValue_readonly_value(nv_compiler_types.measure, measure);
 }
