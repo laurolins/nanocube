@@ -81,6 +81,7 @@ BASENAME=$(pwd | rev | cut -f 2 -d'/' | rev)
 EXE="nc42b"
 BUILD="../../build/${BASENAME}"
 SRC="../../${BASENAME}/src"
+
 CC="gcc"
 CXX="g++"
 LIBS="-L${BUILD} -lm -lpthread"
