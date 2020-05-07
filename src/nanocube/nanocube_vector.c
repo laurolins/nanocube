@@ -4585,7 +4585,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							// x = (y - b) / a
 							f64 x = (y - details[i].numerical.b)/details[i].numerical.a;
 
-							print_format(print, "%f", x);
+							print_format(print, "%g", x);
 						} else if (details[i].type == KeyColumnDetail_TEMPORAL) {
 
 							// y is a full path in a binary tree which corresponds to the offfset
@@ -4700,7 +4700,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					continuation = 1;
 
 					f64 value = *(it + j);
-					print_format(print, "%f", value);
+					print_format(print, "%g", value);
 				}
 			}
 			print_char(print, '\n');
