@@ -214,6 +214,7 @@ A POLY primitive is defined by the poly function with a sequence
 of lat/lon pairs that are comma separated in a string:
 
     poly(LAT_LON_STRING)
+    wkt(WKT_STRING)
 
 We can combine POLY objects using
 
