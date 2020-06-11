@@ -2274,6 +2274,119 @@ np_FUNCTION_HANDLER(nv_function_poly)
 	return np_TypeValue_value(nv_compiler_types.poly, poly);
 }
 
+#include "nanocube_wkt.c"
+
+np_FUNCTION_HANDLER(nv_function_wkt)
+{
+	Assert(params_end - params_begin == 1);
+
+	np_TypeValue *coords_tv = params_begin;
+
+	Assert(coords_tv->type_id == nv_compiler_types.string);
+
+	// expecting a WKT description in a string
+	MemoryBlock st = *((MemoryBlock*) coords_tv->value);
+	s64 wkt_text_size = MemoryBlock_length(&st);
+
+	wkt_Parser *parser = wkt_parser_new(4*wkt_text_size,wkt_text_size+1);
+
+	// try parsing the WKT on the string
+	wkt_Buffer buffer = wkt_parser_get_update_buffer(parser);
+
+	// fill the buffer and say it contains eof
+	Assert(buffer.length >= wkt_text_size);
+	memcpy(buffer.buffer, st.begin, wkt_text_size);
+	wkt_parser_signal_buffer_update(parser, wkt_text_size, 1);
+
+	// there is a max number of poly rings
+	nv_Poly *polys[1024];
+	s32      current_polygon_offset = 0;
+	s32      num_polygons = 0;
+
+	s32 result = wkt_next_wkt(parser);
+
+	// fprintf(stderr,"[%06d] %s\n", entries, wkt_STR_RESULT[result]);
+	if (result == wkt_RESULT_POLYGON_READY || result == wkt_RESULT_MULTIPOLYGON_READY) {
+		f64* numbers = wkt_numbers_(parser);
+
+		// union of symm diff
+		wkt_RingIter iter = wkt_rings(parser);
+		wkt_Ring *ring = 0;
+
+		s32 current_polygon_id = -1;
+		while ((ring=wkt_ring_iterator_next(&iter))) {
+
+			if (num_polygons == 0 || current_polygon_id == ring->polygon) {
+				// {...... insert current ring
+				current_polygon_id = ring->polygon;
+				f32 *coords_begin    = np_Compiler_alloc(compiler, ring->length * sizeof(f32));
+				f32 *coords_capacity = coords_begin + ring->length;
+				for (s32 i=0;i<ring->length;i+=2) {
+					coords_begin[i+1] = (f32) numbers[ring->offset + i];
+					coords_begin[i]   = (f32) numbers[ring->offset + i + 1];
+				}
+				nv_Poly *poly = np_Compiler_alloc(compiler, sizeof(nv_Poly));
+				nv_Poly_init_poly(poly, nv_Poly_TYPE_INTERIOR_AND_BOUNDARY, ring->length/2, coords_begin);
+				polys[num_polygons] = poly;
+				++num_polygons;
+				// .......}
+			} else {
+				s32 num_rings_on_active_polygon = num_polygons - current_polygon_offset;
+				if (num_rings_on_active_polygon > 1) {
+					// {...... insert symmdiff poly
+					nv_Poly* *list = np_Compiler_alloc(compiler, num_rings_on_active_polygon * sizeof(nv_Poly*));
+					for (s32 i=0;i<num_rings_on_active_polygon;++i) {
+						list[i] = polys[current_polygon_offset+i];
+					}
+					nv_Poly *poly_combine = np_Compiler_alloc(compiler, sizeof(nv_Poly));
+					nv_Poly_init_op(poly_combine, nv_Poly_OP_SYMDIFF, num_rings_on_active_polygon, list);
+					polys[current_polygon_offset] = poly_combine;
+					++current_polygon_offset;
+					num_polygons = current_polygon_offset;
+					// .......}
+				}
+				// {...... insert current ring
+				current_polygon_id = ring->polygon;
+				f32 *coords_begin    = np_Compiler_alloc(compiler, ring->length * sizeof(f32));
+				f32 *coords_capacity = coords_begin + ring->length;
+				for (s32 i=0;i<ring->length;i+=2) {
+					coords_begin[i+1] = (f32) numbers[ring->offset + i];
+					coords_begin[i]   = (f32) numbers[ring->offset + i + 1];
+				}
+				nv_Poly *poly = np_Compiler_alloc(compiler, sizeof(nv_Poly));
+				nv_Poly_init_poly(poly, nv_Poly_TYPE_INTERIOR_AND_BOUNDARY, ring->length/2, coords_begin);
+				polys[num_polygons] = poly;
+				++num_polygons;
+				// .......}
+			}
+		}
+		if (num_polygons > 1) {
+			// {...... insert symmdiff poly
+			nv_Poly* *list = np_Compiler_alloc(compiler, num_polygons * sizeof(nv_Poly*));
+			for (s32 i=0;i<num_polygons;++i) {
+				list[i] = polys[i];
+			}
+			nv_Poly *poly_combine = np_Compiler_alloc(compiler, sizeof(nv_Poly));
+			nv_Poly_init_op(poly_combine, nv_Poly_OP_UNION, num_polygons, list);
+			polys[0] = poly_combine;
+			num_polygons = 1;
+			current_polygon_offset = 0;
+			// .......}
+		}
+
+		wkt_parser_delete(parser);
+
+		return np_TypeValue_value(nv_compiler_types.poly, polys[0]);
+
+	} else {
+		wkt_parser_delete(parser);
+
+		char *error = "WKT problem!";
+		np_Compiler_log_custom_error(compiler, error, cstr_end(error));
+		np_Compiler_log_ast_node_context(compiler);
+		return np_TypeValue_error();
+	}
+}
 
 static np_TypeValue
 nv_function_poly_combine(np_Compiler* compiler, np_TypeValue *params_begin, np_TypeValue *params_end, s32 op_type)
@@ -3155,6 +3268,13 @@ nv_Compiler_init(np_Compiler *compiler)
 		(compiler, "poly_complement", nv_compiler_types.poly,
 		 parameter_types, parameter_types + 1, 0, 0,
 		 nv_function_poly_complement);
+
+	// poly_union: poly -> poly
+	parameter_types[0] = nv_compiler_types.string;
+	np_Compiler_insert_function_cstr
+		(compiler, "wkt", nv_compiler_types.poly,
+		 parameter_types, parameter_types + 1, 0, 0,
+		 nv_function_wkt);
 
 	// region: string x target -> binding
 	parameter_types[0] = nv_compiler_types.number;
@@ -4585,7 +4705,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 							// x = (y - b) / a
 							f64 x = (y - details[i].numerical.b)/details[i].numerical.a;
 
-							print_format(print, "%f", x);
+							print_format(print, "%g", x);
 						} else if (details[i].type == KeyColumnDetail_TEMPORAL) {
 
 							// y is a full path in a binary tree which corresponds to the offfset
@@ -4700,7 +4820,7 @@ nv_ResultStream_table(nv_ResultStream *self, nm_Table *table)
 					continuation = 1;
 
 					f64 value = *(it + j);
-					print_format(print, "%f", value);
+					print_format(print, "%g", value);
 				}
 			}
 			print_char(print, '\n');

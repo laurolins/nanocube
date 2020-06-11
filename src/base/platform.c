@@ -1630,7 +1630,7 @@ pt_str_to_f32(char *text, u32 len, f32 *output)
 }
 
 static s32
-pt_str_to_f64(char *text, u32 len, f32 *output)
+pt_str_to_f64(char *text, u32 len, f64 *output)
 {
 	if (len > 31) return 0;
 	char buffer[32];
