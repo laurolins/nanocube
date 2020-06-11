@@ -5629,10 +5629,6 @@ on the columns of the input .csv file
 
                         If L is not specified assumes L=16.
 
-                    weekday()
-	            hour()
-	                Weekday and hour based on a timestamp input
-
                     ip(L)
                         creates a quad-tree with L levels mapping IPv4 entries
                         (eg. 123.122.122.98) into a corresponding entry using the
