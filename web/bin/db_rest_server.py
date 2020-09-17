@@ -1,41 +1,26 @@
-from flask import Flask,request,make_response
-from flask_cors import cross_origin
-app = Flask(__name__)
+from fastapi import FastAPI, Form
+from fastapi.responses import Response
+from fastapi.middleware.cors import CORSMiddleware
 
 import pandas as pd
 from sqlalchemy import create_engine
-engine = create_engine('sqlite:////crime.db')
+engine = create_engine('sqlite:///./crimes50k.db')
 
+app = FastAPI()
+app.add_middleware(CORSMiddleware,allow_origins=['*'])
 
-@app.route('/')
+@app.get('/')
 def hello_world():
-    return 'Hello, World!'
+    return {'msg':'Hello, World!'}
 
-import json
-
-@app.route('/data',methods=['POST'])
-@cross_origin()
-def data():    
-    if request.method == 'POST':
-        q = request.form['q']
-        format = request.form['format']
-        resp = make_response()
-        print(q)
+@app.post('/data')
+def data(q:str=Form(...),format:str=Form(...)):    
+    print(q)
         
-        data=pd.read_sql(q,engine).replace(to_replace=float('nan'),value=None)
-        mime=''
+    data=pd.read_sql(q,engine).replace(to_replace=float('nan'),value=None)
 
-        if format=='json':
-            data = json.dumps(data.to_dict(orient='records'))
-            mime = 'text/json'
-        
-        if format=='csv':
-            data = data.to_csv(index=False)
-            mime = 'text/csv'
-
-        resp.data=data
-        resp.mimetype=mime
-
-        return resp
-    else:
-        return ''
+    if format=='json':
+        return data.to_dict(orient='records')
+    
+    if format=='csv':
+        return Response(content=data.to_csv(index=False),media_type='text/csv')
