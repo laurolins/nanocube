@@ -59,7 +59,7 @@ endif
 
 bin_PROGRAMS=nanocube
 nanocube_SOURCES=src/platform_dependent/nix_app.c
-nanocube_CFLAGS=-pthread
+nanocube_CFLAGS=-pthread -O2
 nanocube_LDADD=-lm
 if WITH_POLYCOVER
 nanocube_CFLAGS+=-DPOLYCOVER

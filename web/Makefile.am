@@ -3,7 +3,8 @@ ACLOCAL_AMFLAGS=-I m4
 
 nanocube_webconfigdir=${prefix}
 nobase_dist_nanocube_webconfig_SCRIPTS=\
-bin/nanocube_webconfig
+bin/nanocube_webconfig \
+bin/db_rest_server.py
 
 nanocube_webdir=${prefix}/share/nanocube/web
 

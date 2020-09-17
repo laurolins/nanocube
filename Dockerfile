@@ -9,4 +9,5 @@ RUN /app/build.sh
 
 #run
 WORKDIR /app
-CMD /app/run.sh
+ENTRYPOINT ["/app/run.sh"]
+CMD ["crime","/data","/data/config.json","/data/crimes50k.db"]

@@ -4,7 +4,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import pandas as pd
 from sqlalchemy import create_engine
-engine = create_engine('sqlite:///./crimes50k.db')
+
+#default arguments
+file = './crimes50k.db'
+
+
+#arguments from env
+import os
+if os.environ['DBFILE']:
+    file = os.environ['DBFILE']
+
+engine = create_engine('sqlite:///'+file)
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware,allow_origins=['*'])
@@ -16,7 +26,7 @@ def hello_world():
 @app.post('/data')
 def data(q:str=Form(...),format:str=Form(...)):    
     print(q)
-        
+    
     data=pd.read_sql(q,engine).replace(to_replace=float('nan'),value=None)
 
     if format=='json':
@@ -24,3 +34,8 @@ def data(q:str=Form(...),format:str=Form(...)):
     
     if format=='csv':
         return Response(content=data.to_csv(index=False),media_type='text/csv')
+
+
+import uvicorn
+if __name__ == "__main__":
+    uvicorn.run("db_rest_server:app")
