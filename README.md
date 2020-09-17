@@ -8,6 +8,19 @@ The `master` branch now contains a new implementation of Nanocubes in the C prog
 
 Here is a link to the new [API](/api/README.md)
 
+# Docker Demo
+```
+$git clone https://github.com/laurolins/nanocube.git
+$cd nanocube
+#build the docker image
+$docker build . -t nanocube 
+
+#run the demo
+$docker run -it --rm -p 12345:80 nanocube
+
+# See the demo at http://localhost:12345/ zoom into Chicago
+```
+
 # Compiling on Linux or Mac
 
 ```shell
