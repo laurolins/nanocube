@@ -1,4 +1,6 @@
 {
+  "sqldb_url": "/dbrest/data",
+  "sqldb_url": null,
   "nanocube": {
     "nc": {
       "url": "/nanocube"
