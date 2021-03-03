@@ -29,8 +29,8 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.clearbtn = d3.select(id)
         .append('button')
         .attr('class','btn')
-        .on('click',function(){
-            d3.event.stopPropagation();
+        .on('click',function(event){
+            event.stopPropagation();
             
             delete widget.selection.brush; //clear selection
             widget.update(); //redraw itself
@@ -41,8 +41,8 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.sortbtn = d3.select(id)
         .append('button')
         .attr('class','btn')
-        .on('click',function(){
-            d3.event.stopPropagation();
+        .on('click',function(event){
+            event.stopPropagation();
             widget._opts.alpha_order = !widget._opts.alpha_order;
             widget.redraw(widget.lastres);
         })
@@ -52,8 +52,8 @@ function GroupedBarChart(opts, getDataCallback, updateCallback){
     this.percentbtn = d3.select(id)
         .append('button')
         .attr('class','percent-btn')
-        .on('click',function(){
-            d3.event.stopPropagation();
+        .on('click',function(event){
+            event.stopPropagation();
             widget._opts.percent = !widget._opts.percent;
             widget.redraw(widget.lastres);
         });
@@ -246,8 +246,8 @@ GroupedBarChart.prototype = {
         var newbars = bars.enter()
             .append('rect')
             .attr('class', 'bar')
-            .on('click', function(d) {
-                widget.clickFunc(d); //toggle callback
+            .on('click', function(event,d) {
+                widget.clickFunc(event,d); //toggle callback
             });
 
         newbars.append('svg:title');
@@ -283,7 +283,7 @@ GroupedBarChart.prototype = {
         });
     },
 
-    clickFunc:function(d){
+    clickFunc:function(event,d){
         var widget = this;
         if(!widget.selection.brush){
             widget.selection.brush = [];
@@ -297,7 +297,7 @@ GroupedBarChart.prototype = {
             widget.selection.brush.splice(idx,1);
         }
         else{
-            if(d3.event.shiftKey){
+            if(event.shiftKey){
                 widget.selection.brush.push({id:d.id, cat:d.cat});
             }
             else{
@@ -464,9 +464,9 @@ GroupedBarChart.prototype = {
         //enable axis click
         var widget = this;
         svg.select('.y.axis').selectAll('.tick')
-            .on('click',function(d){
+            .on('click',function(event,d){
                 var obj = data.filter(function(e){return e.cat==d;})[0];
-                widget.clickFunc(obj);
+                widget.clickFunc(event,obj);
             });
         
         this.totalheight = totalheight;

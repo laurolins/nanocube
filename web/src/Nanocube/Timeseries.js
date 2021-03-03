@@ -59,8 +59,8 @@ function Timeseries(opts,getDataCallback,updateCallback){
 
     //Add percent button
     this.percentbtn = d3.select(id).append('button')
-        .on('click',function(){
-            d3.event.stopPropagation();
+        .on('click',function(event){
+            event.stopPropagation();
             widget._opts.percent = !widget._opts.percent;
             widget.redraw(widget.lastres);
         });
@@ -126,11 +126,17 @@ function Timeseries(opts,getDataCallback,updateCallback){
         .call(widget.yAxis);
 
 
-    //Zoom
+    //Zoom    
     widget.zoom=d3.zoom()
-        .on('zoom', function(){
+        .on('zoom', function(event){
+            //ignore mousemove without button down
+            if(event.sourceEvent.buttons < 1 && 
+               event.sourceEvent.type=="mousemove"){
+                return;
+            }
+            
             //rescale
-            widget.xz = d3.event.transform.rescaleX(widget.x);
+            widget.xz=event.transform.rescaleX(widget.x);
 
             //redraw
             widget.redraw(widget.lastres);
@@ -142,7 +148,6 @@ function Timeseries(opts,getDataCallback,updateCallback){
                           widget.brush.selection.map(widget.xz));
             }
         })
-
         .on('end', function(){
             widget.update();
             widget.updateCallback(widget._encodeArgs());
@@ -155,13 +160,13 @@ function Timeseries(opts,getDataCallback,updateCallback){
     //Brush
     widget.brush = d3.brushX()
         .extent([[0, 0], [width, height]])
-        .on('end', function(){
-            if(!d3.event.sourceEvent){
+        .on('end', function(event){
+            if(!event.sourceEvent){
                 return;
             }
-
-            if (d3.event.selection) {
-                var sel = d3.event.selection;
+            
+            if (event.selection) {
+                var sel = event.selection;
                 //save selection
                 widget.brush.selection = sel.map(widget.xz.invert);
             }
@@ -351,7 +356,10 @@ Timeseries.prototype={
     drawLine:function(data,color){
         var m = color.match(/rgba\((.+),(.+),(.+),(.+)\)/);
         if(m){
-            color='#'+ (+m[1]).toString(16)+ (+m[2]).toString(16) + (+m[3]).toString(16);
+            color='#'+
+                (+m[1]).toString(16).padStart(2, '0')+
+                (+m[2]).toString(16).padStart(2, '0')+
+                (+m[3]).toString(16).padStart(2, '0');
         }
         
         var colorid = 'color_'+color.replace('#','');
