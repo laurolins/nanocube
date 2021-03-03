@@ -349,6 +349,11 @@ Timeseries.prototype={
     },
 
     drawLine:function(data,color){
+        var m = color.match(/rgba\((.+),(.+),(.+),(.+)\)/);
+        if(m){
+            color='#'+ (+m[1]).toString(16)+ (+m[2]).toString(16) + (+m[3]).toString(16);
+        }
+        
         var colorid = 'color_'+color.replace('#','');
 
         if (data.length < 2){

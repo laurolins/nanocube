@@ -5,9 +5,9 @@ import 'leaflet';
 import 'leaflet/dist/leaflet.css';
 let L = window.L;
 //Leaflet Icon Fix
-import markericon from 'leaflet/dist/images/marker-icon-2x.png';
-import markericon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markershadow from 'leaflet/dist/images/marker-shadow.png';
+import markericon from 'url:~/node_modules/leaflet/dist/images/marker-icon-2x.png';
+import markericon2x from 'url:~/node_modules/leaflet/dist/images/marker-icon-2x.png';
+import markershadow from 'url:~/node_modules/leaflet/dist/images/marker-shadow.png';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: markericon,

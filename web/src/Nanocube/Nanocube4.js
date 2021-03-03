@@ -128,7 +128,7 @@ Nanocube.prototype = {
 	var minp = this.getMinTime(tvarname,mintime,maxtime);
 	var maxp = this.getMaxTime(tvarname,mintime,maxtime);
 	$.when(minp,maxp).done(function(mintime,maxtime){
-	    dfd.resolve({mintime:mintime,maxtime:maxtime});
+	    dfd.resolve({mintime:mintime,maxtime:maxtime+1});
 	});
 	return dfd.promise();
     },
@@ -139,7 +139,7 @@ Nanocube.prototype = {
 	var dfd = new $.Deferred();
 	//base case
 	if((maxtime - mintime) < 2){
-	    return dfd.resolve(mintime);
+	    return dfd.resolve(Math.max(0,mintime-1));
 	}
 
 	var nc = this;
@@ -173,7 +173,7 @@ Nanocube.prototype = {
 	var dfd = new $.Deferred();
 	//base case
 	if((maxtime - mintime) < 2){
-	    return dfd.resolve(maxtime);
+	    return dfd.resolve(maxtime+1);
 	}
 
 	var nc = this;

@@ -3,9 +3,9 @@ import 'leaflet';
 import 'leaflet/dist/leaflet.css';
 let L = window.L;
 //Leaflet Icon Fix
-import markericon from 'leaflet/dist/images/marker-icon-2x.png';
-import markericon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markershadow from 'leaflet/dist/images/marker-shadow.png';
+import markericon from 'url:~/node_modules/leaflet/dist/images/marker-icon-2x.png';
+import markericon2x from 'url:~/node_modules/leaflet/dist/images/marker-icon-2x.png';
+import markershadow from 'url:~/node_modules/leaflet/dist/images/marker-shadow.png';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: markericon,
@@ -50,7 +50,7 @@ var Heatmap=function(opts,getDataCallback,updateCallback){
     
     this._heatmaps = this._genLayers(this._datasrc);
     
-    var map = opts.map || this._initMap();
+    var map = opts.map || this._initMap(opts);
     
     this._map = map;
     
@@ -150,7 +150,7 @@ Heatmap.prototype = {
             //set colormap
             layer._colormap = widget._datasrc[d].colormap.map(colorfunc);
 
-            //htmllabel
+            //html label
             var htmllabel='<i style="background:'+
                 layer._color+'"> </i>' + d;
             
@@ -170,7 +170,8 @@ Heatmap.prototype = {
 
         
         //make the background black
-        $('.leaflet-container').css('background','#000');
+        $('.leaflet-container').css('background',
+                                    this._opts.background || '#000');
 
         //add an OpenStreetMap tile layer
         var mapt = L.tileLayer(this._tilesurl,{

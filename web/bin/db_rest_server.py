@@ -6,22 +6,18 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 #default arguments
-file = './crimes50k.db'
+file = './crime50k.db'
 
 
 #arguments from env
 import os
-if os.environ['DBFILE']:
+if 'DBFILE' in os.environ:
     file = os.environ['DBFILE']
 
 engine = create_engine('sqlite:///'+file)
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware,allow_origins=['*'])
-
-@app.get('/')
-def hello_world():
-    return {'msg':'Hello, World!'}
 
 @app.post('/data')
 def data(q:str=Form(...),format:str=Form(...)):    
