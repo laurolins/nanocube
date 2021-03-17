@@ -19,6 +19,13 @@ engine = create_engine('sqlite:///'+file)
 app = FastAPI()
 app.add_middleware(CORSMiddleware,allow_origins=['*'])
 
+
+from starlette.responses import RedirectResponse
+@app.get('/')
+async def root():
+    #redirect / to docs
+    return RedirectResponse(url='/docs')
+
 @app.post('/data')
 def data(q:str=Form(...),format:str=Form(...)):    
     print(q)
