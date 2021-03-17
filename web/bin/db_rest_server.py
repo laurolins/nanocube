@@ -13,7 +13,7 @@ file = './crime50k.db'
 import os
 if 'DBFILE' in os.environ:
     file = os.environ['DBFILE']
-
+    
 engine = create_engine('sqlite:///'+file)
 
 app = FastAPI()
