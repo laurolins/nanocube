@@ -1,3 +1,4 @@
+//{{{ TODO
 /*
 BEGIN_TODO
 
@@ -114,7 +115,9 @@ and recognizing the different sets.
 
 END_TODO
 */
+//}}}
 
+//{{{ nanocube_api_doc
 /*
 BEGIN_DOC_STRING nanocube_api_doc
 Nanocube API                                             __VERSION__
@@ -352,6 +355,7 @@ monthseries('2018', 3, 8, 3)
 
 END_DOC_STRING
 */
+//}}}
 
 // #include "base/platform.c"
 
@@ -410,6 +414,7 @@ typedef struct Request {
 // global variable should be initialized on entry point
 static Request *g_request = 0;
 
+//{{{ output_ functions
 static void
 output_cstr_(const char *cstr)
 {
@@ -423,7 +428,9 @@ output_(Print *print)
 {
 	platform.write_to_file(g_request->pfh_stdout, print->begin, print->end);
 }
+//}}}
 
+//{{{ log_ functions
 static void
 log_cstr_(const char *cstr)
 {
@@ -445,15 +452,9 @@ log_format_(const char *cstr)
 	platform.write_to_file(g_request->pfh_stderr, g_request->print->begin, g_request->print->end);
 	print_clear(g_request->print);
 }
+//}}}
 
-
-
-
-
-
-
-
-
+//{{{ b64_encode_block
 //------------------------------------------------------------------------
 // base64 encode
 //-----------------------------------------------------------------------
@@ -478,6 +479,7 @@ b64_encode_block(void *raw, u64 len)
 	result.out[3] = (unsigned char) (len > 2 ? b64_chars[ (s32)(in[2] & 0x3f) ] : '=');
 	return result.value;
 }
+//}}}
 
 //------------------------------------------------------------------------
 // base64 decode
@@ -557,6 +559,7 @@ static u64 app_service_serve_MEM_HTTP_CHANNEL        = Megabytes(4);
 static rg_Graph     *g_snap_graph   = 0;
 static f32          g_snap_maxdist = 0;
 
+//{{{ g_snap
 /* @TODO(llins): not multi-threaded! */
 static b8
 g_snap(f32 *lat, f32 *lon)
@@ -574,12 +577,14 @@ g_snap(f32 *lat, f32 *lon)
 		return 0;
 	}
 }
-
+//}}}
 
 //------------------------------------------------------------------------------
 // u64 and u128 basic stuff
 // @TODO(llins): think if we should make this a basic service on platform
 //------------------------------------------------------------------------------
+
+//{{{ u64 and u128 basic stuff
 
 static void
 swap_u64(u64 *a, u64 *b)
@@ -742,12 +747,13 @@ check_sorted_uniqueness_u64(u64 *begin, u64 *end)
 	}
 	return 1;
 }
-
+//}}}
 
 //------------------------------------------------------------------------------
 // version service
 //------------------------------------------------------------------------------
 
+//{{{ nanocube_service_version_doc
 /*
 BEGIN_DOC_STRING nanocube_service_version_doc
 Ver:   __VERSION__
@@ -756,7 +762,9 @@ Show the executable version that created the input NANOCUBE index.
 
 END_DOC_STRING
 */
+//}}}
 
+//{{{ service_version
 static void
 service_version(Request *request)
 {
@@ -797,10 +805,13 @@ service_version(Request *request)
 
 	platform.close_mmap_file(&mapped_file);
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // memory service
 //------------------------------------------------------------------------------
+
+//{{{ nanocube_memory_doc
 /*
 BEGIN_DOC_STRING nanocube_memory_doc
 Ver:   __VERSION__
@@ -815,7 +826,9 @@ Options:
 
 END_DOC_STRING
 */
+//}}}
 
+//{{{ service_memory
 static void
 service_memory(Request *request)
 {
@@ -858,11 +871,13 @@ service_memory(Request *request)
 
 	platform.close_mmap_file(&mapped_file);
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // draw
 //------------------------------------------------------------------------------
 
+//{{{ nv_print_payload
 static nv_Nanocube *nv_nanocube_instance = 0;
 nu_PRINT_PAYLOAD(nv_print_payload)
 {
@@ -875,7 +890,9 @@ nu_PRINT_PAYLOAD(nv_print_payload)
 		print_f64(print, value);
 	}
 }
+//}}}
 
+//{{{ nanocube_draw_doc
 /*
 BEGIN_DOC_STRING nanocube_draw_doc
 Ver:   __VERSION__
@@ -890,7 +907,9 @@ OPTIONS:
         print node ids on top of the path labels
 END_DOC_STRING
 */
+//}}}
 
+//{{{ service_draw
 static void
 service_draw(Request *request)
 {
@@ -949,11 +968,13 @@ service_draw(Request *request)
 	print_cstr(print, "\n");
 	output_(print);
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // ast service
 //------------------------------------------------------------------------------
 
+//{{{ print_ast
 static void
 print_ast(Request *request, np_AST_Node* node, s32 level)
 {
@@ -1035,7 +1056,9 @@ print_ast(Request *request, np_AST_Node* node, s32 level)
 		break;
 	}
 }
+//}}}
 
+//{{{ service_ast
 /*
 BEGIN_DOC_STRING nanocube_ast_doc
 Ver:   __VERSION__
@@ -1046,7 +1069,6 @@ a nanocube, querying a snap index, setting .csv to nanocube mapping.
 
 END_DOC_STRING
 */
-
 static void
 service_ast(Request *request)
 {
@@ -1128,11 +1150,13 @@ service_ast(Request *request)
 
 	platform.close_mmap_file(&mapped_file);
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // service btree
 //------------------------------------------------------------------------------
 
+//{{{ service_btree
 //
 // run unit test of a stand-alone btree
 //
@@ -1213,12 +1237,14 @@ service_btree(Request *request)
 
 	platform.free_memory(btree_memory);
 }
+//}}}
 
 
 //------------------------------------------------------------------------------
 // service test
 //------------------------------------------------------------------------------
 
+//{{{ test_fill_in_event
 static void
 test_fill_in_event(char *input, nx_Label *labels)
 {
@@ -1233,7 +1259,9 @@ test_fill_in_event(char *input, nx_Label *labels)
 	labels[5] = ((row & 0x2) ? 2 : 0) + ((col & 0x2) ? 1 : 0);
 	labels[6] = ((row & 0x1) ? 2 : 0) + ((col & 0x1) ? 1 : 0);
 }
+//}}}
 
+//{{{ service_test
 // run unit test of API calls
 static void
 service_test(Request *request)
@@ -1512,6 +1540,7 @@ service_test(Request *request)
 	platform.free_memory(data_memory);
 
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // http server
@@ -1519,6 +1548,7 @@ service_test(Request *request)
 
 typedef struct ServeData ServeData;
 
+//{{{ serve_QueryBuffers
 //
 // information indexed by server thread
 // all independent. note that we moved the
@@ -1538,10 +1568,12 @@ typedef struct {
 	nm_Services            *payload_services;
 	ServeData              *context; // it is kind of the buffer parent structure
 } serve_QueryBuffers;
+//}}}
 
 #define app_ServeData_PAUSE_MASK 0x100000000ull
 #define app_ServeData_ACTIVE_COUNT_MASK 0xFFFFFFFFull
 
+//{{{ ServeData
 struct ServeData {
 	Request                *request;
 	serve_QueryBuffers     *buffers;
@@ -1567,14 +1599,18 @@ struct ServeData {
 	// StringArray *folder_available_nanocube_filenames;
 	// id2bl_Map   *folder_mapped_nanocubes;
 };
+//}}}
 
+//{{{ app_nanocube_print_http_header_default_flags
 static void
 app_nanocube_print_http_header_default_flags(Print *print)
 {
 	print_cstr(print, "Access-Control-Allow-Origin: *\r\n");
 	print_cstr(print, "Access-Control-Allow-Methods: GET\r\n");
 }
+//}}}
 
+//{{{ app_nanocube_solve_query
 static void
 app_nanocube_solve_query(MemoryBlock text, serve_QueryBuffers *buffers)
 {
@@ -1901,7 +1937,9 @@ done:
 	return;
 	// pf_END_BLOCK();
 }
+//}}}
 
+//{{{ serve_tcp_data_callback
 PLATFORM_TCP_DATA_CALLBACK(serve_tcp_data_callback)
 {
 	// we don't need to know the query buffer here,
@@ -1915,7 +1953,9 @@ PLATFORM_TCP_DATA_CALLBACK(serve_tcp_data_callback)
 	// trigger the http_handler when a new request is ready
 	http2_push_request_data(channel, buffer, length);
 }
+//}}}
 
+//{{{ serve_tcp_event_callback
 static
 PLATFORM_TCP_EVENT_CALLBACK(serve_tcp_event_callback)
 {
@@ -1941,7 +1981,9 @@ PLATFORM_TCP_EVENT_CALLBACK(serve_tcp_event_callback)
 		InvalidCodePath;
 	}
 }
+//}}}
 
+//{{{ http_handler
 // #define http_CALLBACK(name) void name(http_Channel *channel, http_Piece piece)
 static
 http2_CALLBACK(http_handler)
@@ -2029,6 +2071,7 @@ done:
 	platform.tcp_write(socket, print_result->begin, print_length(print_result));
 
 }
+//}}}
 
 
 // #if 1
@@ -2059,6 +2102,7 @@ done:
 #define app_NanocubesAndAliases_COULD_NOT_MMAP_FILE 5
 #define app_NanocubesAndAliases_NO_NANOCUBE_FOR_ALIAS 6
 
+//{{{ app_NanocubesAndAliases
 typedef struct {
 //	a_Arena        arena;
 	pt_MappedFile  mapped_files[1024];
@@ -2068,7 +2112,9 @@ typedef struct {
 	u32            num_mapped_files;
 	u8             parse_result;
 } app_NanocubesAndAliases;
+//}}}
 
+//{{{ app_NanocubesAndAliases_init
 static void
 app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
 {
@@ -2079,20 +2125,24 @@ app_NanocubesAndAliases_init(app_NanocubesAndAliases *self)
 		0
 	};
 }
+//}}}
 
+#if 0
+//{{{ app_NanocubesAndAliases_free_nanocubes
+internal void
+app_NanocubesAndAliases_free_nanocubes(app_NanocubesAndAliases *self)
+{
+	// assuming nanocubes came from blocks and not from mapped files
+	Assert(self->num_mapped_files == 0);
+	for (s32 i=0;i<self->num_nanocubes;++i) {
+		BasicAllocator_free(&self->blocks, self->nanocubes[i]);
+	}
+	self->num_nanocubes = 0;
+}
+//}}}
+#endif
 
-
-// internal void
-// app_NanocubesAndAliases_free_nanocubes(app_NanocubesAndAliases *self)
-// {
-// 	// assuming nanocubes came from blocks and not from mapped files
-// 	Assert(self->num_mapped_files == 0);
-// 	for (s32 i=0;i<self->num_nanocubes;++i) {
-// 		BasicAllocator_free(&self->blocks, self->nanocubes[i]);
-// 	}
-// 	self->num_nanocubes = 0;
-// }
-
+//{{{ app_NanocubesAndAliases_free_and_pop_nanocube
 static void
 app_NanocubesAndAliases_free_and_pop_nanocube(app_NanocubesAndAliases *self, s32 index)
 {
@@ -2107,7 +2157,9 @@ app_NanocubesAndAliases_free_and_pop_nanocube(app_NanocubesAndAliases *self, s32
 	}
 	--self->num_nanocubes;
 }
+//}}}
 
+//{{{ app_NanocubesAndAliases_free_resources
 static void
 app_NanocubesAndAliases_free_resources(app_NanocubesAndAliases *self)
 {
@@ -2117,7 +2169,9 @@ app_NanocubesAndAliases_free_resources(app_NanocubesAndAliases *self)
 		platform.close_mmap_file(self->mapped_files + i);
 	}
 }
+//}}}
 
+//{{{ app_NanocubesAndAliases_copy_and_register_nanocube
 // copies the whole allocator associated with the nanocube
 static b8
 app_NanocubesAndAliases_copy_and_register_nanocube(app_NanocubesAndAliases *self, nv_Nanocube *nanocube, char *alias_begin, char *alias_end)
@@ -2139,7 +2193,9 @@ app_NanocubesAndAliases_copy_and_register_nanocube(app_NanocubesAndAliases *self
 	++self->num_nanocubes;
 	return 1;
 }
+//}}}
 
+//{{{ app_NanocubesAndAliases_parse_and_load_alias
 static u8
 app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char *text_begin, char *text_end, Print *log)
 {
@@ -2250,7 +2306,9 @@ app_NanocubesAndAliases_parse_and_load_alias(app_NanocubesAndAliases *self, char
 	self->parse_result = app_NanocubesAndAliases_OK;
 	return self->parse_result;
 }
+//}}}
 
+//{{{ app_initialize_serve_data
 static void
 app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
 			  app_NanocubesAndAliases *info,
@@ -2340,7 +2398,9 @@ app_initialize_serve_data(ServeData *serve_data, a_Arena *arena,
 		buffer->payload_services = &serve_data->payload_services;
 	}
 }
+//}}}
 
+//{{{ service_serve_folder_scan_filename_
 // @perf this looks pretty slow: 1M extra calls
 PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve_folder_scan_filename_)
 {
@@ -2377,31 +2437,34 @@ PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve_folder_scan_filename_
 	}
 	// msg_f("filename pushed: %.*s\n", (s32)filename_length_to_store, filename);
 }
+//}}}
 
-
-
+//{{{ service_serve2_folder_scan_filename_
 // @perf this looks pretty slow: 1M extra calls
 PLATFORM_GET_FILENAMES_IN_DIRECTORY_CALLBACK(service_serve2_folder_scan_filename_)
 {
 	u32 filename_length = cstr_length(filename);
 	msg("%s\n", filename);
 }
+//}}}
 
-
-
-
+//{{{ nanocube_executable_version_doc
 /*
 BEGIN_DOC_STRING nanocube_executable_version_doc
 __VERSION__
 END_DOC_STRING
 */
+//}}}
 
+//{{{ nanocube_api_version_doc
 /*
 BEGIN_DOC_STRING nanocube_api_version_doc
 0.4
 END_DOC_STRING
 */
+//}}}
 
+//{{{ nanocube_serve_doc
 /*
 BEGIN_DOC_STRING nanocube_serve_doc
 Ver:   __VERSION__
@@ -2443,7 +2506,9 @@ Possible OPTIONS:
 
 END_DOC_STRING
 */
+//}}}
 
+//{{{ service_serve
 // run unit test of api calls
 static void
 service_serve(Request *request)
@@ -2711,7 +2776,9 @@ free_resources:
 	app_NanocubesAndAliases_free_resources(&info);
 
 }
+//}}}
 
+//{{{ nanocube_serve2_doc
 /*
 BEGIN_DOC_STRING nanocube_serve2_doc
 Ver:   __VERSION__
@@ -2777,8 +2844,9 @@ Possible OPTIONS:
 
 END_DOC_STRING
 */
+//}}}
 
-
+//{{{ service_serve2
 // run unit test of api calls
 static void
 service_serve2(Request *request)
@@ -2832,11 +2900,13 @@ service_serve2(Request *request)
 	// go see what we need to have a first version of the 'g(src(pattern))' API
 	//
 }
+//}}}
 
 /*
  * Service Query
  */
 
+//{{{ nanocube_query_doc
 /*
 BEGIN_DOC_STRING nanocube_query_doc
 Ver:   __VERSION__
@@ -2853,7 +2923,9 @@ Run QUERY on the indices being linked by the ALIASes.
 
 END_DOC_STRING
 */
+//}}}
 
+//{{{ service_query
 // run unit test of api calls
 static void
 service_query(Request *request)
@@ -3044,11 +3116,13 @@ free_resources:
 
 #endif
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // create service
 //------------------------------------------------------------------------------
 
+//{{{ service_demo_create
 static void
 service_demo_create()
 {
@@ -3292,8 +3366,9 @@ service_demo_create()
 
 #endif
 }
+//}}}
 
-
+//{{{ app_quadtree2_path_number
 static u128
 app_quadtree2_path_number(f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
@@ -3343,7 +3418,9 @@ app_quadtree2_path_number(f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 
 	return result;
 }
+//}}}
 
+//{{{ app_tile_path_number
 static u64
 app_tile_path_number(u64 level, u64 cell_x, u64 cell_y)
 {
@@ -3362,7 +3439,9 @@ app_tile_path_number(u64 level, u64 cell_x, u64 cell_y)
 	}
 	return result;
 }
+//}}}
 
+//{{{ app_quadtree_path_number
 static u64
 app_quadtree_path_number(f32 lat, f32 lon)
 {
@@ -3387,9 +3466,9 @@ app_quadtree_path_number(f32 lat, f32 lon)
 
 	return path_number;
 }
+//}}}
 
-
-/* TPart2 */
+//{{{ TPart2
 
 /*
  * Feature to let a user partition incoming pairs of quadtree
@@ -3406,6 +3485,7 @@ app_quadtree_path_number(f32 lat, f32 lon)
 #define app_TPart2_MAX_NUM_POINTS 512
 #define app_TPart2_SEP 0xFFFFFFFFull
 
+//{{{ app_TPart2
 typedef struct {
 	MemoryBlock      filename;
 
@@ -3429,7 +3509,9 @@ typedef struct {
 
 	b8               active;
 } app_TPart2;
+//}}}
 
+//{{{ app_TPart2_init
 static void
 app_TPart2_init(app_TPart2 *self)
 {
@@ -3437,7 +3519,9 @@ app_TPart2_init(app_TPart2 *self)
 	self->cut_begin = self->buffer;
 	self->cut_end   = self->buffer;
 }
+//}}}
 
+//{{{ app_TPart2_read_latlon
 static b8
 app_TPart2_read_latlon(app_TPart2 *self, MemoryBlock *begin, MemoryBlock *end, f32 *lat1, f32 *lon1, f32 *lat2, f32 *lon2)
 {
@@ -3463,7 +3547,9 @@ app_TPart2_read_latlon(app_TPart2 *self, MemoryBlock *begin, MemoryBlock *end, f
 		return 1;
 	}
 }
+//}}}
 
+//{{{ app_TPart2_read
 static b8
 app_TPart2_read(app_TPart2 *self)
 {
@@ -3509,7 +3595,9 @@ app_TPart2_read(app_TPart2 *self)
 	platform.close_mmap_file(&mapped_file);
 	return 1;
 }
+//}}}
 
+//{{{ app_TPart2_part_number
 static u32
 app_TPart2_part_number(app_TPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
@@ -3543,17 +3631,23 @@ app_TPart2_part_number(app_TPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 	/* otherwise return largest part number for anything that doesn't match */
 	return part+1;
 }
+//}}}
 
-
+//{{{ app_TPart2_consider_point
 static b8
 app_TPart2_consider_point(app_TPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lon2)
 {
 	u32 part = app_TPart2_part_number(self, lat1, lon1, lat2, lon2);
 	return (1ull << part) & self->set;
 }
+//}}}
+//}}}
 
+//------------------------------------------------------------------------------
+// QPart2 - quadtree partition
+//------------------------------------------------------------------------------
 
-/* QPart2 */
+//{{{ QPart2
 
 #define app_QPart2_MAX_NUM_CUTS 64
 
@@ -3687,10 +3781,13 @@ app_QPart2_consider_point(app_QPart2 *self, f32 lat1, f32 lon1, f32 lat2, f32 lo
 	}
 	return 0;
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // QPart - quadtree partition
 //------------------------------------------------------------------------------
+
+//{{{ QPart
 
 #define app_QPart_MAX_NUM_PARTS 64
 typedef struct {
@@ -3805,7 +3902,7 @@ app_QPart_consider_point(app_QPart *self, f32 lat, f32 lon)
 	}
 	return 0;
 }
-
+//}}}
 
 #define print_size_of(name) \
 	print_cstr(print, #name ); \
@@ -3813,6 +3910,7 @@ app_QPart_consider_point(app_QPart *self, f32 lat, f32 lon)
 	print_u64(print,sizeof(name)); \
 	print_char(print,'\n'); \
 
+//{{{ service_sizes
 static void
 service_sizes(Request *request)
 {
@@ -3822,11 +3920,13 @@ service_sizes(Request *request)
 	print_size_of(nm_Measure);
 	output_(print);
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // time service: test time routines
 //------------------------------------------------------------------------------
 
+//{{{ service_time
 static void
 service_time(Request *request)
 {
@@ -3926,10 +4026,9 @@ service_time(Request *request)
 		output_(print);
 	}
 }
+//}}}
 
-
-
-
+//{{{ nanocube_qpart_doc
 /*
 BEGIN_DOC_STRING nanocube_qpart_doc
 Ver:   __VERSION__
@@ -3953,8 +4052,9 @@ Options
 
 END_DOC_STRING
 */
+//}}}
 
-
+//{{{ service_qpart
 static void
 service_qpart(Request *request)
 {
@@ -4231,7 +4331,9 @@ service_qpart(Request *request)
 	}
 #endif
 }
+//}}}
 
+//{{{ service_qpart2
 static void
 service_qpart2(Request *request)
 {
@@ -4534,7 +4636,9 @@ service_qpart2(Request *request)
 	}
 #endif
 }
+//}}}
 
+//{{{ service_qpcount
 static void
 service_qpcount(Request *request)
 {
@@ -4734,7 +4838,9 @@ service_qpcount(Request *request)
 	//
 #endif
 }
+//}}}
 
+//{{{ app_create_tmp_file
 /* @TODO(llins): maybe move this to the platform */
 static b8
 app_create_tmp_file(MemoryBlock filename, u64 size)
@@ -4750,7 +4856,9 @@ app_create_tmp_file(MemoryBlock filename, u64 size)
 	platform.close_file(&file);
 	return 1;
 }
+//}}}
 
+//{{{ service_test_file_backed_mmap
 static void
 service_test_file_backed_mmap(Request *request)
 {
@@ -4818,8 +4926,10 @@ service_test_file_backed_mmap(Request *request)
 	output_(print);
 
 }
+//}}}
 
 /* csv */
+//{{{ service_create_usage
 static void
 service_create_usage(char *preamble_cstr)
 {
@@ -4841,9 +4951,11 @@ service_create_usage(char *preamble_cstr)
 // 	output_cstr_("[csv] missing maxdist\n");
 // 	output_cstr_("[csv] option usage: -snap=<roadmap-filename>,<maxdist-f32>\n");
 }
+//}}}
 
 #include "base/filepath.c"
 
+//{{{ service_create_save_arena
 static b8
 service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *filename_end, u64 part_number, s32 base64)
 {
@@ -4932,7 +5044,9 @@ service_create_save_arena(al_Allocator *allocator, char *filename_begin, char *f
 
 	return 1;
 }
+//}}}
 
+//{{{ service_create_print_temporal_hint
 static void
 service_create_print_temporal_hint(Print *print, nm_TimeBinning *time_binning)
 {
@@ -4943,7 +5057,9 @@ service_create_print_temporal_hint(Print *print, nm_TimeBinning *time_binning)
 	tm_Label_print(&time_label, print);
 	print_format(print, "_%ds", time_binning->bin_width);
 }
+//}}}
 
+//{{{ service_create_prepare_allocator_and_nanocube
 //
 // if previous part nanocube is available is not null, copy
 // the key value store from it. Otherwise assume creating from
@@ -5138,7 +5254,9 @@ service_create_prepare_allocator_and_nanocube(cm_Spec *spec, char *data_memory_b
 
 	return allocator;
 }
+//}}}
 
+//{{{ service_create_pull_callback
 csv_PULL_CALLBACK(service_create_pull_callback)
 {
 	pt_File *file = (pt_File*) user_data;
@@ -5167,6 +5285,7 @@ csv_PULL_CALLBACK(service_create_pull_callback)
 		return buffer + file->last_read;
 	}
 }
+//}}}
 
 //
 // @todo cleanup this hard cap and make it adjustable to
@@ -5176,6 +5295,7 @@ csv_PULL_CALLBACK(service_create_pull_callback)
 // #define service_create_SCAN_CSV_BUFFER Megabytes(4)
 #define service_create_MAX_FIELDS 1024
 
+//{{{ app_util_fill_nx_Array_with_path_from_u64
 static void
 app_util_fill_nx_Array_with_path_from_u64(nx_Array *target, u8 bits, u8 levels, u64 value)
 {
@@ -5187,6 +5307,7 @@ app_util_fill_nx_Array_with_path_from_u64(nx_Array *target, u8 bits, u8 levels, 
 		nx_Array_set(target, lev, label);
 	}
 }
+//}}}
 
 #define NANOCUBE_SERVE_WHILE_CREATE
 
@@ -5202,6 +5323,7 @@ app_util_fill_nx_Array_with_path_from_u64(nx_Array *target, u8 bits, u8 levels, 
 #define service_create_serve_refresh_LAST_REFRESH 1
 #define service_create_serve_refresh_INTERMEDIATE_REFRESH 2
 
+//{{{ service_create_ServeConfig
 typedef struct {
 	s32 num_threads;
 	s32 port;
@@ -5221,7 +5343,9 @@ typedef struct {
 	volatile u32 refresh_status;
 	al_Allocator *refresh_data;
 } service_create_ServeConfig;
+//}}}
 
+//{{{ service_create_serve
 PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 {
 	service_create_ServeConfig *serve_config = (service_create_ServeConfig*) data;
@@ -5430,10 +5554,12 @@ PLATFORM_WORK_QUEUE_CALLBACK(service_create_serve)
 	pt_memory_barrier();
 	pt_atomic_exchange_u32(&serve_config->status, service_create_serve_DONE);
 }
+//}}}
 
 #endif
 
 
+//{{{ nanocube_create_doc
 /*
 BEGIN_DOC_STRING nanocube_create_doc
 Ver:   __VERSION__
@@ -5721,7 +5847,9 @@ Example 3
 
 END_DOC_STRING
 */
+//}}}
 
+//{{{ service_create
 static void
 service_create()
 {
@@ -5772,6 +5900,7 @@ service_create()
 
 	}
 
+	//{{{ -size0
 	s64 size0 = Megabytes(32);
 	if (op_Options_find_cstr(options,"-size0")) {
 		MemoryBlock st;
@@ -5786,6 +5915,7 @@ service_create()
 			}
 		}
 	}
+	//}}}
 
 	s64 mem_labels = Megabytes(16);
 	if (op_Options_find_cstr(options,"-mem_labels")) {
@@ -6849,6 +6979,8 @@ service_create()
 		s64 last_printed     = -2;
 		// u64 line_no          =  external_header ? 1 : 0; // depends a header was used or not
 		u64 line_no          =  (header == HEADER_INTERNAL) ? 1 : 0; // depends a header was used or not
+
+		//{{{ loop on input csv records
 		while (csv_Stream_next(&csv_stream)) {
 
 #if 0
@@ -6876,6 +7008,7 @@ service_create()
 				goto finalize_insertion;
 			}
 
+			//{{{ if serving while creating check query refresh rate
 #ifdef NANOCUBE_SERVE_WHILE_CREATE
 
 			if (serve_port > 0) {
@@ -6912,6 +7045,7 @@ service_create()
 
 			}
 #endif
+			//}}}
 
 			/* read in field positions of the current record from csv stream */
 			u32 csv_fields_count = csv_Stream_num_fields(&csv_stream);
@@ -6921,6 +7055,7 @@ service_create()
 				goto finalize_insertion;
 			}
 
+			//{{{ qpart
 			if (qpart.active) {
 				f32 lat, lon;
 				app_QPart_read_latlon(&qpart, csv_fields, csv_fields + csv_fields_count, &lat, &lon);
@@ -6934,7 +7069,9 @@ service_create()
 					goto finalize_insertion;
 				}
 			}
+			//}}}
 
+			//{{{ qpart2
 			if (qpart2.active) {
 				f32 lat1, lon1, lat2, lon2;
 				app_QPart2_read_latlon(&qpart2, csv_fields, csv_fields + csv_fields_count, &lat1, &lon1, &lat2, &lon2);
@@ -6952,7 +7089,9 @@ service_create()
 					goto finalize_insertion;
 				}
 			}
+			//}}}
 
+			//{{{ tpart2
 			if (tpart2.active) {
 				f32 lat1, lon1, lat2, lon2;
 				app_TPart2_read_latlon(&tpart2, csv_fields, csv_fields + csv_fields_count, &lat1, &lon1, &lat2, &lon2);
@@ -6970,6 +7109,7 @@ service_create()
 					goto finalize_insertion;
 				}
 			}
+			//}}}
 
 			/* check if columns we need to access exist */
 			if (csv_fields_count <= max_idx) {
@@ -6981,11 +7121,13 @@ service_create()
 
 			pf_BEGIN_BLOCK("prepare_record");
 
+			//{{{ copy record fields to the right slots
 			it_addr          = address;
 			char *it_payload = payload;
 			b8 could_prepare_record = 1;
 			for (s32 i=0;i<cm_Spec_dimensions(&spec);++i) {
 				cm_Dimension *dim = cm_Spec_get_dimension(&spec,i);
+				//{{{ index dimension
 				if (dim->type == cm_INDEX_DIMENSION) {
 					b8 lok = 0;
 					switch (dim->mapping_spec.index_mapping.type) {
@@ -7101,24 +7243,29 @@ service_create()
 						break;
 					}
 					++it_addr;
-				} else if (dim->type == cm_MEASURE_DIMENSION) {
+				}
+				//}}}
+				//{{{ measure dimension
+				else if (dim->type == cm_MEASURE_DIMENSION) {
 					b8 lok = cm_mapping_measure(dim, offset, &it_payload, csv_fields, &time_parser);
 					if (!lok) {
 						could_prepare_record = 0;
 						break;
 					}
 				}
+				//}}}
 			}
+			//}}}
 
 			pf_END_BLOCK();
 
 			if (!could_prepare_record) {
-// 				print_clear(print);
-// 				print_cstr(print, "[service_create] Error parsing record on line ");
-// 				print_u64(print,(u64) offset + 1);
-// 				print_cstr(print,"\n");
-// 				log_(print);
-// 				print_clear(print);
+				print_clear(print);
+				print_cstr(print, "[service_create] Error parsing record on line ");
+				print_u64(print,(u64) offset + 1);
+				print_cstr(print,"\n");
+				log_(print);
+				print_clear(print);
 				// continue;
 				goto finalize_insertion;
 			}
@@ -7305,6 +7452,7 @@ finalize_insertion:
 			}
 
 		} /* input records loop */
+		//}}}
 
 		pf_END_BLOCK();
 
@@ -7314,7 +7462,7 @@ finalize_insertion:
 		log_(&pfc_report.print);
 #endif
 
-		/* print final numbers if needed */
+		//{{{ print final numbers if needed
 		if (offset != last_printed) {
 			print_clear(print);
 			print_format(print, "%10I64u # | %10I64u s | %10.1f MB | %5.1f mem%% | %12I64u ins | %5.1f ins%%\n",
@@ -7327,12 +7475,11 @@ finalize_insertion:
 			log_(print);
 			print_clear(print);
 		}
-
+		//}}}
 
 #ifdef PROFILE
 		pfc_end();
 #endif
-
 
 		if (!use_stdin) {
 			platform.close_file(&csv_file);
@@ -7414,7 +7561,9 @@ finalize_insertion:
 	platform.free_memory(csv_mapping_parse_and_compile_buffer);
 #endif
 }
+//}}}
 
+//{{{ service_bits
 static void
 service_bits(Request *request)
 {
@@ -7491,6 +7640,7 @@ service_bits(Request *request)
 	output_(print);
 
 }
+//}}}
 
 //------------------------------------------------------------------------------
 // service_client: test tcp client functionality
@@ -7500,6 +7650,7 @@ service_bits(Request *request)
 
 #if 0
 
+//{{{ service_client_callback
 static
 PLATFORM_TCP_CALLBACK(service_client_callback)
 {
@@ -7510,7 +7661,9 @@ PLATFORM_TCP_CALLBACK(service_client_callback)
 	print_str(print, buffer, buffer+length);
 	output_(print);
 }
+//}}}
 
+//{{{ service_client
 static void
 service_client(Request *request)
 {
@@ -7586,6 +7739,7 @@ service_client(Request *request)
 #endif
 
 }
+//}}}
 
 #endif
 
@@ -7595,6 +7749,8 @@ service_client(Request *request)
 
 // #define PLATFORM_TCP_CALLBACK(name) void name(pt_TCP_Socket *socket, char *buffer, u64 length)
 #if 0
+
+//{{{ service_http_tcp_server_callback
 static
 PLATFORM_TCP_CALLBACK(service_http_tcp_server_callback)
 {
@@ -7609,7 +7765,9 @@ PLATFORM_TCP_CALLBACK(service_http_tcp_server_callback)
 	http_Channel_receive_data(http_channel, buffer, length);
 	// output_(print);
 }
+//}}}
 
+//{{{ service_http_request_line_callback 
 // #define http_REQUEST_LINE_CALLBACK(name)
 // 	void name(http_Response *response,
 // 		  char *method_begin, char *method_end,
@@ -7632,7 +7790,9 @@ http_REQUEST_LINE_CALLBACK(service_http_request_line_callback)
 	print_cstr(print, "\n");
 	output_(print);
 }
+//}}}
 
+//{{{ service_http_header_field_callback
 // #define http_HEADER_FIELD_CALLBACK(name)
 // 	void name(http_Response *response,
 // 		  char *field_name_begin, char *field_name_end,
@@ -7650,7 +7810,9 @@ http_HEADER_FIELD_CALLBACK(service_http_header_field_callback)
 	print_cstr(print, "'\n");
 	output_(print);
 }
+//}}}
 
+//{{{ service_http
 static void
 service_http(Request *request)
 {
@@ -7693,6 +7855,7 @@ service_http(Request *request)
 		platform.tcp_process_events(tcp, 0);
 	}
 }
+//}}}
 
 #endif
 
@@ -7702,6 +7865,7 @@ service_http(Request *request)
 // service_create_test
 //
 #if 0
+//{{{ service_create_test_pull_callback
 csv_PULL_CALLBACK(service_create_test_pull_callback)
 {
 	pt_File *file = (pt_File*) user_data;
@@ -7725,7 +7889,8 @@ csv_PULL_CALLBACK(service_create_test_pull_callback)
 		return buffer + file->last_read;
 	}
 }
-
+//}}}
+//{{{ service_create_test
 static void
 service_create_test(Request *request)
 {
@@ -7744,7 +7909,7 @@ service_create_test(Request *request)
 // internal char*
 // csv_Stream_init(csv_Stream *self, char sep, char *buffer, u64 length, u32 max_separators,
 // 		csv_PullCallback *pull_callback, void *user_data)
-// {
+// 
 
 	pt_File file = platform.open_read_file(input_filename.begin, input_filename.end);
 	if (!file.open) {
@@ -7801,6 +7966,7 @@ service_create_test(Request *request)
 	}
 
 }
+//}}}
 #endif
 
 //
@@ -7810,6 +7976,7 @@ service_create_test(Request *request)
 
 #if 0
 
+//{{{ service_create_col_pull_callback
 csv_PULL_CALLBACK(service_create_col_pull_callback)
 {
 	pt_File *file = (pt_File*) user_data;
@@ -7835,7 +8002,9 @@ csv_PULL_CALLBACK(service_create_col_pull_callback)
 		return buffer + file->last_read;
 	}
 }
+//}}}
 
+//{{{ nanocube_csv_col_doc
 /*
 BEGIN_DOC_STRING nanocube_csv_col_doc
 Ver:   __VERSION__
@@ -7850,7 +8019,9 @@ Options are:
 
 END_DOC_STRING
 */
+//}}}
 
+//{{{ service_create_col
 static void
 service_create_col(Request *request)
 {
@@ -7990,12 +8161,13 @@ service_create_col(Request *request)
 	}
 
 }
+//}}}
 
 #endif
 
+//{{{ service_polycover
 
 #ifdef POLYCOVER
-
 static void
 service_polycover(Request *request)
 {
@@ -8037,7 +8209,9 @@ service_polycover(Request *request)
 }
 
 #endif
+//}}}
 
+//{{{ service_api
 static void
 service_api(Request *request)
 {
@@ -8046,6 +8220,7 @@ service_api(Request *request)
 	print_cstr(print, nanocube_api_doc);
 	output_(print);
 }
+//}}}
 
 /*
  * ROADMAP RELATED FUNCTIONS
@@ -8061,6 +8236,7 @@ service_api(Request *request)
 // pf_Table *global_profile_table = 0;
 // #endif
 
+//{{{ nanocube_doc
 /*
 BEGIN_DOC_STRING nanocube_doc
 Ver:   __VERSION__
@@ -8093,8 +8269,9 @@ Other COMMANDs:
 
 END_DOC_STRING
 */
+//}}}
 
-
+//{{{ application_process_request
 APPLICATION_PROCESS_REQUEST(application_process_request)
 {
 	/* copy platform function pointers */
@@ -8225,5 +8402,6 @@ APPLICATION_PROCESS_REQUEST(application_process_request)
 	/* deinitialize nx_ module */
 	nx_finish();
 }
+//}}}
 
 
