@@ -42,6 +42,9 @@ CFLAGS=$(cat <(cat <<EOF
 -Wno-implicit-function-declaration
 -Wno-misleading-indentation
 -Wno-implicit-fallthrough
+-Wno-array-bounds
+-Wno-maybe-uninitialized
+-Wno-array-parameter
 -std=gnu11
 -DOS_LINUX
 EOF
@@ -76,11 +79,23 @@ fi
 CFLAGS="$CFLAGS $OPTIONS"
 CXXFLAGS="$CXXFLAGS $OPTIONS"
 
-BASENAME=$(pwd | rev | cut -f 2 -d'/' | rev)
+# BASENAME=$(pwd | rev | cut -f 2 -d'/' | rev)
 
-EXE="nc42b"
-BUILD="../../build/${BASENAME}"
-SRC="../../${BASENAME}/src"
+EXE="nanocube"
+# expecting to build from the src folder
+SRC="$(pwd)"
+BUILD="${SRC}/../build"
+mkdir -p ${BUILD}
+
+# echo ${BUILD}; \
+# if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
+
+
+if [ "$?" != '0' ]; then
+	echo "Could not create BUILD directory: ${BUILD}"
+	exit -1
+fi
+# SRC="../${BASENAME}/src"
 
 CC="gcc"
 CXX="g++"
@@ -221,8 +236,6 @@ for f in "${DOC_FILES[@]}"; do
 done
 
 
-echo ${BUILD}; \
-if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 pushd ${BUILD} ;\
 # ${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
 ${CC} ${CFLAGS} -o ${EXE} ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
