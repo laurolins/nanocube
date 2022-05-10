@@ -235,10 +235,25 @@ for f in "${DOC_FILES[@]}"; do
 	f_update_doc "$f" "${VERSION_NAME}"
 done
 
+COMPILE_CMD="${CC} ${CFLAGS} -c ${SRC}/platform_dependent/nix_app.c"
+LINK_CMD="${CXX} -o ${EXE} nix_app.o ${LIBS}"
+
+echo "Compile Command"
+echo "$COMPILE_CMD"
+echo "Link Command"
+echo "$LINK_CMD"
+
+# echo ${BUILD}; \
+# if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
 
 pushd ${BUILD} ;\
-# ${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
-${CC} ${CFLAGS} -o ${EXE} ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
-cp ${EXE} ${LOCAL}/bin/. ;\
+$COMPILE_CMD  ;\
+$LINK_CMD ;\
 popd
+
+# pushd ${BUILD} ;\
+# # ${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
+# ${CC} ${CFLAGS} -o ${EXE} ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+# cp ${EXE} ${LOCAL}/bin/. ;\
+# popd
 
