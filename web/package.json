@@ -21,7 +21,7 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.34",
     "@fortawesome/free-solid-svg-icons": "^5.15.2",
     "colorbrewer": "^1.4.0",
-    "d3": "^6.5.0",
+    "d3": "^7.6.1",
     "file-saver": "^2.0.5",
     "jquery": "^3.6.0",
     "jsep": "^0.3.5",
