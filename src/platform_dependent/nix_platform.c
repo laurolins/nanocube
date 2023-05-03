@@ -51,7 +51,12 @@
 
 #include <time.h> // clock()
 #include <unistd.h>
+
+#ifdef APPLE_SILICON
+#include <arm_neon.h>
+#else
 #include <x86intrin.h>
+#endif
 
 #if defined(OS_MAC)
 // dispatch_semaphore_t semaphore;
@@ -511,11 +516,24 @@ PLATFORM_UNLOCK_MUTEX(nix_unlock_mutex)
 	pthread_mutex_unlock((pthread_mutex_t*) mutex.handle);
 }
 
+
 static
 PLATFORM_CYCLE_COUNT_CPU(nix_cycle_count_cpu)
 {
-	// defined in #include "x86intrin.h"
-	return (u64) __rdtsc();
+        return pt_get_cpu_clock();
+
+// 
+//         // defined in #include "x86intrin.h"
+// 	// return (u64) __rdtsc();
+// 	// return __builtin_ia32_rdtsc();
+// #ifdef APPLE_SILICON
+//         // return 0;
+// 	return _now();
+// #else
+// 	return __rdtsc();
+// #endif
+// 
+
 }
 
 //
@@ -1296,7 +1314,7 @@ static void
 nix_tcp_reclaim_sockets(nix_tcp_Engine *self)
 {
 	nix_tcp_Socket *it = self->active_sockets;
-	s32 count = 0;
+	// s32 count = 0;
 	while (it) {
 		nix_tcp_Socket *it_next = it->next;
 		if (!it->status) {
@@ -1327,7 +1345,7 @@ nix_tcp_reclaim_sockets(nix_tcp_Engine *self)
 				// socket->status = nix_tcp_Socket_FREE;
 				socket->id = 0;
 			}
-			++count;
+			// ++count;
 		}
 		it = it_next;
 	}

@@ -38,12 +38,14 @@ CFLAGS=$(cat <(cat <<EOF
 -Wno-null-dereference
 -Wno-unused-function
 -DOS_MAC
+-DAPPLE_SILICON
 EOF
 ) | paste -d' ' -s -)
 
 CXXFLAGS=$(cat <(cat <<EOF
 -std=c++11
 -DOS_MAC
+-DAPPLE_SILICON
 EOF
 ) | paste -d' ' -s -)
 
