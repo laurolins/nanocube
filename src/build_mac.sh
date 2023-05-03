@@ -1,0 +1,228 @@
+#!/bin/bash
+
+# options are "debug", "release", "profile", "security"
+MODE="debug"
+if [ $1 ]; then
+	MODE=$1
+fi
+
+ARGS=("$@")
+ARGS_LENGTH=${#ARGS[@]}
+
+POYCOVER_SUPPPORT=false
+CUSTOM_DEFINES=""
+EXTRA=""
+for (( i=1; i<$ARGS_LENGTH; i++ )); do
+	CUSTOM_DEFINES+="-D${ARGS[$i]} ";
+	EXTRA="$EXTRA ${ARGS[$i]}"
+	if [ "${ARGS[$i]}" == "POLYCOVER" ]; then
+		POLYCOVER_SUPPORT=true
+	fi
+done
+# echo "${CUSTOM_DEFINES}"
+
+#
+# 2018-11-13T13:41
+#      Included
+#            -Wno-misleading-indentation
+#            -Wno-implicit-fallthrough
+#      to avoid compilation errors on gcc version 7.3.0 (Ubuntu 7.3.0-16ubuntu3)
+#
+# FLAGS=-std=c++11 -stdlib=libc++ -O3 -Wall -Werror -Weverything
+
+CFLAGS=$(cat <(cat <<EOF
+-Wall
+-Werror
+-std=c11
+-Wno-unused-variable
+-Wno-null-dereference
+-Wno-unused-function
+-Wno-string-plus-int
+-Wno-unused-but-set-variable
+-DOS_MAC
+-DAPPLE_SILICON
+EOF
+) | paste -d' ' -s -)
+
+CXXFLAGS=$(cat <(cat <<EOF
+-std=c++11
+-DOS_MAC
+-DAPPLE_SILICON
+EOF
+) | paste -d' ' -s -)
+
+DEBUG_FLAGS="-g -ggdb -DCHECK_ASSERTIONS -fno-omit-frame-pointer"
+RELEASE_FLAGS="-g -ggdb -O3"
+PROFILE_FLAGS="-g -ggdb -O2 -fno-omit-frame-pointer -DPROFILE"
+SECURITY_FLAGS="-g3 -gdwarf-2 -O0 -fno-builtin "
+OPTIONS=""
+
+# echo "${MODE}"
+if [ "${MODE}" == "debug" ]; then
+	OPTIONS="${DEBUG_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" == "release" ]; then
+	OPTIONS="${RELEASE_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" == "profile" ]; then
+	OPTIONS="${PROFILE_FLAGS} ${CUSTOM_DEFINES}"
+elif [ "${MODE}" == "security" ]; then
+	OPTIONS="${SECURITY_FLAGS} ${CUSTOM_DEFINES}"
+else
+	echo "invalide mode. needs to be 'debug', 'release', or 'profile'";
+	exit;
+fi
+
+CFLAGS="$CFLAGS $OPTIONS"
+CXXFLAGS="$CXXFLAGS $OPTIONS"
+
+BASENAME=$(pwd | rev | cut -f 2 -d'/' | rev)
+
+EXE="nc42b"
+BUILD="../../build/${BASENAME}"
+SRC="../../${BASENAME}/src"
+
+CC="clang"
+CXX="clang++"
+LIBS="-L${BUILD} -lm -lpthread"
+APP_EXTRA_LIBS=""
+
+if [ "$POLYCOVER_SUPPORT" = true ]; then
+
+	POLYCOVER_SRC=$(cat <(cat <<'EOF'
+polycover/area.cc
+polycover/area.hh
+polycover/boundary.cc
+polycover/boundary.hh
+polycover/cells.cc
+polycover/cells.hh
+polycover/geometry.cc
+polycover/geometry.hh
+polycover/glue.cc
+polycover/infix_iterator.hh
+polycover/labeled_tree.cc
+polycover/labeled_tree.hh
+polycover/maps.cc
+polycover/maps.hh
+polycover/mipmap.cc
+polycover/mipmap.hh
+polycover/polycover.cc
+polycover/polycover.h
+polycover/polycover.hh
+polycover/signal.hh
+polycover/tessellation.cc
+polycover/tessellation.hh
+polycover/tokenizer.cc
+polycover/tokenizer.hh
+polycover/glu/dict.c
+polycover/glu/memalloc.c
+polycover/glu/sweep.c
+polycover/glu/tessmono.c
+polycover/glu/geom.c
+polycover/glu/mesh.c
+polycover/glu/priorityq.c
+polycover/glu/tess.c
+polycover/glu/normal.c
+polycover/glu/render.c
+polycover/glu/tessellate.c
+EOF
+) | egrep -v "[.](hh|h)$" | paste -d' ' -s -)
+
+	pushd $BUILD
+
+	# f_cmd="tmp_cmd"
+	# if [ -f $f_cmd ]; then rm $f_cmd; fi
+
+	C_FILENAMES="$(echo $POLYCOVER_SRC | tr ' ' '\n' | grep "[.]c$" | paste -d' ' -s -)"
+	# echo "C_FILENAMES: $C_FILENAMES"
+	POLYCOVER_OBJ_FILES=""
+	for C_FILENAME in $C_FILENAMES; do
+		OBJ_FILENAME=$(echo $C_FILENAME | tr '/' '_' | sed 's/[.]c$/.o/')
+		POLYCOVER_OBJ_FILES="$POLYCOVER_OBJ_FILES $OBJ_FILENAME"
+		C_SRC="$SRC/$C_FILENAME"
+		if [ ! -f $OBJ_FILENAME ] || [ $OBJ_FILENAME -ot $C_SRC ]; then
+			echo "${CC} ${CFLAGS} -c $C_SRC -o $OBJ_FILENAME"
+			${CC} ${CFLAGS} -c $C_SRC -o $OBJ_FILENAME
+		fi
+	done
+
+	CXX_FILENAMES="$(echo $POLYCOVER_SRC | tr ' ' '\n' | grep "[.]cc$" | paste -d' ' -s -)"
+	# echo "CXX_FILENAMES: $CXX_FILENAMES"
+	for CXX_FILENAME in $CXX_FILENAMES; do
+		OBJ_FILENAME=$(echo $CXX_FILENAME | tr '/' '_' | sed 's/[.]cc$/.o/')
+		POLYCOVER_OBJ_FILES="$POLYCOVER_OBJ_FILES $OBJ_FILENAME"
+		CXX_SRC="$SRC/$CXX_FILENAME"
+		if [ ! -f $OBJ_FILENAME ] || [ $OBJ_FILENAME -ot $CXX_SRC ]; then
+			echo "${CXX} ${CXXFLAGS} -c $CXX_SRC -o $OBJ_FILENAME"
+			${CXX} ${CXXFLAGS} -c $CXX_SRC -o $OBJ_FILENAME
+		fi
+	done
+
+	ar rcs libpolycover.a $POLYCOVER_OBJ_FILES
+	LIBS="$LIBS -lc++ -lpolycover"
+
+	popd
+fi
+
+# prepare VERSION_NAME name based on repository updates
+BASE_VERSION="$(cat VERSION)"
+REVISION="$(git rev-list --count HEAD)"
+HASH=$(git rev-list HEAD | head -n 1 | cut -c 1-6)
+MODIFIED=""
+if [[ $(git status --porcelain | grep " M") ]]; then
+	  MODIFIED="m"
+fi
+VERSION_NAME="${BASE_VERSION}r${REVISION}${MODIFIED}_${HASH}_${MODE}_$(echo $EXTRA | paste -d'_' -s -)"
+echo ${VERSION_NAME}
+
+# check if version name stored is the same as the one
+# we just computed
+STORED_VERSION_NAME=""
+if [ -f VERSION_NAME ]; then
+	STORED_VERSION_NAME=$(cat VERSION_NAME)
+fi
+
+VERSION_NAME_WAS_UPDATED=""
+if [ "${VERSION_NAME}" != "${STORED_VERSION_NAME}" ]; then
+	VERSION_NAME_WAS_UPDATED="yes"
+	echo "${VERSION_NAME}" > VERSION_NAME
+fi
+
+function f_file_modified {
+	DOC_SRC_UPDATED=$(git diff $1 | wc -l)
+	if [ "${DOC_SRC_UPDATED}" != "0"]; then
+		echo "1"
+	fi
+}
+
+# Update documentation if its source file has changed.
+# Since the output of documentation files are also part
+# of the tracked repository, we don't want to updated
+# those files everytime we compile, only when there
+# is a potential change
+function f_update_doc {
+        INPUT="$1"
+        VER="$2"
+        OUTPUT="${INPUT}.doc"
+
+        ${CC} -std=gnu11 -o xdoc xdoc.c
+        cat $INPUT | sed 's/__VERSION__/'${VER}'/g' > .docaux
+	./xdoc .docaux > $OUTPUT
+
+        echo "updated ${OUTPUT}"
+}
+
+
+DOC_FILES=(app.c app_roadmap.c)
+BASE_DIR=$(pwd)
+for f in "${DOC_FILES[@]}"; do
+	f_update_doc "$f" "${VERSION_NAME}"
+done
+
+
+echo ${BUILD}; \
+if ! [ -f ${BUILD} ]; then mkdir -p ${BUILD}; fi ;\
+pushd ${BUILD} ;\
+# ${C} ${OPTIONS} -fPIC -shared -olibnanocube_app.so ${SRC}/app.c -lm ${APP_EXTRA_LIBS} ;\
+${CC} ${CFLAGS} -o ${EXE} ${SRC}/platform_dependent/nix_app.c ${LIBS} ;\
+cp ${EXE} ${HOME}/.local/bin/. ;\
+popd
+
