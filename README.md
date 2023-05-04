@@ -96,3 +96,7 @@ Zoom into the Chicago region to see a heatmap of crimes.
 
 For more advanced information follow this link: [extra](/EXTRA.md)
 
+Branch with latest features: [link](https://github.com/laurolins/nanocube/tree/v4.2-dev)
+
+
+
